@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-LinuxKernelBook documentation
+Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi 
 =============================
 
 Add your content using ``reStructuredText`` syntax. See the

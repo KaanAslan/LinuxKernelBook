@@ -1,0 +1,23 @@
+# .readthedocs.yaml
+version: 2
+
+# Build dokümantasyonunu her formatta oluştur
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.11"
+
+# Sphinx yapılandırması
+sphinx:
+  configuration: docs/source/conf.py
+  fail_on_warning: false
+
+# Python bağımlılıklarını kur
+python:
+  install:
+    - requirements: docs/requirements.txt
+
+# Opsiyonel: Birden fazla format
+formats:
+  - pdf
+  - epub
