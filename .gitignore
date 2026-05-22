@@ -1,6 +1,6 @@
 # Sphinx build dosyaları
-docs/build/
-docs/_build/
+source/build/
+source/_build/
 
 # Python
 __pycache__/
