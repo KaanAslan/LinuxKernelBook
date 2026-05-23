@@ -1125,3 +1125,4 @@ Kursumuzda UEFI BIOS sistemlerinin işlevi ve temel çalışma mekanizması baş
 
 Yukarıda da belirttiğimiz gibi bugünkü Linux yüklü olan Intel x86 tabanlı PC sistemlerinde genellikle önyükleyici
 olarak GRUB tercih edilmektedir.
+

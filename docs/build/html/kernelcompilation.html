@@ -1,0 +1,1163 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="tr" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. Çekirdeğin Derlenmesi &mdash; LinuxKernelBook 1.0.0 belgelendirmesi</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b28b97a2" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=b6527007"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/translations.js?v=b0f24d8d"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Dizin" href="genindex.html" />
+    <link rel="search" title="Ara" href="search.html" />
+    <link rel="prev" title="1. Giriş" href="introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            LinuxKernelBook
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Belgeleri arayın" aria-label="Belgeleri arayın" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">İçindekiler</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Giriş</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#gereksinimler">1.1. Gereksinimler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#kaynak-kod-gezintisi">1.2. Kaynak Kod Gezintisi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerine-giris">1.3. İşletim Sistemlerine Giriş</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sisteminin-tanimi-ve-yapisi">1.4. İşletim Sisteminin Tanımı ve Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-siniflandirilmasi">1.5. İşletim Sistemlerinin Sınıflandırılması</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#proses-yonetimine-gore">1.5.1. Proses Yönetimine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kullanici-sayisina-gore">1.5.2. Kullanıcı Sayısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#cekirdek-yapisina-gore">1.5.3. Çekirdek Yapısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.5.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dagitiklik-durumuna-gore">1.5.5. Dağıtıklık Durumuna Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#donanim-ozelligine-gore">1.5.6. Donanım Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kod-lisansina-gore">1.5.7. Kaynak Kod Lisansına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kodun-ozgunlugune-gore">1.5.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#gui-calisma-destegine-gore">1.5.9. GUI Çalışma Desteğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.5.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-tarihsel-gelisimi">1.6. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#unix-turevi-sistemlerin-tarihsel-gelisimi">1.7. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#mac-os-x-turevi-sistemler">1.8. Mac OS X Türevi Sistemler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#gnu-projesi-ve-ozgur-yazilim">1.9. GNU Projesi ve Özgür Yazılım</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-un-tarihsel-gelisimi">1.10. Linux’un Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.11. Linux Dağıtımları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.12. POSIX Standartları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.13. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.14. Linux Sistemlerinin Boot Edilmesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#reset-vektoru-ve-bios-firmware">1.14.1. Reset Vektörü ve BIOS/Firmware</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#onyukleyici-bootloader-programlar">1.14.2. Önyükleyici (Bootloader) Programlar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#genel-boot-akisi">1.14.3. Genel Boot Akışı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#boot-asamalari-terminolojisi">1.14.4. Boot Aşamaları Terminolojisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#pc-sistemlerinde-boot-sureci-klasik-bios">1.14.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Çekirdeğin Derlenmesi</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-davranisini-degistirme-yontemleri">2.1. Çekirdek Davranışını Değiştirme Yöntemleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-komut-satiri-parametreleri">2.2. Çekirdek Komut Satırı Parametreleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdegi-yeniden-derlemenin-gerektigi-durumlar">2.3. Çekirdeği Yeniden Derlemenin Gerektiği Durumlar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-derlemesi-hakkinda">2.4. Çekirdek Derlemesi Hakkında</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#capraz-derleme">2.4.1. Çapraz Derleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cekirdek-kaynak-kodlarinin-indirilmesi">2.4.2. Çekirdek Kaynak Kodlarının İndirilmesi</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#sikistirma-formatlari-ve-tar-komutu">2.4.2.1. Sıkıştırma Formatları ve tar Komutu</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#dagitima-ozgu-cekirdek-kaynak-kodlari">2.4.3. Dağıtıma Özgü Çekirdek Kaynak Kodları</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-versiyon-numaralandirmasi">2.5. Çekirdek Versiyon Numaralandırması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#derleme-araclari">2.6. Derleme Araçları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-derleme-adimlari">2.7. Çekirdek Derleme Adımları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#adim-1-gerekli-araclarin-kurulmasi">2.7.1. Adım 1: Gerekli Araçların Kurulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adim-2-kaynak-kodlarin-indirilmesi-ve-acilmasi">2.7.2. Adım 2: Kaynak Kodların İndirilmesi ve Açılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adim-3-cekirdegin-konfigure-edilmesi">2.7.3. Adım 3: Çekirdeğin Konfigüre Edilmesi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adim-4-konfigurasyon-degisikliklerinin-yapilmasi">2.7.4. Adım 4: Konfigürasyon Değişikliklerinin Yapılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adim-5-derleme">2.7.5. Adım 5: Derleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adim-6-modullerin-kurulmasi">2.7.6. Adım 6: Modüllerin Kurulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adim-7-aygit-agaci-dosyalarinin-derlenmesi">2.7.7. Adım 7: Aygıt Ağacı Dosyalarının Derlenmesi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adim-8-kurulum">2.7.8. Adım 8: Kurulum</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#gecici-kok-dosya-sistemi-initrd">2.7.8.1. Geçici Kök Dosya Sistemi (initrd)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#make-modules-install-komutu-detaylari">2.8. make modules_install Komutu Detayları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#modules-dep">2.8.1. modules.dep</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#modules-alias">2.8.2. modules.alias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#modules-order">2.8.3. modules.order</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#manuel-kurulum">2.9. Manuel Kurulum</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cekirdek-surum-yazisinin-belirlenmesi">2.9.1. Çekirdek Sürüm Yazısının Belirlenmesi</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#grub-yapilandirmasi">2.10. GRUB Yapılandırması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-derleme-sureci-ozeti">2.11. Çekirdek Derleme Süreci Özeti</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdegin-sistemden-kaldirilmasi">2.12. Çekirdeğin Sistemden Kaldırılması</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">LinuxKernelBook</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">2. </span>Çekirdeğin Derlenmesi</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/kernelcompilation.rst.txt" rel="nofollow"> Sayfa kaynağını görüntüle</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cekirdegin-derlenmesi">
+<h1><span class="section-number">2. </span>Çekirdeğin Derlenmesi<a class="headerlink" href="#cekirdegin-derlenmesi" title="Link to this heading"></a></h1>
+<p>Bu bölümde ayrıntılı bir biçimde Linux çekireğinin derlenmesi sürecini ele alacapız.</p>
+<section id="cekirdek-davranisini-degistirme-yontemleri">
+<h2><span class="section-number">2.1. </span>Çekirdek Davranışını Değiştirme Yöntemleri<a class="headerlink" href="#cekirdek-davranisini-degistirme-yontemleri" title="Link to this heading"></a></h2>
+<p>Linux çekirdeğinin kodlarına dokunmadan onunla ilgili bazı davranış değişikliklerinin yapılması
+temelde beş biçimde sağlanabilmektedir:</p>
+<p><strong>1. Çekirdek modülleri ve aygıt sürücüler yoluyla</strong></p>
+<p>Çekirdek modunda çalışan <em>çekirdek modülleri (kernel modules)</em> ve <em>aygıt sürücüler (device drivers)</em>
+yoluyla davranış değişikliği oluşturulabilmektedir. İşletim sistemlerinin çoğu çekirdeğin bir parçası
+gibi işlev görecek kodların yüklenmesine ve çalıştırılmasına olanak sağlamaktadır. Bu yöntemde
+çekirdeğin yeniden derlenmesine gerek yoktur. Zaten çekirdek modülleri ve aygıt sürücüleri çalışmakta
+olan çekirdek içerisine yüklenmektedir. Çekirdek modüllerini ve aygıt sürücüleri <em>kasalı bilgisayarlardaki
+genişleme yuvalarına takılan kartlara benzetebiliriz.</em> Nasıl takılan bu kartlar donanımın bir parçası
+haline geliyorsa çekirdek modülleri ve aygıt sürücüler de çekirdeğin bir parçası haline gelmektedir.
+Linux’taki çekirdek modüllerinin ve aygıt sürücülerinin yazımı kursumuzun konularına dahil değildir.</p>
+<p><strong>2. Çekirdek komut satırı parametreleri yoluyla</strong></p>
+<p>Çekirdek yüklenip başlatılırken (initialize ederken) ismine <em>çekirdek komut satırı parametreleri
+(kernel command line parameters)</em> denilen parametreler yoluyla çekirdeğin davranışı
+değiştirilebilmektedir. Çekirdek komut satırı parametreleri <em>önyükleyici tarafından</em> çekirdeğe
+iletilmektedir. Linux çekirdeğinin pek çok komut satırı parametresi vardır. Bu parametreler yoluyla
+çekirdekte bazı davranış değişiklikleri oluşturulabilmektedir. Bunun için de çekirdeğin yeniden
+derlenmesi gerekmez.</p>
+<p><strong>3. Konfigürasyon parametreleri yoluyla</strong></p>
+<p>Çekirdek derlenirken çekirdek kodlarına hiç dokunmadan bazı konfigürasyon parametreleri ile oynanarak
+çekirdekte davranış değişiklikleri oluşturulabilmektedir. Çekirdek konfigüre edilirken bazı alt
+sistemler çekirdekten çıkartılabilmekte, bazı alt sistemler üzerinde ince ayarlar yapılabilmektedir.
+Tabii çekirdek konfigüre edilirken her ne kadar biz çekirdek kodlarını değiştirmiyor olsak da aslında
+sembolik sabitler yoluyla arka planda derleme işlemine sokulan kodlar üzerinde de değişikler yapılmış
+olmaktadır. O halde çekirdeğin konfigüre edilmesinin iki amacı vardır:</p>
+<ul class="simple">
+<li><p>Çekirdek içerisindeki alt sistemlere ilişkin bileşenlerin çekirdeğe eklenmesini ve çekirdekten
+çıkartılmasını sağlamak.</p></li>
+<li><p>Çekirdeğin üzerinde bazı davranış değişikliklerini oluşturmak.</p></li>
+</ul>
+<p>Çekirdek konfigüre edildikten sonra yeniden derlenmelidir. Yani bu yöntem çekirdeğin yeniden
+derlenmesini gerektirmektedir.</p>
+<p><strong>4. Çekirdek kodlarında doğrudan değişiklik yaparak</strong></p>
+<p>Çekirdek kodlarında doğrudan değişiklikler yapılıp çekirdek yeniden derlenebilir. Bu çekirdekte
+davranış değişikliği oluşturmak için kullanılan en aşağı seviyeli yöntemdir.</p>
+<p><strong>5. Çekirdek çalışırken komutlar ve mekanizmalar yoluyla</strong></p>
+<p>Nihayet çekirdek çalışırken de çekirdeğin davranışı bazı komutlarla (bu komutlar bazı mekanizmaları
+ve sistem fonksiyonlarını kullanmaktadır), konfigürasyon dosyalarıyla ve bazı mekanizmalarla da
+(örneğin <em>proc</em> ve <em>sys</em> dosya sistemi yoluyla) çekirdek davranışları değiştirilebilmektedir. Tabii
+bunun için de çekirdeğin yeniden derlenmesi gerekmez. Örneğin sistem çalışırken bir prosesin
+açabileceği dosya sayısını <em>proc</em> dosya sistemi yoluyla şöyle değiştirebiliriz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="m">2048</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>/proc/sys/fs/file-max
+</pre></div>
+</div>
+<p class="rubric">── 5. Ders · 02 Ağustos 2025, Cumartesi ──</p>
+</section>
+<section id="cekirdek-komut-satiri-parametreleri">
+<h2><span class="section-number">2.2. </span>Çekirdek Komut Satırı Parametreleri<a class="headerlink" href="#cekirdek-komut-satiri-parametreleri" title="Link to this heading"></a></h2>
+<p>Linux’ta çekirdek komut satırı parametreleri birbirinden boşluklarla ayrılmış yazılardan
+oluşmaktadır. Bazı parametrelerin argümanları yoktur, bazılarının vardır. Eğer parametrenin bir
+argümanı varsa <em>parametre=değer</em> biçiminde (<code class="docutils literal notranslate"><span class="pre">=</span></code> karakteri boşluksuz olarak kullanılmalıdır),
+yoksa yalnızca <em>parametre</em> biçiminde belirtilmektedir. Çekirdek komut satırı parametreleri tek
+bir yazı biçiminde çekirdeğe aktarılmaktadır. Çekirdek bu komut satırı parametrelerini kendini
+kullanıma hazır hale getirmenin (kendini initialize etmenin) ön aşamalarında parse eder ve bu
+değerleri yapılandırma amacıyla kullanır. Tabii çekirdeğin komut satırı parametreleri tipik olarak
+önyükleyici (bootloader) tarafından çekirdeğe iletilmektedir. Örneğin çekirdek komut satırı
+parametreleri aşağıdaki gibi bir görünümde olabilir:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>console=serial0,115200 console=tty1 root=PARTUUID=382d6f16-02 rootfstype=ext4 fsck.repair=yes
+rootwait quiet splash plymouth.ignore-serial-consoles cfg80211.ieee80211_regdom=TR
+</pre></div>
+</div>
+<p>Linux çekirdeğinin onlarca farklı komut satırı parametresi vardır. Bunların çoğu spesifik konulara
+ilişkindir ve ancak çekirdeğin yapısını iyi bilen kişiler tarafından anlamlandırılabilmektedir. Tabii
+bazı parametrelerin anlamları herkes tarafından anlaşılacak kadar açıktır. Çekirdek parametrelerinin
+dokümantasyonuna aşağıdaki bağlantıdan erişebilirsiniz:</p>
+<blockquote>
+<div><p><a class="reference external" href="https://www.kernel.org/doc/html/v4.14/admin-guide/kernel-parameters.html">https://www.kernel.org/doc/html/v4.14/admin-guide/kernel-parameters.html</a></p>
+</div></blockquote>
+<p>Linux çekirdeği komut satırı parametrelerini parse ederken gerçekte olmayan (yani çekirdek tarafından
+kullanılmayan) bir parametre gördüğünde onu dikkate almamaktadır. Ancak biz kendi parametrelerimizin de
+çekirdek tarafından saklanmasını sağlayabiliriz. Bu konunun bazı ayrıntıları vardır.</p>
+<p>Biz kursumuzda çeşitli bölümlerde çekirdeğin bazı komut satırı parametreleri hakkında bazı
+açıklamalarda bulunacağız.</p>
+</section>
+<section id="cekirdegi-yeniden-derlemenin-gerektigi-durumlar">
+<h2><span class="section-number">2.3. </span>Çekirdeği Yeniden Derlemenin Gerektiği Durumlar<a class="headerlink" href="#cekirdegi-yeniden-derlemenin-gerektigi-durumlar" title="Link to this heading"></a></h2>
+<p>Bazı durumlarda çekirdeğin sıfırdan derlenmesi gerekebilmektedir. Çekirdeğin yeniden derlenmesinin
+gerektiği tipik durumlar şunlardır:</p>
+<ul class="simple">
+<li><p>Bazı çekirdek modüllerinin ve aygıt sürücülerin çekirdek imajından çıkartılması ve dolayısıyla
+çekirdeğin küçültülmesi için.</p></li>
+<li><p>Yeni birtakım modüllerin ve aygıt sürücülerin çekirdek imajına eklenmesi için.</p></li>
+<li><p>Çekirdeğe tamamen başka birtakım özelliklerin ve alt sistemlerin eklenmesi için.</p></li>
+<li><p>Çekirdek üzerinde çekirdek komut satırı parametreleriyle sağlanamayacak bazı konfigürasyon
+değişikliklerinin yapılabilmesi için.</p></li>
+<li><p>Çekirdek kodlarında yapılan değişikliklerin etkin hale getirilmesi için.</p></li>
+<li><p>Çekirdeğe yama (patch) yapılması için.</p></li>
+<li><p>Yeni çıkan çekirdek kodlarının kullanılabilir hale getirilmesi için ya da eski çekirdeklerin
+kullanımını sağlamak için.</p></li>
+</ul>
+</section>
+<section id="cekirdek-derlemesi-hakkinda">
+<h2><span class="section-number">2.4. </span>Çekirdek Derlemesi Hakkında<a class="headerlink" href="#cekirdek-derlemesi-hakkinda" title="Link to this heading"></a></h2>
+<p>Bu bölümde çekirdek kodlarının nasıl derleneceği ve derlenmiş olan çekirdekle sistemin nasıl boot
+edileceği üzerinde duracağız.</p>
+<section id="capraz-derleme">
+<h3><span class="section-number">2.4.1. </span>Çapraz Derleme<a class="headerlink" href="#capraz-derleme" title="Link to this heading"></a></h3>
+<p>Çekirdek derlemesi o anda çalışılan platform için yapılabileceği gibi başka bir platform için de
+yapılabilmektedir. Aşağı seviyeli yazılım terminolojisinde başka bir sistem için yapılan derleme
+işlemlerine <em>çapraz derleme (cross compile)</em> denilmektedir. Örneğin Intel tabanlı PC’lerde ARM
+işlemcilerinin bulunduğu gömülü aygıtlar için Linux çekirdeğini derlemek isteyebiliriz. Bu bir
+çapraz derleme faaliyetidir. Çapraz derleme işlemleri için <em>çapraz araç zincirlerinin (cross
+toolchains)</em> kullanılması gerekmektedir. Linux çekirdeğinin derlenmesinde yalnızca C derleyicisi
+değil pek çok yardımcı programlara da gereksinim duyulmaktadır.</p>
+</section>
+<section id="cekirdek-kaynak-kodlarinin-indirilmesi">
+<h3><span class="section-number">2.4.2. </span>Çekirdek Kaynak Kodlarının İndirilmesi<a class="headerlink" href="#cekirdek-kaynak-kodlarinin-indirilmesi" title="Link to this heading"></a></h3>
+<p>Çekirdeğin derlenmesi için öncelikle çekirdek kaynak kodlarının derleme yapılacak bilgisayara
+indirilmesi gerekir. Bazı dağıtımlar default durumda çekirdeğin kaynak kodlarını da kurulum sırasında
+makineye çekmektedir. Çekirdek kodları resmi olarak <code class="docutils literal notranslate"><span class="pre">kernel.org</span></code> sitesinde bulundurulmaktadır.
+Tarayıcıdan <code class="docutils literal notranslate"><span class="pre">kernel.org</span></code> sitesine girip <code class="docutils literal notranslate"><span class="pre">pub/linux/kernel</span></code> dizinine geçtiğinizde tüm yayınlanmış
+çekirdek kodlarını göreceksiniz. İndirmeyi tarayıcıdan doğrudan yapabilirsiniz. Eğer indirmeyi komut
+satırından <em>wget</em> programıyla yapmak istiyorsanız aşağıdaki URL’yi kullanabilirsiniz:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>https://cdn.kernel.org/pub/linux/kernel/[MAJOR_VERSION].x/linux-[VERSION].tar.xz
+</pre></div>
+</div>
+<p>Buradaki <code class="docutils literal notranslate"><span class="pre">MAJOR_VERSION</span></code> 3, 4, 5, 6 gibi tek bir sayıyı belirtmektedir. <code class="docutils literal notranslate"><span class="pre">VERSION</span></code> ise çekirdeğin
+büyük ve küçük numaralarını belirtmektedir. Örneğin biz çekirdeğin 6.9.2 versiyonunu komut satırından
+şöyle indirebiliriz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>wget<span class="w"> </span>https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.9.2.tar.xz
+</pre></div>
+</div>
+<section id="sikistirma-formatlari-ve-tar-komutu">
+<h4><span class="section-number">2.4.2.1. </span>Sıkıştırma Formatları ve tar Komutu<a class="headerlink" href="#sikistirma-formatlari-ve-tar-komutu" title="Link to this heading"></a></h4>
+<p>Çekirdek kodları indirildikten sonra açılması gerekir. Açma işlemi <em>tar</em> komutuyla aşağıdaki gibi
+yapılabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>tar<span class="w"> </span>-xvJf<span class="w"> </span>linux-5.15.12.tar.xz
+</pre></div>
+</div>
+<p>UNIX/Linux sistemlerinde kullanılan <em>tar</em> programı sıkıştırma yapmamaktadır. Yalnızca dosyaları uç uca
+ekleyip onları tek bir dosya haline getirmektedir. Bu sayede dosyalar dosya sisteminde daha az yer
+kaplar hale getirilmektedir. Aynı zamanda onların iletilmesi ve kopyalanması da kolaylaştırılmaktadır.
+Sıkıştırma programları ise aslında tek bir dosyayı sıkıştırmaktadır. O halde UNIX/Linux sistemlerinde
+kullanıcılar bir grup dosyayı sıkıştırmak için önce onları tar’layıp tek dosya haline getirirler, sonra
+bu dosyayı sıkıştırırlar. Bu işlemler sonucunda dosya uzantısı <code class="docutils literal notranslate"><span class="pre">.tar.gz</span></code> gibi, <code class="docutils literal notranslate"><span class="pre">.tar.xz</span></code> gibi
+dosyanın hem tar’lanmış hem de sıkıştırılmış olduğunu belirten biçimde olur. Açım sırasında da önce
+sıkıştırılan dosyalar açılır, buradan <code class="docutils literal notranslate"><span class="pre">.tar</span></code> dosyası elde edilir; sonra da bu <code class="docutils literal notranslate"><span class="pre">.tar</span></code> dosyasının
+içerisindeki dosyalar dışarı çıkartılır.</p>
+<p>Linux’ta çeşitli sıkıştırma formatları kullanılmaktadır:</p>
+<ul class="simple">
+<li><p><strong>gzip</strong> — uzantı: <code class="docutils literal notranslate"><span class="pre">.gz</span></code></p></li>
+<li><p><strong>bz2</strong> — uzantı: <code class="docutils literal notranslate"><span class="pre">.bz2</span></code></p></li>
+<li><p><strong>xz</strong> — uzantı: <code class="docutils literal notranslate"><span class="pre">.xz</span></code></p></li>
+<li><p><strong>zip</strong> — uzantı: <code class="docutils literal notranslate"><span class="pre">.zip</span></code> ya da <code class="docutils literal notranslate"><span class="pre">.z</span></code></p></li>
+</ul>
+<p>Bu formatlar sıkıştırma bakımından farklı performans göstermektedir. Ancak formatın sıkıştırma
+performansı ne kadar yüksekse işlem yapma süresi de o kadar uzun olmaktadır. Tipik sıkıştırma
+performans sıralaması şöyledir:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>xz  &gt;  bz2  &gt;  gzip ≈ zip
+</pre></div>
+</div>
+<p>Yani en iyi sıkıştırma <em>xz</em> formatında, daha sonra <em>bz2</em> formatında, daha sonra da <em>gzip</em>
+formatındadır. <em>gzip</em> ile <em>zip</em> aynı algoritmaları kullandığından performansları birbirine benzerdir.</p>
+<p>Her format için ayrı araçlar mevcuttur:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28.6%" />
+<col style="width: 35.7%" />
+<col style="width: 35.7%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Format</p></th>
+<th class="head"><p>Sıkıştırma</p></th>
+<th class="head"><p>Açma</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>gzip</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">gzip</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">gunzip</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>bz2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bzip2</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bunzip2</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>xz</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">xz</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unxz</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>zip</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">zip</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unzip</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><em>tar</em> programının en çok kullanılan seçenekleri şunlardır: <code class="docutils literal notranslate"><span class="pre">-c</span></code> (tar’lamak için), <code class="docutils literal notranslate"><span class="pre">-x</span></code> (açmak
+için), <code class="docutils literal notranslate"><span class="pre">-v</span></code> (ayrıntılı çıktı), <code class="docutils literal notranslate"><span class="pre">-f</span></code> (<code class="docutils literal notranslate"><span class="pre">.tar</span></code> dosyasını belirtmek için; seçenek listesinin
+sonunda olmalıdır).</p>
+<div class="admonition warning">
+<p class="admonition-title">Uyarı</p>
+<p><code class="docutils literal notranslate"><span class="pre">-f</span></code> seçeneğinin seçenek listesinde en sonda yer alması gerektiğine dikkat ediniz.</p>
+</div>
+<p><strong>gzip ile örnekler:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Yalnızca tar&#39;lama:</span>
+$<span class="w"> </span>tar<span class="w"> </span>-cf<span class="w"> </span>test.tar<span class="w"> </span>x.txt<span class="w"> </span>y.txt<span class="w"> </span>z.txt
+
+<span class="c1"># Tek adımda tar&#39;la + gzip sıkıştır (-z seçeneği):</span>
+$<span class="w"> </span>tar<span class="w"> </span>-cvzf<span class="w"> </span>test.tar.gz<span class="w"> </span>x.txt<span class="w"> </span>y.txt
+
+<span class="c1"># Aç:</span>
+$<span class="w"> </span>tar<span class="w"> </span>-xvzf<span class="w"> </span>test.tar.gz
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p><em>gzip</em> ve <em>gunzip</em> programlarının kaynak dosyayı sildiğine dikkat ediniz.</p>
+</div>
+<p><strong>bzip2 ile örnekler:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Tek adımda tar&#39;la + bzip2 sıkıştır (-j seçeneği):</span>
+$<span class="w"> </span>tar<span class="w"> </span>-cvjf<span class="w"> </span>test.tar.bz2<span class="w"> </span>x.txt<span class="w"> </span>y.txt
+
+<span class="c1"># Aç:</span>
+$<span class="w"> </span>tar<span class="w"> </span>-xvjf<span class="w"> </span>test.tar.bz2
+</pre></div>
+</div>
+<p><strong>xz ile örnekler:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Tek adımda tar&#39;la + xz sıkıştır (-J seçeneği, büyük harf):</span>
+$<span class="w"> </span>tar<span class="w"> </span>-cvJf<span class="w"> </span>test.tar.xz<span class="w"> </span>x.txt<span class="w"> </span>y.txt
+
+<span class="c1"># Aç:</span>
+$<span class="w"> </span>tar<span class="w"> </span>-xvJf<span class="w"> </span>test.tar.xz
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p><em>tar</em> seçeneklerinde <code class="docutils literal notranslate"><span class="pre">-z</span></code> gzip için, <code class="docutils literal notranslate"><span class="pre">-j</span></code> bzip2 için, <code class="docutils literal notranslate"><span class="pre">-J</span></code> (büyük harf) xz için
+kullanılmaktadır.</p>
+</div>
+</section>
+</section>
+<section id="dagitima-ozgu-cekirdek-kaynak-kodlari">
+<h3><span class="section-number">2.4.3. </span>Dağıtıma Özgü Çekirdek Kaynak Kodları<a class="headerlink" href="#dagitima-ozgu-cekirdek-kaynak-kodlari" title="Link to this heading"></a></h3>
+<p>Dağıtımlar (Ubuntu, Mint, Fedora gibi) çekirdek kodlarında küçük değişiklikler ve kendilerine özgü
+özelleştirmeler ve yamamalar da yapabilmektedir. Debian tabanlı sistemlerde o anda makinede yüklü olan
+mevcut çekirdeğin ilgili dağıtıma ilişkin kaynak kodlarını indirmek için aşağıdaki komutu
+kullanabilirsiniz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>linux-source
+</pre></div>
+</div>
+<p>Burada yükleme <code class="docutils literal notranslate"><span class="pre">/usr/src</span></code> dizinine yapılacaktır. Ancak bu komut doğrudan sıkıştırılmış dosyayı
+indirmektedir; açım yapmamaktadır. Ayrıca belirli bir versiyona ilişkin kaynak kodlar da indirilebilir.
+Bunun için komutta <code class="docutils literal notranslate"><span class="pre">linux-source</span></code> argümanına istenilen versiyonun majör, minör ve patch numarası
+<code class="docutils literal notranslate"><span class="pre">-majör.minör.patch</span></code> biçiminde eklenir. Örneğin:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>linux-source-6.8.0
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Bu biçimde indirilen çekirdek kaynak kodları Debian ya da Ubuntu depolarından indirilmektedir.
+Bunlar bu dağıtımlar tarafından yamanmış kodlardır. Örneğin Mint’te çalışıyorsanız indirdiğiniz
+kodlar Ubuntu için yamanmış kodlar olacaktır.</p>
+</div>
+<p><strong>BBB (BeagleBone Black) için:</strong></p>
+<p>BBB için bazı özelleştirmelerin de yapılmış olduğu kaynak kodların indirilip derlenmesi birtakım
+kolaylıklar sağlamaktadır:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/beagleboard/linux.git
+</pre></div>
+</div>
+<p><strong>Raspberry Pi için:</strong></p>
+<p>Raspberry Pi’a özgü daha güncel aygıt sürücüler ve aygıt ağacı dosyalarını içeren Linux kaynak
+kodlarının projenin kendi sitesinden indirilmesi daha uygun olur:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="o">=</span><span class="m">1</span><span class="w"> </span>https://github.com/raspberrypi/linux.git
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cekirdek-versiyon-numaralandirmasi">
+<h2><span class="section-number">2.5. </span>Çekirdek Versiyon Numaralandırması<a class="headerlink" href="#cekirdek-versiyon-numaralandirmasi" title="Link to this heading"></a></h2>
+<p>Linux kaynak kodlarının versiyonlanması eskiden daha farklıydı. Çekirdeğin 2.6 versiyonlarından sonra
+versiyon numaralandırma sistemi değiştirildi. Eskiden (2.6 ve öncesinde) versiyon numaraları çok yavaş
+ilerletiliyordu. 2.6 sonrasındaki yeni versiyonlamada versiyon numaraları daha hızlı ilerletilmeye
+başlanmıştır. Bugün kullanılan Linux versiyonları nokta ile ayrılmış üç sayıdan oluşmaktadır:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Majör.Minör.Patch
+</pre></div>
+</div>
+<p>Buradaki <em>majör numara</em> büyük ilerlemeleri, <em>minör numara</em> ise küçük ilerlemeleri belirtmektedir.
+Eskiden (2.6 ve öncesinde) tek sayı olan minör numaralar <em>geliştirme versiyonlarını (ya da beta
+versiyonlarını)</em>, çift olanlar ise stabil hale getirilmiş dağıtılan versiyonları belirtiyordu. Ancak
+2.6 sonrasında artık tek ve çift minör numaralar arasında böyle bir anlam farklılığı kalmamıştır.
+<em>Patch numarası</em> birtakım böceklerin giderildiği ya da çok küçük yeniliklerin çekirdeğe dahil edildiği
+versiyonları belirtmektedir.</p>
+<p>Linux kaynak kodları konfigüre edilip derlendiğinde çekirdek imajının ismine bir alan daha
+eklenebilmektedir. Bu alana biz <em>Extra</em> alanı diyeceğiz. Bu durumda çekirdek imaj ismi şu hale
+gelecektir:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Majör.Minör.Patch-Extra
+</pre></div>
+</div>
+<p><em>Extra</em> için <code class="docutils literal notranslate"><span class="pre">-rcX</span></code>, <code class="docutils literal notranslate"><span class="pre">-stable</span></code>, <code class="docutils literal notranslate"><span class="pre">-custom</span></code>, <code class="docutils literal notranslate"><span class="pre">-generic</span></code> gibi sözcükler kullanılabilir. Bu
+<em>extra</em> alanı tamamen derleme işlemini yapan kişi ya da kurumun isteğine göre belirlenmiş bir
+alandır:</p>
+<ul class="simple">
+<li><p><em>rcX</em> — <em>release candidate</em> (yayın adayı) anlamındadır; <code class="docutils literal notranslate"><span class="pre">X</span></code> bir sayı belirtir.</p></li>
+<li><p><em>stable</em> — dağıtılan sürümün <em>kararlı sürüm</em> olduğunu belirtir.</p></li>
+<li><p><em>custom</em> — sistem programcısının çekirdekte birtakım değişiklikler yaptığını belirtir.</p></li>
+<li><p><em>generic</em> — çekirdeğin <em>genel kullanım için konfigüre edilmiş</em> olduğunu belirtir; dağıtımlar
+tarafından sıkça kullanılır.</p></li>
+<li><p><em>realtime</em> — genellikle gerçek zamanlı bir yapılandırmada kullanılmaktadır.</p></li>
+</ul>
+<p><em>generic</em> ve <em>realtime</em> sözcüklerinin öncesinde <code class="docutils literal notranslate"><span class="pre">-N-</span></code> biçiminde bir sayı da bulunabilmektedir. Bu
+sayı dağıtıma özgü yama ya da derleme numarasını belirtmektedir. Örneğin:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>6.8.0-51-generic
+</pre></div>
+</div>
+<p>Burada <code class="docutils literal notranslate"><span class="pre">-51</span></code> yapılandırmaya özgü bir numarayı, <code class="docutils literal notranslate"><span class="pre">-generic</span></code> ise yapılandırmanın genel kullanım için
+olduğunu belirtmektedir.</p>
+<p>Çalışmakta olan Linux sistemi hakkında bilgiler <em>“uname -a”</em> komutu ile elde edilebilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>uname<span class="w"> </span>-a
+Linux<span class="w"> </span>kaan-virtual-machine<span class="w"> </span><span class="m">5</span>.15.0-91-generic<span class="w"> </span>Ubuntu<span class="w"> </span>SMP<span class="w"> </span>Tue<span class="w"> </span>Nov<span class="w"> </span><span class="m">14</span><span class="w"> </span><span class="m">13</span>:30:08<span class="w"> </span>UTC<span class="w"> </span><span class="m">2023</span><span class="w"> </span>x86_64<span class="w"> </span>x86_64<span class="w"> </span>x86_64<span class="w"> </span>GNU/Linux
+</pre></div>
+</div>
+<p>Bu bilgi içerisinden yalnızca çekirdek versiyonu görüntülenmek isteniyorsa <em>“uname -r”</em> seçeneği
+kullanılmalıdır:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>uname<span class="w"> </span>-r
+<span class="m">6</span>.8.0-51-generic
+</pre></div>
+</div>
+<p>Buradan biz çekirdeğin <code class="docutils literal notranslate"><span class="pre">6.8.0</span></code> sürümünün kullanıldığını anlıyoruz. Burada genel yapılandırılmış bir
+çekirdek söz konusudur. <code class="docutils literal notranslate"><span class="pre">51</span></code> sayısı dağıtıma özgü yama ya da derleme numarasını belirtir.</p>
+<p>Daha önceden de belirttiğimiz gibi <em>uname</em> komutu bu bilgileri <em>proc</em> dosya sisteminin içerisinden
+almaktadır. Örneğin:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>cat<span class="w"> </span>/proc/version
+Linux<span class="w"> </span>version<span class="w"> </span><span class="m">5</span>.15.0-91-generic<span class="w"> </span><span class="o">(</span>buildd@lcy02-amd64-045<span class="o">)</span><span class="w"> </span><span class="o">(</span>gcc<span class="w"> </span><span class="o">(</span>Ubuntu<span class="w"> </span><span class="m">11</span>.4.0-1ubuntu1~22.04<span class="o">)</span><span class="w"> </span><span class="m">11</span>.4.0,
+GNU<span class="w"> </span>ld<span class="w"> </span><span class="o">(</span>GNU<span class="w"> </span>Binutils<span class="w"> </span><span class="k">for</span><span class="w"> </span>Ubuntu<span class="o">)</span><span class="w"> </span><span class="m">2</span>.38<span class="o">)</span><span class="w"> </span><span class="c1">#101-Ubuntu SMP Tue Nov 14 13:30:08 UTC 2023</span>
+</pre></div>
+</div>
+</section>
+<section id="derleme-araclari">
+<h2><span class="section-number">2.6. </span>Derleme Araçları<a class="headerlink" href="#derleme-araclari" title="Link to this heading"></a></h2>
+<p>Bilindiği gibi büyük projelerin derlenmesi için <em>build otomasyon araçları (build automation tools)</em>
+denilen araçlar kullanılmaktadır. Bunların en yaygın kullanılanı <em>make</em> denilen araçtır. Linux
+çekirdeklerinin derlenmesi de <em>make</em> aracı ile yapılmaktadır. Ancak Linux çekirdeklerinin derlenmesinde
+projeye özgü bazı yapılar ve yöntemler de kullanılmıştır. Buna <em>KConfig sistemi</em> ya da <em>KBuild sistemi</em>
+denilmektedir. (<em>KConfig</em> sistemi ya da <em>KBuild</em> sistemi Linux çekirdeğinin dışında aşağı seviyeli pek
+çok proje tarafından da kullanılmaktadır.) Biz önce çekirdek derleme işleminin hangi adımlardan
+geçilerek yapılacağını göreceğiz. Sonra çekirdeğin önemli konfigürasyon parametreleri üzerinde biraz
+duracağız. Sonra da çekirdekte bazı değişiklikler yapıp sistemin değiştirilmiş çekirdekle açılmasını
+sağlayacağız.</p>
+</section>
+<section id="cekirdek-derleme-adimlari">
+<h2><span class="section-number">2.7. </span>Çekirdek Derleme Adımları<a class="headerlink" href="#cekirdek-derleme-adimlari" title="Link to this heading"></a></h2>
+<p>Linux’ta çekirdek derlemesi tipik olarak aşağıdaki aşamalardan geçilerek gerçekleştirilmektedir.</p>
+<section id="adim-1-gerekli-araclarin-kurulmasi">
+<h3><span class="section-number">2.7.1. </span>Adım 1: Gerekli Araçların Kurulması<a class="headerlink" href="#adim-1-gerekli-araclarin-kurulmasi" title="Link to this heading"></a></h3>
+<p>Derleme öncesinde derlemenin yapılacağı makinede bazı programların yüklenmiş olması gerekmektedir.
+Çünkü <em>KBuild</em> sistemi yalnızca binary araçları değil bazı başka kütüphaneleri ve araçları da
+kullanmaktadır. Çekirdeğin derlenmesi için gerekebilecek programları şöyle yükleyebilirsiniz
+(burada Debian türevi bir dağıtımın kullanıldığını varsayacağız):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>update
+$<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>build-essential<span class="w"> </span>libncurses-dev<span class="w"> </span>bison<span class="w"> </span>flex<span class="w"> </span>libssl-dev<span class="w"> </span>libelf-dev<span class="w"> </span>dwarves
+</pre></div>
+</div>
+</section>
+<section id="adim-2-kaynak-kodlarin-indirilmesi-ve-acilmasi">
+<h3><span class="section-number">2.7.2. </span>Adım 2: Kaynak Kodların İndirilmesi ve Açılması<a class="headerlink" href="#adim-2-kaynak-kodlarin-indirilmesi-ve-acilmasi" title="Link to this heading"></a></h3>
+<p>Çekirdek kodları indirilir ve açılır. Biz bu konuyu yukarıda ele almıştık. İndirmeyi şöyle
+yapabiliriz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>wget<span class="w"> </span>https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.9.2.tar.xz
+$<span class="w"> </span>tar<span class="w"> </span>-xvJf<span class="w"> </span>linux-6.9.2.tar.xz
+</pre></div>
+</div>
+<p>Bu işlemden sonra <code class="docutils literal notranslate"><span class="pre">linux-6.9.2</span></code> isminde bir dizin oluşturulacaktır.</p>
+<p class="rubric">── 6. Ders · 03 Ağustos 2025, Pazar ──</p>
+</section>
+<section id="adim-3-cekirdegin-konfigure-edilmesi">
+<h3><span class="section-number">2.7.3. </span>Adım 3: Çekirdeğin Konfigüre Edilmesi<a class="headerlink" href="#adim-3-cekirdegin-konfigure-edilmesi" title="Link to this heading"></a></h3>
+<p>Çekirdek derlenmeden önce konfigüre edilmelidir. Çekirdeğin konfigüre edilmesi birtakım çekirdek
+özelliklerinin belirlenmesi anlamına gelmektedir. Bu belirmeler konfigürasyon dosyası yoluyla
+yapılmaktadır. Konfigürasyon dosyası kaynak kod ağacının kök dizininde (örneğimizde <code class="docutils literal notranslate"><span class="pre">linux-6.9.2</span></code>
+dizini) <code class="docutils literal notranslate"><span class="pre">.config</span></code> ismiyle bulunmalıdır.</p>
+<p>Bu <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyası default durumda kaynak dosyaların kök dizininde yoktur; derlemeyi yapacak
+kişi tarafından oluşturulması gerekmektedir. Çekirdek konfigürasyon parametreleri oldukça fazladır
+ve bunların bazılarının anlamlandırılması özel bilgi gerektirmektedir. Çekirdek konfigürasyon
+parametreleri çok fazla olduğu için bazı genel amaçları karşılayacak biçimde default değerlerle
+önceden oluşturulmuş konfigürasyon dosyaları kaynak kod ağacında <code class="docutils literal notranslate"><span class="pre">arch/&lt;mimari&gt;/configs</span></code> dizininin
+içerisinde bulunmaktadır. Örneğin Intel x86 mimarisi için bu default konfigürasyon dosyaları şöyledir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ls<span class="w"> </span>arch/x86/configs
+hardening.config<span class="w">  </span>i386_defconfig<span class="w">  </span>tiny.config<span class="w">  </span>x86_64_defconfig<span class="w">  </span>xen.config
+</pre></div>
+</div>
+<p>64 bit Linux sistemleri için <code class="docutils literal notranslate"><span class="pre">x86_64_defconfig</span></code> dosyasını kullanabiliriz. O halde bu dosyayı
+kaynak dosyaların bulunduğu kök dizine <code class="docutils literal notranslate"><span class="pre">.config</span></code> ismiyle kopyalayabiliriz (bütün işlemlerde
+çekirdek kaynak kodlarının kök dizininde bulunduğumuzu varsayıyoruz):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>cp<span class="w"> </span>arch/x86/configs/x86_64_defconfig<span class="w"> </span>.config
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Linux kaynak kodlarındaki default konfigürasyon dosyaları minimalist biçimde konfigüre
+edilmiştir. Bu nedenle pek çok modül bu default konfigürasyon dosyalarında işaretlenmiş değildir.
+Bu tür denemeleri zaten çalışan çekirdeğin derlenmesinde kullanılan konfigürasyon dosyalarından
+hareketle yaparsanız daha fazla modül dosyası oluşturulabilir ancak daha az zahmet çekebilirsiniz.</p>
+</div>
+<p>Burada bir noktaya dikkatinizi çekmek istiyoruz. Çekirdek kaynak kodlarındaki
+<code class="docutils literal notranslate"><span class="pre">arch/&lt;platform&gt;/configs</span></code> dizinindeki <code class="docutils literal notranslate"><span class="pre">x86_64_defconfig</span></code> konfigürasyon dosyası <code class="docutils literal notranslate"><span class="pre">.config</span></code>
+ismiyle kopyalandıktan sonra ayrıca <em>“make menuconfig”</em> ya da <em>“make oldconfig”</em> gibi bir işlemle
+onun satırlarına eklenecek çekirdekte bulunan yeni birtakım özelliklere ilişkin bazı default
+değerlerin de eklenmesi gerekir.</p>
+<p>Linux sistemlerinde genel olarak <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizini içerisinde <code class="docutils literal notranslate"><span class="pre">config-&lt;çekirdek_sürümü&gt;</span></code> ismiyle
+mevcut çekirdeğe ilişkin konfigürasyon dosyası bulundurulmaktadır.</p>
+<p><code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasını oluşturmanın alternatif yolları şöyle özetlenebilir:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">defconfig</span></code></dt><dd><p>Çalışılan sisteme uygun olan konfigürasyon dosyasını temel alarak mevcut donanım bileşenlerini
+de gözden geçirerek sistemin açılması için gerekli minimal bir konfigürasyon dosyasını <code class="docutils literal notranslate"><span class="pre">.config</span></code>
+ismiyle oluşturur. Örneğin 64 bit Intel sisteminde <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">defconfig</span></code> çalıştırıldığında
+<code class="docutils literal notranslate"><span class="pre">arch/x86/configs/x86_64_defconfig</span></code> dosyası temel alınır.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">oldconfig</span></code></dt><dd><p>Bu seçeneği kullanmak için kaynak kök dizinde <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasının bulunuyor olması gerekir.
+<em>KConfig</em> dosyalarındaki ve kaynak dosya ağacındaki diğer değişiklikleri de göz önüne alarak bu
+eski <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasını yeni versiyona uyumlandırmaktadır. Başka bir deyişle <em>“make oldconfig”</em>
+eski bir konfigürasyon dosyasını yeni çekirdekler için uyumlandırmaktadır.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">&lt;platform&gt;_defconfig</span></code></dt><dd><p>Belli bir platformun default konfigürasyon dosyasını <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyası olarak kaydeder. Örneğin
+Intel makinelerinde çalışırken BBB için <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">bb.org_defconfig</span></code> komutu uygulanabilir.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">modules</span></code></dt><dd><p>Yalnızca modülleri (aygıt sürücü dosyaları) derler; çekirdek derlemesi yapmaz. Yalnızca <em>make</em>
+işlemi zaten aynı zamanda bu işlemi de yapmaktadır.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">uninstall</span></code></dt><dd><p><em>“make install”</em> işlemi ile yapılanları geri alır.</p>
+</dd>
+</dl>
+<p>Aşağıdaki <em>make xxxconfig</em> komutları seyrek kullanılmaktadır:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">allnoconfig</span></code></dt><dd><p>Tüm seçenekleri <em>hayır (no)</em> olarak ayarlar (minimal özellikler).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">allyesconfig</span></code></dt><dd><p>Tüm seçenekleri <em>evet (yes)</em> olarak ayarlar (maksimum özellikler).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">allmodconfig</span></code></dt><dd><p>Tüm aygıt sürücülerin çekirdeğin dışında modül biçiminde derleneceğini belirtir.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">localmodconfig</span></code></dt><dd><p>Sistemde o anda yüklü modüllere dayalı bir yapılandırma dosyası oluşturur.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">silentoldconfig</span></code></dt><dd><p>Yeni seçenekler için onları görmezden gelir; yeni özellikler <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasına yansıtılmaz.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">dtbs</span></code></dt><dd><p>Kaynak kod ağacında <code class="docutils literal notranslate"><span class="pre">/arch/platform/boot/dts</span></code> dizinindeki aygıt ağacı kaynak dosyalarını
+derler ve <code class="docutils literal notranslate"><span class="pre">dtb</span></code> dosyalarını elde eder. Gömülü sistemlerde bu işlemin yapılması ve her çekirdek
+versiyonuyla o versiyonun <code class="docutils literal notranslate"><span class="pre">dtb</span></code> dosyasının kullanılması tavsiye edilir.</p>
+</dd>
+</dl>
+<p>Pek çok dağıtım o anda yüklü olan çekirdeğe ilişkin konfigürasyon dosyasını <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizini
+içerisinde <code class="docutils literal notranslate"><span class="pre">config-$(uname</span> <span class="pre">-r)</span></code> ismiyle bulundurmaktadır. Örneğin kursun yapılmakta olduğu Mint
+dağıtımında <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizininin içeriği şöyledir:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ ls /boot
+config-6.8.0-51-generic      initrd.img.old
+System.map-6.8.0-51-generic  efi
+grub                         vmlinuz
+initrd.img                   vmlinuz-6.8.0-51-generic
+initrd.img-6.8.0-51-generic
+</pre></div>
+</div>
+<p>Buradaki <code class="docutils literal notranslate"><span class="pre">config-6.8.0-51-generic</span></code> dosyası çalışmakta olduğumuz çekirdekte kullanılan
+konfigürasyon dosyasıdır. Bu dosya sistem açılırken herhangi bir biçimde kullanılmamaktadır (yani bu
+dosyayı silseniz hiçbir sorun oluşmaz). Bu dosya o çekirdeği yeniden derleyecek kişiler için
+kolaylık sağlamak amacıyla bulundurulmaktadır.</p>
+<p>Eğer çalışılan sistemdeki konfigürasyon dosyasını temel alacaksanız bu dosyayı Linux kaynak
+kodlarının bulunduğu kök dizine <code class="docutils literal notranslate"><span class="pre">.config</span></code> ismiyle kopyalayabilirsiniz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>cp<span class="w"> </span>/boot/config-<span class="k">$(</span>uname<span class="w"> </span>-r<span class="k">)</span><span class="w"> </span>.config
+</pre></div>
+</div>
+<p>Eski bir konfigürasyon dosyasını yeni bir çekirdekle kullanmak için ayrıca <em>“make oldconfig”</em>
+işleminin de yapılması gerekmektedir. Bir sonraki adımda göreceğimiz <em>“make menuconfig”</em> işlemi
+aynı zamanda <em>“make oldconfig”</em> işlemini de kendi içerisinde barındırmaktadır.</p>
+</section>
+<section id="adim-4-konfigurasyon-degisikliklerinin-yapilmasi">
+<h3><span class="section-number">2.7.4. </span>Adım 4: Konfigürasyon Değişikliklerinin Yapılması<a class="headerlink" href="#adim-4-konfigurasyon-degisikliklerinin-yapilmasi" title="Link to this heading"></a></h3>
+<p>Elimizde pek çok değerin set edilmiş olduğu <code class="docutils literal notranslate"><span class="pre">.config</span></code> isimli bir konfigürasyon dosyası vardır.
+Artık bu konfigürasyon dosyasından hareketle yalnızca istediğimiz özellikleri değiştirebiliriz.
+Bunun için <em>“make menuconfig”</em> komutunu kullanabiliriz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>make<span class="w"> </span>menuconfig
+</pre></div>
+</div>
+<p>Bu komutla birlikte text ekranda konfigürasyon seçenekleri listelenecektir. Tabii buradaki seçenekler
+<code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasındaki içerikten hareketle oluşturulmuş durumdadır. Bunların üzerinde değişiklikler
+yaparak <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasını yeniden save edebiliriz. Aslında <em>“make menuconfig”</em> işlemi hiç
+<code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyası oluşturulmadan doğrudan da yapılabilmektedir. Bu durumda hangi sistemde
+çalışılıyorsa o sisteme özgü default konfigürasyon dosyası temel alınmaktadır. Biz en azından
+<code class="docutils literal notranslate"><span class="pre">General</span> <span class="pre">Setup/Local</span> <span class="pre">version</span> <span class="pre">-</span> <span class="pre">append</span> <span class="pre">to</span> <span class="pre">kernel</span> <span class="pre">release</span></code> seçeneğine <code class="docutils literal notranslate"><span class="pre">-custom</span></code> gibi bir sonek
+girmenizi, böylece yeni çekirdeğe <code class="docutils literal notranslate"><span class="pre">-custom</span></code> soneki iliştirmenizi tavsiye ederiz.</p>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p><em>“make menuconfig”</em> işlemi zaten <em>“make oldconfig”</em> işlemini de kendi içerisinde
+barındırmaktadır. Dolayısıyla <em>“make menuconfig”</em> yapıyorsanız ayrıca <em>“make oldconfig”</em>
+işlemini yapmanıza gerek yoktur.</p>
+</div>
+<p>Peki biz hazır bir <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasını kaynak kod ağacının kök dizinine kopyaladıktan sonra hiç
+<em>“make menuconfig”</em> ya da <em>“make oldconfig”</em> yazmazsak ne olur? Bu durumda sorun çıkmayabilir. Eğer
+kaynak kod çekirdeği yeniyse <em>make</em> işlemi sırasında <em>“make oldconfig”</em> gibi bir işlem de
+yapılmaktadır. Ancak <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasını kök dizine kopyaladıktan sonra <em>“make menuconfig”</em> ya da
+<em>“make oldconfig”</em> işlemini yapmanızı salık veriyoruz.</p>
+<p><code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyası elde edildiğinde çekirdek imzalamasını ortadan kaldırmak için dosyayı açıp
+aşağıdaki özellikleri aşağıda gösterildiği gibi değiştirebilirsiniz (bunların bazıları zaten default
+durumda aşağıdaki gibi olabilir):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CONFIG_SYSTEM_TRUSTED_KEYS=&quot;&quot;
+CONFIG_SYSTEM_REVOCATION_KEYS=&quot;&quot;
+CONFIG_SYSTEM_TRUSTED_KEYRING=n
+CONFIG_SECONDARY_TRUSTED_KEYRING=n
+
+CONFIG_MODULE_SIG=n
+CONFIG_MODULE_SIG_ALL=n
+CONFIG_MODULE_SIG_KEY=&quot;&quot;
+</pre></div>
+</div>
+<p>Çekirdek imzalaması konusu daha ileride ele alınacaktır.</p>
+<p>Derlenecek çekirdeklere yerel bir versiyon belirteci ve numarası da atanabilmektedir. Bu işlem
+<em>“make menuconfig”</em> menüsünde <code class="docutils literal notranslate"><span class="pre">General</span> <span class="pre">Setup/Local</span> <span class="pre">version</span> <span class="pre">-</span> <span class="pre">append</span> <span class="pre">custom</span> <span class="pre">release</span></code> seçeneği
+kullanılarak ya da <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasında <code class="docutils literal notranslate"><span class="pre">CONFIG_LOCALVERSION</span></code> satırı düzenlenerek yapılabilir.
+Örneğin:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CONFIG_LOCALVERSION=&quot;-custom&quot;
+</pre></div>
+</div>
+<p>Bu işlemle artık çekirdek sürümüne <code class="docutils literal notranslate"><span class="pre">-custom</span></code> sonekini eklemiş olduk.</p>
+</section>
+<section id="adim-5-derleme">
+<h3><span class="section-number">2.7.5. </span>Adım 5: Derleme<a class="headerlink" href="#adim-5-derleme" title="Link to this heading"></a></h3>
+<p>Derleme işlemi için <em>make</em> komutu kullanılmaktadır:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>make
+</pre></div>
+</div>
+<p>Eğer derleme işleminin birden fazla CPU ya da çekirdek ile yapılmasını istiyorsanız
+<code class="docutils literal notranslate"><span class="pre">-j&lt;cpu_sayısı&gt;</span></code> seçeneğini komuta dahil edebilirsiniz. Çalışılan sistemdeki CPU sayısının <em>nproc</em>
+komutuyla elde edildiğini anımsayınız. O halde derleme için <em>make</em> komutunu şöyle kullanabiliriz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>make<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
+</pre></div>
+</div>
+<p>Derleme işlemi bittiğinde ürün olarak çekirdek imajı, çekirdek tarafından yüklenecek olan modül
+dosyaları ve diğer bazı dosyalar elde edilmiş olur. Derleme işleminden sonra oluşturulan dosyalar
+ve yerleri şöyledir (buradaki <code class="docutils literal notranslate"><span class="pre">&lt;çekirdek_sürümü&gt;</span></code>, <em>“uname -r”</em> ile elde edilecek yazıyı
+belirtiyor):</p>
+<ul class="simple">
+<li><p><strong>Sıkıştırılmış Çekirdek İmajı:</strong> <code class="docutils literal notranslate"><span class="pre">arch/&lt;platform&gt;/boot</span></code> dizininde <code class="docutils literal notranslate"><span class="pre">bzImage</span></code> ismiyle
+oluşturulmaktadır. Denemeyi yaptığımız Intel makinede dosyanın yol ifadesi
+<code class="docutils literal notranslate"><span class="pre">arch/x86_64/boot/bzImage</span></code> biçimindedir. (Ancak buradaki dosya x86_64 platformu için
+<code class="docutils literal notranslate"><span class="pre">arch/x86/boot/bzImage</span></code> dosyasına sembolik link de yapılmış olabilir.)</p></li>
+<li><p><strong>Çekirdeğin Sıkıştırılmamış ELF İmajı:</strong> Kaynak kök dizininde <code class="docutils literal notranslate"><span class="pre">vmlinux</span></code> ismiyle
+oluşturulmaktadır.</p></li>
+<li><p><strong>Çekirdek Modülleri (Aygıt Sürücü Dosyaları):</strong> <code class="docutils literal notranslate"><span class="pre">drivers</span></code>, <code class="docutils literal notranslate"><span class="pre">fs</span></code> ve <code class="docutils literal notranslate"><span class="pre">net</span></code> dizinlerinin
+altındaki dizinlerde bulunur. Ancak <em>“make modules_install”</em> ile bunların hepsi belirli bir
+dizine çekilebilir.</p></li>
+<li><p><strong>Çekirdek Sembol Tablosu:</strong> Kaynak kök dizininde <code class="docutils literal notranslate"><span class="pre">System.map</span></code> ismiyle bulunur. Çekirdek sembol
+tablosundan yalnızca çekirdek debug edilirken faydalanılmaktadır. Bu dosya silinse bile sistemin
+çalışmasında bir sorun oluşmaz.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Derleme süresini uzatan en önemli etken çekirdek konfigüre edilirken seçilen modül (aygıt sürücü)
+sayısıdır. Pek çok dağıtım “belki ileride lazım olur” gerekçesiyle konfigürasyon dosyalarında
+çok sayıda modülü dahil etmektedir. Bu nedenle bir dağıtımın konfigürasyon dosyasını kullandığınız
+zaman çekirdek derlemesi uzayacaktır. Çekirdek kodlarındaki platforma özgü default konfigürasyon
+dosyaları daha minimalist biçimde oluşturulmuş durumdadır.</p>
+<p>Tabii çekirdek bütünsel olarak bir kez derlendikten sonra çekirdek kodlarında değişiklik yapıp
+çekirdeği yeniden derlemek istediğimizde artık derleme süresi bütünsel derleme kadar uzun
+olmayacaktır.</p>
+</div>
+</section>
+<section id="adim-6-modullerin-kurulmasi">
+<h3><span class="section-number">2.7.6. </span>Adım 6: Modüllerin Kurulması<a class="headerlink" href="#adim-6-modullerin-kurulmasi" title="Link to this heading"></a></h3>
+<p>Farklı dizinlerde oluşturulmuş olan aygıt sürücü dosyalarını (modülleri) belli bir dizine kopyalamak
+için <em>“make modules_install”</em> komutu kullanılmaktadır. Bu komut seçeneksiz kullanılırsa default olarak
+<code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinine kopyalama yapar:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>make<span class="w"> </span>modules_install
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Eskiden <em>make</em> işlemi çekirdek modüllerinin derlenmesini sağlamıyordu. Çekirdek modüllerinin
+derlenmesi için <em>“make modules”</em> işlemi gerekiyordu. Ancak çekirdeğin 2.6 versiyonundan itibaren
+<em>make</em> işlemi zaten çekirdek modüllerinin de derlenmesini sağlamaktadır.</p>
+</div>
+<p>Ayrıca <em>“make modules_install”</em> komutunun modül dosyalarını istediğimiz bir dizine kopyalamasını da
+sağlayabiliriz. Bunun için <code class="docutils literal notranslate"><span class="pre">INSTALL_MOD_PATH</span></code> çevre değişkeni kullanılmaktadır. Örneğin:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span><span class="nv">INSTALL_MOD_PATH</span><span class="o">=</span>modules<span class="w"> </span>make<span class="w"> </span>modules_install
+</pre></div>
+</div>
+<p>Burada aygıt sürücü dosyaları <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinine değil, bulunulan yerdeki
+<code class="docutils literal notranslate"><span class="pre">modules</span></code> dizinine kopyalanacaktır.</p>
+</section>
+<section id="adim-7-aygit-agaci-dosyalarinin-derlenmesi">
+<h3><span class="section-number">2.7.7. </span>Adım 7: Aygıt Ağacı Dosyalarının Derlenmesi<a class="headerlink" href="#adim-7-aygit-agaci-dosyalarinin-derlenmesi" title="Link to this heading"></a></h3>
+<p>Eğer gömülü sistemler için derleme yapıyorsanız kaynak kod ağacında
+<code class="docutils literal notranslate"><span class="pre">arch/&lt;platform&gt;/boot/dts</span></code> dizini içerisindeki aygıt ağacı kaynak dosyalarını da derlemelisiniz.
+Aygıt ağacı kaynak dosyalarını derlemek için <em>“make dtbs”</em> komutunu kullanabilirsiniz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>make<span class="w"> </span>dtbs
+</pre></div>
+</div>
+<p>Derlenmiş aygıt ağacı dosyaları <code class="docutils literal notranslate"><span class="pre">arch/&lt;platform&gt;/boot/dts</span></code> dizininde ya da bu dizinin altındaki
+ilgili vendor dizininde oluşturulacaktır.</p>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Aygıt ağaçları gömülü sistemlerde kullanılmaktadır. Intel tabanlı PC’lerde donanım birimlerinin
+tespit edilmesi otomatik olarak ACPI protokolü yoluyla yapıldığı için aygıt ağacı dosyaları bu
+platformda kullanılmamaktadır. Ancak ARM platformunu kullanan gömülü sistemlerde ya da BBB ve
+Raspberry Pi gibi SBC’lerde aygıt ağaçları kullanılmaktadır.</p>
+</div>
+</section>
+<section id="adim-8-kurulum">
+<h3><span class="section-number">2.7.8. </span>Adım 8: Kurulum<a class="headerlink" href="#adim-8-kurulum" title="Link to this heading"></a></h3>
+<p>Bizim çekirdek imajını, geçici kök dosya sistemine ilişkin dosyayı ve aygıt ağacı dosyasını <code class="docutils literal notranslate"><span class="pre">/boot</span></code>
+dizinine kopyalamamız gerekir. Ancak aslında bu işlem de <em>“make install”</em> komutuyla otomatik olarak
+yapılabilmektedir. <em>“make install”</em> komutu bu dosyaları <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine kopyalamanın yanı sıra
+aynı zamanda GRUB önyükleyici programın konfigürasyon dosyalarında da güncellemeler yapıp yeni
+çekirdeğin GRUB menüsü içerisinde görünmesini de sağlamaktadır:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>make<span class="w"> </span>install
+</pre></div>
+</div>
+<section id="gecici-kok-dosya-sistemi-initrd">
+<h4><span class="section-number">2.7.8.1. </span>Geçici Kök Dosya Sistemi (initrd)<a class="headerlink" href="#gecici-kok-dosya-sistemi-initrd" title="Link to this heading"></a></h4>
+<p>Burada <em>geçici kök dosya sistemi</em> (<em>“initial ramdisk”</em> ya da <em>“initrd”</em>) diye bir terim kullandık.
+Geçici kök dosya sistemi diskteki asıl kök dosya sistemi mount edilene kadar geçici bir süre sanki
+diskteki dosya sistemiymiş gibi işlev gören bir RAM disk imajıdır. Tipik Linux sistemlerinde önce
+geçici kök dosya sistemi mount edilerek temel dosyalara oradan erişilir. Sonra bu geçici dosya sistemi
+RAM’den atılıp diskteki gerçek kök dosya sistemi mount edilmektedir.</p>
+<p>Geçici kök dosya sistemine gereksinimi basit bir örnekle anlayabiliriz. Diyelim ki diske erişmekte
+kullanılan aygıt sürücüsü çekirdeğin içerisine yerleştirilmemiş olsun, yani dışarıda
+<code class="docutils literal notranslate"><span class="pre">lib/modules/$(uname</span> <span class="pre">-r)</span></code> dizininde bir dosya biçiminde bulunuyor olsun. Şimdi çekirdeğin diske
+erişebilmesi için bu aygıt sürücüye ihtiyacı olacaktır. Ancak aygıt sürücü de disktedir. İşte böyle
+bir durumda bu aygıt sürücüleri de barındıran bir RAM disk dosya sistemi oluşturulmakta ve önyükleyici
+tarafından (örneğin GRUB önyükleyicisi) bu dosya da RAM’e yüklenmektedir. Böylece çekirdek artık
+diske erişebilir hale gelir.</p>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Eğer çekirdeğin gereksinim duyacağı bütün aygıt sürücü dosyaları konfigürasyon aşamasında
+çekirdeğin içerisine gömülmüşse geçici kök dosya sistemi oluşturmadan da sistem boot edilebilir.
+Ancak bu sırada çözülmesi gereken problemlerle de karşılaşılabilmektedir. Özellikle masaüstü
+sistemlerinde geçici kök dosya sistemi olmadan sistemi boot etmek oldukça zahmetlidir.</p>
+</div>
+<p>Geçici kök dosya sistemi aynı zamanda işletim sistemini <em>güvenli kipte (safe mode)</em> açmak için ve
+sistem güncellemelerinde de kullanılmaktadır.</p>
+<p>Debian türevi dağıtımlarda geçici kök dosya sistemini oluşturmak için <em>“update-initramfs”</em> komutu
+kullanılmaktadır. Bu komut da <em>mkinitramfs</em> komutunu çalıştırmaktadır. Geçici kök dosya sistemi
+oluşturulurken bu komutlar işlemlerini kabaca aşağıdaki adımlarla gerçekleştirmektedir:</p>
+<div class="graphviz"><img src="_images/graphviz-43a178dd74d17c866e26ea957698c636aec067ab.png" alt="digraph initramfs {
+    rankdir=TB;
+    graph [bgcolor=&quot;transparent&quot;, fontname=&quot;Arial&quot;, fontsize=11];
+    node [shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#dbeafe&quot;,
+          fontname=&quot;Arial&quot;, fontsize=10, margin=&quot;0.3,0.12&quot;, width=5.0];
+    edge [arrowsize=0.8, color=&quot;#4a5568&quot;];
+
+    s1 [label=&quot;1.  Geçici çalışma dizini oluştur  (mktemp -d)&quot;];
+    s2 [label=&quot;2.  Temel dizin yapısını oluştur\n(dev, proc, sys, bin, sbin, lib, etc...)&quot;];
+    s3 [label=&quot;3.  busybox veya temel araçları kopyala&quot;];
+    s4 [label=&quot;4.  Hook'ları çalıştır  (/usr/share + /etc altındakiler)\nHer hook: ihtiyaç duyduğu binary/kütüphane/modülü geçici dizine kopyalar&quot;];
+    s5 [label=&quot;5.  Çekirdek modüllerini işle\n(initramfs.conf'taki MODULES değerine göre: most | dep | list | none)&quot;];
+    s6 [label=&quot;6.  /init script'ini yerleştir&quot;];
+    s7 [label=&quot;7.  Tüm içeriği cpio arşivi olarak paketle&quot;];
+    s8 [label=&quot;8.  Belirtilen algoritmayla sıkıştır  (gzip / lz4 / xz / zstd)&quot;];
+    s9 [label=&quot;/boot/initrd.img-&lt;kernel-version&gt; olarak yaz&quot;,
+        fillcolor=&quot;#bbf7d0&quot;];
+
+    s1 -&gt; s2 -&gt; s3 -&gt; s4 -&gt; s5 -&gt; s6 -&gt; s7 -&gt; s8 -&gt; s9;
+}" class="graphviz" /></div>
+<p><em>“make install”</em> komutu masaüstü sistemlerde sırasıyla şunları yapmaktadır:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">arch/&lt;platform&gt;/boot</span></code> dizinindeki <code class="docutils literal notranslate"><span class="pre">bzImage</span></code> çekirdek imajı alınarak hedef <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine
+<code class="docutils literal notranslate"><span class="pre">vmlinuz-&lt;çekirdek_sürümü&gt;</span></code> ismiyle kopyalanır.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">System.map</span></code> dosyası hedef <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine <code class="docutils literal notranslate"><span class="pre">System.map-&lt;çekirdek_sürümü&gt;</span></code> ismiyle kopyalanır.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyası <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine <code class="docutils literal notranslate"><span class="pre">config-&lt;çekirdek_sürümü&gt;</span></code> ismiyle kopyalanır.</p></li>
+<li><p>Geçici kök dosya sistemine ilişkin dosya oluşturulur ve hedef <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine
+<code class="docutils literal notranslate"><span class="pre">initrd.img-&lt;çekirdek_sürümü&gt;</span></code> ismiyle kopyalanır.</p></li>
+<li><p>Eğer GRUB önyükleyicisi kullanılıyorsa GRUB konfigürasyonu güncellenir ve GRUB menüsüne yeni
+girişler eklenir.</p></li>
+</ul>
+<p>Böylece sistemin otomatik olarak yeni çekirdekle açılması sağlanır.</p>
+<p><em>“make install”</em> komutu uygulandığında eğer çekirdeğin versiyon bilgisi aynı ise <code class="docutils literal notranslate"><span class="pre">/boot</span></code>
+dizinindeki bir önceki kurulumun dosyaları <code class="docutils literal notranslate"><span class="pre">.old</span></code> uzantısıyla saklanmaktadır. Böylece son
+<em>“make install”</em> komutundan önceki kuruluma manuel olarak geri dönebilirsiniz. Örneğin yeniden
+aynı çekirdek versiyonunu <em>“make install”</em> yaptığımızda <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizininin içeriği şöyle
+olacaktır:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>kaan@kaan-Huawei:~/Study/LinuxKernel/linux-6.9.2$ ls -l /boot
+total 655480
+-rw-r--r-- 1 root root    287375 Haz  7  2024 config-6.8.0-38-generic
+-rw-r--r-- 1 root root    287766 Ağu 15 11:57 config-6.9.2-custom
+-rw-r--r-- 1 root root    287766 Ağu 15 11:55 config-6.9.2-custom.old
+drwx------ 3 root root      4096 Oca  1  1970 efi
+drwxr-xr-x 6 root root      4096 Ağu 15 11:57 grub
+lrwxrwxrwx 1 root root        23 Ağu 10 11:20 initrd.img -&gt; initrd.img-6.9.2-custom
+-rw-r--r-- 1 root root  73052139 Kas 19  2024 initrd.img-6.8.0-38-generic
+-rw-r--r-- 1 root root 526888758 Ağu 15 11:57 initrd.img-6.9.2-custom
+-rw------- 1 root root   9055262 Haz  7  2024 System.map-6.8.0-38-generic
+-rw-r--r-- 1 root root   8365115 Ağu 15 11:57 System.map-6.9.2-custom
+-rw-r--r-- 1 root root   8365115 Ağu 15 11:55 System.map-6.9.2-custom.old
+lrwxrwxrwx 1 root root        20 Ağu 15 11:57 vmlinuz -&gt; vmlinuz-6.9.2-custom
+-rw-r--r-- 1 root root  14944648 Haz  7  2024 vmlinuz-6.8.0-38-generic
+-rw-r--r-- 1 root root  14819840 Ağu 15 11:57 vmlinuz-6.9.2-custom
+-rw-r--r-- 1 root root  14819840 Ağu 15 11:55 vmlinuz-6.9.2-custom.old
+lrwxrwxrwx 1 root root        24 Ağu 15 11:57 vmlinuz.old -&gt; vmlinuz-6.9.2-custom.old
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p><em>“make install”</em> komutu masaüstü sistemler için kullanılmaktadır. Gömülü sistemlerde tüm
+dosyaların toparlanıp hedef sisteme aktarılması gerekir. Gömülü sistemlerde <em>“make install”</em>
+tarafından yapılan işlemleri siz manuel bir biçimde yapabilirsiniz. Tabii gömülü sistemlerde
+GRUB önyükleyicisi yerine ağırlıklı olarak <em>U-Boot</em> denilen önyükleyici kullanılmaktadır.
+Dolayısıyla gömülü sistemlerde sistemin yeni çekirdekle açılmasını sağlamak için <em>U-Boot</em>
+önyükleyicisini de ayarlamanız gerekecektir.</p>
+</div>
+</section>
+</section>
+</section>
+<section id="make-modules-install-komutu-detaylari">
+<h2><span class="section-number">2.8. </span>make modules_install Komutu Detayları<a class="headerlink" href="#make-modules-install-komutu-detaylari" title="Link to this heading"></a></h2>
+<p><em>“make modules_install”</em> komutu yalnızca modül dosyalarını hedef dizine kopyalamakla kalmaz; aynı
+zamanda bazı dosyaları da oluşturup onları da hedef dizine kopyalar. Hedef dizinin default
+<code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizini olduğu varsayımıyla komut sırasıyla şunları yapmaktadır:</p>
+<ul class="simple">
+<li><p>Modül dosyalarını <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinine kopyalar.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">modules.dep</span></code> isimli dosyayı oluşturur ve bunu <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinine
+kopyalar.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">modules.alias</span></code> isimli dosyayı oluşturur ve bunu <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinine
+kopyalar.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">modules.order</span></code> isimli dosyayı oluşturur ve <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinine kopyalar.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">modules.builtin</span></code> isimli dosyayı <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinine kopyalar.</p></li>
+</ul>
+<p>Aslında burada oluşturulan dosyaların bazıları mutlak anlamda bulundurulmak zorunda değildir. Ancak
+sistemin öngörüldüğü gibi işlev göstermesi için bu dosyaların ilgili dizinde bulundurulması uygundur.</p>
+<section id="modules-dep">
+<h3><span class="section-number">2.8.1. </span>modules.dep<a class="headerlink" href="#modules-dep" title="Link to this heading"></a></h3>
+<p>Bir aygıt sürücü başka aygıt sürücüleri de kullanıyor olabilir. Yani bir aygıt sürücünün
+çalışabilmesi için başka aygıt sürücülerin de yüklü olması gerekebilmektedir. İşte <code class="docutils literal notranslate"><span class="pre">modules.dep</span></code>
+dosyası bir aygıt sürücünün yüklenmesi için başka hangi aygıt sürücülerin yüklenmesi gerektiği
+bilgisini tutmaktadır. <code class="docutils literal notranslate"><span class="pre">modules.dep</span></code> bir text dosyadır. Satırların içeriği şöyledir:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;modül_yolu&gt;: &lt;bağımlılık1&gt; &lt;bağımlılık2&gt; ...
+</pre></div>
+</div>
+<p>Dosyanın içeriğine örnek verebiliriz:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>kernel/arch/x86/crypto/nhpoly1305-sse2.ko.zst: kernel/crypto/nhpoly1305.ko.zst kernel/lib/crypto/libpoly1305.ko.zst
+kernel/arch/x86/crypto/nhpoly1305-avx2.ko.zst: kernel/crypto/nhpoly1305.ko.zst kernel/lib/crypto/libpoly1305.ko.zst
+kernel/arch/x86/crypto/curve25519-x86_64.ko.zst: kernel/lib/crypto/libcurve25519-generic.ko.zst
+</pre></div>
+</div>
+<p>Eğer bu <code class="docutils literal notranslate"><span class="pre">modules.dep</span></code> dosyası olmazsa <em>modprobe</em> komutu çalışmaz ve çekirdek modülleri yüklenirken
+eksik yükleme yapılabilir. Dolayısıyla sistem düzgün bir biçimde çalışmayabilir. Eğer bu dosya
+elimizde yoksa ya da bir biçimde silinmişse <em>“depmod -a”</em> komutu ile yeniden oluşturulabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>depmod<span class="w"> </span>-a
+</pre></div>
+</div>
+<p>Siz yüklü olan başka bir çekirdek sürümü için <code class="docutils literal notranslate"><span class="pre">modules.dep</span></code> dosyasını oluşturmak istiyorsanız
+çekirdek sürümünü de argüman olarak vermelisiniz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>depmod<span class="w"> </span>-a<span class="w"> </span>&lt;çekirdek_sürümü&gt;
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p><em>depmod</em> komutunun çalışabilmesi için <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizininde modül
+dosyalarının bulunuyor olması gerekir. Çünkü bu komut bu dizindeki modül dosyalarını tek tek bulup
+ELF formatının ilgili bölümlerine bakarak modülün hangi modülleri kullandığını tespit ederek
+<code class="docutils literal notranslate"><span class="pre">modules.dep</span></code> dosyasını oluşturmaktadır.</p>
+</div>
+</section>
+<section id="modules-alias">
+<h3><span class="section-number">2.8.2. </span>modules.alias<a class="headerlink" href="#modules-alias" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">modules.alias</span></code> dosyası belli bir isim ya da id ile aygıt sürücü dosyasını eşleştiren bir text
+dosyadır. Bu dosyanın bulunmaması bazı durumlarda sorunlara yol açmayabilir. Ancak örneğin USB porta
+bir aygıt takıldığında bu aygıta ilişkin aygıt sürücünün hangisi olduğu bilgisi bu dosyada
+tutulmaktadır. Bu durumda bu dosyanın olmayışı aygıt sürücünün yüklenememesine neden olabilir.
+Dosyanın içeriği aşağıdaki formata uygun satırlardan oluşmaktadır:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>alias &lt;tanımlayıcı&gt; &lt;modül_adı&gt;
+</pre></div>
+</div>
+<p>Örnek bir içerik:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>alias usb:v05ACp*d*dc*dsc*dp*ic*isc*ip*in* apple_mfi_fastcharge
+alias usb:v8086p0B63d*dc*dsc*dp*ic*isc*ip*in* usb_ljca
+alias usb:v0681p0010d*dc*dsc*dp*ic*isc*ip*in* idmouse
+alias usb:v0681p0005d*dc*dsc*dp*ic*isc*ip*in* idmouse
+alias usb:v07C0p1506d*dc*dsc*dp*ic*isc*ip*in* iowarrior
+alias usb:v07C0p1505d*dc*dsc*dp*ic*isc*ip*in* iowarrior
+</pre></div>
+</div>
+<p>Bu dosya silinirse yine <em>“depmod -a”</em> komutu ile oluşturulabilir.</p>
+</section>
+<section id="modules-order">
+<h3><span class="section-number">2.8.3. </span>modules.order<a class="headerlink" href="#modules-order" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">modules.order</span></code> dosyası aygıt sürücü dosyalarının yüklenme sırasını barındıran bir text dosyadır.
+Bu dosyanın her satırında bir çekirdek aygıt sürücüsünün dosya yol ifadesi bulunur. Daha önce
+yazılmış aygıt sürücüler daha sonra yazılanlardan daha önce yüklenir. Bu dosyanın olmaması genellikle
+bir soruna yol açmaz. Ancak modüllerin belli sırada yüklenmemesi bazı durumlarda bozukluklara da
+neden olabilmektedir. Bu dosyanın silinmesi durumunda yine <em>“depmod -a”</em> komutuyla oluşturulabilmektedir.</p>
+<p class="rubric">── 7. Ders · 09 Ağustos 2025, Cumartesi ──</p>
+</section>
+</section>
+<section id="manuel-kurulum">
+<h2><span class="section-number">2.9. </span>Manuel Kurulum<a class="headerlink" href="#manuel-kurulum" title="Link to this heading"></a></h2>
+<p>Biz <em>“make install”</em> komutu ile yapılan işlemleri manuel olarak da yapabiliriz. Aslında çekirdek
+imajı ve geçici kök dosya sistemi dosyaları default yerlerin dışında başka yerlerde de
+bulundurulabilir; önyükleyiciye bu konuda bilgi verilebilir. Ancak yukarıdaki dosyaların hedef
+sistemde bulundurulduğu default yerler şöyledir:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Dosya</p></th>
+<th class="head"><p>Hedef Dizin</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Çekirdek İmajı</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/boot</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Çekirdek Sembol Tablosu</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/boot</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Modül Dosyaları</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;/kernel</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Geçici Kök Dosya Sistemi Dosyası</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/boot</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>İsteğe bağlı olarak aşağıdaki dosyalar da hedef sisteme konuşlandırılabilir:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Dosya</p></th>
+<th class="head"><p>Hedef Dizin</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Konfigürasyon Dosyası</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/boot</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Modüllere İlişkin Bazı Dosyalar</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Peki yukarıda belirttiğimiz dosyalar hedef sistemdeki ilgili dizinlere hangi isimlerle
+kopyalanmalıdır? Tipik isimlendirme şöyle olmalıdır (buradaki <code class="docutils literal notranslate"><span class="pre">&lt;çekirdek_sürümü&gt;</span></code>, <em>“uname -r”</em>
+komutuyla elde edilecek olan yazıdır):</p>
+<ul class="simple">
+<li><p><strong>Çekirdek İmajı:</strong> <code class="docutils literal notranslate"><span class="pre">/boot/vmlinuz-&lt;çekirdek_sürümü&gt;</span></code> — örneğin <code class="docutils literal notranslate"><span class="pre">vmlinuz-6.9.2-custom</span></code></p></li>
+<li><p><strong>Çekirdek Sembol Tablosu:</strong> <code class="docutils literal notranslate"><span class="pre">/boot/System.map-&lt;çekirdek_sürümü&gt;</span></code> — örneğin
+<code class="docutils literal notranslate"><span class="pre">System.map-6.9.2-custom</span></code></p></li>
+<li><p><strong>Modüllere İlişkin Dosyalar:</strong> <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizininin içerisine</p></li>
+<li><p><strong>Konfigürasyon Dosyası:</strong> <code class="docutils literal notranslate"><span class="pre">/boot/config-&lt;çekirdek_sürümü&gt;</span></code> — örneğin <code class="docutils literal notranslate"><span class="pre">config-6.9.2-custom</span></code></p></li>
+<li><p><strong>Geçici Kök Dosya Sistemi:</strong> <code class="docutils literal notranslate"><span class="pre">/boot/initrd.img-&lt;çekirdek_sürümü&gt;</span></code> — örneğin
+<code class="docutils literal notranslate"><span class="pre">initrd.img-6.9.2-custom</span></code>; <em>“update-initramfs”</em> programıyla oluşturulabilir.</p></li>
+</ul>
+<p>Ayrıca bazı dağıtımlarda <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizini içerisindeki <code class="docutils literal notranslate"><span class="pre">vmlinuz</span></code> dosyası default olan
+<code class="docutils literal notranslate"><span class="pre">vmlinuz-&lt;çekirdek_sürümü&gt;</span></code> dosyasına, <code class="docutils literal notranslate"><span class="pre">initrd.img</span></code> dosyası da
+<code class="docutils literal notranslate"><span class="pre">/boot/initrd.img-&lt;çekirdek_sürümü&gt;</span></code> dosyasına sembolik link yapılmış durumda olabilir. Ancak bu
+sembolik bağlantıları GRUB kullanmamaktadır. Aşağıda Intel sistemindeki 6.8.0 çekirdeğinin yüklü
+olduğu <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizininin default içeriğini görüyorsunuz:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ ls -l /boot
+-rw-r--r-- 1 root root    287375 Haz  7  2024 config-6.8.0-38-generic
+drwx------ 3 root root      4096 Oca  1  1970 efi
+drwxr-xr-x 6 root root      4096 Ağu 15 11:57 grub
+lrwxrwxrwx 1 root root        23 Ağu 10 11:20 initrd.img -&gt; initrd.img-6.8.0-38-generic
+-rw-r--r-- 1 root root  73052139 Kas 19  2024 initrd.img-6.8.0-38-generic
+-rw------- 1 root root   9055262 Haz  7  2024 System.map-6.8.0-38-generic
+lrwxrwxrwx 1 root root        20 Ağu 15 11:57 vmlinuz -&gt; vmlinuz-6.8.0-38-generic
+-rw-r--r-- 1 root root  14944648 Haz  7  2024 vmlinuz-6.8.0-38-generic
+</pre></div>
+</div>
+<p>Geçici kök dosya sisteminin içerisindeki dosyalar <em>cpio</em> denilen bir arşiv formatıyla
+arşivlenmektedir. <em>cpio</em> arşivi tıpkı <em>tar</em> arşivinde olduğu gibi yalnızca dosyaların uç uca
+eklenmesiyle oluşturulmaktadır. İsterseniz geçici kök dosya sistemine ilişkin <code class="docutils literal notranslate"><span class="pre">initrd-xxx</span></code>
+dosyalarını açabilirsiniz. Ancak bu dosyaların içeriği dağıtımların versiyonlarına göre
+değişebilmektedir. Yeni dağıtımlarda bu <code class="docutils literal notranslate"><span class="pre">initrd-xxx</span></code> arşiv dosyası birkaç bölümden oluşmaktadır.
+Eğer biz bu dosyayı <em>cpio</em> programıyla açmaya çalışırsak bu program yalnızca ilk bölümü açacaktır.
+Tüm bölümleri açmak için <em>unmkinitramfs</em> programından faydalanabilirsiniz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>unmkinitramfs<span class="w"> </span>/boot/initrd.img-6.9.2-custom<span class="w"> </span>initrd
+</pre></div>
+</div>
+<p>Bu komutla geçici kök dosya sistemine ilişkin arşiv dosyası <code class="docutils literal notranslate"><span class="pre">initrd</span></code> isimli dizinin altına
+açılacaktır.</p>
+<section id="cekirdek-surum-yazisinin-belirlenmesi">
+<h3><span class="section-number">2.9.1. </span>Çekirdek Sürüm Yazısının Belirlenmesi<a class="headerlink" href="#cekirdek-surum-yazisinin-belirlenmesi" title="Link to this heading"></a></h3>
+<p>Derleme sonucunda elde ettiğimiz dosyaları manuel isimlendirirken çekirdek sürüm yazısını nasıl
+bileceğiz? Bunun için <em>“uname -r”</em> komutunu kullanamayız. Çünkü bu komut bize o anda çalışmakta
+olan çekirdeğin sürüm yazısını verir. Sürüm yazısı çekirdek imajının içerisine de yazılmaktadır ve
+bizim bazı dosyalara verdiğimiz isimlerin çekirdek içerisindeki bu yazıyla uyumlu olması gerekir.</p>
+<p>Default olarak <code class="docutils literal notranslate"><span class="pre">kernel.org</span></code> sitesinden indirilen kaynak kodlar derlendiğinde çekirdek sürümü
+<code class="docutils literal notranslate"><span class="pre">6.9.2</span></code> gibi üç haneli bir sayılardan oluşmaktadır. Yani yazının sonunda <code class="docutils literal notranslate"><span class="pre">-generic</span></code> ya da
+<code class="docutils literal notranslate"><span class="pre">-custom</span></code> gibi sonekler yoktur. Tabii çekirdeği derlemeden önce <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasında
+<code class="docutils literal notranslate"><span class="pre">CONFIG_LOCALVERSION</span></code> özelliğine bu sürüm numarasından sonra eklenecek bilgiyi girebilirsiniz.</p>
+<p>Sürüm yazısını bulmak için sıkıştırılmamış çekirdek dosyası içerisindeki (kaynak kök dizindeki
+<code class="docutils literal notranslate"><span class="pre">vmlinux</span></code> dosyası) string tablosunda <code class="docutils literal notranslate"><span class="pre">Linux</span> <span class="pre">version</span></code> yazısını aramak yeterlidir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>strings<span class="w"> </span>vmlinux<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Linux version&quot;</span>
+Linux<span class="w"> </span>version<span class="w"> </span><span class="m">6</span>.9.2-custom<span class="w"> </span><span class="o">(</span>kaan@kaan-virtual-machine<span class="o">)</span><span class="w"> </span><span class="o">(</span>gcc<span class="w"> </span><span class="o">(</span>Ubuntu<span class="w"> </span><span class="m">11</span>.4.0-1ubuntu1~22.04<span class="o">)</span><span class="w"> </span><span class="m">11</span>.4.0,
+GNU<span class="w"> </span>ld<span class="w"> </span><span class="o">(</span>GNU<span class="w"> </span>Binutils<span class="w"> </span><span class="k">for</span><span class="w"> </span>Ubuntu<span class="o">)</span><span class="w"> </span><span class="m">2</span>.38<span class="o">)</span><span class="w"> </span><span class="c1"># SMP PREEMPT_DYNAMIC</span>
+Linux<span class="w"> </span>version<span class="w"> </span><span class="m">6</span>.9.2-custom<span class="w"> </span><span class="o">(</span>kaan@kaan-virtual-machine<span class="o">)</span><span class="w"> </span><span class="o">(</span>gcc<span class="w"> </span><span class="o">(</span>Ubuntu<span class="w"> </span><span class="m">11</span>.4.0-1ubuntu1~22.04<span class="o">)</span><span class="w"> </span><span class="m">11</span>.4.0,
+GNU<span class="w"> </span>ld<span class="w"> </span><span class="o">(</span>GNU<span class="w"> </span>Binutils<span class="w"> </span><span class="k">for</span><span class="w"> </span>Ubuntu<span class="o">)</span><span class="w"> </span><span class="m">2</span>.38<span class="o">)</span><span class="w"> </span><span class="c1">#2 SMP PREEMPT_DYNAMIC Thu Dec 5 17:55:14 +03 2024</span>
+</pre></div>
+</div>
+<p>Buradan sürüm yazısının <code class="docutils literal notranslate"><span class="pre">6.9.2-custom</span></code> olduğu görülmektedir. O halde derleme sonucunda elde
+ettiğimiz dosyaları manuel biçimde kopyalarken sürüm bilgisi olarak <code class="docutils literal notranslate"><span class="pre">6.9.2-custom</span></code> yazısını
+kullanmamız gerekir. Çekirdek imajının <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine manuel kopyalanması işlemi şöyle
+yapılabilir (kaynak kök dizinde bulunduğumuzu varsayıyoruz):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>cp<span class="w"> </span>arch/x86_64/boot/bzImage<span class="w"> </span>/boot/vmlinuz-6.9.2-custom
+$<span class="w"> </span>sudo<span class="w"> </span>cp<span class="w"> </span>.config<span class="w"> </span>/boot/config-6.9.2-custom
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Çekirdek modüllerinin kopyalanması biraz zahmetli bir işlemdir çünkü bunlar derlediğimiz
+çekirdekte farklı dizinlerde bulunmaktadır. Bu kopyalamanın en etkin yolu <em>“make modules_install”</em>
+komutunu kullanmaktır. Benzer biçimde çekirdek dosyalarının ve gerekli diğer dosyaların uygun
+yerlere kopyalanması için de en etkin yöntem <em>“make install”</em> komutudur.</p>
+</div>
+</section>
+</section>
+<section id="grub-yapilandirmasi">
+<h2><span class="section-number">2.10. </span>GRUB Yapılandırması<a class="headerlink" href="#grub-yapilandirmasi" title="Link to this heading"></a></h2>
+<p>Normal olarak <em>“make install”</em> yaptığımızda eğer sistemimizde GRUB önyükleyicisi varsa komut GRUB
+konfigürasyon dosyalarında da güncellemeler yaparak sistemin yeni çekirdekle açılmasını sağlamaktadır.
+Böylece kullanıcı bir menü yoluyla sistemin kendi istediği çekirdekle açılmasını da sağlayabilmektedir.
+GRUB menüsü otomatik olarak görüntülenmemektedir. Boot işlemi sırasında ESC tuşuna basılırsa menü
+görüntülenir. Eğer GRUB menüsünün her zaman görüntülenmesi isteniyorsa <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code>
+dosyasındaki iki satır aşağıdaki gibi değiştirilmelidir:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GRUB_TIMEOUT_STYLE=menu
+GRUB_TIMEOUT=5
+</pre></div>
+</div>
+<p>Buradaki <code class="docutils literal notranslate"><span class="pre">GRUB_TIMEOUT</span></code> satırı eğer müdahale yapılmamışsa menünün en fazla 5 saniye
+görüntüleneceğini belirtmektedir.</p>
+<p>Bu işlemden sonra <em>update-grub</em> programı da çalıştırılmalıdır:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>update-grub
+</pre></div>
+</div>
+<p>Bu tür denemeler yapılırken GRUB menüleri bozulabilmektedir. Düzeltme işlemleri bazı konfigürasyon
+dosyalarının düzenlenmesiyle manuel biçimde yapılabilir. Konfigürasyon dosyaları güncellendikten
+sonra <em>update-grub</em> programı mutlaka çalıştırılmalıdır. Ancak eğer GRUB konfigürasyon dosyaları
+konusunda yeterli bilgiye sahip değilseniz GRUB işlemlerini görsel bir biçimde <em>grub-customizer</em>
+isimli programla da yapabilirsiniz. Bu program Debian depolarında olmadığı için önce aşağıdaki gibi
+programın bulunduğu yerin <code class="docutils literal notranslate"><span class="pre">apt</span></code> kayıtlarına eklenmesi gerekmektedir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>add-apt-repository<span class="w"> </span>ppa:danielrichter2007/grub-customizer
+$<span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
+$<span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>grub-customizer
+</pre></div>
+</div>
+</section>
+<section id="cekirdek-derleme-sureci-ozeti">
+<h2><span class="section-number">2.11. </span>Çekirdek Derleme Süreci Özeti<a class="headerlink" href="#cekirdek-derleme-sureci-ozeti" title="Link to this heading"></a></h2>
+<p>Yukarıdaki adımların özeti şöyledir:</p>
+<ol class="arabic simple">
+<li><p>Çekirdek derlemesi için gerekli olan araçlar kurulur.</p></li>
+<li><p>Çekirdek kodları indirilir ve açılır.</p></li>
+<li><p>Zaten hazır olan konfigürasyon dosyası <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizininden alınarak <code class="docutils literal notranslate"><span class="pre">.config</span></code> ismiyle kaynak
+kök dizine kopyalanır.</p></li>
+<li><p>Konfigürasyon dosyası üzerinde <em>“make menuconfig”</em> komutu ile değişiklikler yapılır.</p></li>
+<li><p>Eğer çekirdeğin imzalanması istenmiyorsa <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasındaki ilgili satırlar üzerinde
+değişiklikler yapılır.</p></li>
+<li><p>Çekirdek derlemesi <em>“make -j$(nproc)”</em> komutu ile gerçekleştirilir.</p></li>
+<li><p>Modüller ve ilgili dosyalar hedefe <em>“sudo make modules_install”</em> komutu ile konuşlandırılır.</p></li>
+<li><p>Çekirdek imajı ve ilgili dosyalar masaüstü sistemlerde <em>“sudo make install”</em> komutu ile hedefe
+konuşlandırılır.</p></li>
+</ol>
+</section>
+<section id="cekirdegin-sistemden-kaldirilmasi">
+<h2><span class="section-number">2.12. </span>Çekirdeğin Sistemden Kaldırılması<a class="headerlink" href="#cekirdegin-sistemden-kaldirilmasi" title="Link to this heading"></a></h2>
+<p>Yeni çekirdeği derleyip sisteme dahil ettikten sonra onu sistemden tamamen çıkartmak için yapılan
+işlemlerin tersini yapmak gerekir. Kaldırma işlemi manuel biçimde şöyle yapılabilir:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizini tamamen silinir.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinindeki çekirdek sürümüne ilişkin dosyalar silinir.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizininden çekirdek sürümüne ilişkin dosyalar silindikten sonra <em>update-grub</em> programı
+<code class="docutils literal notranslate"><span class="pre">sudo</span></code> ile çalıştırılmalıdır. Bu program <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinini inceleyip otomatik olarak ilgili
+girişleri GRUB menüsünden siler. Yani aslında GRUB konfigürasyon dosyaları üzerinde manuel
+değişiklik yapmaya gerek yoktur.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p><em>grub-customizer</em> programı ile de görsel silme yapılabilir. Ancak bu program <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizini
+içerisindeki dosyaları ve modül dosyalarını silmez; yalnızca ilgili girişleri GRUB menüsünden
+çıkartmaktadır.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="introduction.html" class="btn btn-neutral float-left" title="1. Giriş" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Önceki</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kaan Aslan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">tema</a>
+    kullanılarak <a href="https://readthedocs.org">Read the Docs</a> tarafından sağlanmasıyla oluşturuldu.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

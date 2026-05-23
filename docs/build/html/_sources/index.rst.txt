@@ -27,4 +27,5 @@ ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
    :numbered:
 
    introduction
+   kernelcompilation.rst
    
