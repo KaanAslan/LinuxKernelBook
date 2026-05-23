@@ -124,6 +124,23 @@
 <li class="toctree-l2"><a class="reference internal" href="#grub-yapilandirmasi">2.10. GRUB Yapılandırması</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cekirdek-derleme-sureci-ozeti">2.11. Çekirdek Derleme Süreci Özeti</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cekirdegin-sistemden-kaldirilmasi">2.12. Çekirdeğin Sistemden Kaldırılması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-kodlari-uzerinde-degisiklik-yapma-yontemleri">2.13. Çekirdek Kodları Üzerinde Değişiklik Yapma Yöntemleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#kbuild-sistemi-ve-gnu-make">2.14. KBuild Sistemi ve GNU Make</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#makefile-dosyalarinin-guncellenmesi">2.15. Makefile Dosyalarının Güncellenmesi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#kconfig-dosyalari">2.16. Kconfig Dosyaları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#konfigurasyon-seceneklerinin-kaynak-kodlara-yansitilmasi">2.17. Konfigürasyon Seçeneklerinin Kaynak Kodlara Yansıtılması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#konfigurasyon-seceneklerinin-makefile-dosyalarina-yansitilmasi">2.18. Konfigürasyon Seçeneklerinin Makefile Dosyalarına Yansıtılması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#yeni-dizin-icin-makefile-ve-kconfig-dosyalari">2.19. Yeni Dizin için Makefile ve Kconfig Dosyaları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ornek-cekirdege-yeni-modul-ekleme">2.20. Örnek: Çekirdeğe Yeni Modül Ekleme</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#yeniden-derleme-sonrasi-guncellemeler">2.21. Yeniden Derleme Sonrası Güncellemeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-ve-modul-imzalama">2.22. Çekirdek ve Modül İmzalama</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-imjasinin-imzalanmasi">2.23. Çekirdek İmjasının İmzalanması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#kok-dosya-sisteminin-olusturulmasi">2.24. Kök Dosya Sisteminin Oluşturulması</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#debootstrap-ile-kok-dosya-sistemi-olusturma">2.24.1. <code class="docutils literal notranslate"><span class="pre">debootstrap</span></code> ile Kök Dosya Sistemi Oluşturma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gecici-kok-dosya-sisteminin-olusturulmasi">2.24.2. Geçici Kök Dosya Sisteminin Oluşturulması</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-baslik-dosyalarinin-kurulumu">2.25. Çekirdek Başlık Dosyalarının Kurulumu</a></li>
 </ul>
 </li>
 </ul>
@@ -201,7 +218,6 @@ açabileceği dosya sayısını <em>proc</em> dosya sistemi yoluyla şöyle değ
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="m">2048</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>/proc/sys/fs/file-max
 </pre></div>
 </div>
-<p class="rubric">── 5. Ders · 02 Ağustos 2025, Cumartesi ──</p>
 </section>
 <section id="cekirdek-komut-satiri-parametreleri">
 <h2><span class="section-number">2.2. </span>Çekirdek Komut Satırı Parametreleri<a class="headerlink" href="#cekirdek-komut-satiri-parametreleri" title="Link to this heading"></a></h2>
@@ -518,7 +534,6 @@ $<span class="w"> </span>tar<span class="w"> </span>-xvJf<span class="w"> </span
 </pre></div>
 </div>
 <p>Bu işlemden sonra <code class="docutils literal notranslate"><span class="pre">linux-6.9.2</span></code> isminde bir dizin oluşturulacaktır.</p>
-<p class="rubric">── 6. Ders · 03 Ağustos 2025, Pazar ──</p>
 </section>
 <section id="adim-3-cekirdegin-konfigure-edilmesi">
 <h3><span class="section-number">2.7.3. </span>Adım 3: Çekirdeğin Konfigüre Edilmesi<a class="headerlink" href="#adim-3-cekirdegin-konfigure-edilmesi" title="Link to this heading"></a></h3>
@@ -785,7 +800,8 @@ sistem güncellemelerinde de kullanılmaktadır.</p>
 <p>Debian türevi dağıtımlarda geçici kök dosya sistemini oluşturmak için <em>“update-initramfs”</em> komutu
 kullanılmaktadır. Bu komut da <em>mkinitramfs</em> komutunu çalıştırmaktadır. Geçici kök dosya sistemi
 oluşturulurken bu komutlar işlemlerini kabaca aşağıdaki adımlarla gerçekleştirmektedir:</p>
-<div class="graphviz"><img src="_images/graphviz-43a178dd74d17c866e26ea957698c636aec067ab.png" alt="digraph initramfs {
+<div class="graphviz"><object data="_images/graphviz-43a178dd74d17c866e26ea957698c636aec067ab.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph initramfs {
     rankdir=TB;
     graph [bgcolor=&quot;transparent&quot;, fontname=&quot;Arial&quot;, fontsize=11];
     node [shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#dbeafe&quot;,
@@ -804,7 +820,7 @@ oluşturulurken bu komutlar işlemlerini kabaca aşağıdaki adımlarla gerçekl
         fillcolor=&quot;#bbf7d0&quot;];
 
     s1 -&gt; s2 -&gt; s3 -&gt; s4 -&gt; s5 -&gt; s6 -&gt; s7 -&gt; s8 -&gt; s9;
-}" class="graphviz" /></div>
+}</p></object></div>
 <p><em>“make install”</em> komutu masaüstü sistemlerde sırasıyla şunları yapmaktadır:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">arch/&lt;platform&gt;/boot</span></code> dizinindeki <code class="docutils literal notranslate"><span class="pre">bzImage</span></code> çekirdek imajı alınarak hedef <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine
@@ -932,7 +948,6 @@ Bu dosyanın her satırında bir çekirdek aygıt sürücüsünün dosya yol ifa
 yazılmış aygıt sürücüler daha sonra yazılanlardan daha önce yüklenir. Bu dosyanın olmaması genellikle
 bir soruna yol açmaz. Ancak modüllerin belli sırada yüklenmemesi bazı durumlarda bozukluklara da
 neden olabilmektedir. Bu dosyanın silinmesi durumunda yine <em>“depmod -a”</em> komutuyla oluşturulabilmektedir.</p>
-<p class="rubric">── 7. Ders · 09 Ağustos 2025, Cumartesi ──</p>
 </section>
 </section>
 <section id="manuel-kurulum">
@@ -1127,6 +1142,668 @@ değişiklik yapmaya gerek yoktur.</p></li>
 içerisindeki dosyaları ve modül dosyalarını silmez; yalnızca ilgili girişleri GRUB menüsünden
 çıkartmaktadır.</p>
 </div>
+</section>
+<section id="cekirdek-kodlari-uzerinde-degisiklik-yapma-yontemleri">
+<h2><span class="section-number">2.13. </span>Çekirdek Kodları Üzerinde Değişiklik Yapma Yöntemleri<a class="headerlink" href="#cekirdek-kodlari-uzerinde-degisiklik-yapma-yontemleri" title="Link to this heading"></a></h2>
+<p>Çekirdeği yeniden derlemenin gerekçelerinden bahsetmiştik. Bunlardan biri de çekirdek kodları üzerinde
+değişikliklerin yapılmış olmasıydı. Peki çekirdek kodları üzerinde değişiklikler nasıl yapılabilir?
+Çekirdek kodları üzerinde değişiklikler tipik olarak dört yolla yapılmaktadır:</p>
+<ol class="arabic simple">
+<li><p>Çekirdek kodlarındaki zaten var olan bir dosya içerisinde bulunan fonksiyon kodlarında değişiklik
+yapılması.</p></li>
+<li><p>Çekirdek kodlarındaki zaten var olan bir dosya içerisine yeni bir fonksiyon eklenmesi.</p></li>
+<li><p>Çekirdek kodlarındaki bir dizin içerisine yeni bir C kaynak dosyası eklenmesi.</p></li>
+<li><p>Çekirdek kodlarındaki bir dizin içerisine yeni bir dizin ve bu dizinin içerisine de çok sayıda C
+kaynak dosyalarının eklenmesi.</p></li>
+</ol>
+<p>Eğer biz birinci ve ikinci maddedeki gibi çekirdek kodlarına yeni bir dosya eklemiyorsak çekirdeğin
+derlenmesini sağlayan make dosyalarında bir değişiklik yapmamıza gerek yoktur. Ancak çekirdeğe yeni bir
+kaynak dosya ya da dizin ekleyeceksek bu eklemeyi yaptığımız dizindeki make dosyasında izleyen paragraflarda
+açıklayacağımız biçimde bazı güncellemelerin yapılması gerekir. Böylece çekirdek yeniden derlendiğinde bu
+dosyalar da çekirdek imajının içerisine eklenmiş olacaktır. Eğer kaynak kod ağacında bir dizinin altına yeni
+bir dizin eklemek istiyorsak bu durumda o dizini yine üst dizine ilişkin make dosyasında belirtmemiz ve o
+dizinde ayrı bir <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyası oluşturmamız gerekir.</p>
+</section>
+<section id="kbuild-sistemi-ve-gnu-make">
+<h2><span class="section-number">2.14. </span>KBuild Sistemi ve GNU Make<a class="headerlink" href="#kbuild-sistemi-ve-gnu-make" title="Link to this heading"></a></h2>
+<p>GNU Make aracı oldukça ayrıntılı özelliklere sahip bir build aracıdır. Bu aracın ayrıntılarını öğrenmek
+ayrı bir çabayı gerektirmektedir. Make dili aslında oldukça aşağı seviyeli bir build dilidir. Bu nedenle
+özellikle son yirmi yıldır programcılar doğrudan GNU Make aracını kullanmak yerine daha üst düzey make
+araçlarını kullanmayı tercih etmektedir. Bunlardan en yaygın olanlardan biri <em>CMake</em> denilen araçtır.
+Microsoft ise <em>MSBuild</em> isimli kendi tasarladığı build aracını kullanmaktadır.</p>
+<p>Make dilinde değişkenler oluşturulabilmektedir. Örneğin:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>a.o
+</pre></div>
+</div>
+<p>Burada <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> isimli değişken <code class="docutils literal notranslate"><span class="pre">a.o</span></code> bilgisini tutmaktadır. Değişkenleri bir çeşit makro gibi
+düşünebilirsiniz. Bir değişkene ekleme yapmak için Make dilinde <code class="docutils literal notranslate"><span class="pre">+=</span></code> operatörü kullanılmaktadır. Örneğin:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>a.o
+<span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>b.o
+<span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>c.o
+</pre></div>
+</div>
+<p>Burada artık <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> değişkeni <code class="docutils literal notranslate"><span class="pre">a.o</span> <span class="pre">b.o</span> <span class="pre">c.o</span></code> biçiminde olacaktır.</p>
+<p>Linux çekirdeğinde özyinelemeli bir make yöntemi kullanılmaktadır. Her dizinde bir <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyası
+vardır. Bunun içerisindeki <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> gibi, <code class="docutils literal notranslate"><span class="pre">obj-m</span></code> gibi bazı değişkenler <code class="docutils literal notranslate"><span class="pre">+=</span></code> operatörüyle eklenerek
+biriktirilmektedir. Bunlar da derleme ve bağlama işlemine sokulmaktadır. Yukarıda da belirttiğimiz gibi
+Linux’taki bu build sistemine <em>KBuild</em> ya da <em>KConfig</em> sistemi denilmektedir.</p>
+<p>Bizim Linux’ta <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyaları üzerinde gerekli güncellemeleri yapmak için çok fazla bilgiye sahip
+olmamız gerekmez. Bazı yönergeleri uygun bir biçimde yerine getirirsek hedefimize ulaşabiliriz.</p>
+</section>
+<section id="makefile-dosyalarinin-guncellenmesi">
+<h2><span class="section-number">2.15. </span>Makefile Dosyalarının Güncellenmesi<a class="headerlink" href="#makefile-dosyalarinin-guncellenmesi" title="Link to this heading"></a></h2>
+<p>Linux kaynak kod ağacında dizinlerin altında <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> isimli make dosyaları bulunur. Eğer bir dizinin
+altına yeni bir dosya eklenecekse o dizinin içerisinde bulunan <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasının içerisine aşağıdaki
+gibi bir satırın eklenmesi gerekir:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>dosya_ismi.o
+</pre></div>
+</div>
+<p>Buradaki <code class="docutils literal notranslate"><span class="pre">+=</span></code> operatörü <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> isimli hedefe ekleme yapma anlamına gelmektedir. <code class="docutils literal notranslate"><span class="pre">obj</span></code> sözcüğünün
+yanındaki <code class="docutils literal notranslate"><span class="pre">-y</span></code> harfi ilgili dosyanın çekirdeğin bir parçası biçiminde çekirdek imajının içerisine
+gömüleceğini belirtmektedir. Make dosyalarının bazı satırlarında <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> yerine <code class="docutils literal notranslate"><span class="pre">obj-m</span></code> de görebilirsiniz.
+Bu da ilgili dosyanın ayrı bir modül biçiminde derleneceği anlamına gelmektedir. Eklemeler genellikle
+çekirdek imajının içine yapıldığı için biz de genellikle <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> kullanırız. Eğer bir dosyanın (aygıt
+sürücüler için bu durum söz konusudur) çekirdek imajının içine gömülmesi yerine ayrı bir çekirdek modülü
+olarak derlenmesi isteniyorsa bu durumda dosyanın yerleştirildiği dizinin <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasına aşağıdaki
+gibi bir eklemenin yapılması gerekir:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-m</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>dosya_ismi.o
+</pre></div>
+</div>
+<p>Eğer çekirdek kaynak kodlarına tümden bir dizinin eklenmesi isteniyorsa bu durumda önce o dizinin
+oluşturulduğu dizindeki <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasına aşağıdaki gibi bir satır eklenmelidir (dizin isminden
+sonra <code class="docutils literal notranslate"><span class="pre">/</span></code> karakterini unutmayınız):</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>dizin_ismi/
+</pre></div>
+</div>
+<p>Tabii bu ekleme bir modül biçiminde de olabilirdi:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-m</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>dizin_ismi/
+</pre></div>
+</div>
+<p>Fakat bu ekleme tek başına yetmemektedir. Bu ekleme yapıldıktan sonra ayrıca yaratılan dizinde <code class="docutils literal notranslate"><span class="pre">Makefile</span></code>
+isimli bir dosyanın oluşturulması ve o dosyanın içerisinde o dizindeki kaynak dosyaların da belirtilmesi
+gerekmektedir. Örneğin biz <code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizininin altında <code class="docutils literal notranslate"><span class="pre">mydriver</span></code> isimli bir dizin oluşturup onun da
+içerisine <code class="docutils literal notranslate"><span class="pre">a.c</span></code>, <code class="docutils literal notranslate"><span class="pre">b.c</span></code> ve <code class="docutils literal notranslate"><span class="pre">c.c</span></code> dosyalarını eklemiş olalım. Bu durumda önce <code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizini
+içerisindeki <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasına aşağıdaki gibi bir satır ekleriz:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>mydriver/
+</pre></div>
+</div>
+<p>Sonra da <code class="docutils literal notranslate"><span class="pre">mydriver</span></code> dizini içerisinde <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> isimli bir dosya oluşturup bu dosyanın içerisinde
+de dizin içerisindeki dosyaları belirtiriz. Örneğin:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>a.o
+<span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>b.o
+<span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>c.o
+</pre></div>
+</div>
+</section>
+<section id="kconfig-dosyalari">
+<h2><span class="section-number">2.16. </span>Kconfig Dosyaları<a class="headerlink" href="#kconfig-dosyalari" title="Link to this heading"></a></h2>
+<p>Kaynak kod ağacında <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasının dışında build sistemiyle ilgili <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> isimli dosyalar
+da bulunmaktadır. Bu dosyaların içerisinde ilgili dosyaların ya da dizinlerin konfigürasyon dosyasına
+yansıtılması için gerekli bilgiler bulundurulmaktadır. Örneğin biz eklediğimiz <code class="docutils literal notranslate"><span class="pre">mydriver</span></code> dizinindeki
+dosyaların çekirdek kodlarına dahil edilip edilmeyeceğini çekirdeği derleyenin konfigürasyon aşamasında
+belirlemesini sağlayabiliriz. Bunun için bu <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasına bir giriş eklememiz gerekir. Böylece
+bu giriş de <em>“make menuconfig”</em> yapıldığında bir seçenek olarak karşımıza gelecektir. Tabii ekleyeceğimiz
+dosya ve dizinleri <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasında belirtmek zorunda değiliz.</p>
+<p><em>“make menuconfig”</em> menüsünde seçenekler için birkaç seçme biçimi bulunmaktadır:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 15.0%" />
+<col style="width: 85.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Gösterim</p></th>
+<th class="head"><p>Anlamı</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">]</span></code></p></td>
+<td><p>Seçilebilir ya da seçilmeyebilir. Seçildiğinde <code class="docutils literal notranslate"><span class="pre">[*]</span></code> biçiminde gösterilir.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;</span> <span class="pre">&gt;</span></code></p></td>
+<td><p>Üç konumlu seçenek: boş (seçilmedi), <code class="docutils literal notranslate"><span class="pre">&lt;M&gt;</span></code> (modül) ya da <code class="docutils literal notranslate"><span class="pre">&lt;*&gt;</span></code> (çekirdek içine gömülü).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-*-</span></code></p></td>
+<td><p>Seçilememezlik yapılamaz; ilgili özellik mutlaka çekirdek kodlarında bulunmalıdır.</p></td>
+</tr>
+<tr class="row-odd"><td><p>değer</p></td>
+<td><p>İlgili özellik için doğrudan bir değer girilmektedir.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Tabii <em>“make menuconfig”</em> menüsünde yapılan her şey aslında <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasına yansıtılmaktadır.</p>
+</section>
+<section id="konfigurasyon-seceneklerinin-kaynak-kodlara-yansitilmasi">
+<h2><span class="section-number">2.17. </span>Konfigürasyon Seçeneklerinin Kaynak Kodlara Yansıtılması<a class="headerlink" href="#konfigurasyon-seceneklerinin-kaynak-kodlara-yansitilmasi" title="Link to this heading"></a></h2>
+<p>Peki çekirdeğin konfigüre edilmesi aşamasında <em>“make menuconfig”</em> işleminde belirlediğimiz seçenekler
+kaynak kodlara nasıl yansıtılmaktadır? Örneğin biz <em>“make menuconfig”</em> işleminde bir modülün çekirdek
+kodlarına dahil edilmesini ilgili girişi <code class="docutils literal notranslate"><span class="pre">*</span></code> ile seçerek sağlayabilmekteyiz. Benzer biçimde biz
+konfigürasyon aşamasında bazı çekirdek parametrelerini de değiştirebilmekteyiz. Örneğin <em>timer tick</em>
+frekansı <em>“make menuconfig”</em> menüsünde bir sayı biçiminde belirlenebilmektedir. Peki buradaki belirlemeler
+çekirdek kodlarına ve build sistemine nasıl yansıtılmaktadır?</p>
+<p>Anımsanacağı gibi <em>“make menuconfig”</em> ve diğer config menülerinde yapılan seçimler <code class="docutils literal notranslate"><span class="pre">.config</span></code> isimli
+bir metin dosyaya kaydedilmektedir. Bu <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyası <em>özellik=değer</em> biçiminde satırlardan
+oluşmaktadır. Aşağıda dosyanın birkaç satırını görüyorsunuz:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CONFIG_CC_HAS_ASM_INLINE=y
+CONFIG_CC_HAS_NO_PROFILE_FN_ATTR=y
+CONFIG_PAHOLE_VERSION=125
+CONFIG_IRQ_WORK=y
+CONFIG_BUILDTIME_TABLE_SORT=y
+CONFIG_THREAD_INFO_IN_TASK=y
+</pre></div>
+</div>
+<p>Çekirdek derlenirken ilk aşamada bu <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasının içeriği
+<code class="docutils literal notranslate"><span class="pre">include/generated/autoconf.h</span></code> dosyasının içerisine <code class="docutils literal notranslate"><span class="pre">#define</span></code> önişlemci komutları biçiminde
+aktarılmaktadır. Eğer ilgili konfigürasyon dosyasındaki değer <code class="docutils literal notranslate"><span class="pre">y</span></code> ya da <code class="docutils literal notranslate"><span class="pre">m</span></code> ise bu <code class="docutils literal notranslate"><span class="pre">autoconf.h</span></code>
+dosyası içerisinde buna ilişkin sembolik sabit 1 olarak görünür. (Başka bir deyişle <em>“make menuconfig”</em>
+menüsünde <code class="docutils literal notranslate"><span class="pre">[*]</span></code> ya da <code class="docutils literal notranslate"><span class="pre">&lt;*&gt;</span></code> ya da <code class="docutils literal notranslate"><span class="pre">&lt;M&gt;</span></code> seçenekleri için sembolik sabit 1 olur.) Eğer konfigürasyon
+dosyasında ilgili seçenek gerçekten bir değer belirtiyorsa <code class="docutils literal notranslate"><span class="pre">autoconf.h</span></code> dosyası içerisinde bu sembolik
+sabit o değerde olur. Eğer konfigürasyon dosyasında ilgili seçenek <code class="docutils literal notranslate"><span class="pre">n</span></code> biçiminde seçilmişse (yani
+<em>“make menuconfig”</em> menüsünde ilgili seçenek <code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">]</span></code> ya da <code class="docutils literal notranslate"><span class="pre">&lt;</span> <span class="pre">&gt;</span></code> biçiminde seçilmişse) bu durumda
+ilgili sembolik sabit hiç <code class="docutils literal notranslate"><span class="pre">#define</span></code> edilmemiş hale gelir.</p>
+<p>Özetle aslında <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyası içerisindeki satırlardan C dilinde anlamlı olan <code class="docutils literal notranslate"><span class="pre">#define</span></code> önişlemci
+komutları oluşturulmaktadır. Aşağıda üretilmiş olan <code class="docutils literal notranslate"><span class="pre">autoconf.h</span></code> dosyasının birkaç satırını görüyorsunuz:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define CONFIG_IGB_HWMON 1</span>
+<span class="cp">#define CONFIG_ACPI_HOTPLUG_CPU 1</span>
+<span class="cp">#define CONFIG_DEV_DAX_KMEM_MODULE 1</span>
+<span class="cp">#define CONFIG_RIONET_RX_SIZE 128</span>
+<span class="cp">#define CONFIG_USB_SERIAL_KEYSPAN_PDA_MODULE 1</span>
+<span class="cp">#define CONFIG_BOOTTIME_TRACING 1</span>
+</pre></div>
+</div>
+<p>Çekirdeğe ilişkin bir C kodu içerisinde “ilgili seçenek seçilmişse” bir kod parçasını derlemeye dahil
+etmek için <code class="docutils literal notranslate"><span class="pre">#ifdef</span></code> önişlemci komutundan faydalanabilirsiniz. Örneğin:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#ifdef CONFIG_XXX</span>
+<span class="p">...</span>
+<span class="cp">#endif</span>
+</pre></div>
+</div>
+<p>Tabii üretilen bu <code class="docutils literal notranslate"><span class="pre">autoconf.h</span></code> dosyası çekirdek kaynak kodlarındaki çeşitli başlık dosyalarında
+doğrudan ya da dolaylı bir biçimde eklenmiş durumdadır. Linux kaynak kodları da bu sembolik sabitleri
+kullanacak biçimde yazılmıştır. Linux’un kaynak kodlarında <code class="docutils literal notranslate"><span class="pre">autoconf.h</span></code> dosyasını bulamazsınız.
+Çünkü bu dosya make işlemi sırasında oluşturulmaktadır.</p>
+</section>
+<section id="konfigurasyon-seceneklerinin-makefile-dosyalarina-yansitilmasi">
+<h2><span class="section-number">2.18. </span>Konfigürasyon Seçeneklerinin Makefile Dosyalarına Yansıtılması<a class="headerlink" href="#konfigurasyon-seceneklerinin-makefile-dosyalarina-yansitilmasi" title="Link to this heading"></a></h2>
+<p>Biz yukarıdaki paragrafta <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasındaki konfigürasyon parametrelerinin nasıl C’ye sembolik
+sabitler biçiminde yansıtıldığını gördük. Peki bu konfigürasyon seçenekleri <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyalarına
+nasıl yansıtılmaktadır? Aşağıda çekirdeğin bir <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> içeriğini görüyorsunuz:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-$(CONFIG_I8254)</span><span class="w">             </span><span class="o">+=</span><span class="w"> </span>i8254.o
+<span class="nv">obj-$(CONFIG_104_QUAD_8)</span><span class="w">        </span><span class="o">+=</span><span class="w"> </span><span class="m">104</span>-quad-8.o
+<span class="nv">obj-$(CONFIG_INTERRUPT_CNT)</span><span class="w">     </span><span class="o">+=</span><span class="w"> </span>interrupt-cnt.o
+<span class="nv">obj-$(CONFIG_RZ_MTU3_CNT)</span><span class="w">       </span><span class="o">+=</span><span class="w"> </span>rz-mtu3-cnt.o
+<span class="nv">obj-$(CONFIG_STM32_TIMER_CNT)</span><span class="w">   </span><span class="o">+=</span><span class="w"> </span>stm32-timer-cnt.o
+</pre></div>
+</div>
+<p>Bu satırlar aslında “ilgili konfigürasyon seçenekleri seçilmişse ilgili dosyaların derlemeye dahil
+edileceğini” belirtmektedir.</p>
+<p>İşte <em>KBuild</em> sistemi aynı zamanda bu <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasından hareketle make programı için anlamlı
+olan değişkenler de oluşturmaktadır. Bu değişkenleri yukarıda açıkladığımız sembolik sabitlerle
+karıştırmayınız. Bu değişkenler make dili için anlamlı olan make dilinin değişkenleridir. Örneğin eğer
+<code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasında bir seçenek <code class="docutils literal notranslate"><span class="pre">y</span></code> olarak belirtilmişse (başka bir deyişle <em>“make menuconfig”</em>
+menüsünde seçenek <code class="docutils literal notranslate"><span class="pre">[*]</span></code> ya <code class="docutils literal notranslate"><span class="pre">&lt;*&gt;</span></code> biçiminde seçilmişse) bu konfigürasyon seçeneği için make dilinde
+<code class="docutils literal notranslate"><span class="pre">y</span></code> değeri, eğer <code class="docutils literal notranslate"><span class="pre">m</span></code> olarak belirtilmişse de (başka bir deyişle <em>“make menuconfig”</em> menüsünde
+seçenek <code class="docutils literal notranslate"><span class="pre">&lt;M&gt;</span></code> biçiminde seçilmişse) <code class="docutils literal notranslate"><span class="pre">m</span></code> değeri oluşturulmaktadır.</p>
+<p>Böylece aslında yukarıdaki make satırları ilgili seçenek <code class="docutils literal notranslate"><span class="pre">y</span></code> olarak seçilmişse <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> biçimine,
+<code class="docutils literal notranslate"><span class="pre">m</span></code> olarak seçilmişse <code class="docutils literal notranslate"><span class="pre">obj-m</span></code> biçimine dönüştürülmektedir. Örneğin:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-$(CONFIG_I8254)</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>i8254.o
+</pre></div>
+</div>
+<p>Burada <code class="docutils literal notranslate"><span class="pre">CONFIG_I8254</span></code> seçeneği <code class="docutils literal notranslate"><span class="pre">y</span></code> ise ilgili dosya <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> değişkenine dahil olacaktır. Yani
+çekirdeğin içerisinde bulunacaktır. Ancak bu <code class="docutils literal notranslate"><span class="pre">CONFIG_I8254</span></code> seçeneği <code class="docutils literal notranslate"><span class="pre">m</span></code> ise ilgili dosya <code class="docutils literal notranslate"><span class="pre">obj-m</span></code>
+değişkenine dahil olacaktır. Eğer bu seçenek <code class="docutils literal notranslate"><span class="pre">n</span></code> ise (yani hiç seçilmemişse) çekirdek build sistemi
+ya bu <code class="docutils literal notranslate"><span class="pre">CONFIG_I8254</span></code> değişkenini hiç tanımlamamakta ya da bunu <code class="docutils literal notranslate"><span class="pre">n</span></code> olarak tanımlamaktadır. Her iki
+durumda da artık bu dosya herhangi bir biçimde derlemeye dahil edilmeyecektir.</p>
+<p>Çekirdeğe birtakım kodlar ekleyenler eğer eklemeleri <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyası yoluyla konfigürasyona
+yansıtmışlarsa bu durumda kendi <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasına bu eklemeleri yukarıdaki gibi girebilirler.
+Örneğin biz <code class="docutils literal notranslate"><span class="pre">mymodule</span></code> ile temsil ettiğimiz bir modül dosyası oluşturup bu modül dosyasının çekirdek
+kodlarına eklenip eklenmeyeceğini konfigürasyonda <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyası yoluyla belirtebiliriz. Bu durumda
+<code class="docutils literal notranslate"><span class="pre">Makefile</span></code> içerisindeki girişi aşağıdaki gibi de oluşturabiliriz:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-$(CONFIG_MYMODULE)</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>mymodule.o
+</pre></div>
+</div>
+<p>Görüldüğü gibi burada aslında konfigüre eden nasıl seçmişse biz onun seçimini yansıtmış olmaktayız.
+<code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasında bir özellik <code class="docutils literal notranslate"><span class="pre">n</span></code> ise bu durumda ilgili <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> satırı şu hale gelecektir:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-n</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>mymodule.o
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">obj-n</span></code> biçiminde bir birikim yapılmadığı için zaten bu satır derleme aşamasında dikkate alınmayacaktır.
+Ancak bazen sistem programcıları <code class="docutils literal notranslate"><span class="pre">y</span></code> durumu için aşağıdaki gibi bir kontrol ile modülü koşullu bir
+biçimde de derleme sürecine ekleyebilmektedir:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="cp">ifeq ($(CONFIG_MYSYSCALL), y)</span>
+<span class="w">    </span>obj-y<span class="w"> </span>+<span class="o">=</span><span class="w"> </span>mysyscall.o
+<span class="cp">endif</span>
+</pre></div>
+</div>
+<p>Burada eğer konfigürasyon yapılırken ilgili seçenek <code class="docutils literal notranslate"><span class="pre">y</span></code> biçiminde (yani <code class="docutils literal notranslate"><span class="pre">[*]</span></code> ya da <code class="docutils literal notranslate"><span class="pre">&lt;*&gt;</span></code>
+biçiminde) geçilmişse bu durumda biz de ilgili dosyayı derlemeye dahil etmiş olduk.</p>
+<p class="rubric">── 9. Ders · 16 Ağustos 2025, Cumartesi ──</p>
+</section>
+<hr class="docutils" />
+<section id="yeni-dizin-icin-makefile-ve-kconfig-dosyalari">
+<h2><span class="section-number">2.19. </span>Yeni Dizin için Makefile ve Kconfig Dosyaları<a class="headerlink" href="#yeni-dizin-icin-makefile-ve-kconfig-dosyalari" title="Link to this heading"></a></h2>
+<p>Bir C dosyasını ya da dizini çekirdek kodlarına ekledikten sonra onun konfigürasyon sırasında (örneğin
+<em>“make menuconfig”</em> işlemi sırasında) görünebilirliğini sağlamak için <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyalarının
+kullanıldığını belirtmiştik. Yani <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyaları yaptığımız değişikliklerin konfigüre
+edilebilirliğini sağlamak için kullanılmaktadır. <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyalarının genel formatı için aşağıdaki
+bağlantıya başvurabilirsiniz:</p>
+<blockquote>
+<div><p><a class="reference external" href="https://docs.kernel.org/kbuild/kconfig-language.html">https://docs.kernel.org/kbuild/kconfig-language.html</a></p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyaları tıpkı <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyalarında olduğu gibi özyinelemeli biçimde işletilmektedir.
+Yani biz çekirdek kaynak kod ağacında bir dizin yaratmayıp zaten var olan bir dizinin içerisine bir <code class="docutils literal notranslate"><span class="pre">.c</span></code>
+dosyası yerleştiriyorsak <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> ve <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyaları oluşturmamıza gerek yoktur. Gerekli
+işlemleri zaten dizin içerisinde var olan bir <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> ve <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyaları üzerinde yapabiliriz.
+Ancak eğer biz bir dizin oluşturup onun içerisine dosyalar yerleştireceksek o dizin için bir tane
+<code class="docutils literal notranslate"><span class="pre">Makefile</span></code> ve bir tane de <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyası oluşturmamız gerekir.</p>
+<p>Bir dizin yaratıp onun içerisine dosyalar yerleştirirken o dizin için <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> ve <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code>
+dosyalarının yazılması gerektiğini belirtmiştik. (Tabii aslında <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasının bulundurulması
+zorunlu değildir. Ancak eklenen özelliğin konfigüre edilebilirliğinin sağlanması için gerekmektedir.)
+Bu dosyalar oluşturulduktan sonra dış dizindeki <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> ve <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyalarında aşağıda
+belirtilen işlemler de yapılmalıdır:</p>
+<ol class="arabic">
+<li><p>Dış dizindeki <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasında alt dizinin dikkate alınacağı aşağıdaki gibi bir satırla
+belirtilmelidir:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-y</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>&lt;dizin_ismi&gt;/
+</pre></div>
+</div>
+</li>
+<li><p>Dış dizinin <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasında iç dizindeki <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasının dikkate alınması aşağıdaki
+gibi bir satırın eklenmesiyle sağlanmaktadır (buradaki yol ifadesi çekirdek kodlarının kök dizinine
+göreli olmalıdır):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>source &quot;drivers/mydriver/Kconfig&quot;
+</pre></div>
+</div>
+</li>
+</ol>
+<p>Biz <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasına yukarıdaki gibi bir giriş yerleştirdiğimizde artık <em>“make menuconfig”</em> gibi
+konfigürasyon menülerinde eklediğimiz <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> elemanı bir menü seçeneği biçiminde karşımıza
+çıkacaktır.</p>
+<p>Örneğin biz bir aygıt sürücümüzün dosyalarını çekirdeğin kaynak kod ağacında <code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizininin
+altına <code class="docutils literal notranslate"><span class="pre">mydriver</span></code> dizinini açarak eklemek isteyelim. Bu durumda şunları yapmamız gerekir:</p>
+<ol class="arabic">
+<li><p><code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizini içerisinde <code class="docutils literal notranslate"><span class="pre">mydriver</span></code> dizinini yaratıp içerisine <code class="docutils literal notranslate"><span class="pre">mydriver.c</span></code> dosyasını
+(belki de <code class="docutils literal notranslate"><span class="pre">mydriver.h</span></code> gibi bir başlık dosyasını da) yerleştirmeliyiz.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drivers/mydriver</span></code> dizininde aşağıdaki gibi bir <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasını oluşturmalıyız. Buradaki
+<code class="docutils literal notranslate"><span class="pre">config</span> <span class="pre">MYDRIVER</span></code> satırı aslında make dilinde <code class="docutils literal notranslate"><span class="pre">CONFIG_MYDRIVER</span></code> değişkeninin oluşturulmasına yol
+açmaktadır:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>config MYDRIVER
+    tristate &quot;My Driver&quot;
+    default y
+    help
+      Enable this option to include support for My Device Driver.
+      It can either be built as a module or statically linked into the kernel.
+</pre></div>
+</div>
+<p>Eğer ilgili konfigürasyon seçeneği yes/no biçimindeyse (yani <code class="docutils literal notranslate"><span class="pre">[*]</span></code> biçimindeyse) yukarıdaki config
+direktifinde <em>tristate</em> yerine <em>bool</em> kullanılmalıdır. Örneğin:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>config MYDRIVER
+    bool &quot;My Driver&quot;
+    default y
+    help
+      Enable this option to include support for My Device Driver.
+</pre></div>
+</div>
+</li>
+<li><p>Üst dizindeki (<code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizinindeki) <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasına aşağıdaki satırı yerleştirmeliyiz:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>source &quot;drivers/mydriver/Kconfig&quot;
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drivers/mydriver</span></code> dizinindeki <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyası içerisine aşağıdaki gibi bir satır eklemeliyiz:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-$(CONFIG_MYDRIVER)</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>mydriver.o
+</pre></div>
+</div>
+</li>
+<li><p>Üst dizindeki (yani <code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizinindeki) <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> içerisine aşağıdaki gibi bir satır
+eklemeliyiz:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-$(CONFIG_MYDRIVER)</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>mydriver/
+</pre></div>
+</div>
+</li>
+</ol>
+<p>Tabii eğer siz bir dizin yaratmayıp zaten çekirdek kaynak kod ağacındaki bir dizine bir dosya
+yerleştiriyorsanız bu durumda ayrı bir <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasını oluşturmanıza gerek yoktur. Bu durumda
+doğrudan yukarıdaki config içeriğini dizinde zaten var olan <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasına yerleştirebilirsiniz.</p>
+</section>
+<section id="ornek-cekirdege-yeni-modul-ekleme">
+<h2><span class="section-number">2.20. </span>Örnek: Çekirdeğe Yeni Modül Ekleme<a class="headerlink" href="#ornek-cekirdege-yeni-modul-ekleme" title="Link to this heading"></a></h2>
+<p>Şimdi çekirdeğe bazı kodlar ekleyip onu yeniden derleyerek bir deneme yapalım. Örneğin çekirdeğe yeni
+bir çekirdek modülü ekleyelim ve çekirdeğin o modül gömülü olarak başlatılmasını sağlayalım. Aynı
+zamanda bu çekirdek modülünün <em>“make menuconfig”</em> ile seçilebilmesini de sağlayalım. Çekirdek
+modüllerinin nasıl yazılacağını bilmediğinizi varsayıyoruz. Ancak biz yine de örneğimizde “hiçbir şey
+yapmayan iskelet bir çekirdek modülü” oluşturacağız. Bu işlem şu adımlardan geçilerek yapılabilir
+(kaynak kod ağacının kök dizininde bulunduğumuzu varsayıyoruz):</p>
+<p><strong>Adım 1:</strong> <code class="docutils literal notranslate"><span class="pre">drivers/mydriver</span></code> dizini yaratılır.</p>
+<p><strong>Adım 2:</strong> İskelet bir çekirdek modülü <code class="docutils literal notranslate"><span class="pre">mydriver.c</span></code> biçiminde <code class="docutils literal notranslate"><span class="pre">drivers/mydriver</span></code> dizininde
+aşağıdaki gibi oluşturulur:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* mydriver.c */</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;linux/module.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;linux/kernel.h&gt;</span>
+
+<span class="n">MODULE_LICENSE</span><span class="p">(</span><span class="s">&quot;GPL&quot;</span><span class="p">);</span>
+<span class="n">MODULE_AUTHOR</span><span class="p">(</span><span class="s">&quot;Kaan Aslan&quot;</span><span class="p">);</span>
+<span class="n">MODULE_DESCRIPTION</span><span class="p">(</span><span class="s">&quot;General Device Driver&quot;</span><span class="p">);</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">__init</span><span class="w"> </span><span class="nf">mydriver_init</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">printk</span><span class="p">(</span><span class="n">KERN_INFO</span><span class="w"> </span><span class="s">&quot;Hello World...</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">__exit</span><span class="w"> </span><span class="nf">mydriver_exit</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">printk</span><span class="p">(</span><span class="n">KERN_INFO</span><span class="w"> </span><span class="s">&quot;Goodbye World...</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">module_init</span><span class="p">(</span><span class="n">mydriver_init</span><span class="p">);</span>
+<span class="n">module_exit</span><span class="p">(</span><span class="n">mydriver_exit</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Adım 3:</strong> <code class="docutils literal notranslate"><span class="pre">drivers/mydriver</span></code> dizininde <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyası aşağıdaki gibi oluşturulmalıdır.
+Burada konfigürasyon makrosunun ismi <code class="docutils literal notranslate"><span class="pre">CONFIG_MYDRIVER</span></code> biçiminde olacaktır:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>config MYDRIVER
+    tristate &quot;My Character Device Driver&quot;
+    default y
+    help
+      Enable this option to include support for My Device Driver.
+      It can either be built as a module or statically linked into the kernel.
+</pre></div>
+</div>
+<p><strong>Adım 4:</strong> Üst dizinin (yani <code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizininin) <code class="docutils literal notranslate"><span class="pre">Kconfig</span></code> dosyasına aşağıdaki ekleme
+yapılmalıdır:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>source &quot;drivers/mydriver/Kconfig&quot;
+</pre></div>
+</div>
+<p><strong>Adım 5:</strong> <code class="docutils literal notranslate"><span class="pre">drivers/mydriver</span></code> dizininde aşağıdaki içeriğe sahip bir <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyası
+oluşturulmalıdır:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-$(CONFIG_MYDRIVER)</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>my_driver.o
+</pre></div>
+</div>
+<p><strong>Adım 6:</strong> Üst dizindeki (<code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizinindeki) <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> dosyasına aşağıdaki satır
+eklenmelidir:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">obj-$(CONFIG_MYDRIVER)</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>mydriver/
+</pre></div>
+</div>
+<p>Artık çekirdeği derleyebiliriz. <em>“make menuconfig”</em> menüsünde kendi aygıt sürücümüze ilişkin seçenek
+de çıkacaktır.</p>
+<p>Çekirdek imzalamasını devre dışı bırakmak için konfigürasyon dosyasındaki satırlarda aşağıdaki
+değişiklikleri yapmayı unutmayınız:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CONFIG_SYSTEM_TRUSTED_KEYS=&quot;&quot;
+CONFIG_SYSTEM_REVOCATION_KEYS=&quot;&quot;
+CONFIG_SYSTEM_TRUSTED_KEYRING=n
+CONFIG_SECONDARY_TRUSTED_KEYRING=n
+
+CONFIG_MODULE_SIG=n
+CONFIG_MODULE_SIG_ALL=n
+CONFIG_MODULE_SIG_KEY=&quot;&quot;
+</pre></div>
+</div>
+<p>Yeni çekirdeğimize <code class="docutils literal notranslate"><span class="pre">-custom</span></code> ismini de ekleyebiliriz. Daha önceden de belirttiğimiz gibi eğer
+çekirdeğin eski versiyonundan konfigürasyon dosyası alınacaksa <em>“make oldconfig”</em> uygulanıp o
+versiyondan sonra eklenmiş olan özelliklerin gözden geçirilmesi sağlanmalıdır. Ancak <em>“make menuconfig”</em>
+işlemi zaten <em>“make oldconfig”</em> işlemini de içermektedir.</p>
+<p><strong>Adım 7:</strong> Artık çekirdek derlemesi aşağıdaki gibi yapılabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>make<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
+</pre></div>
+</div>
+<p><strong>Adım 8:</strong> Derleme işlemi bittikten sonra önce çekirdek modüllerini <em>“make modules_install”</em> ile
+sonra da çekirdeğin kendisini <em>“make install”</em> ile kurabilirsiniz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>make<span class="w"> </span>modules_install
+$<span class="w"> </span>sudo<span class="w"> </span>make<span class="w"> </span>install
+</pre></div>
+</div>
+<p>Anımsanacağı gibi <em>“make install”</em> komutu artık sistemin yeni çekirdekle açılmasını sağlayacaktır.
+<em>“make install”</em> aynı zamanda geçici kök dosya sistemini <em>update-initramfs</em> komutu ile oluşturup
+<code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine yerleştirmektedir. Tabii <em>update-initramfs</em> programını siz de gerektiğinde
+kullanabilirsiniz. Programın tipik kullanımı şöyledir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>update-initramfs<span class="w"> </span>-c<span class="w"> </span>-k<span class="w"> </span>&lt;çekirdek_sürümü&gt;
+</pre></div>
+</div>
+<p>Buradaki <em>çekirdek_sürümü</em> yalnızca çekirdeğin numarasını değil ona verdiğiniz ekleri de içermelidir.
+(Örneğin <code class="docutils literal notranslate"><span class="pre">6.9.2-custom</span></code> gibi.) Bu komut geçici kök dosya sistemini o anda çalışmakta olan sistemin
+konfigürasyonunu da dikkate alarak oluşturur ve <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizinine kopyalar. Yukarıda da belirttiğimiz
+gibi <em>“make install”</em> zaten bu programı çalıştırarak geçici kök dosya sistemini <code class="docutils literal notranslate"><span class="pre">/boot</span></code> dizininde
+oluşturmaktadır.</p>
+<p>Peki çekirdeğin kaynak kodlarına yaptığımız eklemenin gerçekten yapılmış olduğunu nasıl anlayabiliriz?
+Bizim yazdığımız iskelet aygıt sürücü kodlarında çekirdek aygıt sürücümüz yüklendiğinde
+<code class="docutils literal notranslate"><span class="pre">mydriver_init</span></code> fonksiyonu çağrılacaktır. Bu fonksiyonun içinde de <em>printk</em> isimli çekirdek fonksiyonu
+ile biz bir log mesajı yazdırdık. Bu log mesajları <em>kernel ring buffer</em> denilen bir kuyruk sistemine
+yazılmaktadır. <em>dmesg</em> komutuyla bu kuyruk sistemi görüntülenebilir. Eğer <em>dmesg</em> yaptığımızda biz bu
+mesajları görürsek aygıt sürücümüzün yüklenmiş olduğu sonucunu çıkartabiliriz. Örneğin:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>dmesg<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Hello&quot;</span>
+Hello<span class="w"> </span>World...
+</pre></div>
+</div>
+<p>Çekirdeğin içerisine gömülmüş olan modüller <code class="docutils literal notranslate"><span class="pre">/proc/modules</span></code> dosyasında görünmezler, dolayısıyla da
+<em>lsmod</em> komutu ile de bunları göremeyiz. Bunlar için <code class="docutils literal notranslate"><span class="pre">/sys/module</span></code> dizininde de bir giriş
+oluşturulmamaktadır. <em>modinfo</em> komutu ise çekirdeğe ilişkin bazı dosyalara da baktığı için bize bu
+konuda bilgi verebilmektedir.</p>
+</section>
+<section id="yeniden-derleme-sonrasi-guncellemeler">
+<h2><span class="section-number">2.21. </span>Yeniden Derleme Sonrası Güncellemeler<a class="headerlink" href="#yeniden-derleme-sonrasi-guncellemeler" title="Link to this heading"></a></h2>
+<p>Peki çekirdek kodlarında küçük değişiklikler yaptıktan sonra yeniden <em>“make modules_install”</em> ve
+<em>“make install”</em> işlemlerine gerek var mı? Aslında küçük değişiklikler için bu işlemler yapılmazsa
+genellikle bir sorun ortaya çıkmaz. Yeni oluşturulan çekirdek imajı doğrudan eskisinin üzerine
+kopyalanabilir. Ancak değişikliğin yerine ve kapsamına göre çekirdeğin sembol tabloları değişebileceği
+için genel olarak her derlemeden sonra <em>“make install”</em> yapabilirsiniz.</p>
+<p><code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizininde <code class="docutils literal notranslate"><span class="pre">obj-m</span></code> biçiminde değişiklikler yapılmışsa <em>“make modules_install”</em> yapılmalıdır.
+Yukarıdaki örnekte biz <code class="docutils literal notranslate"><span class="pre">drivers</span></code> dizininin içerisine <code class="docutils literal notranslate"><span class="pre">obj-y</span></code> ile eklemeler yaptık; bu durumda aslında
+<em>“make modules_install”</em> yapmaya gerek yoktur. Ancak aygıt sürücüler <code class="docutils literal notranslate"><span class="pre">obj-m</span></code> biçiminde ekleniyorsa
+<em>“make modules_install”</em> komutu uygulanmalıdır. Çekirdeğin modüllerle ilgili olmayan kısımlarında yapılan
+değişiklikler için <em>“make modules_install”</em> yapılmasına gerek olmadığını bir kez daha belirtmek istiyoruz.
+<em>“make modules_install”</em> işleminden önce eski <code class="docutils literal notranslate"><span class="pre">/lib/modules/&lt;çekirdek_sürümü&gt;</span></code> dizinini <em>“rm -r”</em> komutu
+ile silmek daha güvenli bir yaklaşımdır.</p>
+</section>
+<section id="cekirdek-ve-modul-imzalama">
+<h2><span class="section-number">2.22. </span>Çekirdek ve Modül İmzalama<a class="headerlink" href="#cekirdek-ve-modul-imzalama" title="Link to this heading"></a></h2>
+<p>Biz yukarıdaki çekirdek derlemesi sürecinde imzalama (signing) işlemlerini devre dışı bırakmıştık.
+Çekirdek kodları ve özellikle de aygıt sürücüler belli imzalara sahip olacak biçimde derlenebilmektedir.
+Böylece onlar üzerinde birtakım istenmeyen değişikliklerin yapılmış olduğu değiştirilmiş çekirdeklerin
+ya da aygıt sürücülerin yüklenmesi engellenmiş olur. Yukarıda da gördüğünüz gibi çekirdek kodları ve
+aygıt sürücülerde bu imzalama işlemi devre dışı da bırakılabilmektedir. Ancak imzalama süreci sistem
+güvenliğini artırmaktadır. Bu tür imzalama işlemleri yalnızca Linux sistemlerinde değil diğer UNIX
+türevi sistemlerde, Windows ve macOS sistemlerinde de bulunmaktadır.</p>
+<p>Çekirdeğin imza kontrolü temel olarak UEFI BIOS (eğer <em>secure boot</em> seçeneği aktif ise) ve önyükleyiciler
+(örneğin GRUB gibi, U-Boot gibi önyükleyiciler) tarafından yapılmaktadır. Ancak Linux çekirdeği de aygıt
+sürücüler ve modüller yüklenirken imza kontrolü uygulayabilmektedir. Biz burada önce modül imzalama
+işleminin ve sonra da çekirdek imzalama işleminin nasıl yapılacağı üzerinde duracağız.</p>
+<p>İmzalama işlemi tipik olarak şu adımlardan geçilerek yapılmaktadır:</p>
+<p><strong>Adım 1:</strong> İmzalama işlemi için öncelikle <em>openssl</em> kütüphanesinin yüklenmiş olması gerekir. Yükleme
+işlemi aşağıdaki gibi yapılabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>openssl
+</pre></div>
+</div>
+<p>Daha sonra <em>openssl</em> programı ile aşağıdaki gibi bir anahtar çifti ve sertifika dosyası üretilir.
+Buradaki <code class="docutils literal notranslate"><span class="pre">.key</span></code> dosyası özel anahtarı (private key), <code class="docutils literal notranslate"><span class="pre">.crt</span></code> dosyası ise sertifika dosyasını
+belirtmektedir. Bu dosyaların uzantıları <code class="docutils literal notranslate"><span class="pre">.key</span></code>, <code class="docutils literal notranslate"><span class="pre">.crt</span></code>, <code class="docutils literal notranslate"><span class="pre">.pem</span></code> olsa da içeriği PEM (Privacy
+Enhanced Mail) formatındadır. Dolayısıyla aslında burada verdiğiniz dosyaların uzantısı herhangi bir
+biçimde olabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>openssl<span class="w"> </span>req<span class="w"> </span>-new<span class="w"> </span>-x509<span class="w"> </span>-newkey<span class="w"> </span>rsa:2048<span class="w"> </span>-sha256<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-keyout<span class="w"> </span>signing_key.key<span class="w"> </span>-out<span class="w"> </span>certs/signing_key.crt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-nodes<span class="w"> </span>-days<span class="w"> </span><span class="m">36500</span><span class="w"> </span>-subj<span class="w"> </span><span class="s2">&quot;/CN=Local Kernel Module Key/&quot;</span>
+</pre></div>
+</div>
+<p>Bu iki dosyanın kaynak kod ağacına aşağıdaki gibi kopyalanması gerekir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>cp<span class="w"> </span>signing_key.key<span class="w"> </span>certs/
+$<span class="w"> </span>cp<span class="w"> </span>signing_key.crt<span class="w"> </span>certs/
+</pre></div>
+</div>
+<p>Daha sonra konfigürasyon dosyasında imzalama için aşağıdaki değişiklikler yapılmalıdır:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CONFIG_MODULE_SIG=y
+CONFIG_MODULE_SIG_ALL=y
+CONFIG_MODULE_SIG_SHA256=y
+CONFIG_SYSTEM_TRUSTED_KEYRING=y
+CONFIG_MODULE_SIG_KEY=&quot;certs/signing_key.pem&quot;
+CONFIG_SYSTEM_TRUSTED_KEYS=&quot;certs/signing_key.crt&quot;
+</pre></div>
+</div>
+<p>Aslında <code class="docutils literal notranslate"><span class="pre">.key</span></code> ve <code class="docutils literal notranslate"><span class="pre">.crt</span></code> dosyaları tek bir dosyada da birleştirilebilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>cat<span class="w"> </span>certs/signing_key.key<span class="w"> </span>certs/signing_key.crt<span class="w"> </span>&gt;<span class="w"> </span>certs/signing_key.pem
+</pre></div>
+</div>
+<p>Tabii artık <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasındaki isimleri de şöyle değiştirmeliyiz:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CONFIG_MODULE_SIG=y
+CONFIG_MODULE_SIG_ALL=y
+CONFIG_MODULE_SIG_SHA256=y
+CONFIG_SYSTEM_TRUSTED_KEYRING=y
+CONFIG_MODULE_SIG_KEY=&quot;certs/signing_key.pem&quot;
+CONFIG_SYSTEM_TRUSTED_KEYS=&quot;certs/signing_key.pem&quot;
+</pre></div>
+</div>
+<p>Biz bu işlemlerle aygıt sürücüleri imzalamış olduk. Ancak eğer <code class="docutils literal notranslate"><span class="pre">.config</span></code> dosyasında
+<code class="docutils literal notranslate"><span class="pre">CONFIG_MODULE_SIG_FORCE=n</span></code> ise (default durumda genellikle böyledir) bu durum çekirdek log amaçlı
+bir uyarı oluştursa da imzalanmamış modülleri yine de yükler. Eğer imzalanmamış modülleri yüklemek
+istemiyorsanız <code class="docutils literal notranslate"><span class="pre">CONFIG_MODULE_SIG_FORCE=y</span></code> yapmalısınız. (Bu işlem <em>“make menuconfig”</em> menüsünde
+<em>Enable loadable module support / Module signature verification / Require modules to be validly signed</em>
+seçeneğinden de yapılabilmektedir.) Bu durumda çekirdek kendi oluşturduğumuz imzayla imzalanmamış olan
+modülleri artık yüklemeyecektir.</p>
+<p>Eğer biz başkalarının yazdığı bir aygıt sürücüyü yüklerken çekirdeğin uyarı vermesini ya da yüklemeyi
+reddetmesini istemiyorsak o aygıt sürücüyü de kendi ürettiğimiz anahtarla (ya da dağıtımın public
+anahtarıyla) imzalamalıyız. Bu işlem çekirdek kodlarındaki <code class="docutils literal notranslate"><span class="pre">scripts</span></code> dizini içerisinde bulunan
+<em>sign-file</em> betiği ile yapılmaktadır. Bu betiğin tipik kullanımı şöyledir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>scripts/sign-file<span class="w"> </span>&lt;hash_alg&gt;<span class="w"> </span>&lt;private_key.pem&gt;<span class="w"> </span>&lt;public_cert.pem&gt;<span class="w"> </span>&lt;module.ko&gt;
+</pre></div>
+</div>
+<p>Örneğin:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>scripts/sign-file<span class="w"> </span>sha256<span class="w"> </span>signing_key.pem<span class="w"> </span>signing_key.pem<span class="w"> </span>mydriver.ko
+</pre></div>
+</div>
+<p>Peki Ubuntu, Mint gibi dağıtımlar çekirdek imzalaması uygulamakta mıdır? Evet, genel olarak dağıtımlar
+kendi özel anahtarlarıyla (private keys) çekirdeği ve aygıt sürücüleri imzalamaktadır. Ancak aygıt
+sürücülerin yüklenmesinde imza kontrolünü zorunlu hale getirmemektedir. İmzalama için kullanılacak
+public anahtarlar <code class="docutils literal notranslate"><span class="pre">/proc/keys</span></code> dosyasında belirtilmektedir.</p>
+</section>
+<section id="cekirdek-imjasinin-imzalanmasi">
+<h2><span class="section-number">2.23. </span>Çekirdek İmjasının İmzalanması<a class="headerlink" href="#cekirdek-imjasinin-imzalanmasi" title="Link to this heading"></a></h2>
+<p>Biz yukarıdaki işlemleri yaptığımızda yalnızca aygıt sürücüleri imzalamış oluruz. Çekirdeğin kendisinin
+imzalanması ayrıca yapılmalıdır. Yukarıda da belirttiğimiz gibi UEFI BIOS’lar ve GRUB gibi önyükleyiciler
+çekirdek imajını yüklemeden önce ayarlar uygun biçime getirildiyse çekirdek imzasına bakmaktadır. Eğer
+çekirdek imzası yanlışsa (çekirdek dışarıdan kasti ya da yanlışlıkla bozulmuş olabilir) çekirdeği hiç
+yüklememektedir.</p>
+<p>Çekirdeğin imzalanması için önce anahtar ve sertifikasyon dosyaları aşağıdaki gibi oluşturulur:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>openssl<span class="w"> </span>req<span class="w"> </span>-new<span class="w"> </span>-x509<span class="w"> </span>-newkey<span class="w"> </span>rsa:2048<span class="w"> </span>-sha256<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-keyout<span class="w"> </span>certs/sb-signing.key<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-out<span class="w"> </span>certs/sb-signing.crt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-nodes<span class="w"> </span>-days<span class="w"> </span><span class="m">36500</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-subj<span class="w"> </span><span class="s2">&quot;/CN=Secure Boot Signing Key/&quot;</span>
+</pre></div>
+</div>
+<p>Sonra da <em>sbsign</em> programı ile imzalama aşağıdaki gibi yapılır:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sbsign<span class="w"> </span>--key<span class="w"> </span>db.key<span class="w"> </span>--cert<span class="w"> </span>signing_key.pem<span class="w"> </span>--output<span class="w"> </span>bzImage.signed<span class="w"> </span>arch/x86/boot/bzImage
+</pre></div>
+</div>
+<p>Eğer bu işlemden sonra <em>“make install”</em> yapacaksanız imzalanmış çekirdeği eski ismiyle bulundurmalısınız
+(<em>mv</em> komutu hedef dosya varsa onu ezerek işlemini yapmaktadır):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>mv<span class="w"> </span>arch/x86/boot/bzImage.signed<span class="w"> </span>arch/x86/boot/bzImage
+</pre></div>
+</div>
+<p>Genellikle bu biçimde bir çekirdek imzalaması seyrek olarak yapılmaktadır. Önceki paragrafta biz aygıt
+sürücü dosyalarının imzalandığını belirtmiştik. Aynı makinede aygıt sürücüyü derlerken (build ederken)
+oluşturulan imza bilgisi de kullanılmaktadır. Yani biz aynı makinede bir aygıt sürücü derlediğimizde
+aygıt sürücümüz de zaten imzalanmış olacaktır.</p>
+</section>
+<section id="kok-dosya-sisteminin-olusturulmasi">
+<h2><span class="section-number">2.24. </span>Kök Dosya Sisteminin Oluşturulması<a class="headerlink" href="#kok-dosya-sisteminin-olusturulmasi" title="Link to this heading"></a></h2>
+<p>Bir Linux sisteminin düzgün bir biçimde açılması için belli dizinlerin kök dosya sisteminde bulunuyor
+olması gerekir. Biz bir dağıtımı kurduğumuzda zaten bu kök dosya sistemi de oluşturulmaktadır. Peki
+sıfırdan dağıtımı tamamen kurmadan kök dosya sistemini nasıl oluşturulabiliriz? Bu işlem tamamen manuel
+biçimde yapılabilir. Yani uygulamacı kök dizin içerisindeki gerekli dizinleri elle yaratır. Sonra
+gerekli programları kaynak kodlarından hareketle hedef makine için derler ve onları konuşlandırır. Sonra
+yine gerekli birtakım konfigürasyon dosyalarını elle oluşturur. Ancak bu manuel yöntem oldukça zahmetlidir.</p>
+<p>Bunun yerine bu işlemi pratik bir biçimde yapan araçlar geliştirilmiştir. Örneğin gömülü sistemlerde
+<em>BusyBox</em> denilen araç bu amaçla sıkça kullanılmaktadır. Kullanımı da oldukça kolaydır. Gömülü sistemler
+için <em>Buildroot</em> ve <em>Yocto</em> gibi projeler daha genel amaçlar için gerçekleştirilmiştir ancak bunlarla kök
+dosya sistemi de oluşturulabilmektedir. Bazı dağıtımların bu işi yapan özel yardımcı programları da vardır.
+Örneğin <em>debootstrap</em> programı Debian tabanlı kök dosya sistemini İnternet’ten indirerek yerel makinede
+oluşturabilmektedir. Ancak bu araçların bazıları esnek değildir. Özellikle gömülü sistemlerde düşük bir
+sistem kaynağının olduğu dikkate alındığında bu araçların bazıları minimalist bir kurulum
+sağlayamamaktadır.</p>
+<section id="debootstrap-ile-kok-dosya-sistemi-olusturma">
+<h3><span class="section-number">2.24.1. </span><code class="docutils literal notranslate"><span class="pre">debootstrap</span></code> ile Kök Dosya Sistemi Oluşturma<a class="headerlink" href="#debootstrap-ile-kok-dosya-sistemi-olusturma" title="Link to this heading"></a></h3>
+<p><em>debootstrap</em> programı default olarak sisteminizde yüklü değildir. Bunu aşağıdaki gibi kurabilirsiniz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>debootstrap
+</pre></div>
+</div>
+<p><em>debootstrap</em> programının pek çok komut satırı argümanı vardır. Biz burada en önemli birkaç argüman
+üzerinde duracağız:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--arch</span></code>: Hedef CPU mimarisini belirtmektedir. Bu argüman girilmezse o andaki platform temel alınır.
+64 bit Intel platformu için <code class="docutils literal notranslate"><span class="pre">amd64</span></code>, BBB gibi 32 bit ARM platformu için <code class="docutils literal notranslate"><span class="pre">armhf</span></code>, 64 bit ARM platformu
+için <code class="docutils literal notranslate"><span class="pre">arm64</span></code> girilmelidir.</p></li>
+<li><p>İlk seçeneksiz argüman Debian sisteminin varyantını belirtmektedir (örneğin <code class="docutils literal notranslate"><span class="pre">bullseye</span></code>, <code class="docutils literal notranslate"><span class="pre">buster</span></code>).</p></li>
+<li><p>İkinci komut satırı argümanı hedef kök dosya sisteminin oluşturulacağı dizini belirtmektedir.</p></li>
+<li><p>Üçüncü komut satırı argümanı ise paketlerin indirileceği depoyu (repository) belirtmektedir.</p></li>
+</ul>
+<p>Örneğin:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>debootstrap<span class="w"> </span>--arch<span class="o">=</span>amd64<span class="w"> </span>--include<span class="o">=</span>systemd<span class="w"> </span>bullseye<span class="w"> </span>myrootfs<span class="w"> </span>http://deb.debian.org/debian/
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--arch</span></code> seçeneği girilmemişse programın çalıştırıldığı makine için kök dosya sistemi indirilip
+kurulmaktadır. Default durumda <em>debootstrap</em> pek çok paketi kök dosya sistemine dahil ettiği için
+paketlerin indirilmesi ve kök dosya sisteminin oluşturulması biraz zaman alacaktır.</p>
+<p>Uygulamacı isterse <code class="docutils literal notranslate"><span class="pre">--include</span></code> ve <code class="docutils literal notranslate"><span class="pre">--exclude</span></code> komut satırı seçenekleriyle birtakım paketleri dahil
+edebilir ya da dışlayabilir. Örneğin biz <em>systemd</em> dışında <em>sudo</em> ve <em>gcc</em> paketlerini de aşağıdaki gibi
+kuruluma dahil edebiliriz:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>debootstrap<span class="w"> </span>--arch<span class="o">=</span>amd64<span class="w"> </span>--include<span class="o">=</span>systemd,sudo,gcc<span class="w"> </span>bullseye<span class="w"> </span>myrootfs<span class="w"> </span>http://deb.debian.org/debian/
+</pre></div>
+</div>
+<p><em>debootstrap</em> programı ile eğer host makineyle aynı platform için indirme işlemi yapılıyorsa <em>debootstrap</em>
+önce İnternet’ten gerekli paketleri indirip yerel makinede bir dizin içerisinde kök dosya sistemini
+oluşturur. Eğer host makineden farklı bir sistem için indirme yapılıyorsa (örneğin host sistem Intel
+tabanlı bir makineyse ve ARM tabanlı bir Debian kök dosya sistemi oluşturulmak isteniyorsa) <em>debootstrap</em>
+yüklemesini yapmadan önce aşağıdaki gibi <em>qemu</em> emülatör paketinin statik versiyonu ve <em>binfmt</em> destek
+paketi kurulmalıdır:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>qemu-user-static<span class="w"> </span>binfmt-support
+</pre></div>
+</div>
+<p>Bu işlemden sonra <em>debootstrap</em> programı yukarıda belirttiğimiz biçimde çalıştırılabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>debootstrap<span class="w"> </span>--include<span class="o">=</span>systemd<span class="w"> </span>--arch<span class="w"> </span>armhf<span class="w"> </span>buster<span class="w"> </span>myrootfs<span class="w"> </span>http://deb.debian.org/debian/
+</pre></div>
+</div>
+<p>Bu komut hem birinci aşama hem de ikinci aşama işlemleri yapıp bitirecektir. Artık istenildiği zaman
+<em>chroot</em> işlemi de yapılabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>chroot<span class="w"> </span>myrootfs
+</pre></div>
+</div>
+</section>
+<section id="gecici-kok-dosya-sisteminin-olusturulmasi">
+<h3><span class="section-number">2.24.2. </span>Geçici Kök Dosya Sisteminin Oluşturulması<a class="headerlink" href="#gecici-kok-dosya-sisteminin-olusturulmasi" title="Link to this heading"></a></h3>
+<p><em>debootstrap</em> programı ile biz Debian kök dosya sistemi için geçici kök dosya sistemi de oluşturabiliriz.
+Bunun en pratik yolu kök dosya sistemini kurduktan sonra <em>chroot</em> yapıp <em>update-initramfs</em> programı ile
+geçici kök dosya sistemini oluşturmaktır. Ancak bunun için <code class="docutils literal notranslate"><span class="pre">/boot</span></code> ve <code class="docutils literal notranslate"><span class="pre">/lib/modules</span></code> dizinlerinin
+uygun biçimde oluşturulmuş olması gerekir. <em>update-initramfs</em> programı bu dizinlerdeki içerikten
+faydalanmaktadır. <em>update-initramfs</em> programı <em>initramfs-tools</em> isimli pakettedir. <em>chroot</em> yaptıktan
+sonra öncelikle bu paketi aşağıdaki gibi kurmalısınız:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>initramfs-tools
+</pre></div>
+</div>
+<p>Bundan sonra geçici kök dosya sistemini aşağıdaki gibi oluşturabilirsiniz (Debian kök dosya sisteminin
+kökünde olduğumuzu varsayıyoruz):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>update-initramfs<span class="w"> </span>-c<span class="w"> </span>-k<span class="w"> </span><span class="m">6</span>.9.2-custom<span class="w"> </span>-b<span class="w"> </span>.
+</pre></div>
+</div>
+<p>Burada <code class="docutils literal notranslate"><span class="pre">6.9.2-custom</span></code> çekirdeğin sürüm ismidir. Geçici kök dosya sistemi <code class="docutils literal notranslate"><span class="pre">initrd.img-6.9.2-custom</span></code>
+ismiyle bulunulan dizinde oluşturulacaktır. <code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">.</span></code> seçeneği oluşturulacak dosyanın dizinini
+belirtmektedir.</p>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Bu tür konuların ayrıntılarına bu kursta girmeyeceğiz. Bu konular daha çok <em>Gömülü Linux Sistemleri -
+Geliştirme ve Uygulama</em> kursunun konularını oluşturmaktadır.</p>
+</div>
+</section>
+</section>
+<section id="cekirdek-baslik-dosyalarinin-kurulumu">
+<h2><span class="section-number">2.25. </span>Çekirdek Başlık Dosyalarının Kurulumu<a class="headerlink" href="#cekirdek-baslik-dosyalarinin-kurulumu" title="Link to this heading"></a></h2>
+<p>Aygıt sürücü geliştirirken çekirdeğin kaynak kodlarına gereksinim duyulmaz. Ancak çekirdeğin başlık
+dosyalarının geliştirmenin yapıldığı bilgisayarda yüklü olması gerekir. Çekirdek kodlarının kendisini
+değil de yalnızca başlık dosyalarını indirmek için aşağıdaki komut kullanılabilir:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>linux-headers-<span class="k">$(</span>uname<span class="w"> </span>-r<span class="k">)</span>
+</pre></div>
+</div>
+<p>Buradaki <code class="docutils literal notranslate"><span class="pre">$(uname</span> <span class="pre">-r)</span></code> çalışılmakta olan makinedeki çekirdek sürümünü belirtmektedir. Tabii biz
+istediğimiz çekirdek sürümünün başlık dosyalarını da indirebiliriz. İndirilen dosyalar <code class="docutils literal notranslate"><span class="pre">/usr/src</span></code>
+dizininin altına <code class="docutils literal notranslate"><span class="pre">$(uname</span> <span class="pre">-r)</span></code> isimli dizin içerisine yerleştirilmektedir.</p>
 </section>
 </section>
 

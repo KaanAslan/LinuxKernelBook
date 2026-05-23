@@ -64,8 +64,6 @@ açabileceği dosya sayısını *proc* dosya sistemi yoluyla şöyle değiştire
    $ echo 2048 | sudo tee /proc/sys/fs/file-max
 
 
-.. rubric:: ── 5. Ders · 02 Ağustos 2025, Cumartesi ──
-
 Çekirdek Komut Satırı Parametreleri
 =====================================
 
@@ -439,8 +437,6 @@ yapabiliriz:
 
 Bu işlemden sonra ``linux-6.9.2`` isminde bir dizin oluşturulacaktır.
 
-
-.. rubric:: ── 6. Ders · 03 Ağustos 2025, Pazar ──
 
 Adım 3: Çekirdeğin Konfigüre Edilmesi
 ---------------------------------------
@@ -940,8 +936,6 @@ bir soruna yol açmaz. Ancak modüllerin belli sırada yüklenmemesi bazı durum
 neden olabilmektedir. Bu dosyanın silinmesi durumunda yine *"depmod -a"* komutuyla oluşturulabilmektedir.
 
 
-.. rubric:: ── 7. Ders · 09 Ağustos 2025, Cumartesi ──
-
 Manuel Kurulum
 ===============
 
@@ -1140,3 +1134,808 @@ işlemlerin tersini yapmak gerekir. Kaldırma işlemi manuel biçimde şöyle ya
    *grub-customizer* programı ile de görsel silme yapılabilir. Ancak bu program ``/boot`` dizini
    içerisindeki dosyaları ve modül dosyalarını silmez; yalnızca ilgili girişleri GRUB menüsünden
    çıkartmaktadır.
+
+Çekirdek Kodları Üzerinde Değişiklik Yapma Yöntemleri
+======================================================
+
+Çekirdeği yeniden derlemenin gerekçelerinden bahsetmiştik. Bunlardan biri de çekirdek kodları üzerinde
+değişikliklerin yapılmış olmasıydı. Peki çekirdek kodları üzerinde değişiklikler nasıl yapılabilir?
+Çekirdek kodları üzerinde değişiklikler tipik olarak dört yolla yapılmaktadır:
+
+1. Çekirdek kodlarındaki zaten var olan bir dosya içerisinde bulunan fonksiyon kodlarında değişiklik
+   yapılması.
+2. Çekirdek kodlarındaki zaten var olan bir dosya içerisine yeni bir fonksiyon eklenmesi.
+3. Çekirdek kodlarındaki bir dizin içerisine yeni bir C kaynak dosyası eklenmesi.
+4. Çekirdek kodlarındaki bir dizin içerisine yeni bir dizin ve bu dizinin içerisine de çok sayıda C
+   kaynak dosyalarının eklenmesi.
+
+Eğer biz birinci ve ikinci maddedeki gibi çekirdek kodlarına yeni bir dosya eklemiyorsak çekirdeğin
+derlenmesini sağlayan make dosyalarında bir değişiklik yapmamıza gerek yoktur. Ancak çekirdeğe yeni bir
+kaynak dosya ya da dizin ekleyeceksek bu eklemeyi yaptığımız dizindeki make dosyasında izleyen paragraflarda
+açıklayacağımız biçimde bazı güncellemelerin yapılması gerekir. Böylece çekirdek yeniden derlendiğinde bu
+dosyalar da çekirdek imajının içerisine eklenmiş olacaktır. Eğer kaynak kod ağacında bir dizinin altına yeni
+bir dizin eklemek istiyorsak bu durumda o dizini yine üst dizine ilişkin make dosyasında belirtmemiz ve o
+dizinde ayrı bir ``Makefile`` dosyası oluşturmamız gerekir.
+
+
+KBuild Sistemi ve GNU Make
+===========================
+
+GNU Make aracı oldukça ayrıntılı özelliklere sahip bir build aracıdır. Bu aracın ayrıntılarını öğrenmek
+ayrı bir çabayı gerektirmektedir. Make dili aslında oldukça aşağı seviyeli bir build dilidir. Bu nedenle
+özellikle son yirmi yıldır programcılar doğrudan GNU Make aracını kullanmak yerine daha üst düzey make
+araçlarını kullanmayı tercih etmektedir. Bunlardan en yaygın olanlardan biri *CMake* denilen araçtır.
+Microsoft ise *MSBuild* isimli kendi tasarladığı build aracını kullanmaktadır.
+
+Make dilinde değişkenler oluşturulabilmektedir. Örneğin:
+
+.. code-block:: makefile
+
+   obj-y = a.o
+
+Burada ``obj-y`` isimli değişken ``a.o`` bilgisini tutmaktadır. Değişkenleri bir çeşit makro gibi
+düşünebilirsiniz. Bir değişkene ekleme yapmak için Make dilinde ``+=`` operatörü kullanılmaktadır. Örneğin:
+
+.. code-block:: makefile
+
+   obj-y = a.o
+   obj-y += b.o
+   obj-y += c.o
+
+Burada artık ``obj-y`` değişkeni ``a.o b.o c.o`` biçiminde olacaktır.
+
+Linux çekirdeğinde özyinelemeli bir make yöntemi kullanılmaktadır. Her dizinde bir ``Makefile`` dosyası
+vardır. Bunun içerisindeki ``obj-y`` gibi, ``obj-m`` gibi bazı değişkenler ``+=`` operatörüyle eklenerek
+biriktirilmektedir. Bunlar da derleme ve bağlama işlemine sokulmaktadır. Yukarıda da belirttiğimiz gibi
+Linux'taki bu build sistemine *KBuild* ya da *KConfig* sistemi denilmektedir.
+
+Bizim Linux'ta ``Makefile`` dosyaları üzerinde gerekli güncellemeleri yapmak için çok fazla bilgiye sahip
+olmamız gerekmez. Bazı yönergeleri uygun bir biçimde yerine getirirsek hedefimize ulaşabiliriz.
+
+
+Makefile Dosyalarının Güncellenmesi
+=====================================
+
+Linux kaynak kod ağacında dizinlerin altında ``Makefile`` isimli make dosyaları bulunur. Eğer bir dizinin
+altına yeni bir dosya eklenecekse o dizinin içerisinde bulunan ``Makefile`` dosyasının içerisine aşağıdaki
+gibi bir satırın eklenmesi gerekir:
+
+.. code-block:: makefile
+
+   obj-y += dosya_ismi.o
+
+Buradaki ``+=`` operatörü ``obj-y`` isimli hedefe ekleme yapma anlamına gelmektedir. ``obj`` sözcüğünün
+yanındaki ``-y`` harfi ilgili dosyanın çekirdeğin bir parçası biçiminde çekirdek imajının içerisine
+gömüleceğini belirtmektedir. Make dosyalarının bazı satırlarında ``obj-y`` yerine ``obj-m`` de görebilirsiniz.
+Bu da ilgili dosyanın ayrı bir modül biçiminde derleneceği anlamına gelmektedir. Eklemeler genellikle
+çekirdek imajının içine yapıldığı için biz de genellikle ``obj-y`` kullanırız. Eğer bir dosyanın (aygıt
+sürücüler için bu durum söz konusudur) çekirdek imajının içine gömülmesi yerine ayrı bir çekirdek modülü
+olarak derlenmesi isteniyorsa bu durumda dosyanın yerleştirildiği dizinin ``Makefile`` dosyasına aşağıdaki
+gibi bir eklemenin yapılması gerekir:
+
+.. code-block:: makefile
+
+   obj-m += dosya_ismi.o
+
+Eğer çekirdek kaynak kodlarına tümden bir dizinin eklenmesi isteniyorsa bu durumda önce o dizinin
+oluşturulduğu dizindeki ``Makefile`` dosyasına aşağıdaki gibi bir satır eklenmelidir (dizin isminden
+sonra ``/`` karakterini unutmayınız):
+
+.. code-block:: makefile
+
+   obj-y += dizin_ismi/
+
+Tabii bu ekleme bir modül biçiminde de olabilirdi:
+
+.. code-block:: makefile
+
+   obj-m += dizin_ismi/
+
+Fakat bu ekleme tek başına yetmemektedir. Bu ekleme yapıldıktan sonra ayrıca yaratılan dizinde ``Makefile``
+isimli bir dosyanın oluşturulması ve o dosyanın içerisinde o dizindeki kaynak dosyaların da belirtilmesi
+gerekmektedir. Örneğin biz ``drivers`` dizininin altında ``mydriver`` isimli bir dizin oluşturup onun da
+içerisine ``a.c``, ``b.c`` ve ``c.c`` dosyalarını eklemiş olalım. Bu durumda önce ``drivers`` dizini
+içerisindeki ``Makefile`` dosyasına aşağıdaki gibi bir satır ekleriz:
+
+.. code-block:: makefile
+
+   obj-y += mydriver/
+
+Sonra da ``mydriver`` dizini içerisinde ``Makefile`` isimli bir dosya oluşturup bu dosyanın içerisinde
+de dizin içerisindeki dosyaları belirtiriz. Örneğin:
+
+.. code-block:: makefile
+
+   obj-y += a.o
+   obj-y += b.o
+   obj-y += c.o
+
+
+Kconfig Dosyaları
+==================
+
+Kaynak kod ağacında ``Makefile`` dosyasının dışında build sistemiyle ilgili ``Kconfig`` isimli dosyalar
+da bulunmaktadır. Bu dosyaların içerisinde ilgili dosyaların ya da dizinlerin konfigürasyon dosyasına
+yansıtılması için gerekli bilgiler bulundurulmaktadır. Örneğin biz eklediğimiz ``mydriver`` dizinindeki
+dosyaların çekirdek kodlarına dahil edilip edilmeyeceğini çekirdeği derleyenin konfigürasyon aşamasında
+belirlemesini sağlayabiliriz. Bunun için bu ``Kconfig`` dosyasına bir giriş eklememiz gerekir. Böylece
+bu giriş de *"make menuconfig"* yapıldığında bir seçenek olarak karşımıza gelecektir. Tabii ekleyeceğimiz
+dosya ve dizinleri ``Kconfig`` dosyasında belirtmek zorunda değiliz.
+
+*"make menuconfig"* menüsünde seçenekler için birkaç seçme biçimi bulunmaktadır:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 85
+
+   * - Gösterim
+     - Anlamı
+   * - ``[ ]``
+     - Seçilebilir ya da seçilmeyebilir. Seçildiğinde ``[*]`` biçiminde gösterilir.
+   * - ``< >``
+     - Üç konumlu seçenek: boş (seçilmedi), ``<M>`` (modül) ya da ``<*>`` (çekirdek içine gömülü).
+   * - ``-*-``
+     - Seçilememezlik yapılamaz; ilgili özellik mutlaka çekirdek kodlarında bulunmalıdır.
+   * - değer
+     - İlgili özellik için doğrudan bir değer girilmektedir.
+
+Tabii *"make menuconfig"* menüsünde yapılan her şey aslında ``.config`` dosyasına yansıtılmaktadır.
+
+
+Konfigürasyon Seçeneklerinin Kaynak Kodlara Yansıtılması
+==========================================================
+
+Peki çekirdeğin konfigüre edilmesi aşamasında *"make menuconfig"* işleminde belirlediğimiz seçenekler
+kaynak kodlara nasıl yansıtılmaktadır? Örneğin biz *"make menuconfig"* işleminde bir modülün çekirdek
+kodlarına dahil edilmesini ilgili girişi ``*`` ile seçerek sağlayabilmekteyiz. Benzer biçimde biz
+konfigürasyon aşamasında bazı çekirdek parametrelerini de değiştirebilmekteyiz. Örneğin *timer tick*
+frekansı *"make menuconfig"* menüsünde bir sayı biçiminde belirlenebilmektedir. Peki buradaki belirlemeler
+çekirdek kodlarına ve build sistemine nasıl yansıtılmaktadır?
+
+Anımsanacağı gibi *"make menuconfig"* ve diğer config menülerinde yapılan seçimler ``.config`` isimli
+bir metin dosyaya kaydedilmektedir. Bu ``.config`` dosyası *özellik=değer* biçiminde satırlardan
+oluşmaktadır. Aşağıda dosyanın birkaç satırını görüyorsunuz:
+
+.. code-block:: text
+
+   CONFIG_CC_HAS_ASM_INLINE=y
+   CONFIG_CC_HAS_NO_PROFILE_FN_ATTR=y
+   CONFIG_PAHOLE_VERSION=125
+   CONFIG_IRQ_WORK=y
+   CONFIG_BUILDTIME_TABLE_SORT=y
+   CONFIG_THREAD_INFO_IN_TASK=y
+
+Çekirdek derlenirken ilk aşamada bu ``.config`` dosyasının içeriği
+``include/generated/autoconf.h`` dosyasının içerisine ``#define`` önişlemci komutları biçiminde
+aktarılmaktadır. Eğer ilgili konfigürasyon dosyasındaki değer ``y`` ya da ``m`` ise bu ``autoconf.h``
+dosyası içerisinde buna ilişkin sembolik sabit 1 olarak görünür. (Başka bir deyişle *"make menuconfig"*
+menüsünde ``[*]`` ya da ``<*>`` ya da ``<M>`` seçenekleri için sembolik sabit 1 olur.) Eğer konfigürasyon
+dosyasında ilgili seçenek gerçekten bir değer belirtiyorsa ``autoconf.h`` dosyası içerisinde bu sembolik
+sabit o değerde olur. Eğer konfigürasyon dosyasında ilgili seçenek ``n`` biçiminde seçilmişse (yani
+*"make menuconfig"* menüsünde ilgili seçenek ``[ ]`` ya da ``< >`` biçiminde seçilmişse) bu durumda
+ilgili sembolik sabit hiç ``#define`` edilmemiş hale gelir.
+
+Özetle aslında ``.config`` dosyası içerisindeki satırlardan C dilinde anlamlı olan ``#define`` önişlemci
+komutları oluşturulmaktadır. Aşağıda üretilmiş olan ``autoconf.h`` dosyasının birkaç satırını görüyorsunuz:
+
+.. code-block:: c
+
+   #define CONFIG_IGB_HWMON 1
+   #define CONFIG_ACPI_HOTPLUG_CPU 1
+   #define CONFIG_DEV_DAX_KMEM_MODULE 1
+   #define CONFIG_RIONET_RX_SIZE 128
+   #define CONFIG_USB_SERIAL_KEYSPAN_PDA_MODULE 1
+   #define CONFIG_BOOTTIME_TRACING 1
+
+Çekirdeğe ilişkin bir C kodu içerisinde "ilgili seçenek seçilmişse" bir kod parçasını derlemeye dahil
+etmek için ``#ifdef`` önişlemci komutundan faydalanabilirsiniz. Örneğin:
+
+.. code-block:: c
+
+   #ifdef CONFIG_XXX
+   ...
+   #endif
+
+Tabii üretilen bu ``autoconf.h`` dosyası çekirdek kaynak kodlarındaki çeşitli başlık dosyalarında
+doğrudan ya da dolaylı bir biçimde eklenmiş durumdadır. Linux kaynak kodları da bu sembolik sabitleri
+kullanacak biçimde yazılmıştır. Linux'un kaynak kodlarında ``autoconf.h`` dosyasını bulamazsınız.
+Çünkü bu dosya make işlemi sırasında oluşturulmaktadır.
+
+
+Konfigürasyon Seçeneklerinin Makefile Dosyalarına Yansıtılması
+================================================================
+
+Biz yukarıdaki paragrafta ``.config`` dosyasındaki konfigürasyon parametrelerinin nasıl C'ye sembolik
+sabitler biçiminde yansıtıldığını gördük. Peki bu konfigürasyon seçenekleri ``Makefile`` dosyalarına
+nasıl yansıtılmaktadır? Aşağıda çekirdeğin bir ``Makefile`` içeriğini görüyorsunuz:
+
+.. code-block:: makefile
+
+   obj-$(CONFIG_I8254)             += i8254.o
+   obj-$(CONFIG_104_QUAD_8)        += 104-quad-8.o
+   obj-$(CONFIG_INTERRUPT_CNT)     += interrupt-cnt.o
+   obj-$(CONFIG_RZ_MTU3_CNT)       += rz-mtu3-cnt.o
+   obj-$(CONFIG_STM32_TIMER_CNT)   += stm32-timer-cnt.o
+
+Bu satırlar aslında "ilgili konfigürasyon seçenekleri seçilmişse ilgili dosyaların derlemeye dahil
+edileceğini" belirtmektedir.
+
+İşte *KBuild* sistemi aynı zamanda bu ``.config`` dosyasından hareketle make programı için anlamlı
+olan değişkenler de oluşturmaktadır. Bu değişkenleri yukarıda açıkladığımız sembolik sabitlerle
+karıştırmayınız. Bu değişkenler make dili için anlamlı olan make dilinin değişkenleridir. Örneğin eğer
+``.config`` dosyasında bir seçenek ``y`` olarak belirtilmişse (başka bir deyişle *"make menuconfig"*
+menüsünde seçenek ``[*]`` ya ``<*>`` biçiminde seçilmişse) bu konfigürasyon seçeneği için make dilinde
+``y`` değeri, eğer ``m`` olarak belirtilmişse de (başka bir deyişle *"make menuconfig"* menüsünde
+seçenek ``<M>`` biçiminde seçilmişse) ``m`` değeri oluşturulmaktadır.
+
+Böylece aslında yukarıdaki make satırları ilgili seçenek ``y`` olarak seçilmişse ``obj-y`` biçimine,
+``m`` olarak seçilmişse ``obj-m`` biçimine dönüştürülmektedir. Örneğin:
+
+.. code-block:: makefile
+
+   obj-$(CONFIG_I8254) += i8254.o
+
+Burada ``CONFIG_I8254`` seçeneği ``y`` ise ilgili dosya ``obj-y`` değişkenine dahil olacaktır. Yani
+çekirdeğin içerisinde bulunacaktır. Ancak bu ``CONFIG_I8254`` seçeneği ``m`` ise ilgili dosya ``obj-m``
+değişkenine dahil olacaktır. Eğer bu seçenek ``n`` ise (yani hiç seçilmemişse) çekirdek build sistemi
+ya bu ``CONFIG_I8254`` değişkenini hiç tanımlamamakta ya da bunu ``n`` olarak tanımlamaktadır. Her iki
+durumda da artık bu dosya herhangi bir biçimde derlemeye dahil edilmeyecektir.
+
+Çekirdeğe birtakım kodlar ekleyenler eğer eklemeleri ``Kconfig`` dosyası yoluyla konfigürasyona
+yansıtmışlarsa bu durumda kendi ``Makefile`` dosyasına bu eklemeleri yukarıdaki gibi girebilirler.
+Örneğin biz ``mymodule`` ile temsil ettiğimiz bir modül dosyası oluşturup bu modül dosyasının çekirdek
+kodlarına eklenip eklenmeyeceğini konfigürasyonda ``Kconfig`` dosyası yoluyla belirtebiliriz. Bu durumda
+``Makefile`` içerisindeki girişi aşağıdaki gibi de oluşturabiliriz:
+
+.. code-block:: makefile
+
+   obj-$(CONFIG_MYMODULE) += mymodule.o
+
+Görüldüğü gibi burada aslında konfigüre eden nasıl seçmişse biz onun seçimini yansıtmış olmaktayız.
+``.config`` dosyasında bir özellik ``n`` ise bu durumda ilgili ``Makefile`` satırı şu hale gelecektir:
+
+.. code-block:: makefile
+
+   obj-n += mymodule.o
+
+``obj-n`` biçiminde bir birikim yapılmadığı için zaten bu satır derleme aşamasında dikkate alınmayacaktır.
+Ancak bazen sistem programcıları ``y`` durumu için aşağıdaki gibi bir kontrol ile modülü koşullu bir
+biçimde de derleme sürecine ekleyebilmektedir:
+
+.. code-block:: makefile
+
+   ifeq ($(CONFIG_MYSYSCALL), y)
+       obj-y += mysyscall.o
+   endif
+
+Burada eğer konfigürasyon yapılırken ilgili seçenek ``y`` biçiminde (yani ``[*]`` ya da ``<*>``
+biçiminde) geçilmişse bu durumda biz de ilgili dosyayı derlemeye dahil etmiş olduk.
+
+
+.. rubric:: ── 9. Ders · 16 Ağustos 2025, Cumartesi ──
+
+----
+
+Yeni Dizin için Makefile ve Kconfig Dosyaları
+===============================================
+
+Bir C dosyasını ya da dizini çekirdek kodlarına ekledikten sonra onun konfigürasyon sırasında (örneğin
+*"make menuconfig"* işlemi sırasında) görünebilirliğini sağlamak için ``Kconfig`` dosyalarının
+kullanıldığını belirtmiştik. Yani ``Kconfig`` dosyaları yaptığımız değişikliklerin konfigüre
+edilebilirliğini sağlamak için kullanılmaktadır. ``Kconfig`` dosyalarının genel formatı için aşağıdaki
+bağlantıya başvurabilirsiniz:
+
+   https://docs.kernel.org/kbuild/kconfig-language.html
+
+``Kconfig`` dosyaları tıpkı ``Makefile`` dosyalarında olduğu gibi özyinelemeli biçimde işletilmektedir.
+Yani biz çekirdek kaynak kod ağacında bir dizin yaratmayıp zaten var olan bir dizinin içerisine bir ``.c``
+dosyası yerleştiriyorsak ``Makefile`` ve ``Kconfig`` dosyaları oluşturmamıza gerek yoktur. Gerekli
+işlemleri zaten dizin içerisinde var olan bir ``Makefile`` ve ``Kconfig`` dosyaları üzerinde yapabiliriz.
+Ancak eğer biz bir dizin oluşturup onun içerisine dosyalar yerleştireceksek o dizin için bir tane
+``Makefile`` ve bir tane de ``Kconfig`` dosyası oluşturmamız gerekir.
+
+Bir dizin yaratıp onun içerisine dosyalar yerleştirirken o dizin için ``Makefile`` ve ``Kconfig``
+dosyalarının yazılması gerektiğini belirtmiştik. (Tabii aslında ``Kconfig`` dosyasının bulundurulması
+zorunlu değildir. Ancak eklenen özelliğin konfigüre edilebilirliğinin sağlanması için gerekmektedir.)
+Bu dosyalar oluşturulduktan sonra dış dizindeki ``Makefile`` ve ``Kconfig`` dosyalarında aşağıda
+belirtilen işlemler de yapılmalıdır:
+
+1. Dış dizindeki ``Makefile`` dosyasında alt dizinin dikkate alınacağı aşağıdaki gibi bir satırla
+   belirtilmelidir:
+
+   .. code-block:: makefile
+
+      obj-y += <dizin_ismi>/
+
+2. Dış dizinin ``Kconfig`` dosyasında iç dizindeki ``Kconfig`` dosyasının dikkate alınması aşağıdaki
+   gibi bir satırın eklenmesiyle sağlanmaktadır (buradaki yol ifadesi çekirdek kodlarının kök dizinine
+   göreli olmalıdır):
+
+   .. code-block:: text
+
+      source "drivers/mydriver/Kconfig"
+
+Biz ``Kconfig`` dosyasına yukarıdaki gibi bir giriş yerleştirdiğimizde artık *"make menuconfig"* gibi
+konfigürasyon menülerinde eklediğimiz ``Kconfig`` elemanı bir menü seçeneği biçiminde karşımıza
+çıkacaktır.
+
+Örneğin biz bir aygıt sürücümüzün dosyalarını çekirdeğin kaynak kod ağacında ``drivers`` dizininin
+altına ``mydriver`` dizinini açarak eklemek isteyelim. Bu durumda şunları yapmamız gerekir:
+
+1. ``drivers`` dizini içerisinde ``mydriver`` dizinini yaratıp içerisine ``mydriver.c`` dosyasını
+   (belki de ``mydriver.h`` gibi bir başlık dosyasını da) yerleştirmeliyiz.
+
+2. ``drivers/mydriver`` dizininde aşağıdaki gibi bir ``Kconfig`` dosyasını oluşturmalıyız. Buradaki
+   ``config MYDRIVER`` satırı aslında make dilinde ``CONFIG_MYDRIVER`` değişkeninin oluşturulmasına yol
+   açmaktadır:
+
+   .. code-block:: text
+
+      config MYDRIVER
+          tristate "My Driver"
+          default y
+          help
+            Enable this option to include support for My Device Driver.
+            It can either be built as a module or statically linked into the kernel.
+
+   Eğer ilgili konfigürasyon seçeneği yes/no biçimindeyse (yani ``[*]`` biçimindeyse) yukarıdaki config
+   direktifinde *tristate* yerine *bool* kullanılmalıdır. Örneğin:
+
+   .. code-block:: text
+
+      config MYDRIVER
+          bool "My Driver"
+          default y
+          help
+            Enable this option to include support for My Device Driver.
+
+3. Üst dizindeki (``drivers`` dizinindeki) ``Kconfig`` dosyasına aşağıdaki satırı yerleştirmeliyiz:
+
+   .. code-block:: text
+
+      source "drivers/mydriver/Kconfig"
+
+4. ``drivers/mydriver`` dizinindeki ``Makefile`` dosyası içerisine aşağıdaki gibi bir satır eklemeliyiz:
+
+   .. code-block:: makefile
+
+      obj-$(CONFIG_MYDRIVER) += mydriver.o
+
+5. Üst dizindeki (yani ``drivers`` dizinindeki) ``Makefile`` içerisine aşağıdaki gibi bir satır
+   eklemeliyiz:
+
+   .. code-block:: makefile
+
+      obj-$(CONFIG_MYDRIVER) += mydriver/
+
+Tabii eğer siz bir dizin yaratmayıp zaten çekirdek kaynak kod ağacındaki bir dizine bir dosya
+yerleştiriyorsanız bu durumda ayrı bir ``Kconfig`` dosyasını oluşturmanıza gerek yoktur. Bu durumda
+doğrudan yukarıdaki config içeriğini dizinde zaten var olan ``Kconfig`` dosyasına yerleştirebilirsiniz.
+
+
+Örnek: Çekirdeğe Yeni Modül Ekleme
+=====================================
+
+Şimdi çekirdeğe bazı kodlar ekleyip onu yeniden derleyerek bir deneme yapalım. Örneğin çekirdeğe yeni
+bir çekirdek modülü ekleyelim ve çekirdeğin o modül gömülü olarak başlatılmasını sağlayalım. Aynı
+zamanda bu çekirdek modülünün *"make menuconfig"* ile seçilebilmesini de sağlayalım. Çekirdek
+modüllerinin nasıl yazılacağını bilmediğinizi varsayıyoruz. Ancak biz yine de örneğimizde "hiçbir şey
+yapmayan iskelet bir çekirdek modülü" oluşturacağız. Bu işlem şu adımlardan geçilerek yapılabilir
+(kaynak kod ağacının kök dizininde bulunduğumuzu varsayıyoruz):
+
+**Adım 1:** ``drivers/mydriver`` dizini yaratılır.
+
+**Adım 2:** İskelet bir çekirdek modülü ``mydriver.c`` biçiminde ``drivers/mydriver`` dizininde
+aşağıdaki gibi oluşturulur:
+
+.. code-block:: c
+
+   /* mydriver.c */
+
+   #include <linux/module.h>
+   #include <linux/kernel.h>
+
+   MODULE_LICENSE("GPL");
+   MODULE_AUTHOR("Kaan Aslan");
+   MODULE_DESCRIPTION("General Device Driver");
+
+   static int __init mydriver_init(void)
+   {
+       printk(KERN_INFO "Hello World...\n");
+       return 0;
+   }
+
+   static void __exit mydriver_exit(void)
+   {
+       printk(KERN_INFO "Goodbye World...\n");
+   }
+
+   module_init(mydriver_init);
+   module_exit(mydriver_exit);
+
+**Adım 3:** ``drivers/mydriver`` dizininde ``Kconfig`` dosyası aşağıdaki gibi oluşturulmalıdır.
+Burada konfigürasyon makrosunun ismi ``CONFIG_MYDRIVER`` biçiminde olacaktır:
+
+.. code-block:: text
+
+   config MYDRIVER
+       tristate "My Character Device Driver"
+       default y
+       help
+         Enable this option to include support for My Device Driver.
+         It can either be built as a module or statically linked into the kernel.
+
+**Adım 4:** Üst dizinin (yani ``drivers`` dizininin) ``Kconfig`` dosyasına aşağıdaki ekleme
+yapılmalıdır:
+
+.. code-block:: text
+
+   source "drivers/mydriver/Kconfig"
+
+**Adım 5:** ``drivers/mydriver`` dizininde aşağıdaki içeriğe sahip bir ``Makefile`` dosyası
+oluşturulmalıdır:
+
+.. code-block:: makefile
+
+   obj-$(CONFIG_MYDRIVER) += my_driver.o
+
+**Adım 6:** Üst dizindeki (``drivers`` dizinindeki) ``Makefile`` dosyasına aşağıdaki satır
+eklenmelidir:
+
+.. code-block:: makefile
+
+   obj-$(CONFIG_MYDRIVER) += mydriver/
+
+Artık çekirdeği derleyebiliriz. *"make menuconfig"* menüsünde kendi aygıt sürücümüze ilişkin seçenek
+de çıkacaktır.
+
+Çekirdek imzalamasını devre dışı bırakmak için konfigürasyon dosyasındaki satırlarda aşağıdaki
+değişiklikleri yapmayı unutmayınız:
+
+.. code-block:: text
+
+   CONFIG_SYSTEM_TRUSTED_KEYS=""
+   CONFIG_SYSTEM_REVOCATION_KEYS=""
+   CONFIG_SYSTEM_TRUSTED_KEYRING=n
+   CONFIG_SECONDARY_TRUSTED_KEYRING=n
+
+   CONFIG_MODULE_SIG=n
+   CONFIG_MODULE_SIG_ALL=n
+   CONFIG_MODULE_SIG_KEY=""
+
+Yeni çekirdeğimize ``-custom`` ismini de ekleyebiliriz. Daha önceden de belirttiğimiz gibi eğer
+çekirdeğin eski versiyonundan konfigürasyon dosyası alınacaksa *"make oldconfig"* uygulanıp o
+versiyondan sonra eklenmiş olan özelliklerin gözden geçirilmesi sağlanmalıdır. Ancak *"make menuconfig"*
+işlemi zaten *"make oldconfig"* işlemini de içermektedir.
+
+**Adım 7:** Artık çekirdek derlemesi aşağıdaki gibi yapılabilir:
+
+.. code-block:: bash
+
+   $ make -j$(nproc)
+
+**Adım 8:** Derleme işlemi bittikten sonra önce çekirdek modüllerini *"make modules_install"* ile
+sonra da çekirdeğin kendisini *"make install"* ile kurabilirsiniz:
+
+.. code-block:: bash
+
+   $ sudo make modules_install
+   $ sudo make install
+
+Anımsanacağı gibi *"make install"* komutu artık sistemin yeni çekirdekle açılmasını sağlayacaktır.
+*"make install"* aynı zamanda geçici kök dosya sistemini *update-initramfs* komutu ile oluşturup
+``/boot`` dizinine yerleştirmektedir. Tabii *update-initramfs* programını siz de gerektiğinde
+kullanabilirsiniz. Programın tipik kullanımı şöyledir:
+
+.. code-block:: bash
+
+   $ sudo update-initramfs -c -k <çekirdek_sürümü>
+
+Buradaki *çekirdek_sürümü* yalnızca çekirdeğin numarasını değil ona verdiğiniz ekleri de içermelidir.
+(Örneğin ``6.9.2-custom`` gibi.) Bu komut geçici kök dosya sistemini o anda çalışmakta olan sistemin
+konfigürasyonunu da dikkate alarak oluşturur ve ``/boot`` dizinine kopyalar. Yukarıda da belirttiğimiz
+gibi *"make install"* zaten bu programı çalıştırarak geçici kök dosya sistemini ``/boot`` dizininde
+oluşturmaktadır.
+
+Peki çekirdeğin kaynak kodlarına yaptığımız eklemenin gerçekten yapılmış olduğunu nasıl anlayabiliriz?
+Bizim yazdığımız iskelet aygıt sürücü kodlarında çekirdek aygıt sürücümüz yüklendiğinde
+``mydriver_init`` fonksiyonu çağrılacaktır. Bu fonksiyonun içinde de *printk* isimli çekirdek fonksiyonu
+ile biz bir log mesajı yazdırdık. Bu log mesajları *kernel ring buffer* denilen bir kuyruk sistemine
+yazılmaktadır. *dmesg* komutuyla bu kuyruk sistemi görüntülenebilir. Eğer *dmesg* yaptığımızda biz bu
+mesajları görürsek aygıt sürücümüzün yüklenmiş olduğu sonucunu çıkartabiliriz. Örneğin:
+
+.. code-block:: bash
+
+   $ dmesg | grep "Hello"
+   Hello World...
+
+Çekirdeğin içerisine gömülmüş olan modüller ``/proc/modules`` dosyasında görünmezler, dolayısıyla da
+*lsmod* komutu ile de bunları göremeyiz. Bunlar için ``/sys/module`` dizininde de bir giriş
+oluşturulmamaktadır. *modinfo* komutu ise çekirdeğe ilişkin bazı dosyalara da baktığı için bize bu
+konuda bilgi verebilmektedir.
+
+
+Yeniden Derleme Sonrası Güncellemeler
+=======================================
+
+Peki çekirdek kodlarında küçük değişiklikler yaptıktan sonra yeniden *"make modules_install"* ve
+*"make install"* işlemlerine gerek var mı? Aslında küçük değişiklikler için bu işlemler yapılmazsa
+genellikle bir sorun ortaya çıkmaz. Yeni oluşturulan çekirdek imajı doğrudan eskisinin üzerine
+kopyalanabilir. Ancak değişikliğin yerine ve kapsamına göre çekirdeğin sembol tabloları değişebileceği
+için genel olarak her derlemeden sonra *"make install"* yapabilirsiniz.
+
+``drivers`` dizininde ``obj-m`` biçiminde değişiklikler yapılmışsa *"make modules_install"* yapılmalıdır.
+Yukarıdaki örnekte biz ``drivers`` dizininin içerisine ``obj-y`` ile eklemeler yaptık; bu durumda aslında
+*"make modules_install"* yapmaya gerek yoktur. Ancak aygıt sürücüler ``obj-m`` biçiminde ekleniyorsa
+*"make modules_install"* komutu uygulanmalıdır. Çekirdeğin modüllerle ilgili olmayan kısımlarında yapılan
+değişiklikler için *"make modules_install"* yapılmasına gerek olmadığını bir kez daha belirtmek istiyoruz.
+*"make modules_install"* işleminden önce eski ``/lib/modules/<çekirdek_sürümü>`` dizinini *"rm -r"* komutu
+ile silmek daha güvenli bir yaklaşımdır.
+
+
+Çekirdek ve Modül İmzalama
+============================
+
+Biz yukarıdaki çekirdek derlemesi sürecinde imzalama (signing) işlemlerini devre dışı bırakmıştık.
+Çekirdek kodları ve özellikle de aygıt sürücüler belli imzalara sahip olacak biçimde derlenebilmektedir.
+Böylece onlar üzerinde birtakım istenmeyen değişikliklerin yapılmış olduğu değiştirilmiş çekirdeklerin
+ya da aygıt sürücülerin yüklenmesi engellenmiş olur. Yukarıda da gördüğünüz gibi çekirdek kodları ve
+aygıt sürücülerde bu imzalama işlemi devre dışı da bırakılabilmektedir. Ancak imzalama süreci sistem
+güvenliğini artırmaktadır. Bu tür imzalama işlemleri yalnızca Linux sistemlerinde değil diğer UNIX
+türevi sistemlerde, Windows ve macOS sistemlerinde de bulunmaktadır.
+
+Çekirdeğin imza kontrolü temel olarak UEFI BIOS (eğer *secure boot* seçeneği aktif ise) ve önyükleyiciler
+(örneğin GRUB gibi, U-Boot gibi önyükleyiciler) tarafından yapılmaktadır. Ancak Linux çekirdeği de aygıt
+sürücüler ve modüller yüklenirken imza kontrolü uygulayabilmektedir. Biz burada önce modül imzalama
+işleminin ve sonra da çekirdek imzalama işleminin nasıl yapılacağı üzerinde duracağız.
+
+İmzalama işlemi tipik olarak şu adımlardan geçilerek yapılmaktadır:
+
+**Adım 1:** İmzalama işlemi için öncelikle *openssl* kütüphanesinin yüklenmiş olması gerekir. Yükleme
+işlemi aşağıdaki gibi yapılabilir:
+
+.. code-block:: bash
+
+   $ sudo apt-get install openssl
+
+Daha sonra *openssl* programı ile aşağıdaki gibi bir anahtar çifti ve sertifika dosyası üretilir.
+Buradaki ``.key`` dosyası özel anahtarı (private key), ``.crt`` dosyası ise sertifika dosyasını
+belirtmektedir. Bu dosyaların uzantıları ``.key``, ``.crt``, ``.pem`` olsa da içeriği PEM (Privacy
+Enhanced Mail) formatındadır. Dolayısıyla aslında burada verdiğiniz dosyaların uzantısı herhangi bir
+biçimde olabilir:
+
+.. code-block:: bash
+
+   $ openssl req -new -x509 -newkey rsa:2048 -sha256 \
+       -keyout signing_key.key -out certs/signing_key.crt \
+       -nodes -days 36500 -subj "/CN=Local Kernel Module Key/"
+
+Bu iki dosyanın kaynak kod ağacına aşağıdaki gibi kopyalanması gerekir:
+
+.. code-block:: bash
+
+   $ cp signing_key.key certs/
+   $ cp signing_key.crt certs/
+
+Daha sonra konfigürasyon dosyasında imzalama için aşağıdaki değişiklikler yapılmalıdır:
+
+.. code-block:: text
+
+   CONFIG_MODULE_SIG=y
+   CONFIG_MODULE_SIG_ALL=y
+   CONFIG_MODULE_SIG_SHA256=y
+   CONFIG_SYSTEM_TRUSTED_KEYRING=y
+   CONFIG_MODULE_SIG_KEY="certs/signing_key.pem"
+   CONFIG_SYSTEM_TRUSTED_KEYS="certs/signing_key.crt"
+
+Aslında ``.key`` ve ``.crt`` dosyaları tek bir dosyada da birleştirilebilir:
+
+.. code-block:: bash
+
+   $ cat certs/signing_key.key certs/signing_key.crt > certs/signing_key.pem
+
+Tabii artık ``.config`` dosyasındaki isimleri de şöyle değiştirmeliyiz:
+
+.. code-block:: text
+
+   CONFIG_MODULE_SIG=y
+   CONFIG_MODULE_SIG_ALL=y
+   CONFIG_MODULE_SIG_SHA256=y
+   CONFIG_SYSTEM_TRUSTED_KEYRING=y
+   CONFIG_MODULE_SIG_KEY="certs/signing_key.pem"
+   CONFIG_SYSTEM_TRUSTED_KEYS="certs/signing_key.pem"
+
+Biz bu işlemlerle aygıt sürücüleri imzalamış olduk. Ancak eğer ``.config`` dosyasında
+``CONFIG_MODULE_SIG_FORCE=n`` ise (default durumda genellikle böyledir) bu durum çekirdek log amaçlı
+bir uyarı oluştursa da imzalanmamış modülleri yine de yükler. Eğer imzalanmamış modülleri yüklemek
+istemiyorsanız ``CONFIG_MODULE_SIG_FORCE=y`` yapmalısınız. (Bu işlem *"make menuconfig"* menüsünde
+*Enable loadable module support / Module signature verification / Require modules to be validly signed*
+seçeneğinden de yapılabilmektedir.) Bu durumda çekirdek kendi oluşturduğumuz imzayla imzalanmamış olan
+modülleri artık yüklemeyecektir.
+
+Eğer biz başkalarının yazdığı bir aygıt sürücüyü yüklerken çekirdeğin uyarı vermesini ya da yüklemeyi
+reddetmesini istemiyorsak o aygıt sürücüyü de kendi ürettiğimiz anahtarla (ya da dağıtımın public
+anahtarıyla) imzalamalıyız. Bu işlem çekirdek kodlarındaki ``scripts`` dizini içerisinde bulunan
+*sign-file* betiği ile yapılmaktadır. Bu betiğin tipik kullanımı şöyledir:
+
+.. code-block:: bash
+
+   $ scripts/sign-file <hash_alg> <private_key.pem> <public_cert.pem> <module.ko>
+
+Örneğin:
+
+.. code-block:: bash
+
+   $ scripts/sign-file sha256 signing_key.pem signing_key.pem mydriver.ko
+
+Peki Ubuntu, Mint gibi dağıtımlar çekirdek imzalaması uygulamakta mıdır? Evet, genel olarak dağıtımlar
+kendi özel anahtarlarıyla (private keys) çekirdeği ve aygıt sürücüleri imzalamaktadır. Ancak aygıt
+sürücülerin yüklenmesinde imza kontrolünü zorunlu hale getirmemektedir. İmzalama için kullanılacak
+public anahtarlar ``/proc/keys`` dosyasında belirtilmektedir.
+
+
+Çekirdek İmjasının İmzalanması
+================================
+
+Biz yukarıdaki işlemleri yaptığımızda yalnızca aygıt sürücüleri imzalamış oluruz. Çekirdeğin kendisinin
+imzalanması ayrıca yapılmalıdır. Yukarıda da belirttiğimiz gibi UEFI BIOS'lar ve GRUB gibi önyükleyiciler
+çekirdek imajını yüklemeden önce ayarlar uygun biçime getirildiyse çekirdek imzasına bakmaktadır. Eğer
+çekirdek imzası yanlışsa (çekirdek dışarıdan kasti ya da yanlışlıkla bozulmuş olabilir) çekirdeği hiç
+yüklememektedir.
+
+Çekirdeğin imzalanması için önce anahtar ve sertifikasyon dosyaları aşağıdaki gibi oluşturulur:
+
+.. code-block:: bash
+
+   $ openssl req -new -x509 -newkey rsa:2048 -sha256 \
+       -keyout certs/sb-signing.key \
+       -out certs/sb-signing.crt \
+       -nodes -days 36500 \
+       -subj "/CN=Secure Boot Signing Key/"
+
+Sonra da *sbsign* programı ile imzalama aşağıdaki gibi yapılır:
+
+.. code-block:: bash
+
+   $ sbsign --key db.key --cert signing_key.pem --output bzImage.signed arch/x86/boot/bzImage
+
+Eğer bu işlemden sonra *"make install"* yapacaksanız imzalanmış çekirdeği eski ismiyle bulundurmalısınız
+(*mv* komutu hedef dosya varsa onu ezerek işlemini yapmaktadır):
+
+.. code-block:: bash
+
+   $ mv arch/x86/boot/bzImage.signed arch/x86/boot/bzImage
+
+Genellikle bu biçimde bir çekirdek imzalaması seyrek olarak yapılmaktadır. Önceki paragrafta biz aygıt
+sürücü dosyalarının imzalandığını belirtmiştik. Aynı makinede aygıt sürücüyü derlerken (build ederken)
+oluşturulan imza bilgisi de kullanılmaktadır. Yani biz aynı makinede bir aygıt sürücü derlediğimizde
+aygıt sürücümüz de zaten imzalanmış olacaktır.
+
+
+Kök Dosya Sisteminin Oluşturulması
+=====================================
+
+Bir Linux sisteminin düzgün bir biçimde açılması için belli dizinlerin kök dosya sisteminde bulunuyor
+olması gerekir. Biz bir dağıtımı kurduğumuzda zaten bu kök dosya sistemi de oluşturulmaktadır. Peki
+sıfırdan dağıtımı tamamen kurmadan kök dosya sistemini nasıl oluşturulabiliriz? Bu işlem tamamen manuel
+biçimde yapılabilir. Yani uygulamacı kök dizin içerisindeki gerekli dizinleri elle yaratır. Sonra
+gerekli programları kaynak kodlarından hareketle hedef makine için derler ve onları konuşlandırır. Sonra
+yine gerekli birtakım konfigürasyon dosyalarını elle oluşturur. Ancak bu manuel yöntem oldukça zahmetlidir.
+
+Bunun yerine bu işlemi pratik bir biçimde yapan araçlar geliştirilmiştir. Örneğin gömülü sistemlerde
+*BusyBox* denilen araç bu amaçla sıkça kullanılmaktadır. Kullanımı da oldukça kolaydır. Gömülü sistemler
+için *Buildroot* ve *Yocto* gibi projeler daha genel amaçlar için gerçekleştirilmiştir ancak bunlarla kök
+dosya sistemi de oluşturulabilmektedir. Bazı dağıtımların bu işi yapan özel yardımcı programları da vardır.
+Örneğin *debootstrap* programı Debian tabanlı kök dosya sistemini İnternet'ten indirerek yerel makinede
+oluşturabilmektedir. Ancak bu araçların bazıları esnek değildir. Özellikle gömülü sistemlerde düşük bir
+sistem kaynağının olduğu dikkate alındığında bu araçların bazıları minimalist bir kurulum
+sağlayamamaktadır.
+
+
+``debootstrap`` ile Kök Dosya Sistemi Oluşturma
+-------------------------------------------------
+
+*debootstrap* programı default olarak sisteminizde yüklü değildir. Bunu aşağıdaki gibi kurabilirsiniz:
+
+.. code-block:: bash
+
+   $ sudo apt-get install debootstrap
+
+*debootstrap* programının pek çok komut satırı argümanı vardır. Biz burada en önemli birkaç argüman
+üzerinde duracağız:
+
+- ``--arch``: Hedef CPU mimarisini belirtmektedir. Bu argüman girilmezse o andaki platform temel alınır.
+  64 bit Intel platformu için ``amd64``, BBB gibi 32 bit ARM platformu için ``armhf``, 64 bit ARM platformu
+  için ``arm64`` girilmelidir.
+- İlk seçeneksiz argüman Debian sisteminin varyantını belirtmektedir (örneğin ``bullseye``, ``buster``).
+- İkinci komut satırı argümanı hedef kök dosya sisteminin oluşturulacağı dizini belirtmektedir.
+- Üçüncü komut satırı argümanı ise paketlerin indirileceği depoyu (repository) belirtmektedir.
+
+Örneğin:
+
+.. code-block:: bash
+
+   $ sudo debootstrap --arch=amd64 --include=systemd bullseye myrootfs http://deb.debian.org/debian/
+
+``--arch`` seçeneği girilmemişse programın çalıştırıldığı makine için kök dosya sistemi indirilip
+kurulmaktadır. Default durumda *debootstrap* pek çok paketi kök dosya sistemine dahil ettiği için
+paketlerin indirilmesi ve kök dosya sisteminin oluşturulması biraz zaman alacaktır.
+
+Uygulamacı isterse ``--include`` ve ``--exclude`` komut satırı seçenekleriyle birtakım paketleri dahil
+edebilir ya da dışlayabilir. Örneğin biz *systemd* dışında *sudo* ve *gcc* paketlerini de aşağıdaki gibi
+kuruluma dahil edebiliriz:
+
+.. code-block:: bash
+
+   $ sudo debootstrap --arch=amd64 --include=systemd,sudo,gcc bullseye myrootfs http://deb.debian.org/debian/
+
+*debootstrap* programı ile eğer host makineyle aynı platform için indirme işlemi yapılıyorsa *debootstrap*
+önce İnternet'ten gerekli paketleri indirip yerel makinede bir dizin içerisinde kök dosya sistemini
+oluşturur. Eğer host makineden farklı bir sistem için indirme yapılıyorsa (örneğin host sistem Intel
+tabanlı bir makineyse ve ARM tabanlı bir Debian kök dosya sistemi oluşturulmak isteniyorsa) *debootstrap*
+yüklemesini yapmadan önce aşağıdaki gibi *qemu* emülatör paketinin statik versiyonu ve *binfmt* destek
+paketi kurulmalıdır:
+
+.. code-block:: bash
+
+   $ sudo apt install qemu-user-static binfmt-support
+
+Bu işlemden sonra *debootstrap* programı yukarıda belirttiğimiz biçimde çalıştırılabilir:
+
+.. code-block:: bash
+
+   $ sudo debootstrap --include=systemd --arch armhf buster myrootfs http://deb.debian.org/debian/
+
+Bu komut hem birinci aşama hem de ikinci aşama işlemleri yapıp bitirecektir. Artık istenildiği zaman
+*chroot* işlemi de yapılabilir:
+
+.. code-block:: bash
+
+   $ sudo chroot myrootfs
+
+
+Geçici Kök Dosya Sisteminin Oluşturulması
+------------------------------------------
+
+*debootstrap* programı ile biz Debian kök dosya sistemi için geçici kök dosya sistemi de oluşturabiliriz.
+Bunun en pratik yolu kök dosya sistemini kurduktan sonra *chroot* yapıp *update-initramfs* programı ile
+geçici kök dosya sistemini oluşturmaktır. Ancak bunun için ``/boot`` ve ``/lib/modules`` dizinlerinin
+uygun biçimde oluşturulmuş olması gerekir. *update-initramfs* programı bu dizinlerdeki içerikten
+faydalanmaktadır. *update-initramfs* programı *initramfs-tools* isimli pakettedir. *chroot* yaptıktan
+sonra öncelikle bu paketi aşağıdaki gibi kurmalısınız:
+
+.. code-block:: bash
+
+   $ sudo apt-get install initramfs-tools
+
+Bundan sonra geçici kök dosya sistemini aşağıdaki gibi oluşturabilirsiniz (Debian kök dosya sisteminin
+kökünde olduğumuzu varsayıyoruz):
+
+.. code-block:: bash
+
+   $ update-initramfs -c -k 6.9.2-custom -b .
+
+Burada ``6.9.2-custom`` çekirdeğin sürüm ismidir. Geçici kök dosya sistemi ``initrd.img-6.9.2-custom``
+ismiyle bulunulan dizinde oluşturulacaktır. ``-b .`` seçeneği oluşturulacak dosyanın dizinini
+belirtmektedir.
+
+.. note::
+
+   Bu tür konuların ayrıntılarına bu kursta girmeyeceğiz. Bu konular daha çok *Gömülü Linux Sistemleri -
+   Geliştirme ve Uygulama* kursunun konularını oluşturmaktadır.
+
+
+Çekirdek Başlık Dosyalarının Kurulumu
+=======================================
+
+Aygıt sürücü geliştirirken çekirdeğin kaynak kodlarına gereksinim duyulmaz. Ancak çekirdeğin başlık
+dosyalarının geliştirmenin yapıldığı bilgisayarda yüklü olması gerekir. Çekirdek kodlarının kendisini
+değil de yalnızca başlık dosyalarını indirmek için aşağıdaki komut kullanılabilir:
+
+.. code-block:: bash
+
+   $ sudo apt install linux-headers-$(uname -r)
+
+Buradaki ``$(uname -r)`` çalışılmakta olan makinedeki çekirdek sürümünü belirtmektedir. Tabii biz
+istediğimiz çekirdek sürümünün başlık dosyalarını da indirebiliriz. İndirilen dosyalar ``/usr/src``
+dizininin altına ``$(uname -r)`` isimli dizin içerisine yerleştirilmektedir.
