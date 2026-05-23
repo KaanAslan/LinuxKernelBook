@@ -13,6 +13,7 @@
       <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b28b97a2" />
 
   
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=b6527007"></script>
@@ -22,6 +23,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Dizin" href="genindex.html" />
     <link rel="search" title="Ara" href="search.html" />
+    <link rel="next" title="3. Linux Çekirdeği: Bağlı Liste Gerçekleştirimi" href="kernellinkedlist.html" />
     <link rel="prev" title="1. Giriş" href="introduction.html" /> 
 </head>
 
@@ -35,6 +37,7 @@
           
           <a href="index.html" class="icon icon-home">
             LinuxKernelBook
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -141,6 +144,67 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#cekirdek-baslik-dosyalarinin-kurulumu">2.25. Çekirdek Başlık Dosyalarının Kurulumu</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kernellinkedlist.html">3. Linux Çekirdeği: Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#rcu-destegi">3.5. RCU Desteği</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="processcontrolblock.html">4. Proses Kontrol Bloğu ve task_struct Yapısı</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#proses-kavrami">4.1. Proses Kavramı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#proses-kontrol-blogu">4.2. Proses Kontrol Bloğu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-yapisi">4.3. <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#proseslerin-id-degerleri-pid">4.4. Proseslerin ID Değerleri (PID)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#thread-kavrami">4.5. Thread Kavramı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#prosesler-arasindaki-altlik-ustluk-iliskisi">4.6. Prosesler Arasındaki Altlık-Üstlük İlişkisi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-yapisinin-dalli-budakli-tasarimi">4.7. <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Yapısının Dallı Budaklı Tasarımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#current-makrosu">4.8. <code class="docutils literal notranslate"><span class="pre">current</span></code> Makrosu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#fork-ve-pthread-create-cagri-zincirleri">4.9. <code class="docutils literal notranslate"><span class="pre">fork</span></code> ve <code class="docutils literal notranslate"><span class="pre">pthread_create</span></code> Çağrı Zincirleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-nesneleri-arasindaki-iliskiler">4.10. <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesneleri Arasındaki İlişkiler</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#thread-listesi-thread-head-thread-node">4.10.1. Thread Listesi: <code class="docutils literal notranslate"><span class="pre">thread_head</span></code> / <code class="docutils literal notranslate"><span class="pre">thread_node</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-ve-tgid-elemanlari">4.10.2. <code class="docutils literal notranslate"><span class="pre">pid</span></code> ve <code class="docutils literal notranslate"><span class="pre">tgid</span></code> Elemanları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#group-leader-gostericisi">4.10.3. <code class="docutils literal notranslate"><span class="pre">group_leader</span></code> Göstericisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#real-parent-ve-parent-gostericileri">4.10.4. <code class="docutils literal notranslate"><span class="pre">real_parent</span></code> ve <code class="docutils literal notranslate"><span class="pre">parent</span></code> Göstericileri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#alt-proses-listesi-children-sibling">4.10.5. Alt Proses Listesi: <code class="docutils literal notranslate"><span class="pre">children</span></code> / <code class="docutils literal notranslate"><span class="pre">sibling</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#tum-proseslerin-listesi-tasks">4.10.6. Tüm Proseslerin Listesi: <code class="docutils literal notranslate"><span class="pre">tasks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#ozet-task-struct-iliskileri">4.10.7. Özet: <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> İlişkileri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#sik-sorulan-sorular">4.10.8. Sık Sorulan Sorular</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-yapisina-iliskin-bagli-listeler-uzerinde-gezinme-islemleri">4.11. task_struct Yapısına ilişkin Bağlı Listeler Üzerinde Gezinme İşlemleri</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#gelistirme-ortaminin-hazirlanmasi">4.11.1. Geliştirme Ortamının Hazırlanması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#derleme-ve-yukleme">4.11.2. Derleme ve Yükleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#cekirdek-modulu-ve-aygit-surucu-kavramlari">4.11.3. Çekirdek Modülü ve Aygıt Sürücü Kavramları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#aygit-dosyalari">4.11.4. Aygıt Dosyaları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#aygit-suruculerin-major-ve-minor-numaralari">4.11.5. Aygıt Sürücülerin Majör ve Minör Numaraları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#iskelet-karakter-aygit-surucusu-ornegi">4.11.6. İskelet Karakter Aygıt Sürücüsü Örneği</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#rcu-mekanizmasi-ile-task-struct-listelerinin-dolasilmasi">4.11.7. RCU Mekanizması ile <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Listelerinin Dolaşılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#tum-prosesleri-dolasan-cekirdek-modulu">4.11.8. Tüm Prosesleri Dolaşan Çekirdek Modülü</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#thread-listesini-dolasan-aygit-surucu-ornegi">4.11.9. Thread Listesini Dolaşan Aygıt Sürücü Örneği</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#tum-task-struct-nesnelerini-dolasma">4.12. Tüm <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnelerini Dolaşma</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#alt-proses-listesini-dolasma">4.12.1. Alt Proses Listesini Dolaşma</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#pid-tahsisati">4.13. PID Tahsisatı</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-uretim-mekanizmasinin-tarihsel-gelisimi">4.13.1. PID Üretim Mekanizmasının Tarihsel Gelişimi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#maksimum-pid-degeri">4.13.2. Maksimum PID Değeri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-den-task-struct-a-hizli-erisim">4.13.3. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code>’a Hızlı Erişim</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -1812,6 +1876,7 @@ dizininin altına <code class="docutils literal notranslate"><span class="pre">$
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="introduction.html" class="btn btn-neutral float-left" title="1. Giriş" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Önceki</a>
+        <a href="kernellinkedlist.html" class="btn btn-neutral float-right" title="3. Linux Çekirdeği: Bağlı Liste Gerçekleştirimi" accesskey="n" rel="next">Sonraki <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

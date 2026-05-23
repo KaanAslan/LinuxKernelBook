@@ -1,0 +1,953 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="tr" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3. Çekirdekteki Bağlı Liste Gerçekleştirimi &mdash; LinuxKernelBook 1.0.0 belgelendirmesi</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b28b97a2" />
+
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=b6527007"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/translations.js?v=b0f24d8d"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Dizin" href="genindex.html" />
+    <link rel="search" title="Ara" href="search.html" />
+    <link rel="next" title="4. Proses Kontrol Bloğu ve task_struct Yapısı" href="processcontrolblock.html" />
+    <link rel="prev" title="2. Çekirdeğin Derlenmesi" href="kernelcompilation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            LinuxKernelBook
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Belgeleri arayın" aria-label="Belgeleri arayın" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">İçindekiler</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Giriş</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#gereksinimler">1.1. Gereksinimler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#kaynak-kod-gezintisi">1.2. Kaynak Kod Gezintisi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerine-giris">1.3. İşletim Sistemlerine Giriş</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sisteminin-tanimi-ve-yapisi">1.4. İşletim Sisteminin Tanımı ve Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-siniflandirilmasi">1.5. İşletim Sistemlerinin Sınıflandırılması</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#proses-yonetimine-gore">1.5.1. Proses Yönetimine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kullanici-sayisina-gore">1.5.2. Kullanıcı Sayısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#cekirdek-yapisina-gore">1.5.3. Çekirdek Yapısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.5.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dagitiklik-durumuna-gore">1.5.5. Dağıtıklık Durumuna Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#donanim-ozelligine-gore">1.5.6. Donanım Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kod-lisansina-gore">1.5.7. Kaynak Kod Lisansına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kodun-ozgunlugune-gore">1.5.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#gui-calisma-destegine-gore">1.5.9. GUI Çalışma Desteğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.5.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-tarihsel-gelisimi">1.6. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#unix-turevi-sistemlerin-tarihsel-gelisimi">1.7. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#mac-os-x-turevi-sistemler">1.8. Mac OS X Türevi Sistemler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#gnu-projesi-ve-ozgur-yazilim">1.9. GNU Projesi ve Özgür Yazılım</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-un-tarihsel-gelisimi">1.10. Linux’un Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.11. Linux Dağıtımları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.12. POSIX Standartları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.13. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.14. Linux Sistemlerinin Boot Edilmesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#reset-vektoru-ve-bios-firmware">1.14.1. Reset Vektörü ve BIOS/Firmware</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#onyukleyici-bootloader-programlar">1.14.2. Önyükleyici (Bootloader) Programlar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#genel-boot-akisi">1.14.3. Genel Boot Akışı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#boot-asamalari-terminolojisi">1.14.4. Boot Aşamaları Terminolojisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#pc-sistemlerinde-boot-sureci-klasik-bios">1.14.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kernelcompilation.html">2. Çekirdeğin Derlenmesi</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-davranisini-degistirme-yontemleri">2.1. Çekirdek Davranışını Değiştirme Yöntemleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-komut-satiri-parametreleri">2.2. Çekirdek Komut Satırı Parametreleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdegi-yeniden-derlemenin-gerektigi-durumlar">2.3. Çekirdeği Yeniden Derlemenin Gerektiği Durumlar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-derlemesi-hakkinda">2.4. Çekirdek Derlemesi Hakkında</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#capraz-derleme">2.4.1. Çapraz Derleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#cekirdek-kaynak-kodlarinin-indirilmesi">2.4.2. Çekirdek Kaynak Kodlarının İndirilmesi</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="kernelcompilation.html#sikistirma-formatlari-ve-tar-komutu">2.4.2.1. Sıkıştırma Formatları ve tar Komutu</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#dagitima-ozgu-cekirdek-kaynak-kodlari">2.4.3. Dağıtıma Özgü Çekirdek Kaynak Kodları</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-versiyon-numaralandirmasi">2.5. Çekirdek Versiyon Numaralandırması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#derleme-araclari">2.6. Derleme Araçları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-derleme-adimlari">2.7. Çekirdek Derleme Adımları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-1-gerekli-araclarin-kurulmasi">2.7.1. Adım 1: Gerekli Araçların Kurulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-2-kaynak-kodlarin-indirilmesi-ve-acilmasi">2.7.2. Adım 2: Kaynak Kodların İndirilmesi ve Açılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-3-cekirdegin-konfigure-edilmesi">2.7.3. Adım 3: Çekirdeğin Konfigüre Edilmesi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-4-konfigurasyon-degisikliklerinin-yapilmasi">2.7.4. Adım 4: Konfigürasyon Değişikliklerinin Yapılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-5-derleme">2.7.5. Adım 5: Derleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-6-modullerin-kurulmasi">2.7.6. Adım 6: Modüllerin Kurulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-7-aygit-agaci-dosyalarinin-derlenmesi">2.7.7. Adım 7: Aygıt Ağacı Dosyalarının Derlenmesi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#adim-8-kurulum">2.7.8. Adım 8: Kurulum</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="kernelcompilation.html#gecici-kok-dosya-sistemi-initrd">2.7.8.1. Geçici Kök Dosya Sistemi (initrd)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#make-modules-install-komutu-detaylari">2.8. make modules_install Komutu Detayları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#modules-dep">2.8.1. modules.dep</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#modules-alias">2.8.2. modules.alias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#modules-order">2.8.3. modules.order</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#manuel-kurulum">2.9. Manuel Kurulum</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#cekirdek-surum-yazisinin-belirlenmesi">2.9.1. Çekirdek Sürüm Yazısının Belirlenmesi</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#grub-yapilandirmasi">2.10. GRUB Yapılandırması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-derleme-sureci-ozeti">2.11. Çekirdek Derleme Süreci Özeti</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdegin-sistemden-kaldirilmasi">2.12. Çekirdeğin Sistemden Kaldırılması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-kodlari-uzerinde-degisiklik-yapma-yontemleri">2.13. Çekirdek Kodları Üzerinde Değişiklik Yapma Yöntemleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#kbuild-sistemi-ve-gnu-make">2.14. KBuild Sistemi ve GNU Make</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#makefile-dosyalarinin-guncellenmesi">2.15. Makefile Dosyalarının Güncellenmesi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#kconfig-dosyalari">2.16. Kconfig Dosyaları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#konfigurasyon-seceneklerinin-kaynak-kodlara-yansitilmasi">2.17. Konfigürasyon Seçeneklerinin Kaynak Kodlara Yansıtılması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#konfigurasyon-seceneklerinin-makefile-dosyalarina-yansitilmasi">2.18. Konfigürasyon Seçeneklerinin Makefile Dosyalarına Yansıtılması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#yeni-dizin-icin-makefile-ve-kconfig-dosyalari">2.19. Yeni Dizin için Makefile ve Kconfig Dosyaları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#ornek-cekirdege-yeni-modul-ekleme">2.20. Örnek: Çekirdeğe Yeni Modül Ekleme</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#yeniden-derleme-sonrasi-guncellemeler">2.21. Yeniden Derleme Sonrası Güncellemeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-ve-modul-imzalama">2.22. Çekirdek ve Modül İmzalama</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-imjasinin-imzalanmasi">2.23. Çekirdek İmjasının İmzalanması</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#kok-dosya-sisteminin-olusturulmasi">2.24. Kök Dosya Sisteminin Oluşturulması</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#debootstrap-ile-kok-dosya-sistemi-olusturma">2.24.1. <code class="docutils literal notranslate"><span class="pre">debootstrap</span></code> ile Kök Dosya Sistemi Oluşturma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#gecici-kok-dosya-sisteminin-olusturulmasi">2.24.2. Geçici Kök Dosya Sisteminin Oluşturulması</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-baslik-dosyalarinin-kurulumu">2.25. Çekirdek Başlık Dosyalarının Kurulumu</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">3. Çekirdekteki Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#bagli-listeler">3.1. Bağlı Listeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dugum-silme">3.3.4. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rcu-destegi">3.5. RCU Desteği</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="processcontrolblock.html">4. Proses Kontrol Bloğu ve task_struct Yapısı</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#proses-kavrami">4.1. Proses Kavramı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#proses-kontrol-blogu">4.2. Proses Kontrol Bloğu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-yapisi">4.3. <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#proseslerin-id-degerleri-pid">4.4. Proseslerin ID Değerleri (PID)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#thread-kavrami">4.5. Thread Kavramı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#prosesler-arasindaki-altlik-ustluk-iliskisi">4.6. Prosesler Arasındaki Altlık-Üstlük İlişkisi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-yapisinin-dalli-budakli-tasarimi">4.7. <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Yapısının Dallı Budaklı Tasarımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#current-makrosu">4.8. <code class="docutils literal notranslate"><span class="pre">current</span></code> Makrosu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#fork-ve-pthread-create-cagri-zincirleri">4.9. <code class="docutils literal notranslate"><span class="pre">fork</span></code> ve <code class="docutils literal notranslate"><span class="pre">pthread_create</span></code> Çağrı Zincirleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-nesneleri-arasindaki-iliskiler">4.10. <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesneleri Arasındaki İlişkiler</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#thread-listesi-thread-head-thread-node">4.10.1. Thread Listesi: <code class="docutils literal notranslate"><span class="pre">thread_head</span></code> / <code class="docutils literal notranslate"><span class="pre">thread_node</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-ve-tgid-elemanlari">4.10.2. <code class="docutils literal notranslate"><span class="pre">pid</span></code> ve <code class="docutils literal notranslate"><span class="pre">tgid</span></code> Elemanları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#group-leader-gostericisi">4.10.3. <code class="docutils literal notranslate"><span class="pre">group_leader</span></code> Göstericisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#real-parent-ve-parent-gostericileri">4.10.4. <code class="docutils literal notranslate"><span class="pre">real_parent</span></code> ve <code class="docutils literal notranslate"><span class="pre">parent</span></code> Göstericileri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#alt-proses-listesi-children-sibling">4.10.5. Alt Proses Listesi: <code class="docutils literal notranslate"><span class="pre">children</span></code> / <code class="docutils literal notranslate"><span class="pre">sibling</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#tum-proseslerin-listesi-tasks">4.10.6. Tüm Proseslerin Listesi: <code class="docutils literal notranslate"><span class="pre">tasks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#ozet-task-struct-iliskileri">4.10.7. Özet: <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> İlişkileri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#sik-sorulan-sorular">4.10.8. Sık Sorulan Sorular</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#task-struct-yapisina-iliskin-bagli-listeler-uzerinde-gezinme-islemleri">4.11. task_struct Yapısına ilişkin Bağlı Listeler Üzerinde Gezinme İşlemleri</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#gelistirme-ortaminin-hazirlanmasi">4.11.1. Geliştirme Ortamının Hazırlanması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#derleme-ve-yukleme">4.11.2. Derleme ve Yükleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#cekirdek-modulu-ve-aygit-surucu-kavramlari">4.11.3. Çekirdek Modülü ve Aygıt Sürücü Kavramları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#aygit-dosyalari">4.11.4. Aygıt Dosyaları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#aygit-suruculerin-major-ve-minor-numaralari">4.11.5. Aygıt Sürücülerin Majör ve Minör Numaraları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#iskelet-karakter-aygit-surucusu-ornegi">4.11.6. İskelet Karakter Aygıt Sürücüsü Örneği</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#rcu-mekanizmasi-ile-task-struct-listelerinin-dolasilmasi">4.11.7. RCU Mekanizması ile <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Listelerinin Dolaşılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#tum-prosesleri-dolasan-cekirdek-modulu">4.11.8. Tüm Prosesleri Dolaşan Çekirdek Modülü</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#thread-listesini-dolasan-aygit-surucu-ornegi">4.11.9. Thread Listesini Dolaşan Aygıt Sürücü Örneği</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#tum-task-struct-nesnelerini-dolasma">4.12. Tüm <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnelerini Dolaşma</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#alt-proses-listesini-dolasma">4.12.1. Alt Proses Listesini Dolaşma</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#pid-tahsisati">4.13. PID Tahsisatı</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-uretim-mekanizmasinin-tarihsel-gelisimi">4.13.1. PID Üretim Mekanizmasının Tarihsel Gelişimi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#maksimum-pid-degeri">4.13.2. Maksimum PID Değeri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-den-task-struct-a-hizli-erisim">4.13.3. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code>’a Hızlı Erişim</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">LinuxKernelBook</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">3. </span>Çekirdekteki Bağlı Liste Gerçekleştirimi</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/kernellinkedlist.rst.txt" rel="nofollow"> Sayfa kaynağını görüntüle</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cekirdekteki-bagli-liste-gerceklestirimi">
+<h1><span class="section-number">3. </span>Çekirdekteki Bağlı Liste Gerçekleştirimi<a class="headerlink" href="#cekirdekteki-bagli-liste-gerceklestirimi" title="Link to this heading"></a></h1>
+<p>Bu bölümde Linux çekirdeğindeki bağlı liste gerçekleştirimleri üzerinde duracağız.</p>
+<section id="bagli-listeler">
+<h2><span class="section-number">3.1. </span>Bağlı Listeler<a class="headerlink" href="#bagli-listeler" title="Link to this heading"></a></h2>
+<p>Çekirdeğin en önemli veri yapılarından biri bağlı listelerdir. Genel olarak çekirdekteki neredeyse tüm
+bağlı listeler <em>çift bağlı (doubly linked)</em> biçimde kullanılmaktadır. Önce bağlı listelerin Linux
+çekirdeğindeki gerçekleştirimleri üzerinde duracağız.</p>
+<p>Aralarında öncelik-sonralık ilişkisi olan veri yapılarına <em>liste (list)</em> tarzı veri yapıları denilmektedir.
+Örneğin bu tanıma göre diziler de “liste tarzı” veri yapılarıdır. Liste tarzı veri yapılarının en yaygın
+kullanılanlarından biri <em>bağlı liste (linked list)</em> denilen veri yapısıdır. Önceki elemanın sonraki
+elemanın yerini gösterdiği dolayısıyla elemanların ardışıl olma zorunluluğunun ortadan kaldırıldığı
+listelere “bağlı liste” denilmektedir. Dizi elemanlarının bellekte fiziksel olarak ardışıl biçimde
+bulunduğunu anımsayınız. Bağlı listeler adeta “elemanları bellekte ardışıl olmak zorunda olmayan
+diziler” gibidir.</p>
+<p>Bağlı listelerin her elemanına <em>düğüm (node)</em> denilmektedir. Bağlı listelerde her düğüm sonraki
+düğümün yerini tuttuğuna göre ilk elemanın yeri biliniyorsa liste elemanlarının hepsine erişilebilmektedir:</p>
+<div class="graphviz"><object data="_images/graphviz-4b3d9b7d6f9ef57eb129cf096d686ff98f76e248.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph single_linked {
+    rankdir=LR;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.2&quot;];
+    node  [shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#DDEEFF&quot;,
+           fontname=&quot;monospace&quot;, fontsize=12, width=1.0, height=0.5];
+    edge  [color=&quot;#4477AA&quot;, arrowsize=0.9, penwidth=1.5];
+
+    head [label=&quot;head&quot;, fillcolor=&quot;#AACCFF&quot;, fontname=&quot;monospace bold&quot;];
+    n1   [label=&quot;node&quot;];
+    n2   [label=&quot;node&quot;];
+    n3   [label=&quot;node&quot;];
+    n4   [label=&quot;node&quot;];
+    nil  [label=&quot;NULL&quot;, shape=plaintext, fontname=&quot;monospace&quot;, fontcolor=&quot;#888888&quot;];
+
+    head -&gt; n1 -&gt; n2 -&gt; n3 -&gt; n4 -&gt; nil;
+}</p></object></div>
+<p>Her düğümün yalnızca sonraki düğümün değil aynı zamanda önceki düğümün yerini de tuttuğu bağlı
+listelere <em>çift bağlı listeler (doubly linked lists)</em> denilmektedir. Çift bağlı listelerde belli bir
+düğümün adresini biliyorsak yalnızca ileriye doğru değil, geriye doğru da gidebiliriz:</p>
+<div class="graphviz"><object data="_images/graphviz-6fcb3469fa00b05ec75263aa100d313dcebd8765.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph double_linked {
+    rankdir=LR;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.2&quot;];
+    node  [shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#DDEEFF&quot;,
+           fontname=&quot;monospace&quot;, fontsize=12, width=1.0, height=0.5];
+    edge  [color=&quot;#4477AA&quot;, arrowsize=0.9, penwidth=1.5];
+
+    head [label=&quot;head&quot;, fillcolor=&quot;#AACCFF&quot;, fontname=&quot;monospace bold&quot;];
+    n1   [label=&quot;node&quot;];
+    n2   [label=&quot;node&quot;];
+    n3   [label=&quot;node&quot;];
+    n4   [label=&quot;node&quot;];
+    nil  [label=&quot;NULL&quot;, shape=plaintext, fontname=&quot;monospace&quot;, fontcolor=&quot;#888888&quot;];
+
+    head -&gt; n1   [dir=both];
+    n1   -&gt; n2   [dir=both];
+    n2   -&gt; n3   [dir=both];
+    n3   -&gt; n4   [dir=both];
+    n4   -&gt; nil  [dir=forward];
+}</p></object></div>
+<p>Çift bağlı listelere ilişkin bir düğümün bellekte daha fazla yer kaplayacağına dikkat ediniz. Çift bağlı
+listelerin tek bağlı listelere göre en önemli özelliği “adresi bilinen bir düğümün” silinebilmesidir.
+Tek bağlı listelerde bu durum mümkün değildir. Uygulamalarda ve özellikle çekirdek kodlarında buna çok
+sık gereksinim duyulmaktadır.</p>
+<p>Eğer bir bağlı listede son eleman da ilk elemanı gösteriyorsa bu tür bağlı listelere <em>döngüsel bağlı
+listeler (circular linked lists)</em> denilmektedir.</p>
+</section>
+<section id="bagli-listelere-neden-gereksinim-duyulur">
+<h2><span class="section-number">3.2. </span>Bağlı Listelere Neden Gereksinim Duyulur?<a class="headerlink" href="#bagli-listelere-neden-gereksinim-duyulur" title="Link to this heading"></a></h2>
+<p>Peki bağlı listelere neden gereksinim duyulmaktadır? Diziler varken bağlı listelere gerek var mıdır?
+Dizilerle bağlı listeler arasındaki farklılıkları, benzerlikleri ve bağlı listelere neden gereksinim
+duyulduğunu birkaç maddede açıklayabiliriz:</p>
+<ol class="arabic simple">
+<li><p><strong>Bellek parçalanması sorunu:</strong> Diziler ardışıl alana gereksinim duymaktadır. Ancak belleğin
+bölündüğü (fragmente olduğu) durumlarda bellekte yeteri kadar küçük boş alanlar olduğu halde bunlar
+ardışıl olmadığı için dizi tahsisatı mümkün olamamaktadır. Bu tür durumlarda ardışıllık gereksinimi
+olmayan bağlı listeler kullanılabilir. Özellikle heap gibi bir alanda çok sayıda dinamik dizi bellek
+kullanımı bakımından verimsizliğe yol açabilmektedir. Bu dinamik diziler zamanla büyüdükçe birbirini
+engeller hale gelebilmektedir. İşte uzunluğu baştan belli olmayan çok sayıda dizinin oluşturulacağı
+durumlarda dinamik diziler yerine bağlı listeler bellek kullanımı bakımından toplamda daha iyi
+performans gösterebilmektedir. Dinamik dizilerde büyütme sırasında bloklar yer değiştirebileceği için
+bu işlem yavaştır.</p></li>
+<li><p><strong>Araya ekleme ve silme verimliliği:</strong> Dizilerde araya eleman ekleme (insert etme) ve aradaki bir
+elemanı silme dizinin kaydırılmasına yol açacağından yavaş bir işlemdir. Teknik olarak dizilerde eleman
+insert etme ve eleman silme O(N) karmaşıklıkta bir işlemdir. Halbuki bağlı listelerde eğer düğümün yeri
+biliniyorsa bu işlem O(1) karmaşıklıkta (yani döngü olmadan tekil işlemlerle) yapılabilmektedir. O halde
+araya eleman eklemenin ve aradan eleman silmenin çok yapıldığı sistemlerde diziler yerine bağlı listeler
+tercih edilebilmektedir. Çekirdek veri yapılarında araya eleman ekleme ve aradan eleman silme gibi
+işlemler çok yoğun yapılmaktadır.</p></li>
+<li><p><strong>İndeksle erişim yavaşlığı:</strong> Bağlı listelerde belli bir indeksteki elemana erişmek O(N) karmaşıklıkta
+bir işlemdir. Halbuki dizilerde elemana erişim O(1) karmaşıklıkta yani çok hızlıdır. O halde belli bir
+indeks değeri ile elemana erişimin yoğun yapıldığı durumlarda bağlı listeler yerine diziler tercih
+edilmelidir.</p></li>
+<li><p><strong>Ek bellek maliyeti:</strong> Bağlı listeler toplamda bellekte daha fazla yer kaplama eğilimindedir. Çünkü
+bağlı listenin her düğümü sonraki (ve duruma göre önceki) elemanın yerini de tutmaktadır.</p></li>
+</ol>
+<p>O halde bağlı listeler tipik olarak şu durumlarda dizilere tercih edilmelidir:</p>
+<ul class="simple">
+<li><p>Eleman insert etmenin ve eleman silmenin sık yapıldığı durumlarda.</p></li>
+<li><p>Uzunluğu baştan belli olmayan çok sayıda dizinin kullanıldığı durumlarda.</p></li>
+<li><p>İndeks yoluyla erişimin az yapıldığı durumlarda.</p></li>
+<li><p>Toplam bellek miktarının yeteri kadar fazla olduğu sistemlerde.</p></li>
+</ul>
+<p>İşte tüm yukarıdaki nedenlerden dolayı bağlı listeler çekirdek için en önemli veri yapılarından biridir.</p>
+</section>
+<section id="linux-cekirdegindeki-bagli-liste-gerceklestirimi">
+<h2><span class="section-number">3.3. </span>Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi<a class="headerlink" href="#linux-cekirdegindeki-bagli-liste-gerceklestirimi" title="Link to this heading"></a></h2>
+<p>Linux çekirdeğinde bağlı liste gerçekleştirimi <code class="docutils literal notranslate"><span class="pre">include/linux/list.h</span></code> dosyasında yapılmıştır. Bu dosya
+içerisindeki fonksiyonlar <code class="docutils literal notranslate"><span class="pre">static</span> <span class="pre">inline</span></code> biçiminde tanımlanmıştır. Çekirdek derlemesi sırasında
+derleyicinin optimizasyon seçeneği ayarlandığı için derleyici buradaki inline fonksiyonları sanki bir makro
+gibi koda açmaktadır.</p>
+<p>Linux çekirdeğindeki bağlı listelerde düğümler <code class="docutils literal notranslate"><span class="pre">list_head</span></code> isimli bir yapıyla temsil edilmektedir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Aslında belli yapılar değil, bu <code class="docutils literal notranslate"><span class="pre">list_head</span></code> yapıları bağlı liste içerisinde birbirine bağlanmaktadır:</p>
+<div class="graphviz"><object data="_images/graphviz-f2f58e508abe9a6afbb2b8558bfe21e07734e243.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph kernel_list {
+    rankdir=LR;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.3&quot;];
+    node  [shape=record, style=&quot;rounded,filled&quot;, fontname=&quot;monospace&quot;, fontsize=11,
+           height=0.6];
+    edge  [color=&quot;#336699&quot;, arrowsize=0.85, penwidth=1.5];
+
+    root [label=&quot;{list_head\n(kök) | {&lt;p&gt;prev | &lt;n&gt;next}}&quot;,
+          fillcolor=&quot;#AACCFF&quot;];
+    n1   [label=&quot;{list_head | {&lt;p&gt;prev | &lt;n&gt;next}}&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    n2   [label=&quot;{list_head | {&lt;p&gt;prev | &lt;n&gt;next}}&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    n3   [label=&quot;{list_head | {&lt;p&gt;prev | &lt;n&gt;next}}&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    n4   [label=&quot;{list_head | {&lt;p&gt;prev | &lt;n&gt;next}}&quot;, fillcolor=&quot;#DDEEFF&quot;];
+
+    /* next bağlantıları: soldan sağa */
+    root:n -&gt; n1:n   [dir=forward, color=&quot;#336699&quot;];
+    n1:n   -&gt; n2:n   [dir=forward, color=&quot;#336699&quot;];
+    n2:n   -&gt; n3:n   [dir=forward, color=&quot;#336699&quot;];
+    n3:n   -&gt; n4:n   [dir=forward, color=&quot;#336699&quot;];
+    n4:n   -&gt; root:n [dir=forward, color=&quot;#336699&quot;,
+                      constraint=false, style=dashed];
+
+    /* prev bağlantıları: sağdan sola */
+    n1:p   -&gt; root:p [dir=forward, color=&quot;#AA4444&quot;];
+    n2:p   -&gt; n1:p   [dir=forward, color=&quot;#AA4444&quot;];
+    n3:p   -&gt; n2:p   [dir=forward, color=&quot;#AA4444&quot;];
+    n4:p   -&gt; n3:p   [dir=forward, color=&quot;#AA4444&quot;];
+    root:p -&gt; n4:p   [dir=forward, color=&quot;#AA4444&quot;,
+                      constraint=false, style=dashed];
+}</p></object></div>
+<p>Tabii eğer bu <code class="docutils literal notranslate"><span class="pre">list_head</span></code> yapıları başka bir yapının (buna asıl yapı diyelim) içerisindeyse bu durumda
+aslında bir <code class="docutils literal notranslate"><span class="pre">list_head</span></code> yapısının adresi asıl yapının bir elemanının adresi haline gelmektedir. Biz C’de
+bir yapının bir elemanının adresini biliyorsak kolaylıkla o yapının başlangıç adresini elde edebiliriz.
+Çünkü yapı elemanları ardışıldır ve standart <code class="docutils literal notranslate"><span class="pre">offsetof</span></code> makrosuyla belli bir yapı elemanının yapının
+başlangıcından itibaren hangi offset’te bulunduğu bilgisi elde edilebilmektedir. <code class="docutils literal notranslate"><span class="pre">offsetof</span></code> makrosu
+<code class="docutils literal notranslate"><span class="pre">&lt;stddef.h&gt;</span></code> içerisinde aşağıdakine benzer biçimde tanımlanmıştır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define offsetof(type, member) ((size_t)&amp;(((type *)0)-&gt;member))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">offsetof</span></code> makrosunun birinci parametresi yapının tür ismini, ikinci parametresi ilgili yapı elemanının
+ismini almaktadır. Tabii <code class="docutils literal notranslate"><span class="pre">offsetof</span></code> makrosu yalnızca <code class="docutils literal notranslate"><span class="pre">size_t</span></code> türünden bir byte offset’i vermektedir.
+Elemanın adresinin makroyla elde edilen bu değerden çıkartılarak tür dönüştürmesinin yapılması gerekir.
+İşte bunun için Linux çekirdeğinde <code class="docutils literal notranslate"><span class="pre">container_of</span></code> isimli bir makro bulundurulmuştur. Bu makronun basit
+yazımı şöyle yapılabilir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define container_of(ptr, type, member) ((type *)((char *)ptr - myoffsetof(type, member)))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">container_of</span></code> makrosunun birinci parametresi yapı elemanının adresini, ikinci parametresi yapının tür
+ismini ve üçüncü parametresi de ilgili yapı elemanının ismini almaktadır. Bu makro ikinci parametresine
+girilmiş olan yapı türünden bir adres vermektedir.</p>
+<p><code class="docutils literal notranslate"><span class="pre">container_of</span></code> makrosunu <code class="docutils literal notranslate"><span class="pre">list_entry</span></code> ismiyle de kullanabilirsiniz:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define list_entry(ptr, type, member) container_of(ptr, type, member)</span>
+</pre></div>
+</div>
+<section id="bagli-liste-baslatma">
+<h3><span class="section-number">3.3.1. </span>Bağlı Liste Başlatma<a class="headerlink" href="#bagli-liste-baslatma" title="Link to this heading"></a></h3>
+<p>Linux çekirdeğindeki bağlı listeler kullanılırken önce bir başlangıç düğümünün oluşturulması gerekir.
+Başlangıç düğümünde <code class="docutils literal notranslate"><span class="pre">next</span></code> ve <code class="docutils literal notranslate"><span class="pre">prev</span></code> göstericilerinin başlangıç düğümünün kendisini göstermesi
+gerekir. Örneğin:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">head</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="o">&amp;</span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">};</span>
+</pre></div>
+</div>
+<p>Bu ilkdeğer verme C’de geçerlidir. Çünkü C’de bir değişken faaliyet alanına <code class="docutils literal notranslate"><span class="pre">=</span></code> atomu ile ilkdeğer
+verme kısmından önce sokulmaktadır. <code class="docutils literal notranslate"><span class="pre">list.h</span></code> dosyasında bu işlemi yapan aşağıdaki gibi bir makro da
+bulundurulmuştur:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define LIST_HEAD_INIT(name) {&amp;(name), &amp;(name)}</span>
+</pre></div>
+</div>
+<p>Bu durumda başlangıç düğümü bu makroyla şöyle de oluşturulabilir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">head</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LIST_HEAD_INIT</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Aslında bu tanımlamanın tamamını yapan aşağıdaki gibi bir makro da bulundurulmuştur:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define LIST_HEAD(name) \</span>
+<span class="cp">    struct list_head name = LIST_HEAD_INIT(name)</span>
+</pre></div>
+</div>
+<p>O halde biz başlangıç düğümünü basit bir biçimde şöyle oluşturabiliriz:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">LIST_HEAD</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Linux’un bağlı liste gerçekleştiriminde <code class="docutils literal notranslate"><span class="pre">next</span></code> ve <code class="docutils literal notranslate"><span class="pre">prev</span></code> göstericilerinde <code class="docutils literal notranslate"><span class="pre">NULL</span></code> adres
+kullanılmamıştır. Son düğümün <code class="docutils literal notranslate"><span class="pre">next</span></code> göstericisi <code class="docutils literal notranslate"><span class="pre">NULL</span></code> yerine başlangıç düğümünü, ilk düğümün
+<code class="docutils literal notranslate"><span class="pre">prev</span></code> göstericisi de <code class="docutils literal notranslate"><span class="pre">NULL</span></code> yerine son düğümü göstermektedir. Yani aslında bağlı liste
+gerçekleştirimi döngüsel (circular) gibidir. Herhangi bir düğümden başlanarak başlangıç düğümü de
+atlanırsa tam dolaşım sağlanabilir. Bağlı listenin başlangıç düğümünün <code class="docutils literal notranslate"><span class="pre">prev</span></code> göstericisi de son
+düğümü göstermektedir.</p>
+</section>
+<section id="dugum-ekleme">
+<h3><span class="section-number">3.3.2. </span>Düğüm Ekleme<a class="headerlink" href="#dugum-ekleme" title="Link to this heading"></a></h3>
+<p>Bağlı listenin başına <code class="docutils literal notranslate"><span class="pre">list_head</span></code> düğümünü eklemek için <code class="docutils literal notranslate"><span class="pre">list_add</span></code> fonksiyonu kullanılmaktadır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_add</span><span class="p">(</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Fonksiyonun birinci parametresi eklenecek düğümün adresini, ikinci parametresi başlangıç düğümünün
+adresini almaktadır.</p>
+<p>Çekirdek kodlarında iki alt tire ile başlayan fonksiyonlar aşağı seviyeli fonksiyonlardır. Yani doğrudan
+çağrılmayan ancak başka fonksiyonların içerisinden dolaylı biçimde çağrılan fonksiyonlardır. Buradaki
+<code class="docutils literal notranslate"><span class="pre">__list_add</span></code> fonksiyonu şöyle yazılmıştır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">__list_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span>
+<span class="w">              </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">,</span>
+<span class="w">              </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">__list_add_valid</span><span class="p">(</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="n">next</span><span class="p">))</span>
+<span class="w">        </span><span class="k">return</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new</span><span class="p">;</span>
+<span class="w">    </span><span class="n">new</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">next</span><span class="p">;</span>
+<span class="w">    </span><span class="n">new</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prev</span><span class="p">;</span>
+<span class="w">    </span><span class="n">WRITE_ONCE</span><span class="p">(</span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="n">new</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Buradaki <code class="docutils literal notranslate"><span class="pre">WRITE_ONCE</span></code> makrosu atama işlemini volatile erişimle yapmaktadır. <code class="docutils literal notranslate"><span class="pre">WRITE_ONCE(a,</span> <span class="pre">b)</span></code>
+çağrısını <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">b</span></code> gibi düşünebilirsiniz.</p>
+<p>Bağlı listenin sonuna düğüm eklemek için <code class="docutils literal notranslate"><span class="pre">list_add_tail</span></code> fonksiyonu kullanılmaktadır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_add_tail</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_add</span><span class="p">(</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="liste-dolasimi">
+<h3><span class="section-number">3.3.3. </span>Liste Dolaşımı<a class="headerlink" href="#liste-dolasimi" title="Link to this heading"></a></h3>
+<p>Peki biz bağlı listeyi nasıl dolaşabiliriz? Başlangıç düğümünü geçerek sürekli ileriye gidersek son
+düğüm de başlangıç düğümünü gösterdiğine göre dolaşımı aşağıdaki gibi bir for döngüsüyle yapabiliriz:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">lh</span><span class="p">;</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">lh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">.</span><span class="n">next</span><span class="p">;</span><span class="w"> </span><span class="n">lh</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">;</span><span class="w"> </span><span class="n">lh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lh</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="cm">/* ... */</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Tabii böyle bir döngüde dolaşım yapılırken aslında biz her yinelemede ilgili yapının başlangıç adresini
+değil <code class="docutils literal notranslate"><span class="pre">list_head</span></code> yapısının başlangıç adresini elde ederiz. <code class="docutils literal notranslate"><span class="pre">container_of</span></code> makrosu ile bu adresin
+yapı adresine dönüştürülmesi gerekir. Örneğin biz <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">SAMPLE</span></code> türünden yapı nesnelerini birbirine
+bağlamış olalım:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">LIST_HEAD</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">link</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Eklemeleri şöyle yapmış olalım:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="o">*</span><span class="n">ps</span><span class="p">;</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">)))</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">NULL</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cannot allocate memory!...</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<span class="w">    </span><span class="n">list_add_tail</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">link</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Çekirdek kodlarında <em>malloc</em> gibi kullanıcı modu fonksiyonları kullanılamaz. Ancak burada yalnızca
+anlaşılır bir test örneği verilmektedir.</p>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">SAMPLE</span></code> yapımızdaki <code class="docutils literal notranslate"><span class="pre">link</span></code> elemanı <code class="docutils literal notranslate"><span class="pre">list_head</span></code> yapılarını birbirine bağlamak için
+bulundurulmuştur. Örneğimizdeki <code class="docutils literal notranslate"><span class="pre">list_add_tail</span></code> fonksiyonunda ekleme yapılacak düğümün <code class="docutils literal notranslate"><span class="pre">SAMPLE</span></code>
+yapısının içerisindeki <code class="docutils literal notranslate"><span class="pre">link</span></code> elemanının adresi olduğuna dikkat ediniz. Şimdi dolaşımı şöyle
+yapabiliriz:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="o">*</span><span class="n">ps</span><span class="p">;</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">lh</span><span class="p">;</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">lh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">.</span><span class="n">next</span><span class="p">;</span><span class="w"> </span><span class="n">lh</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">;</span><span class="w"> </span><span class="n">lh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lh</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">container_of</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">);</span>
+<span class="w">    </span><span class="cm">/* ... */</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Burada artık <code class="docutils literal notranslate"><span class="pre">ps</span></code> göstericisi <code class="docutils literal notranslate"><span class="pre">list_head</span></code> nesnesini değil <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">SAMPLE</span></code> nesnesini göstermektedir.
+Aslında <code class="docutils literal notranslate"><span class="pre">list.h</span></code> dosyası içerisinde buradaki döngüyü oluşturan <code class="docutils literal notranslate"><span class="pre">list_for_each</span></code> isimli bir makro da
+bulundurulmuştur:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">list_is_head</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">list</span><span class="p">,</span>
+<span class="w">                               </span><span class="k">const</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">list</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cp">#define list_for_each(pos, head) \</span>
+<span class="cp">    for (pos = (head)-&gt;next; !list_is_head(pos, (head)); pos = pos-&gt;next)</span>
+</pre></div>
+</div>
+<p>Makronun birinci parametresi <code class="docutils literal notranslate"><span class="pre">list_head</span></code> türünden bir göstericiyi, ikinci parametresi başlangıç
+düğümünün adresini almaktadır. Döngünün her yinelenmesinde bu göstericiye sonraki düğümün <code class="docutils literal notranslate"><span class="pre">list_head</span></code>
+adresi atanmaktadır. Örneğin:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">lh</span><span class="p">;</span>
+
+<span class="n">list_for_each</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">container_of</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">);</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">a</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Aslında çekirdekteki <code class="docutils literal notranslate"><span class="pre">list.h</span></code> dosyası içerisinde yukarıdaki dolaşımı tek hamlede yapan
+<code class="docutils literal notranslate"><span class="pre">list_for_each_entry</span></code> isimli bir makro da bulunmaktadır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define list_for_each_entry(pos, head, member)              \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member); \</span>
+<span class="cp">         !list_entry_is_head(pos, head, member);             \</span>
+<span class="cp">         pos = list_next_entry(pos, member))</span>
+</pre></div>
+</div>
+<p>Makronun birinci parametresi asıl yapı türünden bir göstericidir; makro her yinelemede bu göstericiye
+sonraki düğümün adresini yerleştirmektedir. Makronun ikinci parametresi başlangıç düğümünün adresini,
+üçüncü parametresi ise yapı içerisindeki <code class="docutils literal notranslate"><span class="pre">list_head</span></code> elemanın ismini belirtmektedir. Bu makronun
+eşdeğeri bazı ayrıntılar ihmal edilerek şöyle de yazılabilir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define my_list_for_each_entry(pos, head, member)                                            \</span>
+<span class="cp">    for (pos = container_of((head)-&gt;next, typeof(*pos), member); &amp;(pos)-&gt;member != head;     \</span>
+<span class="cp">        pos = container_of((pos)-&gt;member.next, typeof(*pos), member))</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>C standartlarında bir ifadenin türünü veren bir tür belirleyicisi yoktu. C++’a C++11 ile birlikte
+<code class="docutils literal notranslate"><span class="pre">decltype</span></code> ismi ile böyle bir belirleyici eklendi. gcc derleyicileri uzun süredir bu işi yapan
+<code class="docutils literal notranslate"><span class="pre">typeof</span></code> isimli belirleyiciyi desteklemektedir. Nihayet C’ye de C23 ile birlikte resmi olarak
+<code class="docutils literal notranslate"><span class="pre">typeof</span></code> belirleyicisi eklenmiştir. Makroda türün <code class="docutils literal notranslate"><span class="pre">typeof(*pos)</span></code> ifadesiyle elde edildiğine dikkat
+ediniz.</p>
+</div>
+<p>Bu makro ile dolaşım şöyle sağlanabilir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="o">*</span><span class="n">ps</span><span class="p">;</span>
+
+<span class="n">list_for_each_entry</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="cm">/* ... */</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tüyo</p>
+<p>Bağlı liste makrolarının ve fonksiyonlarının isimlerinin sonunda <em>entry</em> sözcüğü varsa bu makro ya da
+fonksiyon asıl yapıya ilişkin adres, yoksa <code class="docutils literal notranslate"><span class="pre">list_head</span></code> türünden adres verip almaktadır.</p>
+</div>
+<p>Ayrıca <code class="docutils literal notranslate"><span class="pre">list.h</span></code> içerisinde <code class="docutils literal notranslate"><span class="pre">list_for_each_entry_safe</span></code> isimli bir döngü makrosu da
+bulundurulmuştur. Bu makro eğer liste boşsa hiç dolaşım yapmamaktadır. Makro aşağıdaki gibi
+yazılmıştır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define list_for_each_entry_safe(pos, n, head, member)          \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member),    \</span>
+<span class="cp">         n = list_next_entry(pos, member);                       \</span>
+<span class="cp">         !list_entry_is_head(pos, head, member);                 \</span>
+<span class="cp">         pos = n, n = list_next_entry(n, member))</span>
+</pre></div>
+</div>
+<p>Makronun birinci elemanı dolaşımda kullanılacak asıl yapı türünden göstericiyi almaktadır. Makronun
+ikinci parametresi de asıl yapı göstericidir. Üçüncü ve dördüncü parametreler sırasıyla kök düğümün
+adresi ve bağ düğümünün ismini almaktadır.</p>
+</section>
+<section id="dugum-silme">
+<h3><span class="section-number">3.3.4. </span>Düğüm Silme<a class="headerlink" href="#dugum-silme" title="Link to this heading"></a></h3>
+<p>Bağlı listeden bir düğümü silmek için <code class="docutils literal notranslate"><span class="pre">list_del</span></code> fonksiyonu kullanılmaktadır. Fonksiyon şöyle
+tanımlanmıştır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">__list_del</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prev</span><span class="p">;</span>
+<span class="w">    </span><span class="n">WRITE_ONCE</span><span class="p">(</span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">__list_del_entry</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">__list_del_entry_valid</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span>
+<span class="w">        </span><span class="k">return</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">__list_del</span><span class="p">(</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_del</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_del_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">);</span>
+<span class="w">    </span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LIST_POISON1</span><span class="p">;</span>
+<span class="w">    </span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LIST_POISON2</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Fonksiyonun parametresi silinecek düğüme ilişkin <code class="docutils literal notranslate"><span class="pre">list_head</span></code> nesnesinin adresini almaktadır. Burada
+silinen düğümdeki <code class="docutils literal notranslate"><span class="pre">next</span></code> ve <code class="docutils literal notranslate"><span class="pre">prev</span></code> göstericilerine özel bazı değerlerin atandığını görüyorsunuz. Bu
+değerler silinmiş düğümün kullanılması durumunda <em>page fault</em> oluşmasına yol açmaktadır; dolayısıyla bir
+çeşit debug mekanizması oluşturmak amacıyla atandıklarını söyleyebiliriz.</p>
+</section>
+<section id="araya-dugum-ekleme">
+<h3><span class="section-number">3.3.5. </span>Araya Düğüm Ekleme<a class="headerlink" href="#araya-dugum-ekleme" title="Link to this heading"></a></h3>
+<p>Bağlı listenin arasına düğüm ekleyen ayrı bir insert fonksiyonu yoktur. Zaten <code class="docutils literal notranslate"><span class="pre">list_add</span></code> fonksiyonu
+araya ekleme işlemini de yapmaktadır. Örneğin biz araya şöyle ekleme yapabiliriz:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">link</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">ps_insert</span><span class="o">-&gt;</span><span class="n">link</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Burada <code class="docutils literal notranslate"><span class="pre">ps</span></code> eklenecek düğümün asıl yapı adresini, <code class="docutils literal notranslate"><span class="pre">ps_insert</span></code> ise önüne eklemenin yapılacağı asıl
+yapı adresini belirtmektedir.</p>
+<p>Bir bağlı listeyi tümden serbest bırakmak için düğümlerin tek tek serbest bırakılması gerekmektedir.
+Buradaki düğümler aslında başka yapıların içerisinde olduğuna göre liste içerisindeki o yapı nesnelerinin
+serbest bırakılması gerekir.</p>
+</section>
+</section>
+<section id="tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">
+<h2><span class="section-number">3.4. </span>Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı<a class="headerlink" href="#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi" title="Link to this heading"></a></h2>
+<p>Aşağıda kullanıcı alanında çekirdekteki bağlı liste kullanımına bir örnek verilmiştir.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stddef.h&gt;</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cp">#define LIST_HEAD_INIT(name) { &amp;(name), &amp;(name) }</span>
+
+<span class="cp">#define LIST_HEAD(name) \</span>
+<span class="cp">    struct list_head name = LIST_HEAD_INIT(name)</span>
+
+<span class="cp">#define container_of(ptr, type, member) ({          \</span>
+<span class="cp">        void *__mptr = (void *)(ptr);               \</span>
+<span class="cp">        ((type *)(__mptr - offsetof(type, member))); })</span>
+
+<span class="cp">#define list_entry(ptr, type, member) \</span>
+<span class="cp">    container_of(ptr, type, member)</span>
+
+<span class="cp">#define list_entry_is_head(pos, head, member) \</span>
+<span class="cp">    (&amp;pos-&gt;member == (head))</span>
+
+<span class="cp">#define list_first_entry(ptr, type, member) \</span>
+<span class="cp">    list_entry((ptr)-&gt;next, type, member)</span>
+
+<span class="cp">#define list_next_entry(pos, member) \</span>
+<span class="cp">    list_entry((pos)-&gt;member.next, typeof(*(pos)), member)</span>
+
+<span class="cp">#define list_for_each(pos, head) \</span>
+<span class="cp">    for (pos = (head)-&gt;next; !list_is_head(pos, (head)); pos = pos-&gt;next)</span>
+
+<span class="cp">#define list_for_each_entry(pos, head, member)              \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member); \</span>
+<span class="cp">        !list_entry_is_head(pos, head, member);              \</span>
+<span class="cp">        pos = list_next_entry(pos, member))</span>
+
+<span class="cp">#define list_for_each_entry_safe(pos, n, head, member)          \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member),    \</span>
+<span class="cp">         n = list_next_entry(pos, member);                       \</span>
+<span class="cp">         !list_entry_is_head(pos, head, member);                 \</span>
+<span class="cp">         pos = n, n = list_next_entry(n, member))</span>
+
+<span class="cp">#define my_list_for_each_entry(pos, head, member)                                        \</span>
+<span class="cp">    for (pos = container_of((head)-&gt;next, typeof(*pos), member); &amp;(pos)-&gt;member != head; \</span>
+<span class="cp">            pos = container_of((pos)-&gt;member.next, typeof(*pos), member))</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">list_is_head</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">list</span><span class="p">,</span>
+<span class="w">                               </span><span class="k">const</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">list</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">__list_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span>
+<span class="w">                </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">,</span>
+<span class="w">                </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new</span><span class="p">;</span>
+<span class="w">    </span><span class="n">new</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">next</span><span class="p">;</span>
+<span class="w">    </span><span class="n">new</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prev</span><span class="p">;</span>
+<span class="w">    </span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_add</span><span class="p">(</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_add_tail</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_add</span><span class="p">(</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">__list_del</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prev</span><span class="p">;</span>
+<span class="w">    </span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">next</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">__list_del_entry</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_del</span><span class="p">(</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">list_del</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_del_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">LIST_HEAD</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="n">link</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="o">*</span><span class="n">ps</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">ps_node</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">ps_temp</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">ps_del</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">ps_insert</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">lh</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">)))</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">NULL</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cannot allocate memory!...</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<span class="w">        </span><span class="n">list_add_tail</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">link</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">5</span><span class="p">)</span>
+<span class="w">            </span><span class="n">ps_del</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ps</span><span class="p">;</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">7</span><span class="p">)</span>
+<span class="w">            </span><span class="n">ps_insert</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ps</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">list_for_each</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">container_of</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">);</span>
+<span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">a</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">list_del</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ps_del</span><span class="o">-&gt;</span><span class="n">link</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">list_for_each</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">container_of</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">);</span>
+<span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">a</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">)))</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">NULL</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cannot allocate memory!...</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">link</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">ps_insert</span><span class="o">-&gt;</span><span class="n">link</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">list_for_each</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">container_of</span><span class="p">(</span><span class="n">lh</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">SAMPLE</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">);</span>
+<span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ps</span><span class="o">-&gt;</span><span class="n">a</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">ps_temp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<span class="w">    </span><span class="n">list_for_each_entry_safe</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span><span class="w"> </span><span class="n">ps_node</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">free</span><span class="p">(</span><span class="n">ps_temp</span><span class="p">);</span>
+<span class="w">        </span><span class="n">ps_temp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ps</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="rcu-destegi">
+<h2><span class="section-number">3.5. </span>RCU Desteği<a class="headerlink" href="#rcu-destegi" title="Link to this heading"></a></h2>
+<p>Belli bir süreden sonra <code class="docutils literal notranslate"><span class="pre">list.h</span></code> dosyasına RCU (Read-Copy-Update) mekanizmasını destekleyecek biçimde
+dolaşım yapan <code class="docutils literal notranslate"><span class="pre">list_for_each_rcu</span></code> isimli makro da eklenmiştir. Bu makro bir yazıcı varsa okuyucuları
+bekletmeden işlem yapabilmeyi sağlamaktadır. <em>Read-Copy-Update</em> mekanizması ileride ele alınacaktır.</p>
+</section>
+<section id="eski-cekirdek-surumlerindeki-list-h">
+<h2><span class="section-number">3.6. </span>Eski Çekirdek Sürümlerindeki list.h<a class="headerlink" href="#eski-cekirdek-surumlerindeki-list-h" title="Link to this heading"></a></h2>
+<p>Çekirdeğin eski sürümlerinde <code class="docutils literal notranslate"><span class="pre">list.h</span></code> dosyası oldukça sade idi. Sonra bu dosyanın içeriğinde de bazı
+faydalı değişiklikler yapıldı. Ancak bu değişiklikler veri yapısının anlaşılmasını da biraz zorlaştırmıştır.
+Örneğin 2.2.26 çekirdeğindeki <code class="docutils literal notranslate"><span class="pre">list.h</span></code> dosyası oldukça sade bir biçimde aşağıdaki gibi oluşturulmuştur:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* 2.2.26 &lt;list.h&gt; dosyasının içeriği */</span>
+
+<span class="cp">#ifndef _LINUX_LIST_H</span>
+<span class="cp">#define _LINUX_LIST_H</span>
+
+<span class="cp">#ifdef __KERNEL__</span>
+
+<span class="cm">/*</span>
+<span class="cm"> * Simple doubly linked list implementation.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Some of the internal functions (&quot;__xxx&quot;) are useful when</span>
+<span class="cm"> * manipulating whole lists rather than single entries, as</span>
+<span class="cm"> * sometimes we already know the next/prev entries and we can</span>
+<span class="cm"> * generate better code by using them directly rather than</span>
+<span class="cm"> * using the generic single-entry routines.</span>
+<span class="cm"> */</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cp">#define LIST_HEAD_INIT(name) { &amp;(name), &amp;(name) }</span>
+
+<span class="cp">#define LIST_HEAD(name) \</span>
+<span class="cp">    struct list_head name = { &amp;name, &amp;name }</span>
+
+<span class="cp">#define INIT_LIST_HEAD(ptr) do { \</span>
+<span class="cp">    (ptr)-&gt;next = (ptr); (ptr)-&gt;prev = (ptr); \</span>
+<span class="cp">} while (0)</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">__list_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">,</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new</span><span class="p">;</span>
+<span class="w">    </span><span class="n">new</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">next</span><span class="p">;</span>
+<span class="w">    </span><span class="n">new</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prev</span><span class="p">;</span>
+<span class="w">    </span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">list_add</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_add</span><span class="p">(</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">list_add_tail</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_add</span><span class="p">(</span><span class="n">new</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">__list_del</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">,</span>
+<span class="w">                </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">next</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prev</span><span class="p">;</span>
+<span class="w">    </span><span class="n">prev</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">next</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">list_del</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">__list_del</span><span class="p">(</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">list_empty</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">list_splice</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">list</span><span class="p">,</span>
+<span class="w">                                   </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">list</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">first</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">list</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">last</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">list</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">;</span>
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">at</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+
+<span class="w">        </span><span class="n">first</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
+<span class="w">        </span><span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">first</span><span class="p">;</span>
+
+<span class="w">        </span><span class="n">last</span><span class="o">-&gt;</span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">at</span><span class="p">;</span>
+<span class="w">        </span><span class="n">at</span><span class="o">-&gt;</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">last</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cp">#define list_entry(ptr, type, member) \</span>
+<span class="cp">    ((type *)((char *)(ptr)-(unsigned long)(&amp;((type *)0)-&gt;member)))</span>
+
+<span class="cp">#define list_for_each(pos, head) \</span>
+<span class="cp">    for (pos = (head)-&gt;next; pos != (head); pos = pos-&gt;next)</span>
+
+<span class="cp">#endif </span><span class="cm">/* __KERNEL__ */</span>
+
+<span class="cp">#endif</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="kernelcompilation.html" class="btn btn-neutral float-left" title="2. Çekirdeğin Derlenmesi" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Önceki</a>
+        <a href="processcontrolblock.html" class="btn btn-neutral float-right" title="4. Proses Kontrol Bloğu ve task_struct Yapısı" accesskey="n" rel="next">Sonraki <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kaan Aslan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">tema</a>
+    kullanılarak <a href="https://readthedocs.org">Read the Docs</a> tarafından sağlanmasıyla oluşturuldu.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

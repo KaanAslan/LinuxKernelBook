@@ -7,9 +7,7 @@
 .. rst-class:: lead
 
    Bu kitap Kaan ASLAN tarafından *C ve Sistem Programcıları Derneğindeki* **Linux Kernel İşletim Sistemlerinin Tasarımı 
-   ve Gerçekleştirilmesi** kursundaki notlar temel alınarak hazırlanmıştır. Linux çekirdeğinin iç yapısını, tasarım 
-   kararlarını ve gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.
-
+   ve Gerçekleştirilmesi** kursundaki notlar temel alınarak hazırlanmıştır. 
 
 ----
 
@@ -28,4 +26,7 @@ ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
 
    introduction
    kernelcompilation.rst
+   kernellinkedlist.rst
+   processcontrolblock
+
    
