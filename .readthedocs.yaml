@@ -8,6 +8,9 @@ build:
     python: "3.11"
   apt_packages:
     - graphviz
+    - latexmk
+    - texlive-latex-recommended
+    - texlive-fonts-recommended
 
 # Sphinx yapılandırması
 sphinx:
