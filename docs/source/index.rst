@@ -1,18 +1,31 @@
-.. LinuxKernelBook documentation master file, created by
-   sphinx-quickstart on Sat May 23 00:41:35 2026.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. Linux Kernel — İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
-Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi 
-=============================
+################################################################
+İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
+################################################################
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
 
+
+.. rst-class:: lead
+
+   Bu kitap Linux çekirdeğinin iç yapısını, tasarım kararlarını ve
+   gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.
+
+
+----
+
+.. rubric:: Ön Gereksinimler
+
+Okuyucunun C programlama diline hâkim olduğu ve temel Linux komut satırını
+kullanabildiği varsayılmaktadır. Çekirdeği derleyip denemek için sanallaştırma
+ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
+
+----
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: İçindekiler
+   :numbered:
 
- 
+   introduction
+   
