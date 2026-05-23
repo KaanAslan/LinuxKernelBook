@@ -143,20 +143,43 @@
 <li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-baslik-dosyalarinin-kurulumu">2.25. Çekirdek Başlık Dosyalarının Kurulumu</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="kernellinkedlist.html">3. Çekirdekteki Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernellinkedlistandhashtable.html">3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#rcu-destegi">3.5. RCU Desteği</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-destegi">3.5. RCU Desteği</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#arama-algoritmalari-ve-sozluk-tarzi-veri-yapilari">3.7. Arama Algoritmaları ve Sözlük Tarzı Veri Yapıları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#indeksli-arama">3.7.1. İndeksli Arama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablolari">3.8. Hash Tabloları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#cakisma-cozumleme-stratejileri">3.8.1. Çakışma Çözümleme Stratejileri</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#ayri-zincir-olusturma-separate-chaining">3.8.1.1. Ayrı Zincir Oluşturma (Separate Chaining)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-fonksiyonu-tasarimi">3.8.1.2. Hash Fonksiyonu Tasarımı</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#acik-adresleme-ve-dogrusal-yoklama">3.8.1.3. Açık Adresleme ve Doğrusal Yoklama</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdeginde-hash-tablosu-gerceklestirimi">3.9. Linux Çekirdeğinde Hash Tablosu Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hlist-head-ve-hlist-node-yapilari">3.9.1. hlist_head ve hlist_node Yapıları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablosunun-olusturulmasi">3.9.2. Hash Tablosunun Oluşturulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#id1">3.9.3. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ek-insert-fonksiyonlari">3.9.4. Ek Insert Fonksiyonları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dongu-makrolari">3.9.5. Döngü Makroları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ornek-uygulama">3.9.6. Örnek Uygulama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-lu-hash-tablosu-fonksiyonlari">3.10. RCU’lu Hash Tablosu Fonksiyonları</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="processcontrolblock.html">4. Proses Kontrol Bloğu ve task_struct Yapısı</a><ul>

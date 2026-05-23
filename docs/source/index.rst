@@ -26,7 +26,7 @@ ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
 
    introduction
    kernelcompilation.rst
-   kernellinkedlist.rst
+   kernellinkedlistandhashtable.rst
    processcontrolblock
 
    
