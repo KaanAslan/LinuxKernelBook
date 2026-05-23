@@ -4,12 +4,11 @@
 İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 ################################################################
 
-
-
 .. rst-class:: lead
 
-   Bu kitap Linux çekirdeğinin iç yapısını, tasarım kararlarını ve
-   gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.
+   Bu kitap Kaan ASLAN tarafından *C ve Sistem Programcıları Derneğindeki* **Linux Kernel İşletim Sistemlerinin Tasarımı 
+   ve Gerçekleştirilmesi** kursundaki notlar temel alınarak hazırlanmıştır. Linux çekirdeğinin iç yapısını, tasarım 
+   kararlarını ve gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.
 
 
 ----

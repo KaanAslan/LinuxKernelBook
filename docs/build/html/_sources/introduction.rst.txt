@@ -921,3 +921,207 @@ Dizinlerin açıklamaları aşağıda verilmiştir.
 
 ``virt``
     Burada çekirdeğin sanallaştırmaya hizmet eden kodları bulundurulmaktadır.
+
+Linux Sistemlerinin Boot Edilmesi
+==================================
+
+Kursumuzun bu bölümünde Linux sistemlerinin boot edilmesi süreci ele alınacaktır. İşletim sisteminin otomatik olarak
+yüklenerek çalışır hale getirilmesi sürecine *boot* işlemi denilmektedir. (*Boot* terimi İngilizce *askeri bottan
+(çizmeden)* gelmektedir.) Biz bilgisayar sistemine güç verdiğimizde bir süre sonra işletim sisteminin otomatik
+yüklendiğini görmekteyiz. Aslında işletim sisteminin yüklenmesi biraz karmaşık bir süreçle gerçekleşmektedir.
+
+
+Reset Vektörü ve BIOS/Firmware
+--------------------------------
+
+Mikroişlemciler güç uygulandığında (reset edildiğinde) belli bir adresten itibaren çalışacak biçimde tasarlanmıştır.
+Buna işlemcilerin *reset vektörü* denilmektedir. İşlemcilerin reset vektörleri genellikle fiziksel belleğin başında
+ya da sonunda bulunmaktadır. Örneğin Intel işlemcilerinde reset vektörü belleğin sonunda, ARM işlemcilerinde ise
+belleğin başında bulunmaktadır. İşlemci reset edildiğinde belli bir adresten çalışmaya başladığına göre orada
+çalışmaya hazır bir kodun bulunuyor olması gerekir. Tabii bu kod RAM (DRAM) bellekte bulunamaz. Çünkü sisteme güç
+uygulandığında RAM belleğin de içeriği sıfırlanmaktadır, ayrıca bugünkü DRAM belleklerin kullanılabilmesi için de
+onların donanımsal olarak programlanması gerekmektedir. İşte bilgisayar sistemlerinde işlemcinin reset vektöründe
+tipik olarak ROM bellekler bulundurulur. Eskiden bu amaçla EPROM bellekler kullanılıyordu. Artık uzunca bir süredir
+EEPROM (flash EPROM) bellekler kullanılmaktadır.
+
+Bugün kullandığımız DRAM bellekler güç kaynağı verilir verilmez kullanıma hazır hale getirilememektedir. Onların da
+kullanıma hazır hale getirilmesi (initialize edilmesi) gerekir. Benzer biçimde yine bazı donanım aygıtlarının
+kullanılmadan önce kullanıma hazır hale getirilmesi de gerekmektedir. İşte reset vektörüne yerleştirilmiş olan
+kodlar bilgisayar sistemini kullanıma hazır hale getirecek kodları barındırmaktadır. Tabii burada donanımdan
+donanıma değişen bazı ayrıntılar da söz konusu olabilmektedir. Reset vektöründeki kodlar genellikle donanımı üreten
+firmalar tarafından yazılmaktadır. Bunlar çok temel kodlar olduğu için bunlara *BIOS* ya da *firmware* gibi isimler
+verilmiştir. Bu tür temel BIOS ya da firmware kodlarının donanımı kullanıma hazır hale getirmek için yaptığı
+işlemlerden bazıları şunlardır:
+
+- DRAM bellekleri (bildiğimiz RAM) kullanıma hazır getirilmesi
+- Çok çekirdekli sistemlerde çekirdeklerin kullanıma hazır hale getirilmesi
+- Donanım aygıtlarının ve çevre birimlerinin tespit edilmesi ve bunlar hakkındaki bilgilerin oluşturulması
+  (örneğin ACPI tablosunun oluşturulması)
+- Çevre birimlerinin (yani yardımcı işlemcilerin) kullanıma hazır hale getirilmesi
+- SSD ve HDD gibi depolama birimlerinin kullanıma hazır hale getirilmesi
+- Klavye, fare gibi giriş çıkış aygıtlarının kullanıma hazır hale getirilmesi
+- Ekran kartı gibi görüntü aygıtlarının kullanıma hazır hale getirilmesi
+
+Reset vektöründeki kodlar çalıştırılınca artık donanım genel olarak çalışmaya hazır bir duruma getirilmiştir.
+Bundan sonra akışın bir biçimde sistem programcısına devredilmesi gerekir. Akışın devredilmesi tipik olarak
+ikincil bellekteki belli bir disk bloğunun RAM'e yüklenmesi ve oradaki kodun çalıştırılması yoluyla yapılmaktadır.
+Tersten gidersek sistem programcısı programını ikincil belleğin (diskin) bir bloğuna yerleştirir ve bu süreçler
+sonucunda bu program çalışır hale gelir. Peki işletim sistemi nasıl yüklenmektedir? ROM'daki BIOS ya da firmware
+kodunun işletim sistemini yüklemesi genel olarak mümkün değildir. Bunun temel nedenleri şunlardır:
+
+- İşletim sistemleri çok büyük olabilir. ROM'daki kod bunu yapabilecek yeterlilikte olmayabilir.
+- İşletim sistemlerinin yüklenmesi sistemden sisteme değişebilen ve nispeten karmaşık bir süreçtir. ROM'daki küçük
+  kodun bunu yapması genellikle mümkün olamamaktadır.
+- İkincil bellekte birden fazla işletim sistemi bulunuyor olabilir. Bu durumda bunların hangisinin nasıl
+  yükleneceğine karar verilmesi ve karar verilen işletim sisteminin yüklenmesi ROM'daki küçük program tarafından
+  genellikle yapılamamaktadır.
+
+O halde tek çıkar yol ROM'daki programın diskteki bir önyükleyiciyi yüklemesi ve işletim sisteminin yüklenmesinin
+bu program tarafından yapılmasıdır.
+
+
+Önyükleyici (Bootloader) Programlar
+--------------------------------------
+
+İşletim sistemlerini yükleyen bu tür programlara *önyükleyici (bootloader)* denilmektedir. (Biz *bootloader*
+terimi yerine bunun Türkçesi olan *önyükleyici* terimini de kullanacağız.) Yani yukarıda da belirttiğimiz gibi
+sistem programcısı diskteki önceden tespit edilmiş alana kendi kodunu yerleştirir. (Genellikle BIOS ya da firmware
+kodları küçük bir disk bloğunu yükleyip çalıştırmaktadır.) İşte sistem programcısının özel disk bloğuna
+yerleştirdiği bu program da önyükleyici (bootloader) programını yüklemektedir.
+
+Bugün değişik platformlarda kullanılan değişik *önyükleyici* programlar bulunmaktadır. Örneğin Microsoft Windows
+sistemleri için kendi *önyükleyici* programını kullanmaktadır. Buna *Windows Boot Manager (bootmgr)* denilmektedir.
+UNIX/Linux sistemlerinde değişik proje grupları tarafından yazılmış olan değişik önyükleyici programlar
+kullanılabilmektedir. Örneğin Linux sistemlerinde eskiden *LILO* isimli önyükleyici yoğun biçimde kullanılıyordu.
+Daha sonra *GRUB* isimli önyükleyici yaygın biçimde kullanılmaya başlandı. Son yıllarda SYSLINUX isimli bootloader
+paketi de belli bir ölçüde kullanım bulmuştur. SYSLINUX önyükleyicisi minimalist bir tasarıma sahiptir ve daha çok
+küçük sistemlerde tercih edilmektedir. Gömülü Linux sistemlerinde ise bugün en çok tercih edilen *Das U-Boot* ya da
+kısaca *U-Boot (Universal Bootloader)* denilen önyükleyici programdır.
+
+Peki ROM'daki program önyükleyici (bootloader) programını ikincil bellekte nasıl arayıp bulmaktadır? Bunun için
+birkaç teknik kullanılabilmektedir. Birincisi ROM'daki programın doğrudan ikincil belleğin önceden belirlenmiş
+bloklarını yüklemesidir. Örneğin klasik PC sistemlerinde ROM'daki (BIOS'taki) program diskin 0'ıncı bloğunu
+(yani ilk 512 byte'ı içeren bloğu) yüklemektedir. (Ancak daha sonra PC sistemlerinde *UEFI BIOS* ismi altında eski
+klasik BIOS kodları oldukça geliştirilmiştir. Artık bu UEFI BIOS kodları bazı dosya sistemlerini de tanımaktadır.)
+Örneğin Raspberry Pi'da ROM'daki kodlar FAT dosya sistemini tanıyabilmektedir. FAT dosya sistemi Microsoft'un DOS
+sistemlerinde kullandığı karmaşık olmayan sade bir dosya sistemidir. İşte ROM'daki kodlar FAT gibi bir dosya
+sistemini tanıyorsa FAT dosya sisteminin kök dizininde belli isimdeki dosyayı bulup RAM'e de yükleyebilmektedir.
+Bazı sistemlerde (örneğin Beaglebone Black'lerde) ROM'daki kod önce küçük bir önyükleyiciyi yüklemekte, bu küçük
+önyükleyici de asıl önyükleyiciyi yükleyebilmektedir.
+
+Burada birkaç soru aklınıza gelebilir. Bunlardan biri ROM'daki reset vektöründe bulunan kodların oraya kimin
+tarafından yerleştirilmiş olduğudur. ROM'daki reset vektöründe bulunan kodlar çok aşağı seviyeli kodlar olduğu
+için bunlar genellikle donanımı tasarlayan kurumlar tarafından yazılıp oraya yerleştirilmektedir. Örneğin bugün
+kullandığımız PC sistemlerinde ROM'daki bu kodlara BIOS (Basic Input Output System) denilmektedir. BIOS kodları PC
+donanımını tasarlayan IBM tarafından yazılmıştı. Örneğin Beaglebone Black kartlarındaki ROM programı Texas
+Instruments (TI) firması tarafından, Raspberry Pi kartlarındaki ROM programı ise Broadcom firması tarafından
+yazılmıştır. Özetle ROM'da bulunan bu aşağı seviyeli kodlar ilgili donanımı tasarlayan kurumlardaki sistem
+programcıları tarafından yazılmaktadır. Belli bir süredir bu tür BIOS alanlarında EEPROM teknolojisi kullanıldığı
+için BIOS güncellemeleri de yapılabilmektedir.
+
+
+Genel Boot Akışı
+-----------------
+
+İşletim sisteminin yüklenmesi pek çok donanım ve platformda aşağıdaki aşamalardan geçilerek yapılmaktadır:
+
+.. graphviz::
+
+   digraph genel_boot {
+       rankdir=TB;
+       graph [bgcolor="transparent", pad="0.3"];
+       node [shape=box, style="rounded,filled", fillcolor="#ddeeff",
+             fontname="DejaVu Sans", fontsize=11, margin="0.25,0.12", width=3.2];
+       edge [arrowhead=vee, arrowsize=0.9, color="#336699", penwidth=1.5];
+
+       A [label="Mikroişlemci reset edilir"];
+       B [label="ROM'daki reset vektöründe\nbulunan kodlar çalışır"];
+       C [label="ROM'daki kodlar diskteki önceden\nbelirlenmiş bloğu RAM'e yükler\nve çalıştırır"];
+       D [label="RAM'e yüklenen küçük program\nönyükleyiciyi RAM'e yükler"];
+       E [label="Önyükleyici işletim sistemini yükler\nve başlangıç kodlarını çalıştırır"];
+
+       A -> B -> C -> D -> E;
+   }
+
+
+Boot Aşamaları Terminolojisi
+------------------------------
+
+Sistem reset edildiğinde tüm boot işlemi bir bütünün parçaları gibi düşünülürse burada devreye giren programlara
+birer aşama numarası da verilebilmektedir. Örneğin boot işleminin reset vektöründe bulunan kısmına *birinci aşama
+önyükleyici (stage-1 / first stage bootloader)*, bu programın yüklediği programa *ikinci aşama önyükleyici
+(stage-2 / second stage bootloader)* ve bunun da yüklediği programa (yani işletim sistemini yükleyen GRUB gibi
+programlara da) *üçüncü aşama önyükleyici (stage-3 / third stage bootloader)* denilebilmektedir. Ancak bazı
+kaynaklar bu ROM'daki kodu boot sürecinin bir parçası olarak ele almamaktadır. Dolayısıyla bu kaynaklar ROM
+kodunun kendisine değil, onun yüklediği programa *birinci aşama önyükleyici (stage-1 / first stage bootloader)*,
+işletim sistemini yükleyen programa (yani GRUB gibi) ise *ikinci aşama önyükleyici (stage-2 / second stage
+bootloader)* demektedir. Örneğin Wikipedia boot işleminde donanım bileşenlerini hazır hale getiren reset
+vektöründeki programı *birinci aşama önyükleyici*, işletim sistemini yükleyen programı ise (GRUB gibi) *ikinci
+aşama önyükleyici* olarak isimlendirmiştir. Biz kursumuzda izleyen paragraflarda bu terminolojiyi kullanacağız.
+
+Bugün pek çok masaüstü Linux dağıtımında GRUB isimli önyükleyici program kullanılmaktadır. Bu önyükleyici program
+Linux çekirdek imajını belleğe yükleyerek çalıştırmaktadır. Linux'un çekirdek parametreleri de bu önyükleyici
+tarafından kullanıcıdan alınıp Linux'a verilmektedir. Biz kursumuzda çekirdek derlemesi yaparken ve sistemi
+çekirdekle boot ederken önyükleyicinin GRUB olduğunu varsayacağız.
+
+
+PC Sistemlerinde Boot Süreci (Klasik BIOS)
+-------------------------------------------
+
+Kursumuzdaki örnekler x86 tabanlı masaüstü bilgisayar kullanılarak verilmektedir. (Burada *masaüstü (desktop)*
+terimi yalnızca kasalı bilgisayarlar için değil notebook'lar için de kullanılan genel bir terimdir.) x86 tabanlı
+masaüstü bilgisayarlara tarihsel bakımdan *PC (Personal Computer)* de denilmektedir. (2000'lerin başında Apple
+Intel tabanlı PC mimarisine geçtiyse de kullandığı PC donanımında bazı farklılıklar da oluşturmuştur. Sonra
+Apple'ın Intel mimarisini de bırakıp ARM mimarisine geçtiğini biliyorsunuz. Ancak PC denildiğinde Intel ve ARM
+tabanlı macOS sistemleri kastedilmemektedir.)
+
+Bugün kullandığımız PC sistemlerinin temel donanımları 70'li yılların sonlarında ve 80'li yılların başlarında IBM
+tarafından tasarlanmıştır. Bu bilgisayarlar 1980'in Aralık ayında IBM'in tasarladığı donanım ve Microsoft'un
+tasarladığı DOS işletim sistemiyle piyasaya sürüldü. Zaman ilerledikçe bu PC donanımlarında bazı iyileştirmeler
+yapıldıysa da temel mimari büyük ölçüde aynı kalmıştır.
+
+Eskiden PC'lerde klasik BIOS (*legacy BIOS*) kullanılıyordu. Ancak 2010'lardan sonra modern UEFI BIOS'lar
+yaygınlaştı. Artık bugün ağırlıklı olarak UEFI BIOS'lar kullanılıyor. (Ancak bu modern UEFI BIOS'lar eski klasik
+BIOS (*legacy BIOS*) gibi de çalışabilecek özelliklere sahip olabilmektedir.) Biz burada klasik eski BIOS'a sahip
+PC'lerin boot sürecinden bahsedeceğiz.
+
+Eski klasik BIOS'lara (*legacy BIOS*) sahip PC'ler reset edildiğinde BIOS kodları DRAM belleği ve pek çok donanım
+birimini programladıktan sonra CMOS setup'ta belirtilen *boot sırasına (boot sequence)* göre ilgili medyanın
+0'ıncı sektörünü belleğe yükleyip akışı oraya devretmektedir. (PC mimarisinde diskten okunabilecek ya da diske
+yazılabilecek en küçük birime *sektör (sector)* denilmektedir.) İkincil belleklerdeki ilk sektöre *MBR (Master
+Boot Record)* denilmektedir. MBR'de toplam 512 byte'lık bir program bulunur. MBR'nin sonunda 64 byte'lık *Disk
+Bölümleme Tablosu (Disk Partition Table)* vardır. MBR'deki program duruma göre ya bir önyükleyici programını
+yüklemekte ya da default durumda aktif disk bölümünün 0'ıncı sektörünü RAM'e yükleyip akışı oraya devretmektedir.
+(PC sistemlerinde her disk bölümünün ilk sektörüne (0'ıncı sektörüne) *boot sektör* denilmektedir. Boot sektör
+ilgili işletim sisteminin yüklenmesinden sorumludur.) Tabii MBR'deki program daha büyük bir önyükleyici programını
+da yükleyebilmektedir. Bu durumda hangi işletim sisteminin yükleneceği önyükleyici program tarafından bir menü
+yoluyla kullanıcıya da sorulabilmektedir.
+
+UEFI BIOS öncesindeki eski BIOS sistemini kullanan (*legacy BIOS*) PC sistemlerindeki boot sürecini aşağıdaki
+gibi özetleyebiliriz:
+
+.. graphviz::
+
+   digraph pc_legacy_boot {
+       rankdir=TB;
+       graph [bgcolor="transparent", pad="0.3"];
+       node [shape=box, style="rounded,filled", fillcolor="#ddeeff",
+             fontname="DejaVu Sans", fontsize=11, margin="0.25,0.12", width=3.6];
+       edge [arrowhead=vee, arrowsize=0.9, color="#336699", penwidth=1.5];
+
+       A [label="PC'ye güç verilir\nMikroişlemci reset edilir"];
+       B [label="EEPROM'daki BIOS kodları\ntemel hazırlık işlemlerini yapar"];
+       C [label="BIOS, diskin ilk sektörünü (MBR)\nRAM'e yükler ve akışı devreder"];
+       D [label="MBR'deki program\nönyükleyiciyi RAM'e yükler"];
+       E [label="Önyükleyici, seçilen disk bölümünün\nboot sektörünü RAM'e yükler"];
+       F [label="Boot sektör\nişletim sistemini yükler"];
+       G [label="Akış işletim sistemi\nkodlarına devredilir",
+          fillcolor="#c8e6c9"];
+
+       A -> B -> C -> D -> E -> F -> G;
+   }
+
+Kursumuzda UEFI BIOS sistemlerinin işlevi ve temel çalışma mekanizması başka bir bölümde ele alınacaktır.
+
+Yukarıda da belirttiğimiz gibi bugünkü Linux yüklü olan Intel x86 tabanlı PC sistemlerinde genellikle önyükleyici
+olarak GRUB tercih edilmektedir.

@@ -4,30 +4,19 @@
 İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 ################################################################
 
-
-
 .. rst-class:: lead
 
-   Bu kitap Linux çekirdeğinin iç yapısını, tasarım kararlarını ve
-   gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.
+   Bu kitap Kaan ASLAN tarafından *C ve Sistem Programcıları Derneğindeki* **Linux Kernel İşletim Sistemlerinin Tasarımı 
+   ve Gerçekleştirilmesi** kursundaki notlar temel alınarak hazırlanmıştır. Linux çekirdeğinin iç yapısını, tasarım 
+   kararlarını ve gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.
 
 
 ----
 
-.. rubric:: Kapsam
-
-Bu kitapta ele alınan başlıca konular şunlardır:
-
-- İşletim sistemi kavramı, kaynak yönetimi ve sınıflandırma
-- UNIX ve Linux'un tarihsel gelişimi; GNU, POSIX ve açık kaynak ekosistemi
-- Linux çekirdeğinin kaynak kod yapısı ve temel alt sistemleri
-- Süreç yönetimi, bellek yönetimi, dosya sistemleri ve aygıt sürücüleri
-- Çekirdek derleme, yapılandırma ve hata ayıklama yöntemleri
-
 .. rubric:: Ön Gereksinimler
 
 Okuyucunun C programlama diline hâkim olduğu ve temel Linux komut satırını
-kullandığı varsayılmaktadır. Çekirdeği derleyip denemek için sanallaştırma
+kullanabildiği varsayılmaktadır. Çekirdeği derleyip denemek için sanallaştırma
 ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
 
 ----

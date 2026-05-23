@@ -10,6 +10,7 @@ extensions = [
     'sphinx.ext.viewcode',     # Kaynak koduna link
     'sphinx.ext.napoleon',     # Google/NumPy stil docstring desteği
     'sphinx.ext.intersphinx',  # Diğer projelere link
+    'sphinx.ext.graphviz',
 ]
 
 templates_path = ['_templates']
@@ -22,6 +23,7 @@ html_theme = 'sphinx_rtd_theme'  # Read the Docs teması
 html_static_path = ['_static']
 html_logo = '_static/logo.png'  # İsteğe bağlı logo
 html_favicon = '_static/favicon.ico'  # İsteğe bağlı favicon
+html_css_files = ['custom.css']
 
 # -- Tema seçenekleri ---------------------------------------------------
 html_theme_options = {

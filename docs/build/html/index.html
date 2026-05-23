@@ -9,6 +9,8 @@
   <title>İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi &mdash; LinuxKernelBook 1.0.0 belgelendirmesi</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b28b97a2" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -70,6 +72,14 @@
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.11. Linux Dağıtımları</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.12. POSIX Standartları</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.13. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.14. Linux Sistemlerinin Boot Edilmesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#reset-vektoru-ve-bios-firmware">1.14.1. Reset Vektörü ve BIOS/Firmware</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#onyukleyici-bootloader-programlar">1.14.2. Önyükleyici (Bootloader) Programlar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#genel-boot-akisi">1.14.3. Genel Boot Akışı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#boot-asamalari-terminolojisi">1.14.4. Boot Aşamaları Terminolojisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#pc-sistemlerinde-boot-sureci-klasik-bios">1.14.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -100,21 +110,13 @@
              
   <section id="isletim-sistemlerinin-tasarimi-ve-gerceklestirilmesi">
 <h1>İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi<a class="headerlink" href="#isletim-sistemlerinin-tasarimi-ve-gerceklestirilmesi" title="Link to this heading"></a></h1>
-<p class="lead">Bu kitap Linux çekirdeğinin iç yapısını, tasarım kararlarını ve
-gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.</p>
+<p class="lead">Bu kitap Kaan ASLAN tarafından <em>C ve Sistem Programcıları Derneğindeki</em> <strong>Linux Kernel İşletim Sistemlerinin Tasarımı
+ve Gerçekleştirilmesi</strong> kursundaki notlar temel alınarak hazırlanmıştır. Linux çekirdeğinin iç yapısını, tasarım
+kararlarını ve gerçekleştirim ayrıntılarını kurs notları biçiminde ele almaktadır.</p>
 <hr class="docutils" />
-<p class="rubric">Kapsam</p>
-<p>Bu kitapta ele alınan başlıca konular şunlardır:</p>
-<ul class="simple">
-<li><p>İşletim sistemi kavramı, kaynak yönetimi ve sınıflandırma</p></li>
-<li><p>UNIX ve Linux’un tarihsel gelişimi; GNU, POSIX ve açık kaynak ekosistemi</p></li>
-<li><p>Linux çekirdeğinin kaynak kod yapısı ve temel alt sistemleri</p></li>
-<li><p>Süreç yönetimi, bellek yönetimi, dosya sistemleri ve aygıt sürücüleri</p></li>
-<li><p>Çekirdek derleme, yapılandırma ve hata ayıklama yöntemleri</p></li>
-</ul>
 <p class="rubric">Ön Gereksinimler</p>
 <p>Okuyucunun C programlama diline hâkim olduğu ve temel Linux komut satırını
-kullandığı varsayılmaktadır. Çekirdeği derleyip denemek için sanallaştırma
+kullanabildiği varsayılmaktadır. Çekirdeği derleyip denemek için sanallaştırma
 ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.</p>
 <hr class="docutils" />
 <div class="toctree-wrapper compound">
@@ -134,6 +136,7 @@ ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.</p>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.11. Linux Dağıtımları</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.12. POSIX Standartları</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.13. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.14. Linux Sistemlerinin Boot Edilmesi</a></li>
 </ul>
 </li>
 </ul>
