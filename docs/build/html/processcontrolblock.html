@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b28b97a2" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5df53226" />
 
   
     <link rel="shortcut icon" href="_static/favicon.ico"/>
@@ -23,7 +23,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Dizin" href="genindex.html" />
     <link rel="search" title="Ara" href="search.html" />
-    <link rel="prev" title="3. Çekirdekteki Bağlı Liste Gerçekleştirimi" href="kernellinkedlist.html" /> 
+    <link rel="prev" title="3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri" href="kernellinkedlistandhashtable.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -50,36 +50,46 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Giriş</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#gereksinimler">1.1. Gereksinimler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#kaynak-kod-gezintisi">1.2. Kaynak Kod Gezintisi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerine-giris">1.3. İşletim Sistemlerine Giriş</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sisteminin-tanimi-ve-yapisi">1.4. İşletim Sisteminin Tanımı ve Yapısı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-siniflandirilmasi">1.5. İşletim Sistemlerinin Sınıflandırılması</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#proses-yonetimine-gore">1.5.1. Proses Yönetimine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#kullanici-sayisina-gore">1.5.2. Kullanıcı Sayısına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#cekirdek-yapisina-gore">1.5.3. Çekirdek Yapısına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.5.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#dagitiklik-durumuna-gore">1.5.5. Dağıtıklık Durumuna Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#donanim-ozelligine-gore">1.5.6. Donanım Özelliğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kod-lisansina-gore">1.5.7. Kaynak Kod Lisansına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kodun-ozgunlugune-gore">1.5.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#gui-calisma-destegine-gore">1.5.9. GUI Çalışma Desteğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.5.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#kaynak-listesi">1.2. Kaynak Listesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#understanding-the-linux-kernel">1.2.1. Understanding the Linux Kernel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#linux-device-drivers">1.2.2. Linux Device Drivers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kernel-internals-ve-genel-mimari">1.2.3. Kernel İnternals ve Genel Mimari</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#linux-kernel-programming">1.2.4. Linux Kernel Programming</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#linux-kernel-debugging">1.2.5. Linux Kernel Debugging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#sistem-programlama-ve-kullanici-alani-kaynaklari">1.2.6. Sistem Programlama ve Kullanıcı Alanı Kaynakları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#cevrimici-kaynaklar">1.2.7. Çevrimiçi Kaynaklar</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-tarihsel-gelisimi">1.6. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#unix-turevi-sistemlerin-tarihsel-gelisimi">1.7. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#mac-os-x-turevi-sistemler">1.8. Mac OS X Türevi Sistemler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#gnu-projesi-ve-ozgur-yazilim">1.9. GNU Projesi ve Özgür Yazılım</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-un-tarihsel-gelisimi">1.10. Linux’un Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.11. Linux Dağıtımları</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.12. POSIX Standartları</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.13. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.14. Linux Sistemlerinin Boot Edilmesi</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#reset-vektoru-ve-bios-firmware">1.14.1. Reset Vektörü ve BIOS/Firmware</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#onyukleyici-bootloader-programlar">1.14.2. Önyükleyici (Bootloader) Programlar</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#genel-boot-akisi">1.14.3. Genel Boot Akışı</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#boot-asamalari-terminolojisi">1.14.4. Boot Aşamaları Terminolojisi</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#pc-sistemlerinde-boot-sureci-klasik-bios">1.14.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#cekirdek-kodlari-uzerinde-gezinme">1.3. Çekirdek Kodları Üzerinde Gezinme</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerine-giris">1.4. İşletim Sistemlerine Giriş</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sisteminin-tanimi-ve-yapisi">1.5. İşletim Sisteminin Tanımı ve Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-siniflandirilmasi">1.6. İşletim Sistemlerinin Sınıflandırılması</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#proses-yonetimine-gore">1.6.1. Proses Yönetimine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kullanici-sayisina-gore">1.6.2. Kullanıcı Sayısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#cekirdek-yapisina-gore">1.6.3. Çekirdek Yapısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.6.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dagitiklik-durumuna-gore">1.6.5. Dağıtıklık Durumuna Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#donanim-ozelligine-gore">1.6.6. Donanım Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kod-lisansina-gore">1.6.7. Kaynak Kod Lisansına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kodun-ozgunlugune-gore">1.6.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#gui-calisma-destegine-gore">1.6.9. GUI Çalışma Desteğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.6.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-tarihsel-gelisimi">1.7. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#unix-turevi-sistemlerin-tarihsel-gelisimi">1.8. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#mac-os-x-turevi-sistemler">1.9. Mac OS X Türevi Sistemler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#gnu-projesi-ve-ozgur-yazilim">1.10. GNU Projesi ve Özgür Yazılım</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-un-tarihsel-gelisimi">1.11. Linux’un Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.12. Linux Dağıtımları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.13. POSIX Standartları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.14. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.15. Linux Sistemlerinin Boot Edilmesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#reset-vektoru-ve-bios-firmware">1.15.1. Reset Vektörü ve BIOS/Firmware</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#onyukleyici-bootloader-programlar">1.15.2. Önyükleyici (Bootloader) Programlar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#genel-boot-akisi">1.15.3. Genel Boot Akışı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#boot-asamalari-terminolojisi">1.15.4. Boot Aşamaları Terminolojisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#pc-sistemlerinde-boot-sureci-klasik-bios">1.15.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
 </ul>
 </li>
 </ul>
@@ -145,20 +155,43 @@
 <li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-baslik-dosyalarinin-kurulumu">2.25. Çekirdek Başlık Dosyalarının Kurulumu</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="kernellinkedlist.html">3. Çekirdekteki Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernellinkedlistandhashtable.html">3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#rcu-destegi">3.5. RCU Desteği</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-destegi">3.5. RCU Desteği</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#arama-algoritmalari-ve-sozluk-tarzi-veri-yapilari">3.7. Arama Algoritmaları ve Sözlük Tarzı Veri Yapıları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#indeksli-arama">3.7.1. İndeksli Arama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablolari">3.8. Hash Tabloları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#cakisma-cozumleme-stratejileri">3.8.1. Çakışma Çözümleme Stratejileri</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#ayri-zincir-olusturma-separate-chaining">3.8.1.1. Ayrı Zincir Oluşturma (Separate Chaining)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-fonksiyonu-tasarimi">3.8.1.2. Hash Fonksiyonu Tasarımı</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#acik-adresleme-ve-dogrusal-yoklama">3.8.1.3. Açık Adresleme ve Doğrusal Yoklama</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdeginde-hash-tablosu-gerceklestirimi">3.9. Linux Çekirdeğinde Hash Tablosu Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hlist-head-ve-hlist-node-yapilari">3.9.1. hlist_head ve hlist_node Yapıları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablosunun-olusturulmasi">3.9.2. Hash Tablosunun Oluşturulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#id1">3.9.3. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ek-insert-fonksiyonlari">3.9.4. Ek Insert Fonksiyonları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dongu-makrolari">3.9.5. Döngü Makroları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ornek-uygulama">3.9.6. Örnek Uygulama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-lu-hash-tablosu-fonksiyonlari">3.10. RCU’lu Hash Tablosu Fonksiyonları</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">4. Proses Kontrol Bloğu ve task_struct Yapısı</a><ul>
@@ -201,7 +234,17 @@
 <li class="toctree-l2"><a class="reference internal" href="#pid-tahsisati">4.13. PID Tahsisatı</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#pid-uretim-mekanizmasinin-tarihsel-gelisimi">4.13.1. PID Üretim Mekanizmasının Tarihsel Gelişimi</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#maksimum-pid-degeri">4.13.2. Maksimum PID Değeri</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pid-den-task-struct-nesnesine-hizli-erisim">4.13.3. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnesine Hızlı Erişim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pid-den-task-struct-nesnesine-hizli-erisim">4.14. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnesine Hızlı Erişim</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#versiyonu-pid-nesnesi-ve-bagli-listeler">4.14.1. 2.6 Versiyonu: pid Nesnesi ve Bağlı Listeler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pid-type-enum-degerleri-ve-bagli-listeler">4.14.2. <code class="docutils literal notranslate"><span class="pre">pid_type</span></code> Enum Değerleri ve Bağlı Listeler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#versiyonu-hash-tablosundan-xarray-e-gecis">4.14.3. 4.20 Versiyonu: Hash Tablosundan XArray’e Geçiş</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#radix-agaclarinin-kullanilmasi">4.14.4. Radix Ağaçlarının Kullanılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yapraklarda-deger-saklama-yontemi">4.14.5. Yapraklarda Değer Saklama Yöntemi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dallanma-faktoru-n-li-agac">4.14.6. Dallanma Faktörü: n-li Ağaç</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#guncel-cekirdek-pid-aramasi-4-20">4.14.7. Güncel Çekirdek: pid Araması (4.20+)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#xarray-gerceklestirimi">4.14.8. XArray Gerçekleştirimi</a></li>
 </ul>
 </li>
 </ul>
@@ -1892,8 +1935,9 @@ değiştirilebilir:</p>
 </pre></div>
 </div>
 </section>
+</section>
 <section id="pid-den-task-struct-nesnesine-hizli-erisim">
-<h3><span class="section-number">4.13.3. </span>PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnesine Hızlı Erişim<a class="headerlink" href="#pid-den-task-struct-nesnesine-hizli-erisim" title="Link to this heading"></a></h3>
+<h2><span class="section-number">4.14. </span>PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnesine Hızlı Erişim<a class="headerlink" href="#pid-den-task-struct-nesnesine-hizli-erisim" title="Link to this heading"></a></h2>
 <p>“Çekirdek belli bir pid değerine ilişkin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> adresini nasıl hızlı bir biçimde elde
 etmektedir?” sorusuna yanıt verelim. Düz mantıkla sistemdeki bütün <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesneleri dolaşılarak
 elde edilebilir. Ancak böyle bir arama çekirdek için çok yavaştır. Bu tür hızlı aramalar için Linux
@@ -1902,6 +1946,703 @@ elde edilebilir. Ancak böyle bir arama çekirdek için çok yavaştır. Bu tür
 bu amaçla <em>radix ağaçları</em> da işin içine sokulmuştur. Güncel çekirdeklerdeki arama sistemi radix
 ağaçlarının özel bir biçimi olan <em>XArray</em> veri yapısı ve hash tablolarının hibrit bir biçimine benzemektedir.
 Biz kursumuzun bu noktasında Linux çekirdeğinde hash tablolarının gerçekleştirimi üzerinde duracağız.</p>
+<p>Çekirdeğin ilk 0.01 versiyonunda zaten en fazla 64 tane <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnesi oluşturulabiliyordu.
+Bu versiyonda pid değerine ilişkin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnesinin bulunması için bu <code class="docutils literal notranslate"><span class="pre">task_struct</span></code>
+nesnelerinin tutulduğu <code class="docutils literal notranslate"><span class="pre">task</span></code> isimli global dizide sıralı arama yapılmıştır.</p>
+<p>Çekirdeğin 2.2 versiyonlarında pid değerinden hareketle <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnesinin bulunması için hash
+tablosu kullanılmıştır. Bu versiyonlarda bu işi yapan <em>find_task_by_pid</em> fonksiyonu aşağıdaki gibi
+yazılmıştır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">extern</span><span class="w"> </span><span class="n">__inline__</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">find_task_by_pid</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">pid</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="o">**</span><span class="n">htable</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">pidhash</span><span class="p">[</span><span class="n">pid_hashfn</span><span class="p">(</span><span class="n">pid</span><span class="p">)];</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">htable</span><span class="p">;</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">pid</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">pid</span><span class="p">;</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">pidhash_next</span><span class="p">)</span>
+<span class="w">        </span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">p</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Bu versiyonlarda henüz daha sonra açıkladığımız <code class="docutils literal notranslate"><span class="pre">hlist</span></code> hash tablosu fonksiyonları çekirdekte
+bulunmuyordu. <em>find_task_by_pid</em> fonksiyonunda önce pid değeri <em>pid_hashfn</em> isimli bir hash
+fonksiyonuna sokularak bir indeks değeri elde edilmiş, sonra da <code class="docutils literal notranslate"><span class="pre">pidhash</span></code> dizisinin bu indeksteki
+bağlı liste zincirinde arama yapılmıştır. <code class="docutils literal notranslate"><span class="pre">pidhash</span></code> dizisi şöyle tanımlanmıştır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">pidhash</span><span class="p">[</span><span class="n">PIDHASH_SZ</span><span class="p">];</span>
+</pre></div>
+</div>
+<p>Görüldüğü gibi hash tablosundaki zincirler doğrudan <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnelerini tutmaktadır. Bu
+versiyonlarda bu zincirler için <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> içerisinde iki link elemanı bulunduruluyordu:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="cm">/* ... */</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w">  </span><span class="o">*</span><span class="n">pidhash_next</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">**</span><span class="n">pidhash_pprev</span><span class="p">;</span>
+<span class="w">    </span><span class="cm">/* ... */</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Çekirdeğin 2.4 versiyonunda da algoritmada ve yukarıdaki fonksiyonda bir değişiklik yapılmamıştır.
+Yani yine bir hash tablosu eşliğinde arama yapılmaktadır.</p>
+<section id="versiyonu-pid-nesnesi-ve-bagli-listeler">
+<h3><span class="section-number">4.14.1. </span>2.6 Versiyonu: pid Nesnesi ve Bağlı Listeler<a class="headerlink" href="#versiyonu-pid-nesnesi-ve-bagli-listeler" title="Link to this heading"></a></h3>
+<p>Çekirdeğin 2.6’lı versiyonlarında artık her farklı pid değeri için o pid değerine ilişkin bir
+<code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesi (<code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">pid</span></code> nesnesi) oluşturulmaya başlanmıştır. Bu versiyonlarda çekirdek her
+farklı pid değeri için bir <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesi oluşturup bu <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnelerini de hash tablolarında
+saklamaktadır. Her <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesi de aşağıda açıklayacağımız gibi bir grup bağlı listenin kök
+düğümlerini tutmaktadır. Bu versiyonlarda bir pid değerine ilişkin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnesini bulmak
+için çekirdek önce hash tablosundan o pid değerine ilişkin <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesini elde etmekte, sonra o
+<code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesinin içerisindeki bağlı listelerde arama yapmaktadır:</p>
+<div class="graphviz"><object data="_images/graphviz-d03a3cb3856ae563a636f462c10c108a85b22dc0.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph pid_lookup_26 {
+    rankdir=LR;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.3&quot;];
+    node  [shape=box, style=&quot;rounded,filled&quot;, fontname=&quot;monospace&quot;, fontsize=11,
+           height=0.5, width=2.0];
+    edge  [color=&quot;#336699&quot;, arrowsize=0.9, penwidth=1.5];
+
+    pid_val  [label=&quot;pid değeri&quot;,        fillcolor=&quot;#AACCFF&quot;];
+    hash_tbl [label=&quot;Hash Tablosu\n(pid_hash[])&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    pid_obj  [label=&quot;struct pid\nnesnesi&quot;, fillcolor=&quot;#FFDDAA&quot;];
+    task_str [label=&quot;task_struct\nnesnesi&quot;, fillcolor=&quot;#D4E8D4&quot;];
+
+    pid_val  -&gt; hash_tbl [label=&quot;hash_func(pid)&quot;];
+    hash_tbl -&gt; pid_obj  [label=&quot;zincir arama&quot;];
+    pid_obj  -&gt; task_str [label=&quot;tasks[] listesi&quot;];
+}</p></object></div>
+<p>2.6’lı versiyonlardaki <code class="docutils literal notranslate"><span class="pre">pid</span></code> yapısı şöyleydi:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">atomic_t</span><span class="w">     </span><span class="n">count</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">level</span><span class="p">;</span>
+<span class="w">    </span><span class="cm">/* lists of tasks that use this pid */</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">hlist_head</span><span class="w"> </span><span class="n">tasks</span><span class="p">[</span><span class="n">PIDTYPE_MAX</span><span class="p">];</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">rcu_head</span><span class="w"> </span><span class="n">rcu</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">upid</span><span class="w"> </span><span class="n">numbers</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Bu versiyonlardaki durumu şöyle özetleyebiliriz:</p>
+<ol class="arabic simple">
+<li><p>Çekirdek her pid için bir <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesi (<code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">pid</span></code> nesnesi) oluşturup onu bir hash
+tablosunda saklamaktadır. Yani <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesneleri için bir hash tablosu kullanılmıştır.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pid</span></code> yapısının içerisindeki <code class="docutils literal notranslate"><span class="pre">tasks</span></code> elemanı o pid değerine ilişkin bağlı liste zincirlerinin
+kök düğümlerini tutmaktadır.</p></li>
+<li><p>Sistem bir pid değerine ilişkin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnesini elde etmek için önce o pid değerine
+ilişkin <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesini hash tablosundan bulmakta, sonra onun içerisindeki ilgili bağlı listede
+arama yapmaktadır.</p></li>
+</ol>
+<p>2.6 çekirdekleriyle birlikte Linux’a <em>isim alanları (name spaces)</em> kavramı da sokulmaya başlanmıştır.
+Bu versiyonlar artık pid değerleri için bir isim alanı da kullanmaktadır. Pid isim alanı sayesinde
+sanki çekirdek birden fazla pid dünyasına sahip gibi bir etki oluşturulmaktadır. Pid isim alanları iç
+içe de oluşturulabilmektedir. Artık bu versiyonlarla birlikte pid değerleri sistem genelinde tek değil
+isim alanı genelinde tektir. Linux çekirdeğine eklenen bu isim alanları özelliği <em>docker</em> gibi container
+teknolojilerinin gelişmesine katkı sağlamıştır.</p>
+</section>
+<section id="pid-type-enum-degerleri-ve-bagli-listeler">
+<h3><span class="section-number">4.14.2. </span><code class="docutils literal notranslate"><span class="pre">pid_type</span></code> Enum Değerleri ve Bağlı Listeler<a class="headerlink" href="#pid-type-enum-degerleri-ve-bagli-listeler" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">pid</span></code> yapısındaki <code class="docutils literal notranslate"><span class="pre">tasks</span></code> dizisinin <code class="docutils literal notranslate"><span class="pre">PIDTYPE_MAX</span></code> kadar elemana sahip olduğunu görüyorsunuz.
+<code class="docutils literal notranslate"><span class="pre">PIDTYPE_MAX</span></code> aşağıdaki gibi bir <code class="docutils literal notranslate"><span class="pre">enum</span></code> türünün elemanıdır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* 2.6&#39;lı versiyonlar */</span>
+<span class="k">enum</span><span class="w"> </span><span class="n">pid_type</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">PIDTYPE_PID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">PIDTYPE_PGID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">PIDTYPE_SID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">PIDTYPE_MAX</span><span class="w">   </span><span class="cm">/* = 3 */</span>
+<span class="p">};</span>
+
+<span class="cm">/* Güncel versiyonlar */</span>
+<span class="k">enum</span><span class="w"> </span><span class="n">pid_type</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">PIDTYPE_PID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">PIDTYPE_TGID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">PIDTYPE_PGID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">PIDTYPE_SID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">PIDTYPE_MAX</span><span class="w">   </span><span class="cm">/* = 4 */</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Daha sonra <code class="docutils literal notranslate"><span class="pre">PIDTYPE_TGID</span></code> ile temsil edilen bir bağlı listenin daha eklendiğine dikkat ediniz.
+Peki pid değerini saklamak için neden birden fazla bağlı liste kullanılmaktadır? İşte 2.6’lı
+çekirdeklerle birlikte bu tarz aramalarda hız kazancı sağlamak için tasarım değiştirilmiştir.
+Aşağıdaki diyagram her listenin hangi <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnelerini tuttuğunu göstermektedir:</p>
+<div class="graphviz"><object data="_images/graphviz-d2c495fb313135c1c3a5d8e6e313d7110ba3a50c.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph pid_tasks {
+    rankdir=TB;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.4&quot;];
+    node  [fontname=&quot;sans-serif&quot;, fontsize=11];
+    edge  [color=&quot;#336699&quot;, arrowsize=0.85, penwidth=1.5];
+
+    pid_node [label=&quot;struct pid\n(tasks[PIDTYPE_MAX])&quot;,
+              shape=record, style=&quot;rounded,filled&quot;, fillcolor=&quot;#FFDDAA&quot;,
+              fontname=&quot;monospace&quot;,
+              label=&quot;{struct pid | tasks[0]\nPIDTYPE_PID | tasks[1]\nPIDTYPE_TGID | tasks[2]\nPIDTYPE_PGID | tasks[3]\nPIDTYPE_SID}&quot;];
+
+    pid_node [shape=record,
+              label=&quot;{struct pid | &lt;t0&gt;tasks[0]\nPIDTYPE_PID | &lt;t1&gt;tasks[1]\nPIDTYPE_TGID | &lt;t2&gt;tasks[2]\nPIDTYPE_PGID | &lt;t3&gt;tasks[3]\nPIDTYPE_SID}&quot;,
+              style=&quot;rounded,filled&quot;, fillcolor=&quot;#FFDDAA&quot;, fontname=&quot;monospace&quot;, fontsize=10];
+
+    desc0 [label=&quot;Tek task_struct\n(belli bir thread)&quot;,
+           shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;, fontname=&quot;sans-serif&quot;, fontsize=10];
+    desc1 [label=&quot;Aynı prosesin\ntüm thread'leri&quot;,
+           shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;, fontname=&quot;sans-serif&quot;, fontsize=10];
+    desc2 [label=&quot;Aynı proses grubundaki\ntüm proseslerin ana thread'leri&quot;,
+           shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;, fontname=&quot;sans-serif&quot;, fontsize=10];
+    desc3 [label=&quot;Aynı oturumdaki\ntüm proseslerin ana thread'leri&quot;,
+           shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;, fontname=&quot;sans-serif&quot;, fontsize=10];
+
+    pid_node:t0 -&gt; desc0;
+    pid_node:t1 -&gt; desc1;
+    pid_node:t2 -&gt; desc2;
+    pid_node:t3 -&gt; desc3;
+}</p></object></div>
+<p>Bu bağlı listeleri daha ayrıntılı açıklayalım:</p>
+<ul class="simple">
+<li><p><strong>PIDTYPE_PID:</strong> Bu bağlı liste zincirinde aslında tek bir eleman vardır. Amacımız yalnızca belli
+bir pid değerine ilişkin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnesinin adresinin bulunmasıysa hemen bu listenin ilk
+elemanını alabiliriz.</p></li>
+<li><p><strong>PIDTYPE_TGID:</strong> Bu bağlı liste belli bir prosesin thread’lerini dolaşmak için kullanılmaktadır.
+Bu bağlı listedeki tüm <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesneleri aynı prosesin thread’lerini oluşturmaktadır. Yani
+biz çekirdeğe bir prosesin ana thread’ine ilişkin bir pid değeri verdiğimizde çekirdek bu bağlı
+liste zincirini dolaşarak o prosesin tüm thread’lerinin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> adreslerini elde
+edebilmektedir.</p></li>
+<li><p><strong>PIDTYPE_PGID:</strong> Aynı proses grubuna ilişkin proseslerin ana thread’lerinin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code>
+nesnelerini tutmaktadır. Yani aranan pid değeri bir proses grup liderine ilişkin pid belirtiyorsa bu
+zincirde o proses grubundaki tüm proseslerin ana thread’lerinin <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnelerinin
+adresleri bulunmaktadır.</p></li>
+<li><p><strong>PIDTYPE_SID:</strong> Belli bir oturuma (session) ilişkin tüm proseslerin (onların ana thread’lerinin)
+<code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnelerinin adreslerini tutmaktadır.</p></li>
+</ul>
+<p>2.6 versiyonlarından önce tek bir hash tablosu vardı. Bu nedenle proses grubundaki proseslerin
+<code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesneleri ancak tüm <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesneleri dolaşılarak elde edilebiliyordu.
+Halbuki 2.6’daki bu tasarımla bu biçimdeki dolaşımlar bu hash tablosu ve bağlı listeler yoluyla çok
+daha hızlı yapılabilmektedir.</p>
+<p>Aşağıda 2.6 versiyonlarında pid değerinden <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesnesine ulaşım çağrı zinciri
+görülmektedir:</p>
+<div class="graphviz"><object data="_images/graphviz-c369e3ba32b095626ac71a139e75290841d8fb34.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph find_task_chain {
+    rankdir=LR;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.3&quot;];
+    node  [shape=box, style=&quot;rounded,filled&quot;, fontname=&quot;monospace&quot;, fontsize=10,
+           height=0.5, width=2.2];
+    edge  [color=&quot;#336699&quot;, arrowsize=0.9, penwidth=1.5];
+
+    f1 [label=&quot;find_task_by_vpid()&quot;, fillcolor=&quot;#AACCFF&quot;];
+    f2 [label=&quot;find_task_by_pid_ns()&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    f3 [label=&quot;find_pid_ns()&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    f4 [label=&quot;pid_task()&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    f5 [label=&quot;task_struct *&quot;, fillcolor=&quot;#D4E8D4&quot;];
+
+    f1 -&gt; f2 -&gt; f3 -&gt; f4 -&gt; f5;
+
+    note1 [label=&quot;prosesin pid\nisim alanında arama&quot;, shape=note,
+           style=&quot;filled&quot;, fillcolor=&quot;#FFFACD&quot;, fontsize=9, fontname=&quot;sans-serif&quot;];
+    note2 [label=&quot;hash tablosundan\npid nesnesi&quot;, shape=note,
+           style=&quot;filled&quot;, fillcolor=&quot;#FFFACD&quot;, fontsize=9, fontname=&quot;sans-serif&quot;];
+    note3 [label=&quot;pid nesnesindeki\nbağlı listeden&quot;, shape=note,
+           style=&quot;filled&quot;, fillcolor=&quot;#FFFACD&quot;, fontsize=9, fontname=&quot;sans-serif&quot;];
+
+    f1 -&gt; note1 [style=dashed, color=&quot;#999999&quot;, arrowhead=none];
+    f3 -&gt; note2 [style=dashed, color=&quot;#999999&quot;, arrowhead=none];
+    f4 -&gt; note3 [style=dashed, color=&quot;#999999&quot;, arrowhead=none];
+}</p></object></div>
+<p>Hash tablosunda pid nesnesini arayan <em>find_pid_ns</em> fonksiyonu, <code class="docutils literal notranslate"><span class="pre">upid</span></code> yapı nesnelerini dolaşmakta
+ve hem pid değerine hem de pid isim alanına birlikte bakmaktadır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">upid</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">nr</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid_namespace</span><span class="w"> </span><span class="o">*</span><span class="n">ns</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">hlist_node</span><span class="w"> </span><span class="n">pid_chain</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">hlist_head</span><span class="w"> </span><span class="o">*</span><span class="n">pid_hash</span><span class="p">;</span><span class="w">   </span><span class="cm">/* global hash tablosu */</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w"> </span><span class="o">*</span><span class="n">find_pid_ns</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">nr</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid_namespace</span><span class="w"> </span><span class="o">*</span><span class="n">ns</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">hlist_node</span><span class="w"> </span><span class="o">*</span><span class="n">elem</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">upid</span><span class="w"> </span><span class="o">*</span><span class="n">pnr</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">hlist_for_each_entry_rcu</span><span class="p">(</span><span class="n">pnr</span><span class="p">,</span><span class="w"> </span><span class="n">elem</span><span class="p">,</span>
+<span class="w">            </span><span class="o">&amp;</span><span class="n">pid_hash</span><span class="p">[</span><span class="n">pid_hashfn</span><span class="p">(</span><span class="n">nr</span><span class="p">,</span><span class="w"> </span><span class="n">ns</span><span class="p">)],</span><span class="w"> </span><span class="n">pid_chain</span><span class="p">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pnr</span><span class="o">-&gt;</span><span class="n">nr</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">nr</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">pnr</span><span class="o">-&gt;</span><span class="n">ns</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ns</span><span class="p">)</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">container_of</span><span class="p">(</span><span class="n">pnr</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">numbers</span><span class="p">[</span><span class="n">ns</span><span class="o">-&gt;</span><span class="n">level</span><span class="p">]);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Burada <code class="docutils literal notranslate"><span class="pre">hlist_node</span></code> bağının <code class="docutils literal notranslate"><span class="pre">upid</span></code> nesnesinin içerisinde olduğuna, <code class="docutils literal notranslate"><span class="pre">upid</span></code> nesnesinin de <code class="docutils literal notranslate"><span class="pre">pid</span></code>
+nesnesinin içerisinde olduğuna dikkat ediniz.</p>
+</section>
+<section id="versiyonu-hash-tablosundan-xarray-e-gecis">
+<h3><span class="section-number">4.14.3. </span>4.20 Versiyonu: Hash Tablosundan XArray’e Geçiş<a class="headerlink" href="#versiyonu-hash-tablosundan-xarray-e-gecis" title="Link to this heading"></a></h3>
+<p>Çekirdek versiyonu 4.20’lere geldiğinde yukarıdaki mekanizmada önemli değişiklikler yapılmıştır. En
+önemli değişiklik pid ve isim alanından hareketle <code class="docutils literal notranslate"><span class="pre">pid</span></code> nesnesinin bulunması işleminde hash tablosu
+yerine <em>radix ağacının</em> kullanılmaya başlanmasıdır. Aslında 2.5 ile birlikte çekirdekte başka alt
+sistemlerde radix ağacı kullanılmaya başlanmıştı. Sonra bu radix ağaçlarının 4.20 versiyonuyla birlikte
+<em>XArray</em> isimli yeni bir gerçekleştirimi yapılmıştır.</p>
+<p>4.20 ve sonrasında <code class="docutils literal notranslate"><span class="pre">pid</span></code> yapısındaki bağlı listelerde bir farklılık yoktur. Yalnızca pid ve isim alanı
+bilgisinden hareketle <code class="docutils literal notranslate"><span class="pre">pid</span></code> yapı nesnesinin elde edilmesinde hash tablosu yerine radix ağacı (XArray
+gerçekleştirimi) kullanılmaktadır.</p>
+<p>Bu bağlamda pid mekanizmasında radix ağacının hash tablosuna tercih edilmesinin tipik nedenleri şunlardır:</p>
+<ul class="simple">
+<li><p>Radix ağacındaki arama hash tablolarından yavaş gözükse bile aslında pratikte durum tam böyle
+değildir. Buradaki radix ağacı seyrek tutulmaktadır. Bu yüzden arama hızlı yapılır.</p></li>
+<li><p>pid’leri artan sırayla gezmek, boş pid bulmak (en küçük kullanılmayan pid’i seçmek) çok daha
+kolaydır.</p></li>
+<li><p>Ağaçta yalnızca kullanılan düğümler tutulmaktadır. Bu da bellek kazancı sağlamaktadır.</p></li>
+<li><p>pid sayısı arttıkça hash tablosunun performansı düşme eğilimi gösterdiği halde radix ağacının
+performansı hash tablosuna kıyasla düşmez.</p></li>
+<li><p>Radix ağacı yalnızca pid araması için değil, aynı zamanda yeni yaratılan <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> nesneleri
+için pid tahsis edilmesinde de kullanılabilmektedir.</p></li>
+</ul>
+<p>Güncel çekirdeklerde hem pid aramaları hem de boş pid değerlerinin tespit edilmesi işlemleri bu XArray
+gerçekleştirimi ile sağlanmaktadır.</p>
+</section>
+<section id="radix-agaclarinin-kullanilmasi">
+<h3><span class="section-number">4.14.4. </span>Radix Ağaçlarının Kullanılması<a class="headerlink" href="#radix-agaclarinin-kullanilmasi" title="Link to this heading"></a></h3>
+<p>Biz radix arama ağacını ve XArray gerçekleştirimini daha sonra başka bir bölümde ele alacağız. Burada
+yalnızca radix arama ağacının temel mekanizması üzerinde açıklamalar yapacağız. Radix arama ağaçları
+için <em>dijital arama ağaçları (digital search tree)</em>, <em>önek arama ağacı (prefix search tree)</em>,
+<em>sıkıştırılmış arama ağaçları (compressed search trie)</em> gibi isimler de kullanılmaktadır.</p>
+<p>Bu arama ağaçlarında düğümlerde anahtar olarak anahtarın tamamı değil onun ön kısımları kullanılmaktadır.
+Böylece ağaç bir leksikografik sıralama ağacı gibi de kullanılabilmektedir. Tipik anlatım sayısal
+değerlerden oluşan ve öneklerin bit belirttiği anahtarlar üzerinde yapılmaktadır. Ağacın kökünden
+girilir. Her kademede bir bit daha anahtara eklenir.</p>
+<p>Örneğin 4 bitlik şu sayıların radix ağacına yerleştirilmek istendiğini düşünelim:
+<code class="docutils literal notranslate"><span class="pre">1100,</span> <span class="pre">1010,</span> <span class="pre">0101,</span> <span class="pre">1011,</span> <span class="pre">0010,</span> <span class="pre">0111,</span> <span class="pre">0000,</span> <span class="pre">1000</span></code></p>
+<p>Ağacın her adımında yüksek anlamlı bitten başlayarak solda 0, sağda 1 dallanması yapılmaktadır.
+Aşağıdaki diyagram bu sekiz anahtarın ağaca yerleşimi sonucunu göstermektedir:</p>
+<div class="graphviz"><object data="_images/graphviz-21dd7abf9ab48251cef00bbd686af32dd57471af.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph radix_tree {
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.3&quot;, ranksep=0.5, nodesep=0.35];
+    node  [shape=circle, style=&quot;filled&quot;, fillcolor=&quot;#DDEEFF&quot;,
+           fontname=&quot;monospace&quot;, fontsize=10, width=0.55, fixedsize=true];
+    edge  [fontname=&quot;monospace&quot;, fontsize=9, arrowsize=0.7, penwidth=1.2];
+
+    root [label=&quot;Kök&quot;, shape=box, style=&quot;rounded,filled&quot;,
+          fillcolor=&quot;#AACCFF&quot;, fontname=&quot;sans-serif&quot;, width=1.0, fixedsize=false];
+
+    /* Seviye 1 */
+    L0  [label=&quot;0&quot;];
+    L1  [label=&quot;1&quot;];
+
+    /* Seviye 2 */
+    L00 [label=&quot;0&quot;];
+    L01 [label=&quot;1&quot;];
+    L10 [label=&quot;0&quot;];
+    L11 [label=&quot;1&quot;];
+
+    /* Seviye 3 */
+    L000 [label=&quot;0&quot;];
+    L001 [label=&quot;1&quot;];
+    L010 [label=&quot;0&quot;];
+    L011 [label=&quot;1&quot;];
+    L100 [label=&quot;0&quot;];
+    L101 [label=&quot;1&quot;];
+    L110 [label=&quot;0&quot;];
+
+    /* Seviye 4 - yapraklar */
+    node [shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;, width=0.7, fixedsize=true];
+    V0000 [label=&quot;0000&quot;];
+    V0010 [label=&quot;0010&quot;];
+    V0101 [label=&quot;0101&quot;];
+    V0111 [label=&quot;0111&quot;];
+    V1000 [label=&quot;1000&quot;];
+    V1010 [label=&quot;1010&quot;];
+    V1011 [label=&quot;1011&quot;];
+    V1100 [label=&quot;1100&quot;];
+
+    root -&gt; L0  [label=&quot;0&quot;];
+    root -&gt; L1  [label=&quot;1&quot;];
+
+    L0 -&gt; L00  [label=&quot;0&quot;];
+    L0 -&gt; L01  [label=&quot;1&quot;];
+    L1 -&gt; L10  [label=&quot;0&quot;];
+    L1 -&gt; L11  [label=&quot;1&quot;];
+
+    L00 -&gt; L000 [label=&quot;0&quot;];
+    L00 -&gt; L001 [label=&quot;1&quot;];
+    L01 -&gt; L010 [label=&quot;0&quot;];
+    L01 -&gt; L011 [label=&quot;1&quot;];
+    L10 -&gt; L100 [label=&quot;0&quot;];
+    L10 -&gt; L101 [label=&quot;1&quot;];
+    L11 -&gt; L110 [label=&quot;0&quot;];
+
+    L000 -&gt; V0000 [label=&quot;0&quot;];
+    L001 -&gt; V0010 [label=&quot;0&quot;];
+    L010 -&gt; V0101 [label=&quot;1&quot;];
+    L011 -&gt; V0111 [label=&quot;1&quot;];
+    L100 -&gt; V1000 [label=&quot;0&quot;];
+    L101 -&gt; V1010 [label=&quot;0&quot;];
+    L101 -&gt; V1011 [label=&quot;1&quot;];
+    L110 -&gt; V1100 [label=&quot;0&quot;];
+}</p></object></div>
+<p>Peki bu ağaçta arama nasıl yapılır? İşte arama için kökten girilir. Her bit pozisyonu için bir aşağıya
+inilir. Örneğin <code class="docutils literal notranslate"><span class="pre">0000</span></code> değerini arayacak olalım: ilk bit 0 olduğu için kökten sola ineriz, ikinci bit
+de 0 olduğu için sola devam ederiz, üçüncü bit de 0 olduğu için sola, dördüncü bit de 0 olduğu için
+sola gideriz. Artık değeri buluruz. Radix ağaçlarını enlemesine (breadth-first gibi) dolaştığımızda
+anahtarların sıralı bir biçimde elde edilebildiğine dikkat ediniz.</p>
+</section>
+<section id="yapraklarda-deger-saklama-yontemi">
+<h3><span class="section-number">4.14.5. </span>Yapraklarda Değer Saklama Yöntemi<a class="headerlink" href="#yapraklarda-deger-saklama-yontemi" title="Link to this heading"></a></h3>
+<p>Biz yukarıdaki anlatımda düğümlerde anahtarların tutulduğunu varsaydık. Aslında düğümlerde anahtarların
+tutulmasına da gerek yoktur. Zaten her kademede bir bit ilerlendiğine göre arama yaprağa gelindiğinde
+sonlandırılabilir. Aşağıdaki ağaçta bit-bit dallanma yapılmış ve yalnızca yapraklarda değerler
+tutulmuştur:</p>
+<div class="graphviz"><object data="_images/graphviz-9bd2a3a59306e5b814afee2c126387db6d8a638b.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph radix_leaves {
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.3&quot;, ranksep=0.5, nodesep=0.3];
+    node  [shape=circle, style=&quot;filled&quot;, fillcolor=&quot;#DDEEFF&quot;,
+           fontname=&quot;monospace&quot;, fontsize=10, width=0.45, fixedsize=true];
+    edge  [fontname=&quot;monospace&quot;, fontsize=9, arrowsize=0.7, penwidth=1.2,
+           color=&quot;#555555&quot;];
+
+    root [label=&quot;Kök&quot;, shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#AACCFF&quot;,
+          fontname=&quot;sans-serif&quot;, width=0.9, fixedsize=false];
+
+    /* Derinlik 1 */
+    d1_0 [label=&quot;0&quot;];
+    d1_1 [label=&quot;1&quot;];
+
+    /* Derinlik 2 */
+    d2_00 [label=&quot;0&quot;];
+    d2_01 [label=&quot;1&quot;];
+    d2_10 [label=&quot;0&quot;];
+    d2_11 [label=&quot;1&quot;];
+
+    /* Derinlik 3 */
+    d3_000 [label=&quot;0&quot;];
+    d3_001 [label=&quot;1&quot;];
+    d3_010 [label=&quot;0&quot;];
+    d3_011 [label=&quot;1&quot;];
+    d3_100 [label=&quot;0&quot;];
+    d3_101 [label=&quot;1&quot;];
+    d3_110 [label=&quot;0&quot;];
+
+    /* Yapraklar */
+    node [shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;,
+          fontname=&quot;monospace&quot;, fontsize=9, width=0.72, fixedsize=true];
+    leaf_0000 [label=&quot;0000\nson&quot;];
+    leaf_0010 [label=&quot;0010\nson&quot;];
+    leaf_0101 [label=&quot;0101\nson&quot;];
+    leaf_0111 [label=&quot;0111\nson&quot;];
+    leaf_1000 [label=&quot;1000\nson&quot;];
+    leaf_1010 [label=&quot;1010\nson&quot;];
+    leaf_1011 [label=&quot;1011\nson&quot;];
+    leaf_1100 [label=&quot;1100\nson&quot;];
+
+    root  -&gt; d1_0  [label=&quot;0&quot;];
+    root  -&gt; d1_1  [label=&quot;1&quot;];
+    d1_0  -&gt; d2_00 [label=&quot;0&quot;];
+    d1_0  -&gt; d2_01 [label=&quot;1&quot;];
+    d1_1  -&gt; d2_10 [label=&quot;0&quot;];
+    d1_1  -&gt; d2_11 [label=&quot;1&quot;];
+    d2_00 -&gt; d3_000 [label=&quot;0&quot;];
+    d2_00 -&gt; d3_001 [label=&quot;1&quot;];
+    d2_01 -&gt; d3_010 [label=&quot;0&quot;];
+    d2_01 -&gt; d3_011 [label=&quot;1&quot;];
+    d2_10 -&gt; d3_100 [label=&quot;0&quot;];
+    d2_10 -&gt; d3_101 [label=&quot;1&quot;];
+    d2_11 -&gt; d3_110 [label=&quot;0&quot;];
+    d3_000 -&gt; leaf_0000 [label=&quot;0&quot;];
+    d3_001 -&gt; leaf_0010 [label=&quot;0&quot;];
+    d3_010 -&gt; leaf_0101 [label=&quot;1&quot;];
+    d3_011 -&gt; leaf_0111 [label=&quot;1&quot;];
+    d3_100 -&gt; leaf_1000 [label=&quot;0&quot;];
+    d3_101 -&gt; leaf_1010 [label=&quot;0&quot;];
+    d3_101 -&gt; leaf_1011 [label=&quot;1&quot;];
+    d3_110 -&gt; leaf_1100 [label=&quot;0&quot;];
+}</p></object></div>
+<p>Görüldüğü gibi bu tasarımda hiç anahtar saklanmadan yaprak görülene kadar ilerlenirse ya ilgili anahtar
+bulunmuş olur ya da bulunmamış olur. Peki her düğümde anahtarı tutmakla yalnızca yapraklarda değeri
+tutmanın hangisi daha iyi bir yöntemdir?</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 40.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Yöntem</p></th>
+<th class="head"><p>Avantajları</p></th>
+<th class="head"><p>Dezavantajları</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Her düğümde anahtar saklama</strong></p></td>
+<td><p>Erken durabilme; ara düğümde tam eşleşme bulununca yaprağa kadar inmek gerekmez.
+Prefix aramaları daha kolay.</p></td>
+<td><p>Veri yapısı karmaşıklaşır; bellek kullanımı artar.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Yalnızca yapraklarda değer saklama</strong></p></td>
+<td><p>Basit tasarım: iç düğümler yalnızca yönlendirme bilgisi tutar. Bellek daha düzenli kullanılır.
+Ekleme/silme algoritmaları daha etkin.</p></td>
+<td><p>Her zaman yaprağa kadar inmek gerekir. Prefix tabanlı aramalarda ek iş yapılması gerekir.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Linux’un klasik radix ve XArray gerçekleştirimlerinde değerler her zaman yapraklarda tutulmaktadır.
+Ara düğümlerde anahtarlar tutulmamaktadır.</p>
+</div>
+</section>
+<section id="dallanma-faktoru-n-li-agac">
+<h3><span class="section-number">4.14.6. </span>Dallanma Faktörü: n-li Ağaç<a class="headerlink" href="#dallanma-faktoru-n-li-agac" title="Link to this heading"></a></h3>
+<p>Radix ağacının ikili ağaç olması zorunlu değildir. Dallanma bit bit yapıldığında yukarıdaki örnekte
+olduğu gibi radix ağacı ikili ağaç durumunda olur. Ancak dallanma n bit n bit de yapılabilir. Bu
+durumda ağaç da 2<sup>n</sup>-li ağaç olacaktır.</p>
+<p>Örneğin 32 bitlik pid değerlerini böyle bir ağaçta tutmak isteyelim ve dallanmayı 6 bit 6 bit yapalım.
+6 bit → 2<sup>6</sup> = 64 farklı dallanmaya yol açacaktır. Bu durumda ağacımızın her düğümünde 64
+gösterici bulunacaktır ve yapraklara varabilmek için en fazla 6 kademe ilerlenecektir:</p>
+<div class="graphviz"><object data="_images/graphviz-3a2581653bc0601e9b800b2dd99212c992373625.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph xarray_64way {
+    rankdir=TB;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.3&quot;, ranksep=0.6];
+    node  [fontname=&quot;sans-serif&quot;, fontsize=10];
+    edge  [arrowsize=0.8, penwidth=1.2, color=&quot;#336699&quot;];
+
+    root [label=&quot;Kök\n(64 gösterici)&quot;, shape=box, style=&quot;rounded,filled&quot;,
+          fillcolor=&quot;#AACCFF&quot;, fontname=&quot;monospace&quot;];
+
+    g0  [label=&quot;0x00…0x3F\n64 gösterici&quot;, shape=box, style=&quot;rounded,filled&quot;,
+         fillcolor=&quot;#DDEEFF&quot;];
+    g1  [label=&quot;0x40…0x7F\n64 gösterici&quot;, shape=box, style=&quot;rounded,filled&quot;,
+         fillcolor=&quot;#DDEEFF&quot;];
+    g2  [label=&quot;...&quot;, shape=plaintext];
+    g63 [label=&quot;0xC0…0xFF\n64 gösterici&quot;, shape=box, style=&quot;rounded,filled&quot;,
+         fillcolor=&quot;#DDEEFF&quot;];
+
+    leaf1 [label=&quot;struct pid *&quot;, shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;];
+    leaf2 [label=&quot;struct pid *&quot;, shape=box, style=&quot;rounded,filled&quot;, fillcolor=&quot;#D4E8D4&quot;];
+
+    root -&gt; g0  [label=&quot;bit[5:0]=0&quot;];
+    root -&gt; g1  [label=&quot;bit[5:0]=1&quot;];
+    root -&gt; g2  [style=invis];
+    root -&gt; g63 [label=&quot;bit[5:0]=63&quot;];
+
+    g0  -&gt; leaf1 [label=&quot;bit[11:6]=x&quot;];
+    g1  -&gt; leaf2 [label=&quot;bit[11:6]=y&quot;];
+
+    note [label=&quot;En fazla 6 kademe\n(32-bit PID için)\nortalama 2–3 seviye&quot;,
+          shape=note, style=&quot;filled&quot;, fillcolor=&quot;#FFFACD&quot;,
+          fontname=&quot;sans-serif&quot;, fontsize=9];
+    root -&gt; note [style=dashed, color=&quot;#999999&quot;, arrowhead=none];
+}</p></object></div>
+<p>Güncel sürümlerde Linux’un pid araması için kullandığı XArray ağacı bu örnekteki gibi altışar bitlidir.</p>
+<p>Hash tablosu ile XArray/Radix ağacı arasındaki avantaj ve dezavantajları karşılaştıralım:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 35.0%" />
+<col style="width: 35.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Kriter</p></th>
+<th class="head"><p>Hash Tablosu</p></th>
+<th class="head"><p>XArray / Radix Ağacı</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Arama karmaşıklığı</strong></p></td>
+<td><p>Ortalama O(1); çakışmada en kötü O(N)</p></td>
+<td><p>O(log<sub>k</sub> N), tipik derinlik 2–3</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Bellek kullanımı</strong></p></td>
+<td><p>Tablo önceden sabit boyutta ayrılır; seyrek pid’lerde boşa gider</p></td>
+<td><p>Yalnızca kullanılan düğümler açılır; seyrek alanda çok verimli</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Çakışma</strong></p></td>
+<td><p>Mümkün; performansı düşürebilir</p></td>
+<td><p>Yok; her pid tek bir yolu izler</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Ölçeklenebilirlik</strong></p></td>
+<td><p>Tablo boyutunu baştan iyi seçmek gerekir</p></td>
+<td><p>pid alanı büyüse bile uyum sağlar</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sıralı gezinme</strong></p></td>
+<td><p>Doğal sıralama yok; yavaş</p></td>
+<td><p>Doğası gereği sıralı; çok hızlı</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Boş pid bulma</strong></p></td>
+<td><p>Ayrı veri yapısı gerektirir</p></td>
+<td><p>Aynı ağaç hem arama hem tahsisat için kullanılır</p></td>
+</tr>
+</tbody>
+</table>
+<p>Özetle: tekil arama için hash tablosu genellikle biraz daha hızlıdır; ancak büyük ve seyrek pid isim
+alanlarında XArray çok daha verimli bellek kullanır. Sıralı gezinme ve boş pid bulma gerektirdiğinde
+XArray üstün gelir. Güncel çekirdeklerde hem pid aramaları hem de boş pid değerlerinin tespit edilmesi
+işlemleri bu XArray gerçekleştirimi ile sağlanmaktadır.</p>
+</section>
+<section id="guncel-cekirdek-pid-aramasi-4-20">
+<h3><span class="section-number">4.14.7. </span>Güncel Çekirdek: pid Araması (4.20+)<a class="headerlink" href="#guncel-cekirdek-pid-aramasi-4-20" title="Link to this heading"></a></h3>
+<p>Çekirdeğin 4.20 versiyonundan itibaren her pid isim alanı için ayrı bir XArray ağacı oluşturulmaya
+başlanmıştır. Anımsanacağı gibi 2.6’lı versiyonlarda hash tablolarına geçildiğinde tüm pid isim alanları
+aynı hash tablosunda bulunuyordu. Halbuki güncel çekirdeklerde bir pid nesnesi aranacaksa o nesne belli
+bir pid isim alanındaki XArray ağacında aranmaktadır.</p>
+<p>4.20 ve sonrasında <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> yapısında <code class="docutils literal notranslate"><span class="pre">thread_pid</span></code> elemanı da eklenmiştir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="cm">/* ... */</span>
+<span class="w">    </span><span class="kt">pid_t</span><span class="w">        </span><span class="n">pid</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w">  </span><span class="o">*</span><span class="n">thread_pid</span><span class="p">;</span><span class="w">   </span><span class="cm">/* pid değerine ilişkin pid nesnesinin adresi */</span>
+<span class="w">    </span><span class="cm">/* ... */</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Güncel <code class="docutils literal notranslate"><span class="pre">pid</span></code> yapısı şöyledir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">refcount_t</span><span class="w">    </span><span class="n">count</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w">  </span><span class="n">level</span><span class="p">;</span>
+<span class="w">    </span><span class="n">spinlock_t</span><span class="w">    </span><span class="n">lock</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">u64</span><span class="w">           </span><span class="n">ino</span><span class="p">;</span>
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">rb_node</span><span class="w"> </span><span class="n">pidfs_node</span><span class="p">;</span>
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">dentry</span><span class="w"> </span><span class="o">*</span><span class="n">stashed</span><span class="p">;</span>
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">pidfs_attr</span><span class="w"> </span><span class="o">*</span><span class="n">attr</span><span class="p">;</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">hlist_head</span><span class="w">   </span><span class="n">tasks</span><span class="p">[</span><span class="n">PIDTYPE_MAX</span><span class="p">];</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">hlist_head</span><span class="w">   </span><span class="n">inodes</span><span class="p">;</span>
+<span class="w">    </span><span class="n">wait_queue_head_t</span><span class="w">   </span><span class="n">wait_pidfd</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">rcu_head</span><span class="w">     </span><span class="n">rcu</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">upid</span><span class="w">         </span><span class="n">numbers</span><span class="p">[];</span><span class="w">   </span><span class="cm">/* isim alanı bilgisi */</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Güncel versiyonlarda <code class="docutils literal notranslate"><span class="pre">upid</span></code> yapısı şöyledir (<code class="docutils literal notranslate"><span class="pre">hlist_node</span></code> bağı kaldırılmış, ns bilgisi korunmuştur):</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">upid</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w">                  </span><span class="n">nr</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid_namespace</span><span class="w"> </span><span class="o">*</span><span class="n">ns</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Güncel çekirdeklerde pid araması yapan yüksek seviyeli fonksiyonlardan biri <em>find_vpid</em> fonksiyonudur:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w"> </span><span class="o">*</span><span class="n">find_vpid</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">nr</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">find_pid_ns</span><span class="p">(</span><span class="n">nr</span><span class="p">,</span><span class="w"> </span><span class="n">task_active_pid_ns</span><span class="p">(</span><span class="n">current</span><span class="p">));</span>
+<span class="p">}</span>
+<span class="n">EXPORT_SYMBOL_GPL</span><span class="p">(</span><span class="n">find_vpid</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Bu fonksiyon belli bir pid değerine ilişkin pid nesnesini çağrıyı yapan prosesin bulunduğu pid isim
+alanı içerisindeki XArray ağacında aramaktadır. Aşağıdaki diyagram güncel çekirdekteki çağrı zincirini
+göstermektedir:</p>
+<div class="graphviz"><object data="_images/graphviz-712ac7de98d3a8f80e1d354370c2ce1e0b095664.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph modern_pid_chain {
+    rankdir=LR;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.3&quot;];
+    node  [shape=box, style=&quot;rounded,filled&quot;, fontname=&quot;monospace&quot;, fontsize=10,
+           height=0.5, width=2.4];
+    edge  [color=&quot;#336699&quot;, arrowsize=0.9, penwidth=1.5];
+
+    fv  [label=&quot;find_vpid(nr)&quot;, fillcolor=&quot;#AACCFF&quot;];
+    fpn [label=&quot;find_pid_ns(nr, ns)&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    idr [label=&quot;idr_find(&amp;ns-&gt;idr, nr)&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    xa  [label=&quot;xa_load(...)&quot;, fillcolor=&quot;#DDEEFF&quot;];
+    res [label=&quot;struct pid *&quot;, fillcolor=&quot;#D4E8D4&quot;];
+
+    fv  -&gt; fpn [label=&quot;task_active_pid_ns()&quot;];
+    fpn -&gt; idr;
+    idr -&gt; xa  [label=&quot;XArray ağacı&quot;];
+    xa  -&gt; res;
+
+    sub1 [label=&quot;task_active_pid_ns\n──────────────\nns_of_pid(task_pid(tsk))\n= tsk-&gt;thread_pid-&gt;numbers\n    [pid-&gt;level].ns&quot;,
+          shape=note, style=&quot;filled&quot;, fillcolor=&quot;#FFFACD&quot;,
+          fontname=&quot;monospace&quot;, fontsize=8];
+    fv -&gt; sub1 [style=dashed, color=&quot;#999999&quot;, arrowhead=none];
+}</p></object></div>
+<p>Prosesin içinde bulunduğu pid isim alanının bilgisine ulaşım çağrı zinciri şöyledir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">pid_namespace</span><span class="w"> </span><span class="o">*</span><span class="n">task_active_pid_ns</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">tsk</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ns_of_pid</span><span class="p">(</span><span class="n">task_pid</span><span class="p">(</span><span class="n">tsk</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w"> </span><span class="o">*</span><span class="n">task_pid</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">task_struct</span><span class="w"> </span><span class="o">*</span><span class="n">task</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">task</span><span class="o">-&gt;</span><span class="n">thread_pid</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid_namespace</span><span class="w"> </span><span class="o">*</span><span class="n">ns_of_pid</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w"> </span><span class="o">*</span><span class="n">pid</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid_namespace</span><span class="w"> </span><span class="o">*</span><span class="n">ns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+<span class="w">        </span><span class="n">ns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pid</span><span class="o">-&gt;</span><span class="n">numbers</span><span class="p">[</span><span class="n">pid</span><span class="o">-&gt;</span><span class="n">level</span><span class="p">].</span><span class="n">ns</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ns</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>XArray ağacında arama yapan <em>find_pid_ns</em> fonksiyonu artık son derece sade bir görünümdedir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">pid</span><span class="w"> </span><span class="o">*</span><span class="n">find_pid_ns</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">nr</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">pid_namespace</span><span class="w"> </span><span class="o">*</span><span class="n">ns</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">idr_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ns</span><span class="o">-&gt;</span><span class="n">idr</span><span class="p">,</span><span class="w"> </span><span class="n">nr</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">EXPORT_SYMBOL_GPL</span><span class="p">(</span><span class="n">find_pid_ns</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Ağaçta arama yapan asıl fonksiyon <em>idr_find</em> isimli fonksiyondur.</p>
+</section>
+<section id="xarray-gerceklestirimi">
+<h3><span class="section-number">4.14.8. </span>XArray Gerçekleştirimi<a class="headerlink" href="#xarray-gerceklestirimi" title="Link to this heading"></a></h3>
+<p>XArray veri yapısının aşağı seviyeli gerçekleştirimi <code class="docutils literal notranslate"><span class="pre">include/linux/xarray.h</span></code> dosyası içerisinde
+yapılmıştır. XArray ağacı bu dosyadaki <code class="docutils literal notranslate"><span class="pre">xarray</span></code> isimli yapıyla temsil edilmiştir:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">spinlock_t</span><span class="w">   </span><span class="n">xa_lock</span><span class="p">;</span>
+<span class="w">    </span><span class="cm">/* private: */</span>
+<span class="w">    </span><span class="n">gfp_t</span><span class="w">        </span><span class="n">xa_flags</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">__rcu</span><span class="w">  </span><span class="o">*</span><span class="n">xa_head</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Bu ağaç üzerinde işlem yapan <code class="docutils literal notranslate"><span class="pre">xa_</span></code> öneki ile başlayan bir grup fonksiyon vardır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w">  </span><span class="o">*</span><span class="nf">xa_load</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">  </span><span class="o">*</span><span class="nf">xa_store</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">,</span><span class="w"> </span><span class="n">gfp_t</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">  </span><span class="o">*</span><span class="nf">xa_erase</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">  </span><span class="o">*</span><span class="nf">xa_store_range</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">first</span><span class="p">,</span>
+<span class="w">                      </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">last</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">entry</span><span class="p">,</span><span class="w"> </span><span class="n">gfp_t</span><span class="p">);</span>
+<span class="kt">bool</span><span class="w">   </span><span class="nf">xa_get_mark</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="n">xa_mark_t</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">   </span><span class="nf">xa_set_mark</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="n">xa_mark_t</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">   </span><span class="nf">xa_clear_mark</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="n">xa_mark_t</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">  </span><span class="o">*</span><span class="nf">xa_find</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span>
+<span class="w">               </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">max</span><span class="p">,</span><span class="w"> </span><span class="n">xa_mark_t</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">  </span><span class="o">*</span><span class="nf">xa_find_after</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span>
+<span class="w">                     </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">max</span><span class="p">,</span><span class="w"> </span><span class="n">xa_mark_t</span><span class="p">);</span>
+<span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">xa_extract</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">**</span><span class="n">dst</span><span class="p">,</span>
+<span class="w">                        </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">start</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">max</span><span class="p">,</span>
+<span class="w">                        </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">xa_mark_t</span><span class="p">);</span>
+<span class="kt">void</span><span class="w">   </span><span class="nf">xa_destroy</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">xarray</span><span class="w"> </span><span class="o">*</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Bu fonksiyonların tanımlamaları <code class="docutils literal notranslate"><span class="pre">lib/xarray.c</span></code> dosyasında yapılmıştır.</p>
+<p>Güncel çekirdeklerin yukarıda belirttiğimiz aşağı seviyeli fonksiyonlarının yanı sıra aynı zamanda
+bunları kullanan yüksek seviyeli <em>IDR</em> fonksiyonları da bulunmaktadır. Çekirdek kodları incelendiğinde
+genellikle bu yüksek seviyeli <code class="docutils literal notranslate"><span class="pre">idr_</span></code> önekli fonksiyonların kullanıldığı görülmektedir. Aşağıdaki
+diyagram üç katman arasındaki ilişkiyi göstermektedir:</p>
+<div class="graphviz"><object data="_images/graphviz-a1e484d869b51762e6b9cdfd85b8d93d483aa988.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph xarray_layers {
+    rankdir=TB;
+    graph [bgcolor=&quot;transparent&quot;, pad=&quot;0.4&quot;, ranksep=0.5];
+    node  [shape=box, style=&quot;rounded,filled&quot;, fontname=&quot;sans-serif&quot;, fontsize=11,
+           width=5.5, height=0.5];
+    edge  [color=&quot;#336699&quot;, arrowsize=0.9, penwidth=2.0];
+
+    app [label=&lt;Çekirdek Kodları ve Aygıt Sürücüler&lt;BR/&gt;(sürücüler, alt sistemler — idr_* çağrıları yapan)&gt;,
+         fillcolor=&quot;#AACCFF&quot;];
+
+    idr [label=&lt;IDR Katmanı  (idr_*)&lt;BR/&gt;Basit integer→pointer eşlemeleri için sarma fonksiyonları&lt;BR/&gt;idr_alloc() → xa_alloc()   |   idr_find() → xa_load()&lt;BR/&gt;idr_remove() → xa_erase()  |   idr_replace() → xa_store()&lt;BR/&gt;idr_for_each() → xa_for_each()&gt;,
+         fillcolor=&quot;#DDEEFF&quot;];
+
+    xar [label=&lt;XArray Katmanı  (xa_*)&lt;BR/&gt;Gerçek veri yapısı: radix ağaç tabanlı, concurrency-aware, lock/RCU destekli&lt;BR/&gt;xa_alloc · xa_load · xa_store · xa_erase · xa_find · xa_for_each&gt;,
+         fillcolor=&quot;#FFE8CC&quot;];
+
+    imp [label=&lt;Çekirdek Alt Veri Yapısı / Radix Tree&lt;BR/&gt;(XArray'in düşük seviye radix gerçekleştirimi)&gt;,
+         fillcolor=&quot;#D4E8D4&quot;];
+
+    app -&gt; idr [label=&quot;idr_* çağrısı&quot;];
+    idr -&gt; xar [label=&quot;xa_* çağrısı&quot;];
+    xar -&gt; imp [label=&quot;dahili radix işlemleri&quot;];
+}</p></object></div>
+<p>Boş pid değerinin elde edilmesi de aynı XArray altyapısı üzerinden yapılmaktadır:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* Boş pid tahsisatı çağrı zinciri */</span>
+<span class="n">alloc_pid</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">idr_alloc_cyclic</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">idr_alloc_u32</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">idr_get_free</span>
+</pre></div>
+</div>
+<p>XArray gerçekleştirimi hakkında ileride başka konularda ek bilgiler vereceğiz.</p>
 </section>
 </section>
 </section>
@@ -1910,7 +2651,7 @@ Biz kursumuzun bu noktasında Linux çekirdeğinde hash tablolarının gerçekle
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="kernellinkedlist.html" class="btn btn-neutral float-left" title="3. Çekirdekteki Bağlı Liste Gerçekleştirimi" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Önceki</a>
+        <a href="kernellinkedlistandhashtable.html" class="btn btn-neutral float-left" title="3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Önceki</a>
     </div>
 
   <hr/>

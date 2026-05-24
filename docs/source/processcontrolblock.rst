@@ -1898,7 +1898,7 @@ değiştirilebilir:
 
 
 PID'den ``task_struct`` Nesnesine Hızlı Erişim
-----------------------------------------------
+==============================================
 
 "Çekirdek belli bir pid değerine ilişkin ``task_struct`` adresini nasıl hızlı bir biçimde elde
 etmektedir?" sorusuna yanıt verelim. Düz mantıkla sistemdeki bütün ``task_struct`` nesneleri dolaşılarak
@@ -1909,3 +1909,762 @@ Linux'un 2.6.24 versiyonuna kadar bunun için hash tabloları kullanılıyordu. 
 bu amaçla *radix ağaçları* da işin içine sokulmuştur. Güncel çekirdeklerdeki arama sistemi radix
 ağaçlarının özel bir biçimi olan *XArray* veri yapısı ve hash tablolarının hibrit bir biçimine benzemektedir.
 Biz kursumuzun bu noktasında Linux çekirdeğinde hash tablolarının gerçekleştirimi üzerinde duracağız.
+
+Çekirdeğin ilk 0.01 versiyonunda zaten en fazla 64 tane ``task_struct`` nesnesi oluşturulabiliyordu.
+Bu versiyonda pid değerine ilişkin ``task_struct`` nesnesinin bulunması için bu ``task_struct``
+nesnelerinin tutulduğu ``task`` isimli global dizide sıralı arama yapılmıştır.
+
+Çekirdeğin 2.2 versiyonlarında pid değerinden hareketle ``task_struct`` nesnesinin bulunması için hash
+tablosu kullanılmıştır. Bu versiyonlarda bu işi yapan *find_task_by_pid* fonksiyonu aşağıdaki gibi
+yazılmıştır:
+
+.. code-block:: c
+
+   extern __inline__ struct task_struct *find_task_by_pid(int pid)
+   {
+       struct task_struct *p, **htable = &pidhash[pid_hashfn(pid)];
+
+       for (p = *htable; p && p->pid != pid; p = p->pidhash_next)
+           ;
+
+       return p;
+   }
+
+Bu versiyonlarda henüz daha sonra açıkladığımız ``hlist`` hash tablosu fonksiyonları çekirdekte
+bulunmuyordu. *find_task_by_pid* fonksiyonunda önce pid değeri *pid_hashfn* isimli bir hash
+fonksiyonuna sokularak bir indeks değeri elde edilmiş, sonra da ``pidhash`` dizisinin bu indeksteki
+bağlı liste zincirinde arama yapılmıştır. ``pidhash`` dizisi şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+   struct task_struct *pidhash[PIDHASH_SZ];
+
+Görüldüğü gibi hash tablosundaki zincirler doğrudan ``task_struct`` nesnelerini tutmaktadır. Bu
+versiyonlarda bu zincirler için ``task_struct`` içerisinde iki link elemanı bulunduruluyordu:
+
+.. code-block:: c
+
+   struct task_struct {
+       /* ... */
+       struct task_struct  *pidhash_next;
+       struct task_struct **pidhash_pprev;
+       /* ... */
+   };
+
+Çekirdeğin 2.4 versiyonunda da algoritmada ve yukarıdaki fonksiyonda bir değişiklik yapılmamıştır.
+Yani yine bir hash tablosu eşliğinde arama yapılmaktadır.
+
+2.6 Versiyonu: pid Nesnesi ve Bağlı Listeler
+--------------------------------------------
+
+Çekirdeğin 2.6'lı versiyonlarında artık her farklı pid değeri için o pid değerine ilişkin bir
+``pid`` nesnesi (``struct pid`` nesnesi) oluşturulmaya başlanmıştır. Bu versiyonlarda çekirdek her
+farklı pid değeri için bir ``pid`` nesnesi oluşturup bu ``pid`` nesnelerini de hash tablolarında
+saklamaktadır. Her ``pid`` nesnesi de aşağıda açıklayacağımız gibi bir grup bağlı listenin kök
+düğümlerini tutmaktadır. Bu versiyonlarda bir pid değerine ilişkin ``task_struct`` nesnesini bulmak
+için çekirdek önce hash tablosundan o pid değerine ilişkin ``pid`` nesnesini elde etmekte, sonra o
+``pid`` nesnesinin içerisindeki bağlı listelerde arama yapmaktadır:
+
+.. graphviz::
+
+   digraph pid_lookup_26 {
+       rankdir=LR;
+       graph [bgcolor="transparent", pad="0.3"];
+       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=11,
+              height=0.5, width=2.0];
+       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
+
+       pid_val  [label="pid değeri",        fillcolor="#AACCFF"];
+       hash_tbl [label="Hash Tablosu\n(pid_hash[])", fillcolor="#DDEEFF"];
+       pid_obj  [label="struct pid\nnesnesi", fillcolor="#FFDDAA"];
+       task_str [label="task_struct\nnesnesi", fillcolor="#D4E8D4"];
+
+       pid_val  -> hash_tbl [label="hash_func(pid)"];
+       hash_tbl -> pid_obj  [label="zincir arama"];
+       pid_obj  -> task_str [label="tasks[] listesi"];
+   }
+
+2.6'lı versiyonlardaki ``pid`` yapısı şöyleydi:
+
+.. code-block:: c
+
+   struct pid {
+       atomic_t     count;
+       unsigned int level;
+       /* lists of tasks that use this pid */
+       struct hlist_head tasks[PIDTYPE_MAX];
+       struct rcu_head rcu;
+       struct upid numbers[1];
+   };
+
+Bu versiyonlardaki durumu şöyle özetleyebiliriz:
+
+1. Çekirdek her pid için bir ``pid`` nesnesi (``struct pid`` nesnesi) oluşturup onu bir hash
+   tablosunda saklamaktadır. Yani ``pid`` nesneleri için bir hash tablosu kullanılmıştır.
+
+2. ``pid`` yapısının içerisindeki ``tasks`` elemanı o pid değerine ilişkin bağlı liste zincirlerinin
+   kök düğümlerini tutmaktadır.
+
+3. Sistem bir pid değerine ilişkin ``task_struct`` nesnesini elde etmek için önce o pid değerine
+   ilişkin ``pid`` nesnesini hash tablosundan bulmakta, sonra onun içerisindeki ilgili bağlı listede
+   arama yapmaktadır.
+
+2.6 çekirdekleriyle birlikte Linux'a *isim alanları (name spaces)* kavramı da sokulmaya başlanmıştır.
+Bu versiyonlar artık pid değerleri için bir isim alanı da kullanmaktadır. Pid isim alanı sayesinde
+sanki çekirdek birden fazla pid dünyasına sahip gibi bir etki oluşturulmaktadır. Pid isim alanları iç
+içe de oluşturulabilmektedir. Artık bu versiyonlarla birlikte pid değerleri sistem genelinde tek değil
+isim alanı genelinde tektir. Linux çekirdeğine eklenen bu isim alanları özelliği *docker* gibi container
+teknolojilerinin gelişmesine katkı sağlamıştır.
+
+``pid_type`` Enum Değerleri ve Bağlı Listeler
+-----------------------------------------------
+
+``pid`` yapısındaki ``tasks`` dizisinin ``PIDTYPE_MAX`` kadar elemana sahip olduğunu görüyorsunuz.
+``PIDTYPE_MAX`` aşağıdaki gibi bir ``enum`` türünün elemanıdır:
+
+.. code-block:: c
+
+   /* 2.6'lı versiyonlar */
+   enum pid_type {
+       PIDTYPE_PID,
+       PIDTYPE_PGID,
+       PIDTYPE_SID,
+       PIDTYPE_MAX   /* = 3 */
+   };
+
+   /* Güncel versiyonlar */
+   enum pid_type {
+       PIDTYPE_PID,
+       PIDTYPE_TGID,
+       PIDTYPE_PGID,
+       PIDTYPE_SID,
+       PIDTYPE_MAX   /* = 4 */
+   };
+
+Daha sonra ``PIDTYPE_TGID`` ile temsil edilen bir bağlı listenin daha eklendiğine dikkat ediniz.
+Peki pid değerini saklamak için neden birden fazla bağlı liste kullanılmaktadır? İşte 2.6'lı
+çekirdeklerle birlikte bu tarz aramalarda hız kazancı sağlamak için tasarım değiştirilmiştir.
+Aşağıdaki diyagram her listenin hangi ``task_struct`` nesnelerini tuttuğunu göstermektedir:
+
+.. graphviz::
+
+   digraph pid_tasks {
+       rankdir=TB;
+       graph [bgcolor="transparent", pad="0.4"];
+       node  [fontname="sans-serif", fontsize=11];
+       edge  [color="#336699", arrowsize=0.85, penwidth=1.5];
+
+       pid_node [label="struct pid\n(tasks[PIDTYPE_MAX])",
+                 shape=record, style="rounded,filled", fillcolor="#FFDDAA",
+                 fontname="monospace",
+                 label="{struct pid | tasks[0]\nPIDTYPE_PID | tasks[1]\nPIDTYPE_TGID | tasks[2]\nPIDTYPE_PGID | tasks[3]\nPIDTYPE_SID}"];
+
+       pid_node [shape=record,
+                 label="{struct pid | <t0>tasks[0]\nPIDTYPE_PID | <t1>tasks[1]\nPIDTYPE_TGID | <t2>tasks[2]\nPIDTYPE_PGID | <t3>tasks[3]\nPIDTYPE_SID}",
+                 style="rounded,filled", fillcolor="#FFDDAA", fontname="monospace", fontsize=10];
+
+       desc0 [label="Tek task_struct\n(belli bir thread)",
+              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
+       desc1 [label="Aynı prosesin\ntüm thread'leri",
+              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
+       desc2 [label="Aynı proses grubundaki\ntüm proseslerin ana thread'leri",
+              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
+       desc3 [label="Aynı oturumdaki\ntüm proseslerin ana thread'leri",
+              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
+
+       pid_node:t0 -> desc0;
+       pid_node:t1 -> desc1;
+       pid_node:t2 -> desc2;
+       pid_node:t3 -> desc3;
+   }
+
+Bu bağlı listeleri daha ayrıntılı açıklayalım:
+
+- **PIDTYPE_PID:** Bu bağlı liste zincirinde aslında tek bir eleman vardır. Amacımız yalnızca belli
+  bir pid değerine ilişkin ``task_struct`` nesnesinin adresinin bulunmasıysa hemen bu listenin ilk
+  elemanını alabiliriz.
+
+- **PIDTYPE_TGID:** Bu bağlı liste belli bir prosesin thread'lerini dolaşmak için kullanılmaktadır.
+  Bu bağlı listedeki tüm ``task_struct`` nesneleri aynı prosesin thread'lerini oluşturmaktadır. Yani
+  biz çekirdeğe bir prosesin ana thread'ine ilişkin bir pid değeri verdiğimizde çekirdek bu bağlı
+  liste zincirini dolaşarak o prosesin tüm thread'lerinin ``task_struct`` adreslerini elde
+  edebilmektedir.
+
+- **PIDTYPE_PGID:** Aynı proses grubuna ilişkin proseslerin ana thread'lerinin ``task_struct``
+  nesnelerini tutmaktadır. Yani aranan pid değeri bir proses grup liderine ilişkin pid belirtiyorsa bu
+  zincirde o proses grubundaki tüm proseslerin ana thread'lerinin ``task_struct`` nesnelerinin
+  adresleri bulunmaktadır.
+
+- **PIDTYPE_SID:** Belli bir oturuma (session) ilişkin tüm proseslerin (onların ana thread'lerinin)
+  ``task_struct`` nesnelerinin adreslerini tutmaktadır.
+
+2.6 versiyonlarından önce tek bir hash tablosu vardı. Bu nedenle proses grubundaki proseslerin
+``task_struct`` nesneleri ancak tüm ``task_struct`` nesneleri dolaşılarak elde edilebiliyordu.
+Halbuki 2.6'daki bu tasarımla bu biçimdeki dolaşımlar bu hash tablosu ve bağlı listeler yoluyla çok
+daha hızlı yapılabilmektedir.
+
+Aşağıda 2.6 versiyonlarında pid değerinden ``task_struct`` nesnesine ulaşım çağrı zinciri
+görülmektedir:
+
+.. graphviz::
+
+   digraph find_task_chain {
+       rankdir=LR;
+       graph [bgcolor="transparent", pad="0.3"];
+       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=10,
+              height=0.5, width=2.2];
+       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
+
+       f1 [label="find_task_by_vpid()", fillcolor="#AACCFF"];
+       f2 [label="find_task_by_pid_ns()", fillcolor="#DDEEFF"];
+       f3 [label="find_pid_ns()", fillcolor="#DDEEFF"];
+       f4 [label="pid_task()", fillcolor="#DDEEFF"];
+       f5 [label="task_struct *", fillcolor="#D4E8D4"];
+
+       f1 -> f2 -> f3 -> f4 -> f5;
+
+       note1 [label="prosesin pid\nisim alanında arama", shape=note,
+              style="filled", fillcolor="#FFFACD", fontsize=9, fontname="sans-serif"];
+       note2 [label="hash tablosundan\npid nesnesi", shape=note,
+              style="filled", fillcolor="#FFFACD", fontsize=9, fontname="sans-serif"];
+       note3 [label="pid nesnesindeki\nbağlı listeden", shape=note,
+              style="filled", fillcolor="#FFFACD", fontsize=9, fontname="sans-serif"];
+
+       f1 -> note1 [style=dashed, color="#999999", arrowhead=none];
+       f3 -> note2 [style=dashed, color="#999999", arrowhead=none];
+       f4 -> note3 [style=dashed, color="#999999", arrowhead=none];
+   }
+
+Hash tablosunda pid nesnesini arayan *find_pid_ns* fonksiyonu, ``upid`` yapı nesnelerini dolaşmakta
+ve hem pid değerine hem de pid isim alanına birlikte bakmaktadır:
+
+.. code-block:: c
+
+   struct upid {
+       int nr;
+       struct pid_namespace *ns;
+       struct hlist_node pid_chain;
+   };
+
+   static struct hlist_head *pid_hash;   /* global hash tablosu */
+
+   struct pid *find_pid_ns(int nr, struct pid_namespace *ns)
+   {
+       struct hlist_node *elem;
+       struct upid *pnr;
+
+       hlist_for_each_entry_rcu(pnr, elem,
+               &pid_hash[pid_hashfn(nr, ns)], pid_chain)
+           if (pnr->nr == nr && pnr->ns == ns)
+               return container_of(pnr, struct pid,
+                       numbers[ns->level]);
+       return NULL;
+   }
+
+Burada ``hlist_node`` bağının ``upid`` nesnesinin içerisinde olduğuna, ``upid`` nesnesinin de ``pid``
+nesnesinin içerisinde olduğuna dikkat ediniz.
+
+4.20 Versiyonu: Hash Tablosundan XArray'e Geçiş
+--------------------------------------------------
+
+Çekirdek versiyonu 4.20'lere geldiğinde yukarıdaki mekanizmada önemli değişiklikler yapılmıştır. En
+önemli değişiklik pid ve isim alanından hareketle ``pid`` nesnesinin bulunması işleminde hash tablosu
+yerine *radix ağacının* kullanılmaya başlanmasıdır. Aslında 2.5 ile birlikte çekirdekte başka alt
+sistemlerde radix ağacı kullanılmaya başlanmıştı. Sonra bu radix ağaçlarının 4.20 versiyonuyla birlikte
+*XArray* isimli yeni bir gerçekleştirimi yapılmıştır.
+
+4.20 ve sonrasında ``pid`` yapısındaki bağlı listelerde bir farklılık yoktur. Yalnızca pid ve isim alanı
+bilgisinden hareketle ``pid`` yapı nesnesinin elde edilmesinde hash tablosu yerine radix ağacı (XArray
+gerçekleştirimi) kullanılmaktadır.
+
+Bu bağlamda pid mekanizmasında radix ağacının hash tablosuna tercih edilmesinin tipik nedenleri şunlardır:
+
+- Radix ağacındaki arama hash tablolarından yavaş gözükse bile aslında pratikte durum tam böyle
+  değildir. Buradaki radix ağacı seyrek tutulmaktadır. Bu yüzden arama hızlı yapılır.
+- pid'leri artan sırayla gezmek, boş pid bulmak (en küçük kullanılmayan pid'i seçmek) çok daha
+  kolaydır.
+- Ağaçta yalnızca kullanılan düğümler tutulmaktadır. Bu da bellek kazancı sağlamaktadır.
+- pid sayısı arttıkça hash tablosunun performansı düşme eğilimi gösterdiği halde radix ağacının
+  performansı hash tablosuna kıyasla düşmez.
+- Radix ağacı yalnızca pid araması için değil, aynı zamanda yeni yaratılan ``task_struct`` nesneleri
+  için pid tahsis edilmesinde de kullanılabilmektedir.
+
+Güncel çekirdeklerde hem pid aramaları hem de boş pid değerlerinin tespit edilmesi işlemleri bu XArray
+gerçekleştirimi ile sağlanmaktadır.
+
+Radix Ağaçlarının Kullanılması
+------------------------------
+
+Biz radix arama ağacını ve XArray gerçekleştirimini daha sonra başka bir bölümde ele alacağız. Burada
+yalnızca radix arama ağacının temel mekanizması üzerinde açıklamalar yapacağız. Radix arama ağaçları
+için *dijital arama ağaçları (digital search tree)*, *önek arama ağacı (prefix search tree)*,
+*sıkıştırılmış arama ağaçları (compressed search trie)* gibi isimler de kullanılmaktadır.
+
+Bu arama ağaçlarında düğümlerde anahtar olarak anahtarın tamamı değil onun ön kısımları kullanılmaktadır.
+Böylece ağaç bir leksikografik sıralama ağacı gibi de kullanılabilmektedir. Tipik anlatım sayısal
+değerlerden oluşan ve öneklerin bit belirttiği anahtarlar üzerinde yapılmaktadır. Ağacın kökünden
+girilir. Her kademede bir bit daha anahtara eklenir.
+
+Örneğin 4 bitlik şu sayıların radix ağacına yerleştirilmek istendiğini düşünelim:
+``1100, 1010, 0101, 1011, 0010, 0111, 0000, 1000``
+
+Ağacın her adımında yüksek anlamlı bitten başlayarak solda 0, sağda 1 dallanması yapılmaktadır.
+Aşağıdaki diyagram bu sekiz anahtarın ağaca yerleşimi sonucunu göstermektedir:
+
+.. graphviz::
+
+   digraph radix_tree {
+       graph [bgcolor="transparent", pad="0.3", ranksep=0.5, nodesep=0.35];
+       node  [shape=circle, style="filled", fillcolor="#DDEEFF",
+              fontname="monospace", fontsize=10, width=0.55, fixedsize=true];
+       edge  [fontname="monospace", fontsize=9, arrowsize=0.7, penwidth=1.2];
+
+       root [label="Kök", shape=box, style="rounded,filled",
+             fillcolor="#AACCFF", fontname="sans-serif", width=1.0, fixedsize=false];
+
+       /* Seviye 1 */
+       L0  [label="0"];
+       L1  [label="1"];
+
+       /* Seviye 2 */
+       L00 [label="0"];
+       L01 [label="1"];
+       L10 [label="0"];
+       L11 [label="1"];
+
+       /* Seviye 3 */
+       L000 [label="0"];
+       L001 [label="1"];
+       L010 [label="0"];
+       L011 [label="1"];
+       L100 [label="0"];
+       L101 [label="1"];
+       L110 [label="0"];
+
+       /* Seviye 4 - yapraklar */
+       node [shape=box, style="rounded,filled", fillcolor="#D4E8D4", width=0.7, fixedsize=true];
+       V0000 [label="0000"];
+       V0010 [label="0010"];
+       V0101 [label="0101"];
+       V0111 [label="0111"];
+       V1000 [label="1000"];
+       V1010 [label="1010"];
+       V1011 [label="1011"];
+       V1100 [label="1100"];
+
+       root -> L0  [label="0"];
+       root -> L1  [label="1"];
+
+       L0 -> L00  [label="0"];
+       L0 -> L01  [label="1"];
+       L1 -> L10  [label="0"];
+       L1 -> L11  [label="1"];
+
+       L00 -> L000 [label="0"];
+       L00 -> L001 [label="1"];
+       L01 -> L010 [label="0"];
+       L01 -> L011 [label="1"];
+       L10 -> L100 [label="0"];
+       L10 -> L101 [label="1"];
+       L11 -> L110 [label="0"];
+
+       L000 -> V0000 [label="0"];
+       L001 -> V0010 [label="0"];
+       L010 -> V0101 [label="1"];
+       L011 -> V0111 [label="1"];
+       L100 -> V1000 [label="0"];
+       L101 -> V1010 [label="0"];
+       L101 -> V1011 [label="1"];
+       L110 -> V1100 [label="0"];
+   }
+
+Peki bu ağaçta arama nasıl yapılır? İşte arama için kökten girilir. Her bit pozisyonu için bir aşağıya
+inilir. Örneğin ``0000`` değerini arayacak olalım: ilk bit 0 olduğu için kökten sola ineriz, ikinci bit
+de 0 olduğu için sola devam ederiz, üçüncü bit de 0 olduğu için sola, dördüncü bit de 0 olduğu için
+sola gideriz. Artık değeri buluruz. Radix ağaçlarını enlemesine (breadth-first gibi) dolaştığımızda
+anahtarların sıralı bir biçimde elde edilebildiğine dikkat ediniz.
+
+Yapraklarda Değer Saklama Yöntemi
+------------------------------------
+
+Biz yukarıdaki anlatımda düğümlerde anahtarların tutulduğunu varsaydık. Aslında düğümlerde anahtarların
+tutulmasına da gerek yoktur. Zaten her kademede bir bit ilerlendiğine göre arama yaprağa gelindiğinde
+sonlandırılabilir. Aşağıdaki ağaçta bit-bit dallanma yapılmış ve yalnızca yapraklarda değerler
+tutulmuştur:
+
+.. graphviz::
+
+   digraph radix_leaves {
+       graph [bgcolor="transparent", pad="0.3", ranksep=0.5, nodesep=0.3];
+       node  [shape=circle, style="filled", fillcolor="#DDEEFF",
+              fontname="monospace", fontsize=10, width=0.45, fixedsize=true];
+       edge  [fontname="monospace", fontsize=9, arrowsize=0.7, penwidth=1.2,
+              color="#555555"];
+
+       root [label="Kök", shape=box, style="rounded,filled", fillcolor="#AACCFF",
+             fontname="sans-serif", width=0.9, fixedsize=false];
+
+       /* Derinlik 1 */
+       d1_0 [label="0"];
+       d1_1 [label="1"];
+
+       /* Derinlik 2 */
+       d2_00 [label="0"];
+       d2_01 [label="1"];
+       d2_10 [label="0"];
+       d2_11 [label="1"];
+
+       /* Derinlik 3 */
+       d3_000 [label="0"];
+       d3_001 [label="1"];
+       d3_010 [label="0"];
+       d3_011 [label="1"];
+       d3_100 [label="0"];
+       d3_101 [label="1"];
+       d3_110 [label="0"];
+
+       /* Yapraklar */
+       node [shape=box, style="rounded,filled", fillcolor="#D4E8D4",
+             fontname="monospace", fontsize=9, width=0.72, fixedsize=true];
+       leaf_0000 [label="0000\nson"];
+       leaf_0010 [label="0010\nson"];
+       leaf_0101 [label="0101\nson"];
+       leaf_0111 [label="0111\nson"];
+       leaf_1000 [label="1000\nson"];
+       leaf_1010 [label="1010\nson"];
+       leaf_1011 [label="1011\nson"];
+       leaf_1100 [label="1100\nson"];
+
+       root  -> d1_0  [label="0"];
+       root  -> d1_1  [label="1"];
+       d1_0  -> d2_00 [label="0"];
+       d1_0  -> d2_01 [label="1"];
+       d1_1  -> d2_10 [label="0"];
+       d1_1  -> d2_11 [label="1"];
+       d2_00 -> d3_000 [label="0"];
+       d2_00 -> d3_001 [label="1"];
+       d2_01 -> d3_010 [label="0"];
+       d2_01 -> d3_011 [label="1"];
+       d2_10 -> d3_100 [label="0"];
+       d2_10 -> d3_101 [label="1"];
+       d2_11 -> d3_110 [label="0"];
+       d3_000 -> leaf_0000 [label="0"];
+       d3_001 -> leaf_0010 [label="0"];
+       d3_010 -> leaf_0101 [label="1"];
+       d3_011 -> leaf_0111 [label="1"];
+       d3_100 -> leaf_1000 [label="0"];
+       d3_101 -> leaf_1010 [label="0"];
+       d3_101 -> leaf_1011 [label="1"];
+       d3_110 -> leaf_1100 [label="0"];
+   }
+
+Görüldüğü gibi bu tasarımda hiç anahtar saklanmadan yaprak görülene kadar ilerlenirse ya ilgili anahtar
+bulunmuş olur ya da bulunmamış olur. Peki her düğümde anahtarı tutmakla yalnızca yapraklarda değeri
+tutmanın hangisi daha iyi bir yöntemdir?
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 40 40
+
+   * - Yöntem
+     - Avantajları
+     - Dezavantajları
+   * - **Her düğümde anahtar saklama**
+     - Erken durabilme; ara düğümde tam eşleşme bulununca yaprağa kadar inmek gerekmez.
+       Prefix aramaları daha kolay.
+     - Veri yapısı karmaşıklaşır; bellek kullanımı artar.
+   * - **Yalnızca yapraklarda değer saklama**
+     - Basit tasarım: iç düğümler yalnızca yönlendirme bilgisi tutar. Bellek daha düzenli kullanılır.
+       Ekleme/silme algoritmaları daha etkin.
+     - Her zaman yaprağa kadar inmek gerekir. Prefix tabanlı aramalarda ek iş yapılması gerekir.
+
+.. note::
+
+   Linux'un klasik radix ve XArray gerçekleştirimlerinde değerler her zaman yapraklarda tutulmaktadır.
+   Ara düğümlerde anahtarlar tutulmamaktadır.
+
+
+Dallanma Faktörü: n-li Ağaç
+-----------------------------
+
+Radix ağacının ikili ağaç olması zorunlu değildir. Dallanma bit bit yapıldığında yukarıdaki örnekte
+olduğu gibi radix ağacı ikili ağaç durumunda olur. Ancak dallanma n bit n bit de yapılabilir. Bu
+durumda ağaç da 2\ :sup:`n`-li ağaç olacaktır.
+
+Örneğin 32 bitlik pid değerlerini böyle bir ağaçta tutmak isteyelim ve dallanmayı 6 bit 6 bit yapalım.
+6 bit → 2\ :sup:`6` = 64 farklı dallanmaya yol açacaktır. Bu durumda ağacımızın her düğümünde 64
+gösterici bulunacaktır ve yapraklara varabilmek için en fazla 6 kademe ilerlenecektir:
+
+.. graphviz::
+
+   digraph xarray_64way {
+       rankdir=TB;
+       graph [bgcolor="transparent", pad="0.3", ranksep=0.6];
+       node  [fontname="sans-serif", fontsize=10];
+       edge  [arrowsize=0.8, penwidth=1.2, color="#336699"];
+
+       root [label="Kök\n(64 gösterici)", shape=box, style="rounded,filled",
+             fillcolor="#AACCFF", fontname="monospace"];
+
+       g0  [label="0x00…0x3F\n64 gösterici", shape=box, style="rounded,filled",
+            fillcolor="#DDEEFF"];
+       g1  [label="0x40…0x7F\n64 gösterici", shape=box, style="rounded,filled",
+            fillcolor="#DDEEFF"];
+       g2  [label="...", shape=plaintext];
+       g63 [label="0xC0…0xFF\n64 gösterici", shape=box, style="rounded,filled",
+            fillcolor="#DDEEFF"];
+
+       leaf1 [label="struct pid *", shape=box, style="rounded,filled", fillcolor="#D4E8D4"];
+       leaf2 [label="struct pid *", shape=box, style="rounded,filled", fillcolor="#D4E8D4"];
+
+       root -> g0  [label="bit[5:0]=0"];
+       root -> g1  [label="bit[5:0]=1"];
+       root -> g2  [style=invis];
+       root -> g63 [label="bit[5:0]=63"];
+
+       g0  -> leaf1 [label="bit[11:6]=x"];
+       g1  -> leaf2 [label="bit[11:6]=y"];
+
+       note [label="En fazla 6 kademe\n(32-bit PID için)\nortalama 2–3 seviye",
+             shape=note, style="filled", fillcolor="#FFFACD",
+             fontname="sans-serif", fontsize=9];
+       root -> note [style=dashed, color="#999999", arrowhead=none];
+   }
+
+Güncel sürümlerde Linux'un pid araması için kullandığı XArray ağacı bu örnekteki gibi altışar bitlidir.
+
+Hash tablosu ile XArray/Radix ağacı arasındaki avantaj ve dezavantajları karşılaştıralım:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Kriter
+     - Hash Tablosu
+     - XArray / Radix Ağacı
+   * - **Arama karmaşıklığı**
+     - Ortalama O(1); çakışmada en kötü O(N)
+     - O(log\ :sub:`k` N), tipik derinlik 2–3
+   * - **Bellek kullanımı**
+     - Tablo önceden sabit boyutta ayrılır; seyrek pid'lerde boşa gider
+     - Yalnızca kullanılan düğümler açılır; seyrek alanda çok verimli
+   * - **Çakışma**
+     - Mümkün; performansı düşürebilir
+     - Yok; her pid tek bir yolu izler
+   * - **Ölçeklenebilirlik**
+     - Tablo boyutunu baştan iyi seçmek gerekir
+     - pid alanı büyüse bile uyum sağlar
+   * - **Sıralı gezinme**
+     - Doğal sıralama yok; yavaş
+     - Doğası gereği sıralı; çok hızlı
+   * - **Boş pid bulma**
+     - Ayrı veri yapısı gerektirir
+     - Aynı ağaç hem arama hem tahsisat için kullanılır
+
+Özetle: tekil arama için hash tablosu genellikle biraz daha hızlıdır; ancak büyük ve seyrek pid isim
+alanlarında XArray çok daha verimli bellek kullanır. Sıralı gezinme ve boş pid bulma gerektirdiğinde
+XArray üstün gelir. Güncel çekirdeklerde hem pid aramaları hem de boş pid değerlerinin tespit edilmesi
+işlemleri bu XArray gerçekleştirimi ile sağlanmaktadır.
+
+
+Güncel Çekirdek: pid Araması (4.20+)
+------------------------------------
+
+Çekirdeğin 4.20 versiyonundan itibaren her pid isim alanı için ayrı bir XArray ağacı oluşturulmaya
+başlanmıştır. Anımsanacağı gibi 2.6'lı versiyonlarda hash tablolarına geçildiğinde tüm pid isim alanları
+aynı hash tablosunda bulunuyordu. Halbuki güncel çekirdeklerde bir pid nesnesi aranacaksa o nesne belli
+bir pid isim alanındaki XArray ağacında aranmaktadır.
+
+4.20 ve sonrasında ``task_struct`` yapısında ``thread_pid`` elemanı da eklenmiştir:
+
+.. code-block:: c
+
+   struct task_struct {
+       /* ... */
+       pid_t        pid;
+       struct pid  *thread_pid;   /* pid değerine ilişkin pid nesnesinin adresi */
+       /* ... */
+   };
+
+Güncel ``pid`` yapısı şöyledir:
+
+.. code-block:: c
+
+   struct pid {
+       refcount_t    count;
+       unsigned int  level;
+       spinlock_t    lock;
+       struct {
+           u64           ino;
+           struct rb_node pidfs_node;
+           struct dentry *stashed;
+           struct pidfs_attr *attr;
+       };
+       struct hlist_head   tasks[PIDTYPE_MAX];
+       struct hlist_head   inodes;
+       wait_queue_head_t   wait_pidfd;
+       struct rcu_head     rcu;
+       struct upid         numbers[];   /* isim alanı bilgisi */
+   };
+
+Güncel versiyonlarda ``upid`` yapısı şöyledir (``hlist_node`` bağı kaldırılmış, ns bilgisi korunmuştur):
+
+.. code-block:: c
+
+   struct upid {
+       int                  nr;
+       struct pid_namespace *ns;
+   };
+
+Güncel çekirdeklerde pid araması yapan yüksek seviyeli fonksiyonlardan biri *find_vpid* fonksiyonudur:
+
+.. code-block:: c
+
+   struct pid *find_vpid(int nr)
+   {
+       return find_pid_ns(nr, task_active_pid_ns(current));
+   }
+   EXPORT_SYMBOL_GPL(find_vpid);
+
+Bu fonksiyon belli bir pid değerine ilişkin pid nesnesini çağrıyı yapan prosesin bulunduğu pid isim
+alanı içerisindeki XArray ağacında aramaktadır. Aşağıdaki diyagram güncel çekirdekteki çağrı zincirini
+göstermektedir:
+
+.. graphviz::
+
+   digraph modern_pid_chain {
+       rankdir=LR;
+       graph [bgcolor="transparent", pad="0.3"];
+       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=10,
+              height=0.5, width=2.4];
+       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
+
+       fv  [label="find_vpid(nr)", fillcolor="#AACCFF"];
+       fpn [label="find_pid_ns(nr, ns)", fillcolor="#DDEEFF"];
+       idr [label="idr_find(&ns->idr, nr)", fillcolor="#DDEEFF"];
+       xa  [label="xa_load(...)", fillcolor="#DDEEFF"];
+       res [label="struct pid *", fillcolor="#D4E8D4"];
+
+       fv  -> fpn [label="task_active_pid_ns()"];
+       fpn -> idr;
+       idr -> xa  [label="XArray ağacı"];
+       xa  -> res;
+
+       sub1 [label="task_active_pid_ns\n──────────────\nns_of_pid(task_pid(tsk))\n= tsk->thread_pid->numbers\n    [pid->level].ns",
+             shape=note, style="filled", fillcolor="#FFFACD",
+             fontname="monospace", fontsize=8];
+       fv -> sub1 [style=dashed, color="#999999", arrowhead=none];
+   }
+
+Prosesin içinde bulunduğu pid isim alanının bilgisine ulaşım çağrı zinciri şöyledir:
+
+.. code-block:: c
+
+   struct pid_namespace *task_active_pid_ns(struct task_struct *tsk)
+   {
+       return ns_of_pid(task_pid(tsk));
+   }
+
+   static inline struct pid *task_pid(struct task_struct *task)
+   {
+       return task->thread_pid;
+   }
+
+   static inline struct pid_namespace *ns_of_pid(struct pid *pid)
+   {
+       struct pid_namespace *ns = NULL;
+       if (pid)
+           ns = pid->numbers[pid->level].ns;
+       return ns;
+   }
+
+XArray ağacında arama yapan *find_pid_ns* fonksiyonu artık son derece sade bir görünümdedir:
+
+.. code-block:: c
+
+   struct pid *find_pid_ns(int nr, struct pid_namespace *ns)
+   {
+       return idr_find(&ns->idr, nr);
+   }
+   EXPORT_SYMBOL_GPL(find_pid_ns);
+
+Ağaçta arama yapan asıl fonksiyon *idr_find* isimli fonksiyondur.
+
+
+XArray Gerçekleştirimi
+----------------------
+
+XArray veri yapısının aşağı seviyeli gerçekleştirimi ``include/linux/xarray.h`` dosyası içerisinde
+yapılmıştır. XArray ağacı bu dosyadaki ``xarray`` isimli yapıyla temsil edilmiştir:
+
+.. code-block:: c
+
+   struct xarray {
+       spinlock_t   xa_lock;
+       /* private: */
+       gfp_t        xa_flags;
+       void __rcu  *xa_head;
+   };
+
+Bu ağaç üzerinde işlem yapan ``xa_`` öneki ile başlayan bir grup fonksiyon vardır:
+
+.. code-block:: c
+
+   void  *xa_load(struct xarray *, unsigned long index);
+   void  *xa_store(struct xarray *, unsigned long index, void *entry, gfp_t);
+   void  *xa_erase(struct xarray *, unsigned long index);
+   void  *xa_store_range(struct xarray *, unsigned long first,
+                         unsigned long last, void *entry, gfp_t);
+   bool   xa_get_mark(struct xarray *, unsigned long index, xa_mark_t);
+   void   xa_set_mark(struct xarray *, unsigned long index, xa_mark_t);
+   void   xa_clear_mark(struct xarray *, unsigned long index, xa_mark_t);
+   void  *xa_find(struct xarray *, unsigned long *index,
+                  unsigned long max, xa_mark_t);
+   void  *xa_find_after(struct xarray *, unsigned long *index,
+                        unsigned long max, xa_mark_t);
+   unsigned int xa_extract(struct xarray *, void **dst,
+                           unsigned long start, unsigned long max,
+                           unsigned int n, xa_mark_t);
+   void   xa_destroy(struct xarray *);
+
+Bu fonksiyonların tanımlamaları ``lib/xarray.c`` dosyasında yapılmıştır.
+
+Güncel çekirdeklerin yukarıda belirttiğimiz aşağı seviyeli fonksiyonlarının yanı sıra aynı zamanda
+bunları kullanan yüksek seviyeli *IDR* fonksiyonları da bulunmaktadır. Çekirdek kodları incelendiğinde
+genellikle bu yüksek seviyeli ``idr_`` önekli fonksiyonların kullanıldığı görülmektedir. Aşağıdaki
+diyagram üç katman arasındaki ilişkiyi göstermektedir:
+ 
+.. graphviz::
+
+   digraph xarray_layers {
+       rankdir=TB;
+       graph [bgcolor="transparent", pad="0.4", ranksep=0.5];
+       node  [shape=box, style="rounded,filled", fontname="sans-serif", fontsize=11,
+              width=5.5, height=0.5];
+       edge  [color="#336699", arrowsize=0.9, penwidth=2.0];
+
+       app [label=<Çekirdek Kodları ve Aygıt Sürücüler<BR/>(sürücüler, alt sistemler — idr_* çağrıları yapan)>,
+            fillcolor="#AACCFF"];
+
+       idr [label=<IDR Katmanı  (idr_*)<BR/>Basit integer→pointer eşlemeleri için sarma fonksiyonları<BR/>idr_alloc() → xa_alloc()   |   idr_find() → xa_load()<BR/>idr_remove() → xa_erase()  |   idr_replace() → xa_store()<BR/>idr_for_each() → xa_for_each()>,
+            fillcolor="#DDEEFF"];
+
+       xar [label=<XArray Katmanı  (xa_*)<BR/>Gerçek veri yapısı: radix ağaç tabanlı, concurrency-aware, lock/RCU destekli<BR/>xa_alloc · xa_load · xa_store · xa_erase · xa_find · xa_for_each>,
+            fillcolor="#FFE8CC"];
+
+       imp [label=<Çekirdek Alt Veri Yapısı / Radix Tree<BR/>(XArray'in düşük seviye radix gerçekleştirimi)>,
+            fillcolor="#D4E8D4"];
+
+       app -> idr [label="idr_* çağrısı"];
+       idr -> xar [label="xa_* çağrısı"];
+       xar -> imp [label="dahili radix işlemleri"];
+   }
+
+Boş pid değerinin elde edilmesi de aynı XArray altyapısı üzerinden yapılmaktadır:
+
+.. code-block:: c
+
+   /* Boş pid tahsisatı çağrı zinciri */
+   alloc_pid --> idr_alloc_cyclic --> idr_alloc_u32 --> idr_get_free
+
+XArray gerçekleştirimi hakkında ileride başka konularda ek bilgiler vereceğiz.

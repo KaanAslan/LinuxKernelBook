@@ -51,36 +51,46 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">1. Giriş</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#gereksinimler">1.1. Gereksinimler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#kaynak-kod-gezintisi">1.2. Kaynak Kod Gezintisi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#isletim-sistemlerine-giris">1.3. İşletim Sistemlerine Giriş</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#isletim-sisteminin-tanimi-ve-yapisi">1.4. İşletim Sisteminin Tanımı ve Yapısı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#isletim-sistemlerinin-siniflandirilmasi">1.5. İşletim Sistemlerinin Sınıflandırılması</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#proses-yonetimine-gore">1.5.1. Proses Yönetimine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#kullanici-sayisina-gore">1.5.2. Kullanıcı Sayısına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#cekirdek-yapisina-gore">1.5.3. Çekirdek Yapısına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.5.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#dagitiklik-durumuna-gore">1.5.5. Dağıtıklık Durumuna Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#donanim-ozelligine-gore">1.5.6. Donanım Özelliğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#kaynak-kod-lisansina-gore">1.5.7. Kaynak Kod Lisansına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#kaynak-kodun-ozgunlugune-gore">1.5.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#gui-calisma-destegine-gore">1.5.9. GUI Çalışma Desteğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.5.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#kaynak-listesi">1.2. Kaynak Listesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#understanding-the-linux-kernel">1.2.1. Understanding the Linux Kernel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linux-device-drivers">1.2.2. Linux Device Drivers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kernel-internals-ve-genel-mimari">1.2.3. Kernel İnternals ve Genel Mimari</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linux-kernel-programming">1.2.4. Linux Kernel Programming</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linux-kernel-debugging">1.2.5. Linux Kernel Debugging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sistem-programlama-ve-kullanici-alani-kaynaklari">1.2.6. Sistem Programlama ve Kullanıcı Alanı Kaynakları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cevrimici-kaynaklar">1.2.7. Çevrimiçi Kaynaklar</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#isletim-sistemlerinin-tarihsel-gelisimi">1.6. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#unix-turevi-sistemlerin-tarihsel-gelisimi">1.7. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#mac-os-x-turevi-sistemler">1.8. Mac OS X Türevi Sistemler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#gnu-projesi-ve-ozgur-yazilim">1.9. GNU Projesi ve Özgür Yazılım</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#linux-un-tarihsel-gelisimi">1.10. Linux’un Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#linux-dagitimlari">1.11. Linux Dağıtımları</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#posix-standartlari">1.12. POSIX Standartları</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#linux-cekirdeginin-kaynak-kod-yapisi">1.13. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#linux-sistemlerinin-boot-edilmesi">1.14. Linux Sistemlerinin Boot Edilmesi</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#reset-vektoru-ve-bios-firmware">1.14.1. Reset Vektörü ve BIOS/Firmware</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#onyukleyici-bootloader-programlar">1.14.2. Önyükleyici (Bootloader) Programlar</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#genel-boot-akisi">1.14.3. Genel Boot Akışı</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#boot-asamalari-terminolojisi">1.14.4. Boot Aşamaları Terminolojisi</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pc-sistemlerinde-boot-sureci-klasik-bios">1.14.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cekirdek-kodlari-uzerinde-gezinme">1.3. Çekirdek Kodları Üzerinde Gezinme</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#isletim-sistemlerine-giris">1.4. İşletim Sistemlerine Giriş</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#isletim-sisteminin-tanimi-ve-yapisi">1.5. İşletim Sisteminin Tanımı ve Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#isletim-sistemlerinin-siniflandirilmasi">1.6. İşletim Sistemlerinin Sınıflandırılması</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#proses-yonetimine-gore">1.6.1. Proses Yönetimine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kullanici-sayisina-gore">1.6.2. Kullanıcı Sayısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cekirdek-yapisina-gore">1.6.3. Çekirdek Yapısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.6.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dagitiklik-durumuna-gore">1.6.5. Dağıtıklık Durumuna Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#donanim-ozelligine-gore">1.6.6. Donanım Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kaynak-kod-lisansina-gore">1.6.7. Kaynak Kod Lisansına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kaynak-kodun-ozgunlugune-gore">1.6.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gui-calisma-destegine-gore">1.6.9. GUI Çalışma Desteğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.6.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#isletim-sistemlerinin-tarihsel-gelisimi">1.7. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unix-turevi-sistemlerin-tarihsel-gelisimi">1.8. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mac-os-x-turevi-sistemler">1.9. Mac OS X Türevi Sistemler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gnu-projesi-ve-ozgur-yazilim">1.10. GNU Projesi ve Özgür Yazılım</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linux-un-tarihsel-gelisimi">1.11. Linux’un Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linux-dagitimlari">1.12. Linux Dağıtımları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#posix-standartlari">1.13. POSIX Standartları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linux-cekirdeginin-kaynak-kod-yapisi">1.14. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linux-sistemlerinin-boot-edilmesi">1.15. Linux Sistemlerinin Boot Edilmesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#reset-vektoru-ve-bios-firmware">1.15.1. Reset Vektörü ve BIOS/Firmware</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#onyukleyici-bootloader-programlar">1.15.2. Önyükleyici (Bootloader) Programlar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#genel-boot-akisi">1.15.3. Genel Boot Akışı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#boot-asamalari-terminolojisi">1.15.4. Boot Aşamaları Terminolojisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pc-sistemlerinde-boot-sureci-klasik-bios">1.15.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
 </ul>
 </li>
 </ul>
@@ -146,20 +156,43 @@
 <li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#cekirdek-baslik-dosyalarinin-kurulumu">2.25. Çekirdek Başlık Dosyalarının Kurulumu</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="kernellinkedlist.html">3. Linux Çekirdeği: Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernellinkedlistandhashtable.html">3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#rcu-destegi">3.5. RCU Desteği</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-destegi">3.5. RCU Desteği</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#arama-algoritmalari-ve-sozluk-tarzi-veri-yapilari">3.7. Arama Algoritmaları ve Sözlük Tarzı Veri Yapıları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#indeksli-arama">3.7.1. İndeksli Arama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablolari">3.8. Hash Tabloları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#cakisma-cozumleme-stratejileri">3.8.1. Çakışma Çözümleme Stratejileri</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#ayri-zincir-olusturma-separate-chaining">3.8.1.1. Ayrı Zincir Oluşturma (Separate Chaining)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-fonksiyonu-tasarimi">3.8.1.2. Hash Fonksiyonu Tasarımı</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#acik-adresleme-ve-dogrusal-yoklama">3.8.1.3. Açık Adresleme ve Doğrusal Yoklama</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdeginde-hash-tablosu-gerceklestirimi">3.9. Linux Çekirdeğinde Hash Tablosu Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hlist-head-ve-hlist-node-yapilari">3.9.1. hlist_head ve hlist_node Yapıları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablosunun-olusturulmasi">3.9.2. Hash Tablosunun Oluşturulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#id1">3.9.3. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ek-insert-fonksiyonlari">3.9.4. Ek Insert Fonksiyonları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dongu-makrolari">3.9.5. Döngü Makroları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ornek-uygulama">3.9.6. Örnek Uygulama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-lu-hash-tablosu-fonksiyonlari">3.10. RCU’lu Hash Tablosu Fonksiyonları</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="processcontrolblock.html">4. Proses Kontrol Bloğu ve task_struct Yapısı</a><ul>
@@ -202,7 +235,7 @@
 <li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#pid-tahsisati">4.13. PID Tahsisatı</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-uretim-mekanizmasinin-tarihsel-gelisimi">4.13.1. PID Üretim Mekanizmasının Tarihsel Gelişimi</a></li>
 <li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#maksimum-pid-degeri">4.13.2. Maksimum PID Değeri</a></li>
-<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-den-task-struct-a-hizli-erisim">4.13.3. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code>’a Hızlı Erişim</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-den-task-struct-nesnesine-hizli-erisim">4.13.3. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnesine Hızlı Erişim</a></li>
 </ul>
 </li>
 </ul>
@@ -245,19 +278,197 @@ yapacağız. Bu nedenle kurduğunuz sistemin bir kopyasını da saklamanızı sa
 <p>Kursumuzda Debian türevi bir Linux dağıtımının kurulmuş olduğu varsayılacaktır. Biz bazı
 konularda açıklamalar yaparken Debian dağıtımının <em>apt</em> paket sistemini kullanacağız.</p>
 </section>
-<section id="kaynak-kod-gezintisi">
-<h2><span class="section-number">1.2. </span>Kaynak Kod Gezintisi<a class="headerlink" href="#kaynak-kod-gezintisi" title="Link to this heading"></a></h2>
+<section id="kaynak-listesi">
+<h2><span class="section-number">1.2. </span>Kaynak Listesi<a class="headerlink" href="#kaynak-listesi" title="Link to this heading"></a></h2>
+<p>Linux çekirdeği konusunda yararlanabileceğiniz ek kaynakların listesini aşağıda veriyoruz. Bunların arasında en ayrıntılı
+olanı <em>Understandibg the Linux Kernel</em> kitabıdır. Bu kitabın üç baskısı yapılmıştır. Birincisi çekirdeğin 2.2’li versiyonlarına,
+ikincisi 2.4 versiyonlarına ve üçüncüsü de 2.6’lı versiyonlarına ilişkindir. Ancak 2.6’dan sonra çekirdekte çeşitli alt sistemlerde
+değişiklikler yapıldığı için bu kitap Linux çekirdeğinin güncel versiyonlarını tam olarak yansıtmamaktadır.</p>
+<p>Biz kursumuzda belli bir kitabın programını izlemeyeceğiz. Kurs konuları Kaan ASLAN’ın kendi deneyimlerinden ve bilgi birikiminden
+damıtılarak oluşturulmuştur.</p>
+<section id="understanding-the-linux-kernel">
+<h3><span class="section-number">1.2.1. </span>Understanding the Linux Kernel<a class="headerlink" href="#understanding-the-linux-kernel" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>[1] D. P. Bovet and M. Cesati, <em>Understanding the Linux Kernel</em>, 1st ed.
+Sebastopol, CA, USA: O’Reilly Media, 2000.
+ISBN: 978-0-596-00002-5.</p></li>
+<li><p>[2] D. P. Bovet and M. Cesati, <em>Understanding the Linux Kernel</em>, 2nd ed.
+Sebastopol, CA, USA: O’Reilly Media, 2002.
+ISBN: 978-0-596-00213-5.</p></li>
+<li><p>[3] D. P. Bovet and M. Cesati, <em>Understanding the Linux Kernel</em>, 3rd ed.
+Sebastopol, CA, USA: O’Reilly Media, 2005.
+ISBN: 978-0-596-00565-5.</p></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>3. baskı Linux 2.6.11 çekirdeğini kapsar ve serinin son baskısıdır.
+Linux 5.x / 6.x için kernel.org resmi dokümantasyonu ve LWN.net
+makaleleri tamamlayıcı kaynak olarak kullanılmalıdır.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="linux-device-drivers">
+<h3><span class="section-number">1.2.2. </span>Linux Device Drivers<a class="headerlink" href="#linux-device-drivers" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>[4] A. Rubini and J. Corbet, <em>Linux Device Drivers</em>, 1st ed.
+Sebastopol, CA, USA: O’Reilly Media, 1998.</p></li>
+<li><p>[5] A. Rubini and J. Corbet, <em>Linux Device Drivers</em>, 2nd ed.
+Sebastopol, CA, USA: O’Reilly Media, 2001.</p></li>
+<li><p>[6] J. Corbet, A. Rubini, and G. Kroah-Hartman, <em>Linux Device Drivers</em>,
+3rd ed. Sebastopol, CA, USA: O’Reilly Media, 2005.
+ISBN: 978-0-596-00590-7.
+Çevrimiçi (ücretsiz): <a class="reference external" href="https://lwn.net/Kernel/LDD3/">https://lwn.net/Kernel/LDD3/</a></p></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>3. baskı Linux 2.6 çekirdeğini hedefler ve O’Reilly tarafından
+ücretsiz olarak çevrimiçi yayınlanmaktadır. 4. baskı henüz
+yayınlanmamıştır.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="kernel-internals-ve-genel-mimari">
+<h3><span class="section-number">1.2.3. </span>Kernel İnternals ve Genel Mimari<a class="headerlink" href="#kernel-internals-ve-genel-mimari" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>[7] R. Love, <em>Linux Kernel Development</em>, 3rd ed.
+Upper Saddle River, NJ, USA: Addison-Wesley, 2010.
+ISBN: 978-0-672-32946-3.</p></li>
+<li><p>[8] M. Gorman, <em>Understanding the Linux Virtual Memory Manager</em>.
+Upper Saddle River, NJ, USA: Prentice Hall, 2004.
+ISBN: 978-0-131-45348-5.
+Çevrimiçi (ücretsiz): <a class="reference external" href="https://www.kernel.org/doc/gorman/">https://www.kernel.org/doc/gorman/</a></p></li>
+<li><p>[9] W. Mauerer, <em>Professional Linux Kernel Architecture</em>.
+Indianapolis, IN, USA: Wrox Press, 2008.
+ISBN: 978-0-470-34343-2.</p></li>
+<li><dl class="simple">
+<dt>[10] G. Kroah-Hartman, <em>Linux Kernel in a Nutshell</em>.</dt><dd><p>Sebastopol, CA, USA: O’Reilly Media, 2006.
+Çevrimiçi (ücretsiz): <a class="reference external" href="http://www.kroah.com/lkn/">http://www.kroah.com/lkn/</a></p>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="linux-kernel-programming">
+<h3><span class="section-number">1.2.4. </span>Linux Kernel Programming<a class="headerlink" href="#linux-kernel-programming" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt>[11] K. N. Billimoria, <em>Linux Kernel Programming: A Comprehensive Guide to Kernel Internals, Writing Kernel Modules, and Kernel Synchronization</em>, 1st ed.</dt><dd><p>Birmingham, UK: Packt Publishing, 2021.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[12] K. N. Billimoria, <em>Linux Kernel Programming Part 2: Writing Character Device Drivers: Learn to Work with User-Kernel Interfaces, Handle Peripheral I/O and Hardware Interrupts</em>, 1st ed.</dt><dd><p>Birmingham, UK: Packt Publishing, 2021.</p>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="linux-kernel-debugging">
+<h3><span class="section-number">1.2.5. </span>Linux Kernel Debugging<a class="headerlink" href="#linux-kernel-debugging" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt>[13] K. N. Billimoria, <em>Linux Kernel Debugging: Leverage Proven Tools and Advanced Techniques to Effectively Debug Linux Kernels and Kernel Modules</em>, 1st ed.</dt><dd><p>Birmingham, UK: Packt Publishing, 2023.</p>
+</dd>
+</dl>
+</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Not</p>
+<p>Billimoria’nın üç kitabı ([11], [12], [13]) birbirini tamamlar
+niteliktedir: kernel programlama → karakter sürücüleri → kernel hata
+ayıklama şeklinde doğal bir okuma sırası oluşturur. [13] numaralı
+<em>Linux Kernel Debugging</em> kitabı <code class="docutils literal notranslate"><span class="pre">ftrace</span></code>, <code class="docutils literal notranslate"><span class="pre">kprobes</span></code>, <code class="docutils literal notranslate"><span class="pre">KASAN</span></code>,
+<code class="docutils literal notranslate"><span class="pre">lockdep</span></code> ve <code class="docutils literal notranslate"><span class="pre">kdump</span></code> araçlarını kaynak kod düzeyinde ele alır.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="sistem-programlama-ve-kullanici-alani-kaynaklari">
+<h3><span class="section-number">1.2.6. </span>Sistem Programlama ve Kullanıcı Alanı Kaynakları<a class="headerlink" href="#sistem-programlama-ve-kullanici-alani-kaynaklari" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt>[14] M. Kerrisk, <em>The Linux Programming Interface</em>.</dt><dd><p>San Francisco, CA, USA: No Starch Press, 2010.
+ISBN: 978-1-593-27220-3.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[15] W. R. Stevens and S. A. Rago, <em>Advanced Programming in the UNIX Environment</em>, 3rd ed.</dt><dd><p>Upper Saddle River, NJ, USA: Addison-Wesley, 2013.
+ISBN: 978-0-321-63773-4.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[16] B. Ward, <em>How Linux Works: What Every Superuser Should Know</em>,</dt><dd><p>3rd ed.
+San Francisco, CA, USA: No Starch Press, 2021.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[17] J. Levine, <em>Linkers and Loaders</em>.</dt><dd><p>San Francisco, CA, USA: Morgan Kaufmann, 2000.</p>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="cevrimici-kaynaklar">
+<h3><span class="section-number">1.2.7. </span>Çevrimiçi Kaynaklar<a class="headerlink" href="#cevrimici-kaynaklar" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt>[18] The Linux Kernel Organization, “The Linux Kernel Documentation,”</dt><dd><p>[Çevrimiçi]. Erişim: <a class="reference external" href="https://www.kernel.org/doc/html/latest/">https://www.kernel.org/doc/html/latest/</a>
+[Erişim tarihi: Mayıs 2026].</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[19] M. Gorman, “Understanding the Linux Virtual Memory Manager,”</dt><dd><p>[Çevrimiçi]. Erişim: <a class="reference external" href="https://www.kernel.org/doc/gorman/">https://www.kernel.org/doc/gorman/</a>
+[Erişim tarihi: Mayıs 2026].</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[20] LWN.net, “Kernel development news and articles,” [Çevrimiçi].</dt><dd><p>Erişim: <a class="reference external" href="https://lwn.net">https://lwn.net</a>
+[Erişim tarihi: Mayıs 2026].</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[21] LWN.net, “Kernel Index — Memory Management,” [Çevrimiçi].</dt><dd><p>Erişim: <a class="reference external" href="https://lwn.net/Kernel/Index/#Memory_management">https://lwn.net/Kernel/Index/#Memory_management</a>
+[Erişim tarihi: Mayıs 2026].</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[22] Bootlin, “Elixir Cross Referencer — Linux Kernel Source,”</dt><dd><p>[Çevrimiçi]. Erişim: <a class="reference external" href="https://elixir.bootlin.com/linux/latest/source">https://elixir.bootlin.com/linux/latest/source</a>
+[Erişim tarihi: Mayıs 2026].</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>[23] KernelNewbies, “Linux Kernel Newbies,” [Çevrimiçi].</dt><dd><p>Erişim: <a class="reference external" href="https://kernelnewbies.org">https://kernelnewbies.org</a>
+[Erişim tarihi: Mayıs 2026].</p>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="cekirdek-kodlari-uzerinde-gezinme">
+<h2><span class="section-number">1.3. </span>Çekirdek Kodları Üzerinde Gezinme<a class="headerlink" href="#cekirdek-kodlari-uzerinde-gezinme" title="Link to this heading"></a></h2>
 <p>Kursumuzda Linux işletim sisteminin kaynak kodlarında gezinmek için
 <a class="reference external" href="https://elixir.bootlin.com/linux/">https://elixir.bootlin.com/linux/</a> sitesini kullanacağız. Bu sitede Linux’un 0.01
 versiyonundan günümüzdeki en son versiyonuna kadar bütün resmi versiyonlarının kaynak
 kodları bulunmaktadır ve bu kaynak kodlar üzerinde gezintiler (navigation) yapılabilmektedir.</p>
 </section>
 <section id="isletim-sistemlerine-giris">
-<h2><span class="section-number">1.3. </span>İşletim Sistemlerine Giriş<a class="headerlink" href="#isletim-sistemlerine-giris" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.4. </span>İşletim Sistemlerine Giriş<a class="headerlink" href="#isletim-sistemlerine-giris" title="Link to this heading"></a></h2>
 <p>Bu bölümde işletim sistemleri hakkında genel bilgiler vereceğiz.</p>
 </section>
 <section id="isletim-sisteminin-tanimi-ve-yapisi">
-<h2><span class="section-number">1.4. </span>İşletim Sisteminin Tanımı ve Yapısı<a class="headerlink" href="#isletim-sisteminin-tanimi-ve-yapisi" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.5. </span>İşletim Sisteminin Tanımı ve Yapısı<a class="headerlink" href="#isletim-sisteminin-tanimi-ve-yapisi" title="Link to this heading"></a></h2>
 <p>İşletim sistemleri bilgisayar donanımının kaynaklarını yöneten, bilgisayar donanımı ile
 kullanıcı arasında arayüz oluşturan sistem programlarıdır. Bilgisayar bilimlerinin akademik
 öncülerinin çoğu işletim sistemlerini bir kaynak yöneticisi (resource manager) olarak
@@ -327,10 +538,10 @@ kaynak yönetimlerinin önemli bir bölümünü sağlıyor olması gerekir. Bu k
 çoğunu sağlamayan kontrol yazılımlarına genel olarak <em>firmware</em> de denilmektedir.</p>
 </section>
 <section id="isletim-sistemlerinin-siniflandirilmasi">
-<h2><span class="section-number">1.5. </span>İşletim Sistemlerinin Sınıflandırılması<a class="headerlink" href="#isletim-sistemlerinin-siniflandirilmasi" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.6. </span>İşletim Sistemlerinin Sınıflandırılması<a class="headerlink" href="#isletim-sistemlerinin-siniflandirilmasi" title="Link to this heading"></a></h2>
 <p>İşletim sistemleri çeşitli biçimlerde sınıflandırılabilmektedir.</p>
 <section id="proses-yonetimine-gore">
-<h3><span class="section-number">1.5.1. </span>Proses Yönetimine Göre<a class="headerlink" href="#proses-yonetimine-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.1. </span>Proses Yönetimine Göre<a class="headerlink" href="#proses-yonetimine-gore" title="Link to this heading"></a></h3>
 <p>Aynı anda tek bir programı çalıştıran işletim sistemlerine <em>tek prosesli (single
 processing)</em>, aynı anda birden fazla programı çalıştırabilen işletim sistemlerine ise
 <em>çok prosesli (multiprocessing) işletim sistemleri</em> denilmektedir. Örneğin DOS işletim
@@ -339,7 +550,7 @@ ancak çalıştırdığımız program sonlanınca başka bir programı çalışt
 Windows, UNIX/Linux, macOS gibi işletim sistemleri çok prosesli işletim sistemleridir.</p>
 </section>
 <section id="kullanici-sayisina-gore">
-<h3><span class="section-number">1.5.2. </span>Kullanıcı Sayısına Göre<a class="headerlink" href="#kullanici-sayisina-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.2. </span>Kullanıcı Sayısına Göre<a class="headerlink" href="#kullanici-sayisina-gore" title="Link to this heading"></a></h3>
 <p>Birden fazla farklı kullanıcının çalışabildiği sistemlere <em>çok kullanıcılı (multiuser)</em>,
 tek bir kullanıcının çalışabildiği sistemlere <em>tek kullanıcılı (single user)</em> sistemler
 denilmektedir. Genellikle çok prosesli işletim sistemleri aynı zamanda çok kullanıcılı
@@ -350,7 +561,7 @@ kullanıcılı bir sistemdi. Halbuki Windows, UNIX/Linux ve macOS sistemleri ço
 sistemlerdir.</p>
 </section>
 <section id="cekirdek-yapisina-gore">
-<h3><span class="section-number">1.5.3. </span>Çekirdek Yapısına Göre<a class="headerlink" href="#cekirdek-yapisina-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.3. </span>Çekirdek Yapısına Göre<a class="headerlink" href="#cekirdek-yapisina-gore" title="Link to this heading"></a></h3>
 <p>İşletim sistemleri çekirdek yapısına göre <em>tek parçalı çekirdekli (monolithic kernel)</em> ve
 <em>mikro çekirdekli (microkernel)</em> olmak üzere ikiye ayrılmaktadır. Tek parçalı çekirdekli
 işletim sisteminin büyük kısmı çekirdek modunda çalışır. Mikro çekirdekli sistemlerde ise
@@ -359,7 +570,7 @@ mikro çekirdekli tasarımları bir spektrum olarak düşünebiliriz. (Örneğin
 bazı çekirdekler tek parçalı tarafa yakın, bazıları ise mikro tarafa yakın olabilmektedir.)</p>
 </section>
 <section id="dissal-olaylarla-yanit-verebilme-ozelligine-gore">
-<h3><span class="section-number">1.5.4. </span>Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre<a class="headerlink" href="#dissal-olaylarla-yanit-verebilme-ozelligine-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.4. </span>Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre<a class="headerlink" href="#dissal-olaylarla-yanit-verebilme-ozelligine-gore" title="Link to this heading"></a></h3>
 <p>İşletim sistemleri dışsal olaylara yanıt verme bakımından gerçek zamanlı olan (real-time)
 ve gerçek zamanlı olmayan (non-real-time) sistemler olmak üzere ikiye ayrılabilir. Dışsal
 olaylara hızlı bir biçimde yanıt verebilecek çekirdek yapısına sahip olan işletim
@@ -370,7 +581,7 @@ dışsal olaylara yanıt verme bakımından çok güvenilir olma iddiasındadır
 zamanlı sistemler ise bu konuda daha toleranslıdır.</p>
 </section>
 <section id="dagitiklik-durumuna-gore">
-<h3><span class="section-number">1.5.5. </span>Dağıtıklık Durumuna Göre<a class="headerlink" href="#dagitiklik-durumuna-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.5. </span>Dağıtıklık Durumuna Göre<a class="headerlink" href="#dagitiklik-durumuna-gore" title="Link to this heading"></a></h3>
 <p>İşletim sistemleri dağıtıklık durumuna göre <em>dağıtık olan (distributed)</em> ve <em>dağıtık
 olmayan (non-distributed)</em> sistemler biçiminde ikiye ayrılabilmektedir. Dağıtık işletim
 sistemlerinde sistem birden fazla bilgisayardan oluşan tek bir sistem gibi davranmaktadır.
@@ -380,7 +591,7 @@ paylaşılmaktadır. Windows, UNIX/Linux ve macOS dağıtık işletim sistemleri
 bu sistemlerde dağıtık uygulamalar yapılabilmektedir.</p>
 </section>
 <section id="donanim-ozelligine-gore">
-<h3><span class="section-number">1.5.6. </span>Donanım Özelliğine Göre<a class="headerlink" href="#donanim-ozelligine-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.6. </span>Donanım Özelliğine Göre<a class="headerlink" href="#donanim-ozelligine-gore" title="Link to this heading"></a></h3>
 <p>Neredeyse her yaygın masaüstü işletim sisteminin bir mobil versiyonu da oluşturulmuştur.
 iOS (iPhone Operating System) ve iPadOS Apple firmasının (yani macOS sistemlerinin) mobil
 işletim sistemleridir. Android bir çeşit mobil Linux sistemi olarak değerlendirilebilir.
@@ -397,7 +608,7 @@ Windows Phone işletim sistemini sonlandırmıştır ve bu alandaki rekabetten t
 devam ettirilmektedir.</p>
 </section>
 <section id="kaynak-kod-lisansina-gore">
-<h3><span class="section-number">1.5.7. </span>Kaynak Kod Lisansına Göre<a class="headerlink" href="#kaynak-kod-lisansina-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.7. </span>Kaynak Kod Lisansına Göre<a class="headerlink" href="#kaynak-kod-lisansina-gore" title="Link to this heading"></a></h3>
 <p>Kaynak kod lisansına göre işletim sistemlerini kabaca açık kaynak kodlu (open source) ve
 mülkiyete bağlı (proprietary) olmak üzere ikiye ayırabiliriz. Açık kaynak kodlu işletim
 sistemleri değişik açık kaynak kod lisanslarına sahip olabilmektedir. Bunların kaynak
@@ -407,7 +618,7 @@ kodludur. macOS sistemlerinin ise çekirdeği açık, diğer kısımları (örne
 diğer katmanları) kapalıdır.</p>
 </section>
 <section id="kaynak-kodun-ozgunlugune-gore">
-<h3><span class="section-number">1.5.8. </span>Kaynak Kodun Özgünlüğüne Göre<a class="headerlink" href="#kaynak-kodun-ozgunlugune-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.8. </span>Kaynak Kodun Özgünlüğüne Göre<a class="headerlink" href="#kaynak-kodun-ozgunlugune-gore" title="Link to this heading"></a></h3>
 <p>Bazı işletim sistemleri bazı işletim sistemlerinin kodları alınıp değiştirilerek
 oluşturulmuştur (örneğin Android ve macOS’ta olduğu gibi). Bazı işletim sistemlerinin
 kodları ise sıfırdan yazılmıştır. Kodları sıfırdan yazılan, yani orijinal kod temeline
@@ -428,7 +639,7 @@ Yani orijinal AT&amp;T UNIX sistemindeki kaynak kodların bir bölümü kopyalan
 kullanılmamıştır.</p>
 </section>
 <section id="gui-calisma-destegine-gore">
-<h3><span class="section-number">1.5.9. </span>GUI Çalışma Desteğine Göre<a class="headerlink" href="#gui-calisma-destegine-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.9. </span>GUI Çalışma Desteğine Göre<a class="headerlink" href="#gui-calisma-destegine-gore" title="Link to this heading"></a></h3>
 <p>Bazı işletim sistemleri GUI çalışma modelini doğrudan desteklerken bazıları
 desteklememektedir. Örneğin Windows sistemleri çekirdekle entegre edilmiş bir GUI çalışma
 modeli sunmaktadır. UNIX/Linux sistemleri de X Window (ya da X11) ve Wayland katmanlarıyla
@@ -436,7 +647,7 @@ benzer bir model sunmaktadır. Fakat örneğin DOS işletim sisteminin böyle bi
 desteği yoktu.</p>
 </section>
 <section id="ag-uzerinde-hizmet-alip-verme-rollerine-gore">
-<h3><span class="section-number">1.5.10. </span>Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre<a class="headerlink" href="#ag-uzerinde-hizmet-alip-verme-rollerine-gore" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.6.10. </span>Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre<a class="headerlink" href="#ag-uzerinde-hizmet-alip-verme-rollerine-gore" title="Link to this heading"></a></h3>
 <p>İşletim sistemlerini ağ altında hizmet alıp verme rollerine göre <em>istemci (client) ve
 sunucu (server)</em> biçiminde de iki gruba ayırabiliriz. Bazı işletim sistemlerinin istemci
 versiyonları birbirlerinden ayrılmıştır. Bazılarında ise bu ayrım yapılmamıştır. Örneğin
@@ -455,7 +666,7 @@ da içermektedir.</p>
 </section>
 </section>
 <section id="isletim-sistemlerinin-tarihsel-gelisimi">
-<h2><span class="section-number">1.6. </span>İşletim Sistemlerinin Tarihsel Gelişimi<a class="headerlink" href="#isletim-sistemlerinin-tarihsel-gelisimi" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.7. </span>İşletim Sistemlerinin Tarihsel Gelişimi<a class="headerlink" href="#isletim-sistemlerinin-tarihsel-gelisimi" title="Link to this heading"></a></h2>
 <p>1940’lı yıllarda ilk elektronik bilgisayarlar yapıldığında henüz bir işletim sistemi
 kavramı yoktu. Bu bilgisayarlara program yazacak olanlar işletim sistemi faaliyetlerini de
 kendileri yapmak zorunda kalıyordu. (Yani şimdi mikrodenetleyicilere bare metal kod
@@ -565,7 +776,7 @@ Windows 11’i çıkarmıştır.</p>
 sisteminin hikayesi daha geniş olarak izleyen derste ele alınmaktadır.</p>
 </section>
 <section id="unix-turevi-sistemlerin-tarihsel-gelisimi">
-<span id="ders03"></span><h2><span class="section-number">1.7. </span>UNIX Türevi Sistemlerin Tarihsel Gelişimi<a class="headerlink" href="#unix-turevi-sistemlerin-tarihsel-gelisimi" title="Link to this heading"></a></h2>
+<span id="ders03"></span><h2><span class="section-number">1.8. </span>UNIX Türevi Sistemlerin Tarihsel Gelişimi<a class="headerlink" href="#unix-turevi-sistemlerin-tarihsel-gelisimi" title="Link to this heading"></a></h2>
 <p>UNIX işletim sistemi AT&amp;T Bell Laboratuvarlarında 1969-1971 yılları arasında geliştirildi.
 Proje ekibinin lideri Ken Thompson’du. Çalışma ekibinde Dennis Ritchie, Brian Kernighan gibi
 önemli isimler de vardı. Ekip daha önce General Electric’in GE-645 mainframe bilgisayarı
@@ -647,7 +858,7 @@ getirilmesiyle oluşturulmuştur. İlk versiyonu 2001 yılında piyasaya sürül
 </dl>
 </section>
 <section id="mac-os-x-turevi-sistemler">
-<h2><span class="section-number">1.8. </span>Mac OS X Türevi Sistemler<a class="headerlink" href="#mac-os-x-turevi-sistemler" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.9. </span>Mac OS X Türevi Sistemler<a class="headerlink" href="#mac-os-x-turevi-sistemler" title="Link to this heading"></a></h2>
 <p>İşletim sistemlerinin tarihsel gelişimini ele aldığımız önceki bölümde de belirttiğimiz gibi
 Apple firmasının Mac bilgisayarları Mac OS’un 10 versiyonu ile birlikte yeni bir çekirdeğe
 geçtiler. Mac OS işletim sistemlerinin 10’lu versiyonları Roma rakamıyla Mac OS X biçiminde
@@ -701,7 +912,7 @@ hibrit bir sistemdir.</p>
 <p>macOS büyük ölçüde POSIX uyumlu bir sistemdir.</p>
 </section>
 <section id="gnu-projesi-ve-ozgur-yazilim">
-<h2><span class="section-number">1.9. </span>GNU Projesi ve Özgür Yazılım<a class="headerlink" href="#gnu-projesi-ve-ozgur-yazilim" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.10. </span>GNU Projesi ve Özgür Yazılım<a class="headerlink" href="#gnu-projesi-ve-ozgur-yazilim" title="Link to this heading"></a></h2>
 <p>UNIX/Linux dünyasında önemli bir yeri olan GNU Projesi, özgür yazılım ve açık kaynak kod
 akımları üzerinde durmak istiyoruz.</p>
 <p>1970’lerdeki mikro bilgisayarlar devrimine kadar yazılımda bir telif anlayışı yoktu. Yani
@@ -746,7 +957,7 @@ yumuşatılmış LGPL (Lesser GPL) biçiminde bir versiyonu da oluşturulmuştur
 MIT, BSD gibi açık kaynak kodlu başka lisanslar da vardır.</p>
 </section>
 <section id="linux-un-tarihsel-gelisimi">
-<h2><span class="section-number">1.10. </span>Linux’un Tarihsel Gelişimi<a class="headerlink" href="#linux-un-tarihsel-gelisimi" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.11. </span>Linux’un Tarihsel Gelişimi<a class="headerlink" href="#linux-un-tarihsel-gelisimi" title="Link to this heading"></a></h2>
 <p>Linus Torvalds Helsinki Üniversitesinde öğrenciyken bir işletim sistemi yazmaya
 niyetlenmiştir. O zamanlarda telif uygulanmayan UNIX türevi bir işletim sistemi kalmamıştı
 ve GNU projesinin işletim sistemi de (GNU Hurd) bitirilememişti. MINIX isimli bir işletim
@@ -848,7 +1059,7 @@ algoritması.</p></td>
 <p>Linux monolithic bir çekirdek yapısına sahiptir. Büyük ölçüde POSIX uyumu bulunmaktadır.</p>
 </section>
 <section id="linux-dagitimlari">
-<h2><span class="section-number">1.11. </span>Linux Dağıtımları<a class="headerlink" href="#linux-dagitimlari" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.12. </span>Linux Dağıtımları<a class="headerlink" href="#linux-dagitimlari" title="Link to this heading"></a></h2>
 <p>Açık kaynak kodlu yazılımlar bir araya getirilip paketlenerek istenildiği gibi
 dağıtılabilmektedir. Dağıtım (distribution) bu anlamda kullanılan genel bir terimdir ve
 her türlü açık kaynak kodlu yazılım için dağıtım söz konusu olabilir. Ancak biz burada
@@ -910,7 +1121,7 @@ ticari bir versiyonu da vardır. ZYpp, YaST ve RPM paket yöneticilerini kullanm
 olmakla birlikte hala devam etmektedir.</p>
 </section>
 <section id="posix-standartlari">
-<h2><span class="section-number">1.12. </span>POSIX Standartları<a class="headerlink" href="#posix-standartlari" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.13. </span>POSIX Standartları<a class="headerlink" href="#posix-standartlari" title="Link to this heading"></a></h2>
 <p>1980’li yıllarda AT&amp;T ya da BSD kodlarından türetilmiş olan ve çoğunluğu şirketlere ait
 olan pek çok UNIX türevi işletim sistemi oluşturuldu. Bu işletim sistemleri birbirlerine
 çok benzemekle birlikte aralarında bazı farklılıklara da sahipti. İşte IEEE durumdan vazife
@@ -952,7 +1163,7 @@ son versiyonlarla aynı hale getirilmiştir. Single UNIX Specification dokümanl
 <p><a class="reference external" href="https://pubs.opengroup.org/onlinepubs/9799919799/">https://pubs.opengroup.org/onlinepubs/9799919799/</a></p>
 </section>
 <section id="linux-cekirdeginin-kaynak-kod-yapisi">
-<h2><span class="section-number">1.13. </span>Linux Çekirdeğinin Kaynak Kod Yapısı<a class="headerlink" href="#linux-cekirdeginin-kaynak-kod-yapisi" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.14. </span>Linux Çekirdeğinin Kaynak Kod Yapısı<a class="headerlink" href="#linux-cekirdeginin-kaynak-kod-yapisi" title="Link to this heading"></a></h2>
 <p>Linux çekirdeğinin kaynak kod ağacı üzerinde temel dizinler aynı kalmak üzere zaman
 içerisinde çeşitli değişiklikler yapılmıştır. Biz burada çekirdeğin son versiyonlarını
 dikkate alarak açıklamalar yapacağız. Linux kaynak kod ağacındaki temel dizinler şunlardır:</p>
@@ -1057,13 +1268,13 @@ aktarılmaktadır.</p>
 </dl>
 </section>
 <section id="linux-sistemlerinin-boot-edilmesi">
-<h2><span class="section-number">1.14. </span>Linux Sistemlerinin Boot Edilmesi<a class="headerlink" href="#linux-sistemlerinin-boot-edilmesi" title="Link to this heading"></a></h2>
+<h2><span class="section-number">1.15. </span>Linux Sistemlerinin Boot Edilmesi<a class="headerlink" href="#linux-sistemlerinin-boot-edilmesi" title="Link to this heading"></a></h2>
 <p>Kursumuzun bu bölümünde Linux sistemlerinin boot edilmesi süreci ele alınacaktır. İşletim sisteminin otomatik olarak
 yüklenerek çalışır hale getirilmesi sürecine <em>boot</em> işlemi denilmektedir. (<em>Boot</em> terimi İngilizce <em>askeri bottan
 (çizmeden)</em> gelmektedir.) Biz bilgisayar sistemine güç verdiğimizde bir süre sonra işletim sisteminin otomatik
 yüklendiğini görmekteyiz. Aslında işletim sisteminin yüklenmesi biraz karmaşık bir süreçle gerçekleşmektedir.</p>
 <section id="reset-vektoru-ve-bios-firmware">
-<h3><span class="section-number">1.14.1. </span>Reset Vektörü ve BIOS/Firmware<a class="headerlink" href="#reset-vektoru-ve-bios-firmware" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.15.1. </span>Reset Vektörü ve BIOS/Firmware<a class="headerlink" href="#reset-vektoru-ve-bios-firmware" title="Link to this heading"></a></h3>
 <p>Mikroişlemciler güç uygulandığında (reset edildiğinde) belli bir adresten itibaren çalışacak biçimde tasarlanmıştır.
 Buna işlemcilerin <em>reset vektörü</em> denilmektedir. İşlemcilerin reset vektörleri genellikle fiziksel belleğin başında
 ya da sonunda bulunmaktadır. Örneğin Intel işlemcilerinde reset vektörü belleğin sonunda, ARM işlemcilerinde ise
@@ -1109,7 +1320,7 @@ genellikle yapılamamaktadır.</p></li>
 bu program tarafından yapılmasıdır.</p>
 </section>
 <section id="onyukleyici-bootloader-programlar">
-<h3><span class="section-number">1.14.2. </span>Önyükleyici (Bootloader) Programlar<a class="headerlink" href="#onyukleyici-bootloader-programlar" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.15.2. </span>Önyükleyici (Bootloader) Programlar<a class="headerlink" href="#onyukleyici-bootloader-programlar" title="Link to this heading"></a></h3>
 <p>İşletim sistemlerini yükleyen bu tür programlara <em>önyükleyici (bootloader)</em> denilmektedir. (Biz <em>bootloader</em>
 terimi yerine bunun Türkçesi olan <em>önyükleyici</em> terimini de kullanacağız.) Yani yukarıda da belirttiğimiz gibi
 sistem programcısı diskteki önceden tespit edilmiş alana kendi kodunu yerleştirir. (Genellikle BIOS ya da firmware
@@ -1144,7 +1355,7 @@ programcıları tarafından yazılmaktadır. Belli bir süredir bu tür BIOS ala
 için BIOS güncellemeleri de yapılabilmektedir.</p>
 </section>
 <section id="genel-boot-akisi">
-<h3><span class="section-number">1.14.3. </span>Genel Boot Akışı<a class="headerlink" href="#genel-boot-akisi" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.15.3. </span>Genel Boot Akışı<a class="headerlink" href="#genel-boot-akisi" title="Link to this heading"></a></h3>
 <p>İşletim sisteminin yüklenmesi pek çok donanım ve platformda aşağıdaki aşamalardan geçilerek yapılmaktadır:</p>
 <div class="graphviz"><object data="_images/graphviz-2eb08623d9f98bf468681086a9dc8433f58d030f.svg" type="image/svg+xml" class="graphviz">
 <p class="warning">digraph genel_boot {
@@ -1164,7 +1375,7 @@ için BIOS güncellemeleri de yapılabilmektedir.</p>
 }</p></object></div>
 </section>
 <section id="boot-asamalari-terminolojisi">
-<h3><span class="section-number">1.14.4. </span>Boot Aşamaları Terminolojisi<a class="headerlink" href="#boot-asamalari-terminolojisi" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.15.4. </span>Boot Aşamaları Terminolojisi<a class="headerlink" href="#boot-asamalari-terminolojisi" title="Link to this heading"></a></h3>
 <p>Sistem reset edildiğinde tüm boot işlemi bir bütünün parçaları gibi düşünülürse burada devreye giren programlara
 birer aşama numarası da verilebilmektedir. Örneğin boot işleminin reset vektöründe bulunan kısmına <em>birinci aşama
 önyükleyici (stage-1 / first stage bootloader)</em>, bu programın yüklediği programa <em>ikinci aşama önyükleyici
@@ -1182,7 +1393,7 @@ tarafından kullanıcıdan alınıp Linux’a verilmektedir. Biz kursumuzda çek
 çekirdekle boot ederken önyükleyicinin GRUB olduğunu varsayacağız.</p>
 </section>
 <section id="pc-sistemlerinde-boot-sureci-klasik-bios">
-<h3><span class="section-number">1.14.5. </span>PC Sistemlerinde Boot Süreci (Klasik BIOS)<a class="headerlink" href="#pc-sistemlerinde-boot-sureci-klasik-bios" title="Link to this heading"></a></h3>
+<h3><span class="section-number">1.15.5. </span>PC Sistemlerinde Boot Süreci (Klasik BIOS)<a class="headerlink" href="#pc-sistemlerinde-boot-sureci-klasik-bios" title="Link to this heading"></a></h3>
 <p>Kursumuzdaki örnekler x86 tabanlı masaüstü bilgisayar kullanılarak verilmektedir. (Burada <em>masaüstü (desktop)</em>
 terimi yalnızca kasalı bilgisayarlar için değil notebook’lar için de kullanılan genel bir terimdir.) x86 tabanlı
 masaüstü bilgisayarlara tarihsel bakımdan <em>PC (Personal Computer)</em> de denilmektedir. (2000’lerin başında Apple
