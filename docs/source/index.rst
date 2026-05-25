@@ -31,5 +31,6 @@ ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
    kernelcompilation.rst
    kernellinkedlistandhashtable.rst
    processcontrolblock
+   filesystem1
 
    

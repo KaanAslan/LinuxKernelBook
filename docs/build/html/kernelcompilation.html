@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
-      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b28b97a2" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5df53226" />
 
   
     <link rel="shortcut icon" href="_static/favicon.ico"/>
@@ -23,7 +23,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Dizin" href="genindex.html" />
     <link rel="search" title="Ara" href="search.html" />
-    <link rel="next" title="3. Linux Çekirdeği: Bağlı Liste Gerçekleştirimi" href="kernellinkedlist.html" />
+    <link rel="next" title="3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri" href="kernellinkedlistandhashtable.html" />
     <link rel="prev" title="1. Giriş" href="introduction.html" /> 
 </head>
 
@@ -51,36 +51,46 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Giriş</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#gereksinimler">1.1. Gereksinimler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#kaynak-kod-gezintisi">1.2. Kaynak Kod Gezintisi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerine-giris">1.3. İşletim Sistemlerine Giriş</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sisteminin-tanimi-ve-yapisi">1.4. İşletim Sisteminin Tanımı ve Yapısı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-siniflandirilmasi">1.5. İşletim Sistemlerinin Sınıflandırılması</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#proses-yonetimine-gore">1.5.1. Proses Yönetimine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#kullanici-sayisina-gore">1.5.2. Kullanıcı Sayısına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#cekirdek-yapisina-gore">1.5.3. Çekirdek Yapısına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.5.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#dagitiklik-durumuna-gore">1.5.5. Dağıtıklık Durumuna Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#donanim-ozelligine-gore">1.5.6. Donanım Özelliğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kod-lisansina-gore">1.5.7. Kaynak Kod Lisansına Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kodun-ozgunlugune-gore">1.5.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#gui-calisma-destegine-gore">1.5.9. GUI Çalışma Desteğine Göre</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.5.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#kaynak-listesi">1.2. Kaynak Listesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#understanding-the-linux-kernel">1.2.1. Understanding the Linux Kernel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#linux-device-drivers">1.2.2. Linux Device Drivers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kernel-internals-ve-genel-mimari">1.2.3. Kernel İnternals ve Genel Mimari</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#linux-kernel-programming">1.2.4. Linux Kernel Programming</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#linux-kernel-debugging">1.2.5. Linux Kernel Debugging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#sistem-programlama-ve-kullanici-alani-kaynaklari">1.2.6. Sistem Programlama ve Kullanıcı Alanı Kaynakları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#cevrimici-kaynaklar">1.2.7. Çevrimiçi Kaynaklar</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-tarihsel-gelisimi">1.6. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#unix-turevi-sistemlerin-tarihsel-gelisimi">1.7. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#mac-os-x-turevi-sistemler">1.8. Mac OS X Türevi Sistemler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#gnu-projesi-ve-ozgur-yazilim">1.9. GNU Projesi ve Özgür Yazılım</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-un-tarihsel-gelisimi">1.10. Linux’un Tarihsel Gelişimi</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.11. Linux Dağıtımları</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.12. POSIX Standartları</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.13. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.14. Linux Sistemlerinin Boot Edilmesi</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#reset-vektoru-ve-bios-firmware">1.14.1. Reset Vektörü ve BIOS/Firmware</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#onyukleyici-bootloader-programlar">1.14.2. Önyükleyici (Bootloader) Programlar</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#genel-boot-akisi">1.14.3. Genel Boot Akışı</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#boot-asamalari-terminolojisi">1.14.4. Boot Aşamaları Terminolojisi</a></li>
-<li class="toctree-l3"><a class="reference internal" href="introduction.html#pc-sistemlerinde-boot-sureci-klasik-bios">1.14.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#cekirdek-kodlari-uzerinde-gezinme">1.3. Çekirdek Kodları Üzerinde Gezinme</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerine-giris">1.4. İşletim Sistemlerine Giriş</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sisteminin-tanimi-ve-yapisi">1.5. İşletim Sisteminin Tanımı ve Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-siniflandirilmasi">1.6. İşletim Sistemlerinin Sınıflandırılması</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#proses-yonetimine-gore">1.6.1. Proses Yönetimine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kullanici-sayisina-gore">1.6.2. Kullanıcı Sayısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#cekirdek-yapisina-gore">1.6.3. Çekirdek Yapısına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dissal-olaylarla-yanit-verebilme-ozelligine-gore">1.6.4. Dışsal Olaylarla Yanıt Verebilme Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#dagitiklik-durumuna-gore">1.6.5. Dağıtıklık Durumuna Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#donanim-ozelligine-gore">1.6.6. Donanım Özelliğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kod-lisansina-gore">1.6.7. Kaynak Kod Lisansına Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#kaynak-kodun-ozgunlugune-gore">1.6.8. Kaynak Kodun Özgünlüğüne Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#gui-calisma-destegine-gore">1.6.9. GUI Çalışma Desteğine Göre</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#ag-uzerinde-hizmet-alip-verme-rollerine-gore">1.6.10. Ağ Üzerinde Hizmet Alıp Verme Rollerine Göre</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#isletim-sistemlerinin-tarihsel-gelisimi">1.7. İşletim Sistemlerinin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#unix-turevi-sistemlerin-tarihsel-gelisimi">1.8. UNIX Türevi Sistemlerin Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#mac-os-x-turevi-sistemler">1.9. Mac OS X Türevi Sistemler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#gnu-projesi-ve-ozgur-yazilim">1.10. GNU Projesi ve Özgür Yazılım</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-un-tarihsel-gelisimi">1.11. Linux’un Tarihsel Gelişimi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-dagitimlari">1.12. Linux Dağıtımları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#posix-standartlari">1.13. POSIX Standartları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-cekirdeginin-kaynak-kod-yapisi">1.14. Linux Çekirdeğinin Kaynak Kod Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#linux-sistemlerinin-boot-edilmesi">1.15. Linux Sistemlerinin Boot Edilmesi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#reset-vektoru-ve-bios-firmware">1.15.1. Reset Vektörü ve BIOS/Firmware</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#onyukleyici-bootloader-programlar">1.15.2. Önyükleyici (Bootloader) Programlar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#genel-boot-akisi">1.15.3. Genel Boot Akışı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#boot-asamalari-terminolojisi">1.15.4. Boot Aşamaları Terminolojisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#pc-sistemlerinde-boot-sureci-klasik-bios">1.15.5. PC Sistemlerinde Boot Süreci (Klasik BIOS)</a></li>
 </ul>
 </li>
 </ul>
@@ -146,20 +156,43 @@
 <li class="toctree-l2"><a class="reference internal" href="#cekirdek-baslik-dosyalarinin-kurulumu">2.25. Çekirdek Başlık Dosyalarının Kurulumu</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="kernellinkedlist.html">3. Linux Çekirdeği: Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
-<li class="toctree-l3"><a class="reference internal" href="kernellinkedlist.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernellinkedlistandhashtable.html">3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listeler">3.1. Bağlı Listeler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-listelere-neden-gereksinim-duyulur">3.2. Bağlı Listelere Neden Gereksinim Duyulur?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdegindeki-bagli-liste-gerceklestirimi">3.3. Linux Çekirdeğindeki Bağlı Liste Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#bagli-liste-baslatma">3.3.1. Bağlı Liste Başlatma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-ekleme">3.3.2. Düğüm Ekleme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#liste-dolasimi">3.3.3. Liste Dolaşımı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dugum-silme">3.3.4. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#araya-dugum-ekleme">3.3.5. Araya Düğüm Ekleme</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#rcu-destegi">3.5. RCU Desteği</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kernellinkedlist.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#tam-ornek-kullanici-alaninda-bagli-liste-kullanimi">3.4. Tam Örnek: Kullanıcı Alanında Bağlı Liste Kullanımı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-destegi">3.5. RCU Desteği</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#eski-cekirdek-surumlerindeki-list-h">3.6. Eski Çekirdek Sürümlerindeki list.h</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#arama-algoritmalari-ve-sozluk-tarzi-veri-yapilari">3.7. Arama Algoritmaları ve Sözlük Tarzı Veri Yapıları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#indeksli-arama">3.7.1. İndeksli Arama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablolari">3.8. Hash Tabloları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#cakisma-cozumleme-stratejileri">3.8.1. Çakışma Çözümleme Stratejileri</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#ayri-zincir-olusturma-separate-chaining">3.8.1.1. Ayrı Zincir Oluşturma (Separate Chaining)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-fonksiyonu-tasarimi">3.8.1.2. Hash Fonksiyonu Tasarımı</a></li>
+<li class="toctree-l4"><a class="reference internal" href="kernellinkedlistandhashtable.html#acik-adresleme-ve-dogrusal-yoklama">3.8.1.3. Açık Adresleme ve Doğrusal Yoklama</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#linux-cekirdeginde-hash-tablosu-gerceklestirimi">3.9. Linux Çekirdeğinde Hash Tablosu Gerçekleştirimi</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hlist-head-ve-hlist-node-yapilari">3.9.1. hlist_head ve hlist_node Yapıları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#hash-tablosunun-olusturulmasi">3.9.2. Hash Tablosunun Oluşturulması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#id1">3.9.3. Düğüm Silme</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ek-insert-fonksiyonlari">3.9.4. Ek Insert Fonksiyonları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#dongu-makrolari">3.9.5. Döngü Makroları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kernellinkedlistandhashtable.html#ornek-uygulama">3.9.6. Örnek Uygulama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kernellinkedlistandhashtable.html#rcu-lu-hash-tablosu-fonksiyonlari">3.10. RCU’lu Hash Tablosu Fonksiyonları</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="processcontrolblock.html">4. Proses Kontrol Bloğu ve task_struct Yapısı</a><ul>
@@ -202,7 +235,71 @@
 <li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#pid-tahsisati">4.13. PID Tahsisatı</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-uretim-mekanizmasinin-tarihsel-gelisimi">4.13.1. PID Üretim Mekanizmasının Tarihsel Gelişimi</a></li>
 <li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#maksimum-pid-degeri">4.13.2. Maksimum PID Değeri</a></li>
-<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-den-task-struct-a-hizli-erisim">4.13.3. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code>’a Hızlı Erişim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="processcontrolblock.html#pid-den-task-struct-nesnesine-hizli-erisim">4.14. PID’den <code class="docutils literal notranslate"><span class="pre">task_struct</span></code> Nesnesine Hızlı Erişim</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#versiyonu-pid-nesnesi-ve-bagli-listeler">4.14.1. 2.6 Versiyonu: pid Nesnesi ve Bağlı Listeler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#pid-type-enum-degerleri-ve-bagli-listeler">4.14.2. <code class="docutils literal notranslate"><span class="pre">pid_type</span></code> Enum Değerleri ve Bağlı Listeler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#versiyonu-hash-tablosundan-xarray-e-gecis">4.14.3. 4.20 Versiyonu: Hash Tablosundan XArray’e Geçiş</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#radix-agaclarinin-kullanilmasi">4.14.4. Radix Ağaçlarının Kullanılması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#yapraklarda-deger-saklama-yontemi">4.14.5. Yapraklarda Değer Saklama Yöntemi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#dallanma-faktoru-n-li-agac">4.14.6. Dallanma Faktörü: n-li Ağaç</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#guncel-cekirdek-pid-aramasi-4-20">4.14.7. Güncel Çekirdek: pid Araması (4.20+)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processcontrolblock.html#xarray-gerceklestirimi">4.14.8. XArray Gerçekleştirimi</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filesystem1.html">5. Dosya Sistemi - I</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#giris">5.1. Giriş</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#disk-aktarimina-iliskin-temeller">5.2. Disk Aktarımına İlişkin Temeller</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#sektorler-ve-disk-denetleyicisi">5.2.1. Sektörler ve Disk Denetleyicisi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#dma-ile-disk-transferleri">5.2.2. DMA ile Disk Transferleri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#blok-kavrami">5.2.3. Blok Kavramı</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#mount-islemi">5.2.4. Mount İşlemi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#blok-numaralandirmasi">5.2.5. Blok Numaralandırması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#sayfa-onbellegi-page-cache">5.2.6. Sayfa Önbelleği (Page Cache)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#dosyalardan-okuma-ve-yazma-islemleri">5.3. Dosyalardan Okuma ve Yazma İşlemleri</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#yazma-isleminin-ayrintilari">5.3.1. Yazma İşleminin Ayrıntıları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#gecikmeli-yazim-ve-flush-thread-leri">5.3.2. Gecikmeli Yazım ve Flush Thread’leri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#flush-thread-parametreleri">5.3.3. Flush Thread Parametreleri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#gecikmeli-yazimin-gerekceleri">5.3.4. Gecikmeli Yazımın Gerekçeleri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#kirlenmis-sayfalarin-erken-temizlenmesi">5.3.5. Kirlenmiş Sayfaların Erken Temizlenmesi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#sync-fsync-ve-ilgili-acis-bayraklari">5.3.6. sync, fsync ve İlgili Açış Bayrakları</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#c-standart-kutuphanesinin-rolu">5.3.7. C Standart Kütüphanesinin Rolü</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#cekirdekteki-dosya-islemi-veri-yapilari">5.4. Çekirdekteki Dosya İşlemi Veri Yapıları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#task-struct-icerisindeki-dosya-sistemine-iliskin-veri-yapilari">5.5. task_struct İçerisindeki Dosya Sistemine İlişkin Veri Yapıları</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#fs-struct-yapisi">5.5.1. fs_struct Yapısı</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#files-struct-yapisi">5.6. files_struct Yapısı</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#dosya-nesnesi-struct-file">5.7. Dosya Nesnesi (struct file)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#dosya-betimleyici-tablosu">5.8. Dosya Betimleyici Tablosu</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#ilk-bos-betimleyicinin-bulunmasi">5.8.1. İlk Boş Betimleyicinin Bulunması</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#bitmap-tabanli-hizli-arama">5.8.2. Bitmap Tabanlı Hızlı Arama</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#cekirdeginde-files-struct-ve-fdtable">5.9. 2.6 Çekirdeğinde files_struct ve fdtable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#guncel-cekirdeklerdeki-dosya-veri-yapilari">5.10. Güncel Çekirdeklerdeki Dosya Veri Yapıları</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#thread-ler-fork-ve-dosya-betimleyicileri">5.11. Thread’ler, Fork ve Dosya Betimleyicileri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#dosya-sistemi-temel-nesneleri">5.12. Dosya Sistemi Temel Nesneleri</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#dosya-nesnesi-inode-nesnesi-ve-dentry-nesnesi">5.12.1. Dosya Nesnesi, inode Nesnesi ve dentry Nesnesi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#nesneler-arasi-iliski">5.12.2. Nesneler Arası İlişki</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#dosya-nesnesi-elemanlari">5.12.3. Dosya Nesnesi Elemanları</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#inode-ve-dentry-onbellekleri">5.13. inode ve dentry Önbellekleri</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#open-fonksiyonunun-isleyisi">5.14. open() Fonksiyonunun İşleyişi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#prosesin-kok-ve-calisma-dizini">5.15. Prosesin Kök ve Çalışma Dizini</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#dosya-sistemi-veri-yapilarina-iliskin-testler">5.16. Dosya Sistemi Veri Yapılarına İlişkin Testler</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#ioctl-test1-ve-ioctl-test2-dosya-gostericisini-okuma">5.16.1. ioctl_test1 ve ioctl_test2: Dosya Göstericisini Okuma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#dup-gerceklestirimi-ioctl-test3">5.16.2. dup Gerçekleştirimi: ioctl_test3</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#yuksek-seviyeli-fonksiyonlarla-dup-ioctl-test4">5.16.3. Yüksek Seviyeli Fonksiyonlarla dup: ioctl_test4</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#tam-surucu-kodu">5.16.4. Tam Sürücü Kodu</a></li>
 </ul>
 </li>
 </ul>
@@ -1876,7 +1973,7 @@ dizininin altına <code class="docutils literal notranslate"><span class="pre">$
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="introduction.html" class="btn btn-neutral float-left" title="1. Giriş" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Önceki</a>
-        <a href="kernellinkedlist.html" class="btn btn-neutral float-right" title="3. Linux Çekirdeği: Bağlı Liste Gerçekleştirimi" accesskey="n" rel="next">Sonraki <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="kernellinkedlistandhashtable.html" class="btn btn-neutral float-right" title="3. Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri" accesskey="n" rel="next">Sonraki <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
