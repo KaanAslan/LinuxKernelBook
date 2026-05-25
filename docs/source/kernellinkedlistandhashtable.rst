@@ -1358,15 +1358,15 @@ Aşağıda ``list.h`` içerisindeki hash tablosu işlemleri için kullanıcı mo
        n->pprev = LIST_POISON2;
    }
 
-   #define container_of(ptr, type, member) ({          \
-       void *__mptr = (void *)(ptr);                   \
+   #define container_of(ptr, type, member) ({           \
+       void *__mptr = (void *)(ptr);                    \
        ((type *)(__mptr - offsetof(type, member))); })
 
-   #define hlist_entry(ptr, type, member)       \
+   #define hlist_entry(ptr, type, member)               \
        container_of(ptr, type, member)
 
-   #define hlist_entry_safe(ptr, type, member)  \
-       ({ typeof(ptr) ____ptr = (ptr);          \
+   #define hlist_entry_safe(ptr, type, member)          \
+       ({ typeof(ptr) ____ptr = (ptr);                   \
           ____ptr ? hlist_entry(____ptr, type, member) : NULL; \
        })
 
