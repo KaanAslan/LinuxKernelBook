@@ -392,9 +392,9 @@ Aslında çekirdekteki ``list.h`` dosyası içerisinde yukarıdaki dolaşımı t
 
 .. code-block:: c
 
-   #define list_for_each_entry(pos, head, member)              \
-       for (pos = list_first_entry(head, typeof(*pos), member); \
-            !list_entry_is_head(pos, head, member);             \
+   #define list_for_each_entry(pos, head, member)                   \
+       for (pos = list_first_entry(head, typeof(*pos), member);     \
+            !list_entry_is_head(pos, head, member);                 \
             pos = list_next_entry(pos, member))
 
 Makronun birinci parametresi asıl yapı türünden bir göstericidir; makro her yinelemede bu göstericiye
@@ -437,8 +437,8 @@ yazılmıştır:
 
 .. code-block:: c
 
-   #define list_for_each_entry_safe(pos, n, head, member)          \
-       for (pos = list_first_entry(head, typeof(*pos), member),    \
+   #define list_for_each_entry_safe(pos, n, head, member)           \
+       for (pos = list_first_entry(head, typeof(*pos), member),     \
             n = list_next_entry(pos, member);                       \
             !list_entry_is_head(pos, head, member);                 \
             pos = n, n = list_next_entry(n, member))
@@ -525,34 +525,34 @@ Aşağıda kullanıcı alanında çekirdekteki bağlı liste kullanımına bir �
            void *__mptr = (void *)(ptr);               \
            ((type *)(__mptr - offsetof(type, member))); })
 
-   #define list_entry(ptr, type, member) \
+   #define list_entry(ptr, type, member)            \
        container_of(ptr, type, member)
 
-   #define list_entry_is_head(pos, head, member) \
+   #define list_entry_is_head(pos, head, member)    \
        (&pos->member == (head))
 
-   #define list_first_entry(ptr, type, member) \
+   #define list_first_entry(ptr, type, member)      \
        list_entry((ptr)->next, type, member)
 
-   #define list_next_entry(pos, member) \
+   #define list_next_entry(pos, member)             \
        list_entry((pos)->member.next, typeof(*(pos)), member)
 
-   #define list_for_each(pos, head) \
+   #define list_for_each(pos, head)                 \
        for (pos = (head)->next; !list_is_head(pos, (head)); pos = pos->next)
 
-   #define list_for_each_entry(pos, head, member)              \
-       for (pos = list_first_entry(head, typeof(*pos), member); \
-           !list_entry_is_head(pos, head, member);              \
+   #define list_for_each_entry(pos, head, member)                   \
+       for (pos = list_first_entry(head, typeof(*pos), member);     \
+           !list_entry_is_head(pos, head, member);                  \
            pos = list_next_entry(pos, member))
 
-   #define list_for_each_entry_safe(pos, n, head, member)          \
-       for (pos = list_first_entry(head, typeof(*pos), member),    \
+   #define list_for_each_entry_safe(pos, n, head, member)           \
+       for (pos = list_first_entry(head, typeof(*pos), member),     \
             n = list_next_entry(pos, member);                       \
             !list_entry_is_head(pos, head, member);                 \
             pos = n, n = list_next_entry(n, member))
 
-   #define my_list_for_each_entry(pos, head, member)                                        \
-       for (pos = container_of((head)->next, typeof(*pos), member); &(pos)->member != head; \
+   #define my_list_for_each_entry(pos, head, member)                                            \
+       for (pos = container_of((head)->next, typeof(*pos), member); &(pos)->member != head;     \
                pos = container_of((pos)->member.next, typeof(*pos), member))
 
    static inline int list_is_head(const struct list_head *list,
@@ -763,10 +763,10 @@ faydalı değişiklikler yapıldı. Ancak bu değişiklikler veri yapısının a
        }
    }
 
-   #define list_entry(ptr, type, member) \
+   #define list_entry(ptr, type, member)    \
        ((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
 
-   #define list_for_each(pos, head) \
+   #define list_for_each(pos, head)         \
        for (pos = (head)->next; pos != (head); pos = pos->next)
 
    #endif /* __KERNEL__ */
@@ -1238,7 +1238,7 @@ kullanılmaktadır:
 
 .. code-block:: c
 
-   #define hlist_for_each(pos, head) \
+   #define hlist_for_each(pos, head)    \
        for (pos = (head)->first; pos ; pos = pos->next)
 
 Makronun ilk parametresi ``hlist_node`` türünden bir göstericiyi, ikinci parametresi ise
@@ -1254,9 +1254,9 @@ döngü makrosu da bulundurulmuştur:
 
 .. code-block:: c
 
-   #define hlist_for_each_entry(pos, head, member)                           \
-   for (pos = hlist_entry((head)->first, typeof(*(pos)), member);            \
-       pos;                                                                   \
+   #define hlist_for_each_entry(pos, head, member)                              \
+   for (pos = hlist_entry((head)->first, typeof(*(pos)), member);               \
+       pos;                                                                     \
        pos = hlist_entry((pos)->member.next, typeof(*(pos)), member))
 
 Bu makronun artık birinci parametresi doğrudan asıl yapı türünden bir göstericiyi, ikinci
@@ -1273,7 +1273,7 @@ makrosu da bulundurulmuştur:
 
    #define hlist_for_each_entry_safe(pos, n, head, member)                   \
    for (pos = hlist_entry_safe((head)->first, typeof(*pos), member);         \
-       pos && ({ n = pos->member.next; 1; });                                 \
+       pos && ({ n = pos->member.next; 1; });                                \
        pos = hlist_entry_safe(n, typeof(*pos), member))
 
 Makronun birinci parametresi asıl yapı nesnesi türünden göstericiyi, ikinci parametresi
@@ -1362,29 +1362,29 @@ Aşağıda ``list.h`` içerisindeki hash tablosu işlemleri için kullanıcı mo
        void *__mptr = (void *)(ptr);                   \
        ((type *)(__mptr - offsetof(type, member))); })
 
-   #define hlist_entry(ptr, type, member) \
+   #define hlist_entry(ptr, type, member)       \
        container_of(ptr, type, member)
 
-   #define hlist_entry_safe(ptr, type, member) \
-       ({ typeof(ptr) ____ptr = (ptr); \
+   #define hlist_entry_safe(ptr, type, member)  \
+       ({ typeof(ptr) ____ptr = (ptr);          \
           ____ptr ? hlist_entry(____ptr, type, member) : NULL; \
        })
 
    #define hlist_for_each(pos, head) \
        for (pos = (head)->first; pos ; pos = pos->next)
 
-   #define hlist_for_each_safe(pos, n, head) \
-       for (pos = (head)->first; pos && ({ n = pos->next; 1; }); \
+   #define hlist_for_each_safe(pos, n, head)                        \
+       for (pos = (head)->first; pos && ({ n = pos->next; 1; });    \
            pos = n)
 
-   #define hlist_for_each_entry(pos, head, member)                    \
-       for (pos = hlist_entry((head)->first, typeof(*(pos)), member); \
-           pos;                                                        \
+   #define hlist_for_each_entry(pos, head, member)                          \
+       for (pos = hlist_entry((head)->first, typeof(*(pos)), member);       \
+           pos;                                                             \
            pos = hlist_entry((pos)->member.next, typeof(*(pos)), member))
 
-   #define hlist_for_each_entry_safe(pos, n, head, member)             \
-       for (pos = hlist_entry_safe((head)->first, typeof(*pos), member);\
-           pos && ({ n = pos->member.next; 1; });                       \
+   #define hlist_for_each_entry_safe(pos, n, head, member)                  \
+       for (pos = hlist_entry_safe((head)->first, typeof(*pos), member);    \
+           pos && ({ n = pos->member.next; 1; });                           \
            pos = hlist_entry_safe(n, typeof(*pos), member))
 
    /* Test code */

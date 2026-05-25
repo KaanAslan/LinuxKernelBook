@@ -210,7 +210,6 @@ formatlama yapılmaktadır) belirlenmektedir. Yani kullanıcı isterse kendisi b
 uzunluğunu kullanabilir. Ancak kullanıcılar genellikle böyle bir belirleme yapmazlar. Bu durumda bu programlar disk 
 bölümünün büyüklüğüne bağlı olarak yukarıda açıkladığımız gibi uygun bir blok büyüklüğünü seçerler.
 
-
 Mount İşlemi
 ~~~~~~~~~~~~
 

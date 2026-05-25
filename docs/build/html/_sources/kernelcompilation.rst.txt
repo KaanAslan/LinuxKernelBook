@@ -837,8 +837,8 @@ olacaktır:
    önyükleyicisini de ayarlamanız gerekecektir.
 
 
-make modules_install Komutu Detayları
-=======================================
+make modules_install Komutu ile İlgili Ayrıntılar 
+=================================================
 
 *"make modules_install"* komutu yalnızca modül dosyalarını hedef dizine kopyalamakla kalmaz; aynı
 zamanda bazı dosyaları da oluşturup onları da hedef dizine kopyalar. Hedef dizinin default

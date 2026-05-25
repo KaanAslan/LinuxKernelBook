@@ -124,7 +124,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#make-modules-install-komutu-detaylari">2.8. make modules_install Komutu Detayları</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernelcompilation.html#make-modules-install-komutu-ile-ilgili-ayrintilar">2.8. make modules_install Komutu ile İlgili Ayrıntılar</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#modules-dep">2.8.1. modules.dep</a></li>
 <li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#modules-alias">2.8.2. modules.alias</a></li>
 <li class="toctree-l3"><a class="reference internal" href="kernelcompilation.html#modules-order">2.8.3. modules.order</a></li>
@@ -250,11 +250,11 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="filesystem1.html">5. Dosya Sistemi - I</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="filesystem1.html">5. Linux Çekirdeğinde Dosya Sistemi - I. Bölüm</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="filesystem1.html#giris">5.1. Giriş</a></li>
-<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#disk-aktarimina-iliskin-temeller">5.2. Disk Aktarımına İlişkin Temeller</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="filesystem1.html#disk-aktarimina-iliskin-temel-bilgiler">5.2. Disk Aktarımına İlişkin Temel Bilgiler</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="filesystem1.html#sektorler-ve-disk-denetleyicisi">5.2.1. Sektörler ve Disk Denetleyicisi</a></li>
-<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#dma-ile-disk-transferleri">5.2.2. DMA ile Disk Transferleri</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filesystem1.html#dma-direct-memory-access">5.2.2. DMA (Direct Memory Access)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="filesystem1.html#blok-kavrami">5.2.3. Blok Kavramı</a></li>
 <li class="toctree-l3"><a class="reference internal" href="filesystem1.html#mount-islemi">5.2.4. Mount İşlemi</a></li>
 <li class="toctree-l3"><a class="reference internal" href="filesystem1.html#blok-numaralandirmasi">5.2.5. Blok Numaralandırması</a></li>
@@ -654,9 +654,9 @@ adresi atanmaktadır. Örneğin:</p>
 </div>
 <p>Aslında çekirdekteki <code class="docutils literal notranslate"><span class="pre">list.h</span></code> dosyası içerisinde yukarıdaki dolaşımı tek hamlede yapan
 <code class="docutils literal notranslate"><span class="pre">list_for_each_entry</span></code> isimli bir makro da bulunmaktadır:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define list_for_each_entry(pos, head, member)              \</span>
-<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member); \</span>
-<span class="cp">         !list_entry_is_head(pos, head, member);             \</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define list_for_each_entry(pos, head, member)                   \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member);     \</span>
+<span class="cp">         !list_entry_is_head(pos, head, member);                 \</span>
 <span class="cp">         pos = list_next_entry(pos, member))</span>
 </pre></div>
 </div>
@@ -693,8 +693,8 @@ fonksiyon asıl yapıya ilişkin adres, yoksa <code class="docutils literal notr
 <p>Ayrıca <code class="docutils literal notranslate"><span class="pre">list.h</span></code> içerisinde <code class="docutils literal notranslate"><span class="pre">list_for_each_entry_safe</span></code> isimli bir döngü makrosu da
 bulundurulmuştur. Bu makro eğer liste boşsa hiç dolaşım yapmamaktadır. Makro aşağıdaki gibi
 yazılmıştır:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define list_for_each_entry_safe(pos, n, head, member)          \</span>
-<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member),    \</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define list_for_each_entry_safe(pos, n, head, member)           \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member),     \</span>
 <span class="cp">         n = list_next_entry(pos, member);                       \</span>
 <span class="cp">         !list_entry_is_head(pos, head, member);                 \</span>
 <span class="cp">         pos = n, n = list_next_entry(n, member))</span>
@@ -769,34 +769,34 @@ serbest bırakılması gerekir.</p>
 <span class="cp">        void *__mptr = (void *)(ptr);               \</span>
 <span class="cp">        ((type *)(__mptr - offsetof(type, member))); })</span>
 
-<span class="cp">#define list_entry(ptr, type, member) \</span>
+<span class="cp">#define list_entry(ptr, type, member)            \</span>
 <span class="cp">    container_of(ptr, type, member)</span>
 
-<span class="cp">#define list_entry_is_head(pos, head, member) \</span>
+<span class="cp">#define list_entry_is_head(pos, head, member)    \</span>
 <span class="cp">    (&amp;pos-&gt;member == (head))</span>
 
-<span class="cp">#define list_first_entry(ptr, type, member) \</span>
+<span class="cp">#define list_first_entry(ptr, type, member)      \</span>
 <span class="cp">    list_entry((ptr)-&gt;next, type, member)</span>
 
-<span class="cp">#define list_next_entry(pos, member) \</span>
+<span class="cp">#define list_next_entry(pos, member)             \</span>
 <span class="cp">    list_entry((pos)-&gt;member.next, typeof(*(pos)), member)</span>
 
-<span class="cp">#define list_for_each(pos, head) \</span>
+<span class="cp">#define list_for_each(pos, head)                 \</span>
 <span class="cp">    for (pos = (head)-&gt;next; !list_is_head(pos, (head)); pos = pos-&gt;next)</span>
 
-<span class="cp">#define list_for_each_entry(pos, head, member)              \</span>
-<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member); \</span>
-<span class="cp">        !list_entry_is_head(pos, head, member);              \</span>
+<span class="cp">#define list_for_each_entry(pos, head, member)                   \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member);     \</span>
+<span class="cp">        !list_entry_is_head(pos, head, member);                  \</span>
 <span class="cp">        pos = list_next_entry(pos, member))</span>
 
-<span class="cp">#define list_for_each_entry_safe(pos, n, head, member)          \</span>
-<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member),    \</span>
+<span class="cp">#define list_for_each_entry_safe(pos, n, head, member)           \</span>
+<span class="cp">    for (pos = list_first_entry(head, typeof(*pos), member),     \</span>
 <span class="cp">         n = list_next_entry(pos, member);                       \</span>
 <span class="cp">         !list_entry_is_head(pos, head, member);                 \</span>
 <span class="cp">         pos = n, n = list_next_entry(n, member))</span>
 
-<span class="cp">#define my_list_for_each_entry(pos, head, member)                                        \</span>
-<span class="cp">    for (pos = container_of((head)-&gt;next, typeof(*pos), member); &amp;(pos)-&gt;member != head; \</span>
+<span class="cp">#define my_list_for_each_entry(pos, head, member)                                            \</span>
+<span class="cp">    for (pos = container_of((head)-&gt;next, typeof(*pos), member); &amp;(pos)-&gt;member != head;     \</span>
 <span class="cp">            pos = container_of((pos)-&gt;member.next, typeof(*pos), member))</span>
 
 <span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">list_is_head</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">list_head</span><span class="w"> </span><span class="o">*</span><span class="n">list</span><span class="p">,</span>
@@ -1002,10 +1002,10 @@ faydalı değişiklikler yapıldı. Ancak bu değişiklikler veri yapısının a
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 
-<span class="cp">#define list_entry(ptr, type, member) \</span>
+<span class="cp">#define list_entry(ptr, type, member)    \</span>
 <span class="cp">    ((type *)((char *)(ptr)-(unsigned long)(&amp;((type *)0)-&gt;member)))</span>
 
-<span class="cp">#define list_for_each(pos, head) \</span>
+<span class="cp">#define list_for_each(pos, head)         \</span>
 <span class="cp">    for (pos = (head)-&gt;next; pos != (head); pos = pos-&gt;next)</span>
 
 <span class="cp">#endif </span><span class="cm">/* __KERNEL__ */</span>
@@ -1404,7 +1404,7 @@ işlemi yapan bir <code class="docutils literal notranslate"><span class="pre">e
 </div>
 <p>Hash tablosundaki bir zinciri dolaşmak için <code class="docutils literal notranslate"><span class="pre">hlist_for_each</span></code> döngü makrosu
 kullanılmaktadır:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define hlist_for_each(pos, head) \</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define hlist_for_each(pos, head)    \</span>
 <span class="cp">    for (pos = (head)-&gt;first; pos ; pos = pos-&gt;next)</span>
 </pre></div>
 </div>
@@ -1418,9 +1418,9 @@ dolaşılırken döngünün her yinelenmesinde asıl yapı nesnesinin değil onu
 <code class="docutils literal notranslate"><span class="pre">container_of</span></code> ya da <code class="docutils literal notranslate"><span class="pre">hlist_entry</span></code> makrolarıyla asıl nesnenin başlangıç adresinin elde
 edilmesi gerekir. İşte bu iki işlemi aynı anda yapan <code class="docutils literal notranslate"><span class="pre">hlist_for_each_entry</span></code> isimli bir
 döngü makrosu da bulundurulmuştur:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define hlist_for_each_entry(pos, head, member)                           \</span>
-<span class="cp">for (pos = hlist_entry((head)-&gt;first, typeof(*(pos)), member);            \</span>
-<span class="cp">    pos;                                                                   \</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define hlist_for_each_entry(pos, head, member)                              \</span>
+<span class="cp">for (pos = hlist_entry((head)-&gt;first, typeof(*(pos)), member);               \</span>
+<span class="cp">    pos;                                                                     \</span>
 <span class="cp">    pos = hlist_entry((pos)-&gt;member.next, typeof(*(pos)), member))</span>
 </pre></div>
 </div>
@@ -1434,7 +1434,7 @@ bağ elemanının ismini almaktadır.</p>
 makrosu da bulundurulmuştur:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define hlist_for_each_entry_safe(pos, n, head, member)                   \</span>
 <span class="cp">for (pos = hlist_entry_safe((head)-&gt;first, typeof(*pos), member);         \</span>
-<span class="cp">    pos &amp;&amp; ({ n = pos-&gt;member.next; 1; });                                 \</span>
+<span class="cp">    pos &amp;&amp; ({ n = pos-&gt;member.next; 1; });                                \</span>
 <span class="cp">    pos = hlist_entry_safe(n, typeof(*pos), member))</span>
 </pre></div>
 </div>
@@ -1516,29 +1516,29 @@ bir gereksinim yoktur.</p>
 <span class="cp">    void *__mptr = (void *)(ptr);                   \</span>
 <span class="cp">    ((type *)(__mptr - offsetof(type, member))); })</span>
 
-<span class="cp">#define hlist_entry(ptr, type, member) \</span>
+<span class="cp">#define hlist_entry(ptr, type, member)       \</span>
 <span class="cp">    container_of(ptr, type, member)</span>
 
-<span class="cp">#define hlist_entry_safe(ptr, type, member) \</span>
-<span class="cp">    ({ typeof(ptr) ____ptr = (ptr); \</span>
+<span class="cp">#define hlist_entry_safe(ptr, type, member)  \</span>
+<span class="cp">    ({ typeof(ptr) ____ptr = (ptr);          \</span>
 <span class="cp">       ____ptr ? hlist_entry(____ptr, type, member) : NULL; \</span>
 <span class="cp">    })</span>
 
 <span class="cp">#define hlist_for_each(pos, head) \</span>
 <span class="cp">    for (pos = (head)-&gt;first; pos ; pos = pos-&gt;next)</span>
 
-<span class="cp">#define hlist_for_each_safe(pos, n, head) \</span>
-<span class="cp">    for (pos = (head)-&gt;first; pos &amp;&amp; ({ n = pos-&gt;next; 1; }); \</span>
+<span class="cp">#define hlist_for_each_safe(pos, n, head)                        \</span>
+<span class="cp">    for (pos = (head)-&gt;first; pos &amp;&amp; ({ n = pos-&gt;next; 1; });    \</span>
 <span class="cp">        pos = n)</span>
 
-<span class="cp">#define hlist_for_each_entry(pos, head, member)                    \</span>
-<span class="cp">    for (pos = hlist_entry((head)-&gt;first, typeof(*(pos)), member); \</span>
-<span class="cp">        pos;                                                        \</span>
+<span class="cp">#define hlist_for_each_entry(pos, head, member)                          \</span>
+<span class="cp">    for (pos = hlist_entry((head)-&gt;first, typeof(*(pos)), member);       \</span>
+<span class="cp">        pos;                                                             \</span>
 <span class="cp">        pos = hlist_entry((pos)-&gt;member.next, typeof(*(pos)), member))</span>
 
-<span class="cp">#define hlist_for_each_entry_safe(pos, n, head, member)             \</span>
-<span class="cp">    for (pos = hlist_entry_safe((head)-&gt;first, typeof(*pos), member);\</span>
-<span class="cp">        pos &amp;&amp; ({ n = pos-&gt;member.next; 1; });                       \</span>
+<span class="cp">#define hlist_for_each_entry_safe(pos, n, head, member)                  \</span>
+<span class="cp">    for (pos = hlist_entry_safe((head)-&gt;first, typeof(*pos), member);    \</span>
+<span class="cp">        pos &amp;&amp; ({ n = pos-&gt;member.next; 1; });                           \</span>
 <span class="cp">        pos = hlist_entry_safe(n, typeof(*pos), member))</span>
 
 <span class="cm">/* Test code */</span>
