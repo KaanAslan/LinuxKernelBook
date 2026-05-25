@@ -35,3 +35,17 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False
 }
+
+latex_elements = {
+    'papersize': 'a4paper',
+    'preamble': r'''
+        \usepackage[
+            a4paper,
+            top=1cm,
+            bottom=1cm,
+            left=1cm,
+            right=1cm
+        ]{geometry}
+    ''',
+}
+
