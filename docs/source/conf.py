@@ -1,5 +1,5 @@
 # -- Proje bilgileri -----------------------------------------------------
-project = 'LinuxKernelBook'
+project = 'Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi'
 copyright = '2025, Kaan Aslan'
 author = 'Kaan Aslan'
 release = '1.0.0'
