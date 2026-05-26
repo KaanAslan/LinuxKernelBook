@@ -39,7 +39,10 @@ html_theme_options = {
 latex_elements = {
     'papersize': 'a4paper',
     'geometry': r'\usepackage[a4paper, top=2cm, bottom=2cm, left=1cm, right=1cm]{geometry}',
-    'preamble': r'''
+   'preamble': r'''
+        \usepackage{fontspec}
+        \usepackage{polyglossia}
+        \setmainlanguage{turkish}
         \usepackage{newunicodechar}
         \newunicodechar{≈}{\ensuremath{\approx}}
         \newunicodechar{×}{\ensuremath{\times}}
