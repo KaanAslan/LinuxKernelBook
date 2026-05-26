@@ -13,7 +13,10 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
    faydalanılmamıştır. Bu bakımdan içerik tamamen özgündür. Kitap ile benzer içeriklere sahip kaynakların listesi *Giriş* 
    bölümünde listelenmiştir.
 
-   Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. 
+   Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. Dokümanın kurs formatındaki saf metin haline 
+   aşağıdaki bağlantıdan erişebilirsiniz:
+
+   https://github.com/CSD-1993/KursNotlari
 
    Notların kontrolü ve düzeltilmesi aşamalarında yardımcı olan **Sebahat Ersoy**'a teşekkür ederiz.
 
