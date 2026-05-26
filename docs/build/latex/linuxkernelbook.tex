@@ -49,7 +49,7 @@
 \usepackage{sphinx}
 
 \fvset{fontsize=auto}
-\usepackage{geometry}
+\usepackage[a4paper, top=2cm, bottom=2cm, left=1cm, right=1cm]{geometry}
 
 
 % Include hyperref last.
@@ -65,17 +65,17 @@
 \setcounter{tocdepth}{1}
 
 
-        \usepackage[
-            a4paper,
-            top=1cm,
-            bottom=1cm,
-            left=1cm,
-            right=1cm
-        ]{geometry}
+        \usepackage{newunicodechar}
+        \newunicodechar{≈}{\ensuremath{\approx}}
+        \newunicodechar{×}{\ensuremath{\times}}
+        \newunicodechar{→}{\ensuremath{\rightarrow}}
+        \newunicodechar{←}{\ensuremath{\leftarrow}}
+        \newunicodechar{≥}{\ensuremath{\geq}}
+        \newunicodechar{≤}{\ensuremath{\leq}}
     
 
 \title{LinuxKernelBook}
-\date{25 May 2026}
+\date{26 May 2026}
 \release{1.0.0}
 \author{Kaan Aslan}
 \newcommand{\sphinxlogo}{\vbox{}}
@@ -4890,9 +4890,9 @@ Aslında çekirdekteki \sphinxcode{\sphinxupquote{list.h}} dosyası içerisinde 
 \sphinxcode{\sphinxupquote{list\_for\_each\_entry}} isimli bir makro da bulunmaktadır:
 
 \begin{sphinxVerbatim}[commandchars=\\\{\}]
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)              \PYGZbs{}}
-\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member); \PYGZbs{}}
-\PYG{c+cp}{         !list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member);             \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                   \PYGZbs{}}
+\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member);     \PYGZbs{}}
+\PYG{c+cp}{         !list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member);                 \PYGZbs{}}
 \PYG{c+cp}{         pos = list\PYGZus{}next\PYGZus{}entry(pos, member))}
 \end{sphinxVerbatim}
 
@@ -4940,8 +4940,8 @@ bulundurulmuştur. Bu makro eğer liste boşsa hiç dolaşım yapmamaktadır. Ma
 yazılmıştır:
 
 \begin{sphinxVerbatim}[commandchars=\\\{\}]
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry\PYGZus{}safe(pos, n, head, member)          \PYGZbs{}}
-\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member),    \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry\PYGZus{}safe(pos, n, head, member)           \PYGZbs{}}
+\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member),     \PYGZbs{}}
 \PYG{c+cp}{         n = list\PYGZus{}next\PYGZus{}entry(pos, member);                       \PYGZbs{}}
 \PYG{c+cp}{         !list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member);                 \PYGZbs{}}
 \PYG{c+cp}{         pos = n, n = list\PYGZus{}next\PYGZus{}entry(n, member))}
@@ -5032,34 +5032,34 @@ Aşağıda kullanıcı alanında çekirdekteki bağlı liste kullanımına bir �
 \PYG{c+cp}{        void *\PYGZus{}\PYGZus{}mptr = (void *)(ptr);               \PYGZbs{}}
 \PYG{c+cp}{        ((type *)(\PYGZus{}\PYGZus{}mptr \PYGZhy{} offsetof(type, member))); \PYGZcb{})}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}entry(ptr, type, member) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}entry(ptr, type, member)            \PYGZbs{}}
 \PYG{c+cp}{    container\PYGZus{}of(ptr, type, member)}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member)    \PYGZbs{}}
 \PYG{c+cp}{    (\PYGZam{}pos\PYGZhy{}\PYGZgt{}member == (head))}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}first\PYGZus{}entry(ptr, type, member) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}first\PYGZus{}entry(ptr, type, member)      \PYGZbs{}}
 \PYG{c+cp}{    list\PYGZus{}entry((ptr)\PYGZhy{}\PYGZgt{}next, type, member)}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}next\PYGZus{}entry(pos, member) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}next\PYGZus{}entry(pos, member)             \PYGZbs{}}
 \PYG{c+cp}{    list\PYGZus{}entry((pos)\PYGZhy{}\PYGZgt{}member.next, typeof(*(pos)), member)}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each(pos, head) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each(pos, head)                 \PYGZbs{}}
 \PYG{c+cp}{    for (pos = (head)\PYGZhy{}\PYGZgt{}next; !list\PYGZus{}is\PYGZus{}head(pos, (head)); pos = pos\PYGZhy{}\PYGZgt{}next)}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)              \PYGZbs{}}
-\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member); \PYGZbs{}}
-\PYG{c+cp}{        !list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member);              \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                   \PYGZbs{}}
+\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member);     \PYGZbs{}}
+\PYG{c+cp}{        !list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member);                  \PYGZbs{}}
 \PYG{c+cp}{        pos = list\PYGZus{}next\PYGZus{}entry(pos, member))}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry\PYGZus{}safe(pos, n, head, member)          \PYGZbs{}}
-\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member),    \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each\PYGZus{}entry\PYGZus{}safe(pos, n, head, member)           \PYGZbs{}}
+\PYG{c+cp}{    for (pos = list\PYGZus{}first\PYGZus{}entry(head, typeof(*pos), member),     \PYGZbs{}}
 \PYG{c+cp}{         n = list\PYGZus{}next\PYGZus{}entry(pos, member);                       \PYGZbs{}}
 \PYG{c+cp}{         !list\PYGZus{}entry\PYGZus{}is\PYGZus{}head(pos, head, member);                 \PYGZbs{}}
 \PYG{c+cp}{         pos = n, n = list\PYGZus{}next\PYGZus{}entry(n, member))}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define my\PYGZus{}list\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                                        \PYGZbs{}}
-\PYG{c+cp}{    for (pos = container\PYGZus{}of((head)\PYGZhy{}\PYGZgt{}next, typeof(*pos), member); \PYGZam{}(pos)\PYGZhy{}\PYGZgt{}member != head; \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define my\PYGZus{}list\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                                            \PYGZbs{}}
+\PYG{c+cp}{    for (pos = container\PYGZus{}of((head)\PYGZhy{}\PYGZgt{}next, typeof(*pos), member); \PYGZam{}(pos)\PYGZhy{}\PYGZgt{}member != head;     \PYGZbs{}}
 \PYG{c+cp}{            pos = container\PYGZus{}of((pos)\PYGZhy{}\PYGZgt{}member.next, typeof(*pos), member))}
 
 \PYG{k}{static}\PYG{+w}{ }\PYG{k+kr}{inline}\PYG{+w}{ }\PYG{k+kt}{int}\PYG{+w}{ }\PYG{n+nf}{list\PYGZus{}is\PYGZus{}head}\PYG{p}{(}\PYG{k}{const}\PYG{+w}{ }\PYG{k}{struct}\PYG{+w}{ }\PYG{n+nc}{list\PYGZus{}head}\PYG{+w}{ }\PYG{o}{*}\PYG{n}{list}\PYG{p}{,}
@@ -5270,10 +5270,10 @@ faydalı değişiklikler yapıldı. Ancak bu değişiklikler veri yapısının a
 \PYG{+w}{    }\PYG{p}{\PYGZcb{}}
 \PYG{p}{\PYGZcb{}}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}entry(ptr, type, member) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}entry(ptr, type, member)    \PYGZbs{}}
 \PYG{c+cp}{    ((type *)((char *)(ptr)\PYGZhy{}(unsigned long)(\PYGZam{}((type *)0)\PYGZhy{}\PYGZgt{}member)))}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each(pos, head) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define list\PYGZus{}for\PYGZus{}each(pos, head)         \PYGZbs{}}
 \PYG{c+cp}{    for (pos = (head)\PYGZhy{}\PYGZgt{}next; pos != (head); pos = pos\PYGZhy{}\PYGZgt{}next)}
 
 \PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{endif }\PYG{c+cm}{/* \PYGZus{}\PYGZus{}KERNEL\PYGZus{}\PYGZus{} */}
@@ -5780,7 +5780,7 @@ Hash tablosundaki bir zinciri dolaşmak için \sphinxcode{\sphinxupquote{hlist\_
 kullanılmaktadır:
 
 \begin{sphinxVerbatim}[commandchars=\\\{\}]
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each(pos, head) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each(pos, head)    \PYGZbs{}}
 \PYG{c+cp}{    for (pos = (head)\PYGZhy{}\PYGZgt{}first; pos ; pos = pos\PYGZhy{}\PYGZgt{}next)}
 \end{sphinxVerbatim}
 
@@ -5797,9 +5797,9 @@ edilmesi gerekir. İşte bu iki işlemi aynı anda yapan \sphinxcode{\sphinxupqu
 döngü makrosu da bulundurulmuştur:
 
 \begin{sphinxVerbatim}[commandchars=\\\{\}]
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                           \PYGZbs{}}
-\PYG{c+cp}{for (pos = hlist\PYGZus{}entry((head)\PYGZhy{}\PYGZgt{}first, typeof(*(pos)), member);            \PYGZbs{}}
-\PYG{c+cp}{    pos;                                                                   \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                              \PYGZbs{}}
+\PYG{c+cp}{for (pos = hlist\PYGZus{}entry((head)\PYGZhy{}\PYGZgt{}first, typeof(*(pos)), member);               \PYGZbs{}}
+\PYG{c+cp}{    pos;                                                                     \PYGZbs{}}
 \PYG{c+cp}{    pos = hlist\PYGZus{}entry((pos)\PYGZhy{}\PYGZgt{}member.next, typeof(*(pos)), member))}
 \end{sphinxVerbatim}
 
@@ -5818,7 +5818,7 @@ makrosu da bulundurulmuştur:
 \begin{sphinxVerbatim}[commandchars=\\\{\}]
 \PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}entry\PYGZus{}safe(pos, n, head, member)                   \PYGZbs{}}
 \PYG{c+cp}{for (pos = hlist\PYGZus{}entry\PYGZus{}safe((head)\PYGZhy{}\PYGZgt{}first, typeof(*pos), member);         \PYGZbs{}}
-\PYG{c+cp}{    pos \PYGZam{}\PYGZam{} (\PYGZob{} n = pos\PYGZhy{}\PYGZgt{}member.next; 1; \PYGZcb{});                                 \PYGZbs{}}
+\PYG{c+cp}{    pos \PYGZam{}\PYGZam{} (\PYGZob{} n = pos\PYGZhy{}\PYGZgt{}member.next; 1; \PYGZcb{});                                \PYGZbs{}}
 \PYG{c+cp}{    pos = hlist\PYGZus{}entry\PYGZus{}safe(n, typeof(*pos), member))}
 \end{sphinxVerbatim}
 
@@ -5906,33 +5906,33 @@ Aşağıda \sphinxcode{\sphinxupquote{list.h}} içerisindeki hash tablosu işlem
 \PYG{+w}{    }\PYG{n}{n}\PYG{o}{\PYGZhy{}}\PYG{o}{\PYGZgt{}}\PYG{n}{pprev}\PYG{+w}{ }\PYG{o}{=}\PYG{+w}{ }\PYG{n}{LIST\PYGZus{}POISON2}\PYG{p}{;}
 \PYG{p}{\PYGZcb{}}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define container\PYGZus{}of(ptr, type, member) (\PYGZob{}          \PYGZbs{}}
-\PYG{c+cp}{    void *\PYGZus{}\PYGZus{}mptr = (void *)(ptr);                   \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define container\PYGZus{}of(ptr, type, member) (\PYGZob{}           \PYGZbs{}}
+\PYG{c+cp}{    void *\PYGZus{}\PYGZus{}mptr = (void *)(ptr);                    \PYGZbs{}}
 \PYG{c+cp}{    ((type *)(\PYGZus{}\PYGZus{}mptr \PYGZhy{} offsetof(type, member))); \PYGZcb{})}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}entry(ptr, type, member) \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}entry(ptr, type, member)               \PYGZbs{}}
 \PYG{c+cp}{    container\PYGZus{}of(ptr, type, member)}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}entry\PYGZus{}safe(ptr, type, member) \PYGZbs{}}
-\PYG{c+cp}{    (\PYGZob{} typeof(ptr) \PYGZus{}\PYGZus{}\PYGZus{}\PYGZus{}ptr = (ptr); \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}entry\PYGZus{}safe(ptr, type, member)          \PYGZbs{}}
+\PYG{c+cp}{    (\PYGZob{} typeof(ptr) \PYGZus{}\PYGZus{}\PYGZus{}\PYGZus{}ptr = (ptr);                   \PYGZbs{}}
 \PYG{c+cp}{       \PYGZus{}\PYGZus{}\PYGZus{}\PYGZus{}ptr ? hlist\PYGZus{}entry(\PYGZus{}\PYGZus{}\PYGZus{}\PYGZus{}ptr, type, member) : NULL; \PYGZbs{}}
 \PYG{c+cp}{    \PYGZcb{})}
 
 \PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each(pos, head) \PYGZbs{}}
 \PYG{c+cp}{    for (pos = (head)\PYGZhy{}\PYGZgt{}first; pos ; pos = pos\PYGZhy{}\PYGZgt{}next)}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}safe(pos, n, head) \PYGZbs{}}
-\PYG{c+cp}{    for (pos = (head)\PYGZhy{}\PYGZgt{}first; pos \PYGZam{}\PYGZam{} (\PYGZob{} n = pos\PYGZhy{}\PYGZgt{}next; 1; \PYGZcb{}); \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}safe(pos, n, head)                        \PYGZbs{}}
+\PYG{c+cp}{    for (pos = (head)\PYGZhy{}\PYGZgt{}first; pos \PYGZam{}\PYGZam{} (\PYGZob{} n = pos\PYGZhy{}\PYGZgt{}next; 1; \PYGZcb{});    \PYGZbs{}}
 \PYG{c+cp}{        pos = n)}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                    \PYGZbs{}}
-\PYG{c+cp}{    for (pos = hlist\PYGZus{}entry((head)\PYGZhy{}\PYGZgt{}first, typeof(*(pos)), member); \PYGZbs{}}
-\PYG{c+cp}{        pos;                                                        \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}entry(pos, head, member)                          \PYGZbs{}}
+\PYG{c+cp}{    for (pos = hlist\PYGZus{}entry((head)\PYGZhy{}\PYGZgt{}first, typeof(*(pos)), member);       \PYGZbs{}}
+\PYG{c+cp}{        pos;                                                             \PYGZbs{}}
 \PYG{c+cp}{        pos = hlist\PYGZus{}entry((pos)\PYGZhy{}\PYGZgt{}member.next, typeof(*(pos)), member))}
 
-\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}entry\PYGZus{}safe(pos, n, head, member)             \PYGZbs{}}
-\PYG{c+cp}{    for (pos = hlist\PYGZus{}entry\PYGZus{}safe((head)\PYGZhy{}\PYGZgt{}first, typeof(*pos), member);\PYGZbs{}}
-\PYG{c+cp}{        pos \PYGZam{}\PYGZam{} (\PYGZob{} n = pos\PYGZhy{}\PYGZgt{}member.next; 1; \PYGZcb{});                       \PYGZbs{}}
+\PYG{c+cp}{\PYGZsh{}}\PYG{c+cp}{define hlist\PYGZus{}for\PYGZus{}each\PYGZus{}entry\PYGZus{}safe(pos, n, head, member)                  \PYGZbs{}}
+\PYG{c+cp}{    for (pos = hlist\PYGZus{}entry\PYGZus{}safe((head)\PYGZhy{}\PYGZgt{}first, typeof(*pos), member);    \PYGZbs{}}
+\PYG{c+cp}{        pos \PYGZam{}\PYGZam{} (\PYGZob{} n = pos\PYGZhy{}\PYGZgt{}member.next; 1; \PYGZcb{});                           \PYGZbs{}}
 \PYG{c+cp}{        pos = hlist\PYGZus{}entry\PYGZus{}safe(n, typeof(*pos), member))}
 
 \PYG{c+cm}{/* Test code */}
@@ -8751,32 +8751,17 @@ XArray gerçekleştirimi hakkında ileride başka konularda ek bilgiler vereceğ
 \chapter{Linux Çekirdeğinde Dosya Sistemi \sphinxhyphen{} I. Bölüm}
 \label{\detokenize{filesystem1:linux-cekirdeginde-dosya-sistemi-i-bolum}}\label{\detokenize{filesystem1:dosya-sistemi-1}}\label{\detokenize{filesystem1::doc}}
 \sphinxAtStartPar
-Önceki bölümlerde \sphinxcode{\sphinxupquote{task\_struct}} nesnelerinin birbirleriyle bağlantısını ve pid değerleri ile
-\sphinxcode{\sphinxupquote{task\_struct}} nesneleri arasındaki ilişkileri ele aldık. Şimdi dikkatimizi bir süre dosya sistemine
-ilişkin çekirdek veri yapıları üzerine yönelteceğiz. Bilindiği gibi UNIX/Linux sistemlerinde pek çok
-kavram kullanıcıya bir dosya gibi gösterilmektedir. Bu bölümde belli bir derinliğe kadar çekirdeğin
-dosya işlemleri için oluşturduğu organizasyon üzerinde duracağız. Daha sonra başka bir bölümde
+Bu bölümde dikkatimizi dosya sistemine illişkin çekirdek veri yapıları üzerine yönelteceğiz. Bilindiği gibi
+UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilmektedir. Biz bu birinci bölümde belli bir derinliğe
+kadar çekirdeğin dosya işlemleri için oluşturduğu organizasyon üzerinde duracağız. Daha sonra ikinci bölümde
 dosya sistemine ilişkin aşağı seviyeli ayrıntıları ele alacağız.
 
 
 \section{Giriş}
 \label{\detokenize{filesystem1:giris}}
 \sphinxAtStartPar
-İşletim sistemlerinin \sphinxstyleemphasis{dosya sistemi (file system)} denilen alt sistemlerinin iki tarafı vardır:
-\begin{enumerate}
-\sphinxsetlistlabels{\arabic}{enumi}{enumii}{}{.}%
-\item {} 
-\sphinxAtStartPar
-\sphinxstylestrong{Disk tarafı}
-
-\item {} 
-\sphinxAtStartPar
-\sphinxstylestrong{Bellek tarafı}
-
-\end{enumerate}
-
-\sphinxAtStartPar
-Dosya bilgileri disk üzerindeki bloklarda tutulmaktadır. (Bu bloklara Microsoft dünyasında
+İşletim sistemlerinin \sphinxstyleemphasis{dosya sistemi (file system)} denilen alt sistemlerinin iki tarafı vardır: \sphinxstylestrong{Disk tarafı}
+ve  \sphinxstylestrong{bellek tarafı}. Dosya bilgileri disk üzerindeki bloklarda tutulmaktadır. (Bu bloklara Microsoft dünyasında
 \sphinxstyleemphasis{cluster} da denilmektedir.) Hangi dosyaların diskin hangi bloklarında tutulduğu, dosyaların
 metadata bilgilerinin diskte nasıl saklandığı gibi belirlemeler dosya sisteminin disk tarafını;
 diskteki dosya sisteminin çekirdekteki temsilinin oluşturulması ve işletim sisteminin açılan
@@ -8882,7 +8867,7 @@ oluşturarak CPU’nun boş biçimde beklemesinin önüne geçer.
 \sphinxAtStartPar
 Bu süreci aşağıdaki diyagram özetlemektedir:
 
-\sphinxincludegraphics[]{graphviz-bb623a5be421a0c57c65160a2fdd09b9e85dd5fb.pdf}
+\sphinxincludegraphics[]{graphviz-b0a4309934dfa10301c54d1894e6d2f2d6d0dc25.pdf}
 
 \sphinxAtStartPar
 Eskiden Intel tabanlı PC mimarisinde ISA bus kullanıldığı zamanlarda tek bir merkezi DMA

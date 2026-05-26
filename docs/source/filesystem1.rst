@@ -4,27 +4,20 @@
 Linux Çekirdeğinde Dosya Sistemi - I. Bölüm
 ===========================================
 
-Önceki bölümlerde ``task_struct`` nesnelerinin birbirleriyle bağlantısını ve pid değerleri ile
-``task_struct`` nesneleri arasındaki ilişkileri ele aldık. Şimdi dikkatimizi bir süre dosya sistemine
-ilişkin çekirdek veri yapıları üzerine yönelteceğiz. Bilindiği gibi UNIX/Linux sistemlerinde pek çok
-kavram kullanıcıya bir dosya gibi gösterilmektedir. Bu bölümde belli bir derinliğe kadar çekirdeğin
-dosya işlemleri için oluşturduğu organizasyon üzerinde duracağız. Daha sonra başka bir bölümde
+Bu bölümde dikkatimizi dosya sistemine illişkin çekirdek veri yapıları üzerine yönelteceğiz. Bilindiği gibi 
+UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilmektedir. Biz bu birinci bölümde belli bir derinliğe 
+kadar çekirdeğin dosya işlemleri için oluşturduğu organizasyon üzerinde duracağız. Daha sonra ikinci bölümde
 dosya sistemine ilişkin aşağı seviyeli ayrıntıları ele alacağız.
 
 Giriş
 -----
 
-İşletim sistemlerinin *dosya sistemi (file system)* denilen alt sistemlerinin iki tarafı vardır:
-
-1. **Disk tarafı**
-2. **Bellek tarafı**
-
-Dosya bilgileri disk üzerindeki bloklarda tutulmaktadır. (Bu bloklara Microsoft dünyasında
+İşletim sistemlerinin *dosya sistemi (file system)* denilen alt sistemlerinin iki tarafı vardır: **Disk tarafı**
+ve  **bellek tarafı**. Dosya bilgileri disk üzerindeki bloklarda tutulmaktadır. (Bu bloklara Microsoft dünyasında
 *cluster* da denilmektedir.) Hangi dosyaların diskin hangi bloklarında tutulduğu, dosyaların
 metadata bilgilerinin diskte nasıl saklandığı gibi belirlemeler dosya sisteminin disk tarafını;
 diskteki dosya sisteminin çekirdekteki temsilinin oluşturulması ve işletim sisteminin açılan
 dosyalar için yaptığı düzenlemeler ise dosya sisteminin bellek tarafını oluşturmaktadır.
-
 
 Disk Aktarımına İlişkin Temel Bilgiler
 --------------------------------------
@@ -122,27 +115,63 @@ Bu süreci aşağıdaki diyagram özetlemektedir:
 .. graphviz::
 
    digraph dma_flow {
-       rankdir=LR;
-       node [shape=box, style="rounded,filled", fillcolor="#D6E8FA",
-             fontname="DejaVu Sans", margin="0.25,0.18"];
-       edge [fontname="DejaVu Sans", fontsize=9, color="#444444"];
+       rankdir=TB;
+       graph [splines=ortho, fontname="DejaVu Sans",
+              nodesep=0.8, ranksep=0.9];
+       node  [shape=box, style="rounded,filled", fontname="DejaVu Sans",
+              margin="0.32,0.20", fontsize=11];
+       edge  [fontname="DejaVu Sans", fontsize=9, color="#444444"];
 
-       App        [label="Uygulama"];
-       OS         [label="İşletim\nSistemi"];
-       Driver     [label="Blok Aygıt\nSürücüsü"];
-       Controller [label="Disk\nDenetleyicisi", fillcolor="#FFF3CD"];
-       DMA        [label="DMA\nTabloları",      fillcolor="#F8D7DA"];
-       IRQ        [label="Kesme (IRQ)",          fillcolor="#F8D7DA"];
-       Disk       [label="Disk Donanımı\n(HDD: kafa / SSD: FTL)",
-                   fillcolor="#D5F5D5"];
+       /* IRQ yayını üstten yönlendiren görünmez köprü */
+       IRQ_kpr [label="", shape=point, style=invis,
+                width=0.01, height=0.01, fixedsize=true];
 
-       App        -> OS         [label="read()/write()"];
-       OS         -> Driver     [label="I/O isteği hazırla"];
-       Driver     -> Controller [label="Komutu gönder"];
-       Controller -> DMA        [label="DMA tablolarını yaz", style=dashed];
-       Controller -> IRQ        [label="Tamamlanınca", style=dashed];
-       Controller -> Disk;
-       Disk       -> Controller [label="veri / onay", style=dashed, dir=back];
+       /* Üst katman: yazılım zinciri */
+       App        [label="Uygulama\nI/O çağrısı",
+                   fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
+       CPU        [label="OS / CPU\nKesmeyi alır",
+                   fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
+       Driver     [label="Aygıt Sürücüsü\nKomut hazırlar",
+                   fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
+       Controller [label="Denetleyici\nIRQ tetikler",
+                   fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+
+       /* Alt katman: DMA donanımı */
+       Memory     [label="Bellek (RAM)\nDMA hedefi",
+                   fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
+       DMA        [label="DMA Motoru\nCPU'dan bağımsız",
+                   fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
+       Disk       [label="Disk Donanımı\nHDD / SSD / FTL",
+                   fillcolor="#EAF3DE", color="#3B6D11", fontcolor="#27500A"];
+
+       /* Sıra düzeni */
+       { rank=source; IRQ_kpr; }
+       { rank=same;   App; CPU; Driver; Controller; }
+       { rank=same;   Memory; DMA; Disk; }
+
+       /* 1. Komut zinciri */
+       App    -> CPU        [label="read()/write()"];
+       CPU    -> Driver     [label="I/O isteği"];
+       Driver -> Controller [label="komutu gönder"];
+
+       /* 2. Donanım komutları */
+       Controller -> Disk [label="komut gönder"];
+       Controller -> DMA  [label="DMA tablo ayarı",
+                            style=dashed, color="#888780",
+                            fontcolor="#5F5E5A"];
+
+       /* 3. Veri akışı (DMA, CPU katılmadan) */
+       Disk -> DMA    [label="veri aktarır",
+                        style=dashed, color="#1D9E75", fontcolor="#0F6E56"];
+       DMA  -> Memory [label="RAM'e yazar",
+                        style=dashed, color="#1D9E75", fontcolor="#0F6E56"];
+
+       /* 4. Kesme — IRQ_kpr üzerinden üstten kıvrılarak CPU'ya */
+       Controller -> IRQ_kpr [color="#E24B4A", penwidth=2.0,
+                               arrowhead=none, weight=0];
+       IRQ_kpr    -> CPU     [color="#E24B4A", penwidth=2.0,
+                               label="Transfer tamamlandı → Kesme (IRQ)",
+                               fontcolor="#E24B4A", weight=0];
    }
 
 Eskiden Intel tabanlı PC mimarisinde ISA bus kullanıldığı zamanlarda tek bir merkezi DMA

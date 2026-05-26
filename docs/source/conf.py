@@ -23,7 +23,7 @@ language = 'tr'  # veya 'en'
 # -- HTML çıktı seçenekleri ----------------------------------------------
 html_theme = 'sphinx_rtd_theme'  # Read the Docs teması
 html_static_path = ['_static']
-html_logo = '_static/logo.png'  # İsteğe bağlı logo
+html_logo = '_static/logo.jpeg'  # İsteğe bağlı logo
 html_favicon = '_static/favicon.ico'  # İsteğe bağlı favicon
 html_css_files = ['custom.css']
 
@@ -38,14 +38,17 @@ html_theme_options = {
 
 latex_elements = {
     'papersize': 'a4paper',
+    'geometry': r'\usepackage[a4paper, top=2cm, bottom=2cm, left=1cm, right=1cm]{geometry}',
     'preamble': r'''
-        \usepackage[
-            a4paper,
-            top=1cm,
-            bottom=1cm,
-            left=1cm,
-            right=1cm
-        ]{geometry}
+        \usepackage{newunicodechar}
+        \newunicodechar{≈}{\ensuremath{\approx}}
+        \newunicodechar{×}{\ensuremath{\times}}
+        \newunicodechar{→}{\ensuremath{\rightarrow}}
+        \newunicodechar{←}{\ensuremath{\leftarrow}}
+        \newunicodechar{≥}{\ensuremath{\geq}}
+        \newunicodechar{≤}{\ensuremath{\leq}}
     ''',
 }
 
+
+latex_additional_files = ["fontawesome7.sty"]
