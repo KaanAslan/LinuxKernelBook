@@ -4,11 +4,6 @@ copyright = '2025, Kaan Aslan'
 author = 'Kaan Aslan'
 release = '1.0.0'
 
-import os
-if os.environ.get('READTHEDOCS'):
-    language = 'tr'
-    latex_engine = 'xelatex'
-
 # -- Genel yapılandırma ---------------------------------------------------
 extensions = [
     'sphinx.ext.autodoc',      # Python docstring'lerinden otomatik döküman

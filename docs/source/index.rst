@@ -1,8 +1,8 @@
 .. Linux Kernel — İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
-################################################################
-İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
-################################################################
+###################################################################
+Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
+###################################################################
 
 .. rst-class:: lead
 

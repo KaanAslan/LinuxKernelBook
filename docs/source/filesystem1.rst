@@ -239,9 +239,6 @@ formatlama yapılmaktadır) belirlenmektedir. Yani kullanıcı isterse kendisi b
 uzunluğunu kullanabilir. Ancak kullanıcılar genellikle böyle bir belirleme yapmazlar. Bu durumda bu programlar disk 
 bölümünün büyüklüğüne bağlı olarak yukarıda açıkladığımız gibi uygun bir blok büyüklüğünü seçerler.
 
-Mount İşlemi
-~~~~~~~~~~~~
-
 UNIX/Linux sistemlerinde dosya sistemi için tek bir kök vardır. Blok aygıtları (örneğin hard
 diskler, flash bellekler vb.) belli bir dizine mount edilmektedir. Mount işlemi bir dizin üzerine
 uygulanır; mount işlemi sonucunda o dizinin içeriği görünmez, artık mount edilen dosya sisteminin
@@ -256,9 +253,6 @@ da vermektedir. Linux sistemlerinde bu bilgi doğrudan dosya sistemine ilişkin 
 Windows sistemlerinde de *cluster* adı altında blok sistemi kullanılmaktadır. O sistemlerde blok
 uzunluklarını *chkdsk* programı ile ya da *fsutil* programı ile komut satırından elde
 edebilirsiniz.
-
-Blok Numaralandırması
-~~~~~~~~~~~~~~~~~~~~~
 
 İşletim sistemleri işlemlerini kolaylaştırmak için her bloğa bir numara da vermektedir. Örneğin
 bir bloğun 4K (tipik olarak 8 sektör) olduğunu düşünelim. İşletim sistemi için ilgili disk (aslında
@@ -308,14 +302,15 @@ yazma işlemini gerçekleştirmektedir.
        edge [fontname="DejaVu Sans", fontsize=9, color="#444444"];
 
        POSIX  [label="read / write POSIX Fonksiyonları"];
-       Sys    [label="sys_read / sys_write\n(Çekirdek Moduna Geçiş)"];
+       Sys    [label="sys_read / sys_write"];
        Check  [label="Page Cache'te bilgi var?",
                shape=diamond, fillcolor="#FFF3CD"];
        Copy   [label="Veriyi kopyala\n(disk erişimi yok)", fillcolor="#D5F5D5"];
        DiskIO [label="Gerçek disk I/O başlat\n(okuma / yazma)"];
        Update [label="Page Cache güncellenir", fillcolor="#D5F5D5"];
 
-       POSIX  -> Sys;
+       POSIX  -> Sys    [label="Çekirdek Moduna Geçiş",
+                         fontsize=13, fontcolor="#1a5fa8"];
        Sys    -> Check;
        Check  -> Copy   [label="Evet"];
        Check  -> DiskIO [label="Hayır"];
@@ -407,11 +402,11 @@ Kullanıcı modundaki program ``write`` POSIX fonksiyonunu çağırıp bu fonksi
 fonksiyonunu çağırdığında bu sistem fonksiyonu yazılmak istenen bilgiler diske yazılana kadar
 ``write`` işlemini yapan thread'i bloke etmez. Yazma işlemi her zaman Linux'un RAM'deki sayfa
 önbelleğine yapılmaktadır. ``sys_write`` fonksiyonu yazmayı sayfa önbelleği içerisine yaptıktan
-sonra hemen *başarılı* olarak geri dönmektedir.
+sonra hemen "başarılı" olarak geri dönmektedir.
 
-Sistem programlama terminolojisinde IO işlemlerinde *senkron* terimi *fonksiyon geri döndüğünde
-tüm işlemlerin yapılıp bitmiş olması* anlamına gelmektedir. *Asenkron* terimi ise *işlemin
-başlatılması, fonksiyonun geri dönmesi ancak işlemin aslında arka planda devam etmesi* anlamına
+Sistem programlama terminolojisinde IO işlemlerinde *senkron* terimi "fonksiyon geri döndüğünde
+tüm işlemlerin yapılıp bitmiş olması" anlamına gelmektedir. *Asenkron* terimi ise "işlemin
+başlatılması, fonksiyonun geri dönmesi ancak işlemin aslında arka planda devam etmesi" anlamına
 gelmektedir. Görüldüğü gibi modern işletim sistemlerinde diske yazma işlemi aslında *senkron*
 bir işlem değildir.
 
