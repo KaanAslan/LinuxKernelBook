@@ -1686,44 +1686,10 @@ olanlardır. fork işlemi sırasında yapılan işlemleri aşağıdaki şekille 
 
 Dosya betimleyici tablosunun kopyalanmasını için şöyle bir şekille de temsil edebiliriz:
 
-.. graphviz::
-
-   digraph fd_shallow {
-       rankdir=LR;
-       graph [fontname="DejaVu Sans", nodesep=0.3, ranksep=1.0, splines=ortho];
-       node  [fontname="DejaVu Sans", fontsize=11, margin="0.15,0.1"];
-       edge  [fontname="DejaVu Sans", fontsize=9];
-
-       ust [shape=record, style="rounded,filled",
-            fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489",
-            label="{{üst proses fd tablosu}|{<p0>fd[0]\nstdin}|{<p1>fd[1]\nstdout}|{<p2>fd[2]\nstderr}|{<p3>fd[3]\naçık dosya}|{...}}"];
-
-       alt [shape=record, style="rounded,filled",
-            fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041",
-            label="{{alt proses fd tablosu}|{<p0>fd[0]\nstdin}|{<p1>fd[1]\nstdout}|{<p2>fd[2]\nstderr}|{<p3>fd[3]\naçık dosya}|{...}}"];
-
-       f0 [shape=box, style="rounded,filled", fillcolor="#FAEEDA", color="#854F0B",
-           fontcolor="#633806", label="struct file\nstdin"];
-       f1 [shape=box, style="rounded,filled", fillcolor="#FAEEDA", color="#854F0B",
-           fontcolor="#633806", label="struct file\nstdout"];
-       f2 [shape=box, style="rounded,filled", fillcolor="#FAEEDA", color="#854F0B",
-           fontcolor="#633806", label="struct file\nstderr"];
-       f3 [shape=box, style="rounded,filled", fillcolor="#FAEEDA", color="#854F0B",
-           fontcolor="#633806", label="struct file\naçık dosya"];
-
-       { rank=same; f0; f1; f2; f3; }
-
-       ust:p0:e -> f0 [color="#534AB7", penwidth=1.5];
-       ust:p1:e -> f1 [color="#534AB7", penwidth=1.5];
-       ust:p2:e -> f2 [color="#534AB7", penwidth=1.5];
-       ust:p3:e -> f3 [color="#534AB7", penwidth=1.5];
-
-       alt:p0:e -> f0 [color="#E24B4A", style=dashed, penwidth=1.5,
-                        label="sığ kopya", fontcolor="#E24B4A"];
-       alt:p1:e -> f1 [color="#E24B4A", style=dashed, penwidth=1.5];
-       alt:p2:e -> f2 [color="#E24B4A", style=dashed, penwidth=1.5];
-       alt:p3:e -> f3 [color="#E24B4A", style=dashed, penwidth=1.5];
-   }
+.. image:: /_static/fd_table.svg
+   :alt: Fork sonrası fd tabloları sığ kopyası
+   :align: center
+   :width: 70%
    
 Dosya Sistemine İlişkin Üç Önemli Yapı: file, inode ve dentry 
 -------------------------------------------------------------
