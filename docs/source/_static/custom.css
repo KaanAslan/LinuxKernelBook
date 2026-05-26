@@ -1,5 +1,5 @@
 .wy-nav-content {
-    max-width: 1300px;  /* varsayılan 800px */
+    max-width: 1300px;
 }
 
 .wy-nav-content {
@@ -11,8 +11,6 @@
 .rst-content td {
     font-size: 18px;
 }
-
-
 
 /* Kod blokları - sphinx_rtd_theme */
 .rst-content .highlight pre,
@@ -26,3 +24,22 @@
 .rst-content tt.literal {
     font-size: 15px;
 }
+
+/* Tablo başlık ortalama */
+.rst-content .centered-headers thead th {
+    text-align: center;
+}
+
+/* RTD temasını ezmek için yüksek özgüllük */
+.rst-content .centered-headers.docutils {
+    width: 100% !important;
+    table-layout: fixed !important;
+}
+
+.rst-content .centered-headers.docutils td,
+.rst-content .centered-headers.docutils th {
+    word-wrap: break-word !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+}
+
