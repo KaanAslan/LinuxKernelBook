@@ -1684,7 +1684,46 @@ olanlardır. fork işlemi sırasında yapılan işlemleri aşağıdaki şekille 
                         constraint=false];
    }
 
+Dosya betimleyici tablosunun kopyalanmasını için şöyle bir şekille de temsil edebiliriz:
 
+.. graphviz::
+
+   digraph fd_shallow {
+       rankdir=LR;
+       graph [fontname="DejaVu Sans", nodesep=0.1, ranksep=1.0, splines=ortho];
+       node  [shape=record, style="rounded,filled", fontname="DejaVu Sans",
+              fontsize=11, margin="0.15,0.1"];
+       edge  [fontname="DejaVu Sans", fontsize=9];
+
+       /* ── Üst proses fd tablosu ── */
+       ust [label="üst proses fd tablosu|fd[0]\nstdin|fd[1]\nstdout|fd[2]\nstderr|fd[3]\naçık dosya",
+            fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
+
+       /* ── Alt proses fd tablosu ── */
+       alt [label="alt proses fd tablosu|fd[0]\nstdin|fd[1]\nstdout|fd[2]\nstderr|fd[3]\naçık dosya",
+            fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
+
+       /* ── Paylaşılan struct file nesneleri ── */
+       f0 [label="struct file\nstdin",     fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+       f1 [label="struct file\nstdout",    fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+       f2 [label="struct file\nstderr",    fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+       f3 [label="struct file\naçık dosya", fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+
+       { rank=same; f0; f1; f2; f3; }
+
+       /* ── Üst proses okları (düz) ── */
+       ust -> f0 [color="#534AB7", penwidth=1.5];
+       ust -> f1 [color="#534AB7", penwidth=1.5];
+       ust -> f2 [color="#534AB7", penwidth=1.5];
+       ust -> f3 [color="#534AB7", penwidth=1.5];
+
+       /* ── Alt proses okları (kesikli kırmızı = sığ kopya) ── */
+       alt -> f0 [color="#E24B4A", style=dashed, penwidth=1.5, label="sığ kopya", fontcolor="#E24B4A"];
+       alt -> f1 [color="#E24B4A", style=dashed, penwidth=1.5];
+       alt -> f2 [color="#E24B4A", style=dashed, penwidth=1.5];
+       alt -> f3 [color="#E24B4A", style=dashed, penwidth=1.5];
+   }
+   
 Dosya Sistemine İlişkin Üç Önemli Yapı: file, inode ve dentry 
 -------------------------------------------------------------
 
