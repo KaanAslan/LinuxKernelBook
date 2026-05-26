@@ -612,61 +612,41 @@ fonksiyonları da denilmektedir. Buradaki önbellek sisteminin POSIX fonksiyonla
 fonksiyonlarını daha az çağırmak için oluşturulduğuna dikkat ediniz. O hâlde C'nin standart dosya fonksiyonlarıyla 
 yapılan tipik bir okuma işlemi şöyle gerçekleşmektedir:
 
-.. code-block:: none
+.. graphviz::
 
-   C'deki okuma fonksiyonu
-         ↓
-   read POSIX fonksiyonu
-         ↓
-   sys_read sistem fonksiyonu
-         ↓
-   ...
+   digraph read_chain {
+       rankdir=TB;
+       node [shape=box, style="rounded,filled", fillcolor="#D6E8FA",
+             fontname="DejaVu Sans", margin="0.3,0.2"];
+       edge [fontname="DejaVu Sans", fontsize=10, color="#444444"];
 
-Tabii biz kursumuzda okuma ve yazma süreçlri üzerinde dururken olaylar silsilesini standart C fonksiyonlarından 
-başlatmayacağız. POSIX fonksiyonlarından ta da sistem fonksiyonlarından başlatacağız.
+       C      [label="C'deki okuma fonksiyonu"];
+       POSIX  [label="read() — POSIX fonksiyonu"];
+       Sys    [label="sys_read() — Sistem fonksiyonu"];
+       Dots   [label="...", shape=plaintext, style="",
+               fontname="DejaVu Sans", fontsize=16];
 
-C'deki bu tamponlama yani önbellek mekanizması aslında yalnızca C'ye özgü değildir. Diğer programlama dillerinin
-de standart kütüphanelerinde benzer biçimde tamponlamalar yapılmaktadır. Örneğin C++'taki
-``<iostream>`` kütüphanesi, C#'ta kullanılan .NET kütüphaneleri, Java'da kullanılan temel
-kütüphanelerde hep kullanıcı alanında C'de olduğu gibi tamponlama yapmaktadır. Ancak bunların
-hepsi neticede Linux sistemlerinde POSIX fonksiyonlarını, onlar da sistem fonksiyonlarını
-çağırmaktadır.
+       C     -> POSIX [label="Tampona bakılıyor",
+                        fontsize=13, fontcolor="#1a5fa8"];
+       POSIX -> Sys   [label="Çekirdek moduna geçiliyor",
+                        fontsize=13, fontcolor="#1a5fa8"];
+       Sys   -> Dots;
+   }
 
-POSIX dosya fonksiyonlarının Linux'taki işletim sisteminin sistem fonksiyonlarını çağırdığını
-belirtmiştik. İşletim sisteminin sistem fonksiyonları bilgi önbellekte olsa bile belli bir
-yavaşlık oluşturmaktadır. Programın akışının kullanıcı modundan çekirdek moduna geçirilmesi ve
-akışın ilgili sistem fonksiyonuna aktarılması göreli bir zaman kaybına yol açmaktadır. Bu nedenle
-bu kütüphanelerin kullanıcı modunda tamponlama yapması önemli olmaktadır.
+Tabii biz kursumuzda okuma ve yazma süreçleri üzerinde dururken olaylar silsilesini standart C fonksiyonlarından 
+başlatmayacağız. POSIX fonksiyonlarından ya da sistem fonksiyonlarından başlatacağız.
 
+C'deki bu tamponlama yani önbellek mekanizması aslında yalnızca C'ye özgü değildir. Diğer prgramlama dillerinin de 
+standart kütüphanelerinde benzer biçimde tamponlamalar yapılmaktadır. Örneğin C++'taki ``<iostream>`` fonksiyonları, 
+C#'tan kullanılan .NET sınıfları, Java'da kullanılan IO sınıfları, C'de olduğu gibi hep kullanıcı alanında 
+oluşturulan tamponlama mekanizması eşliğine çalışmaktadır. Ancak bunların hepsi Linux sistemlerinde neticede POSIX 
+fonksiyonlarını, onlar da sistem fonksiyonlarını çağırmaktadır.
 
-Dosya İşlemlerine İlişkin Çekirdek Veri Yapıları
-------------------------------------------------
-
-Şimdiye kadar blok ve sektör düzeyinde okuma yazmaların kabaca nasıl gerçekleştirildiğini
-açıkladık. Ancak çekirdeğin açık dosyalar için oluşturduğu organizasyon hakkında bilgi vermedik.
-Şimdi sürecin bu yönü üzerinde duracağız.
-
-Anımsanacağı gibi UNIX/Linux sistemlerinde dosyalar ``open`` isimli POSIX fonksiyonuyla
-açılmaktadır. ``open`` POSIX fonksiyonu başarı durumunda ismine *dosya betimleyicisi (file
-descriptor)* denilen bir handle değeri vermektedir. ``read``, ``write``, ``lseek``, ``close``
-gibi POSIX'in diğer dosya fonksiyonları bu dosya betimleyicisini parametre olarak alıp hangi
-dosya üzerinde işlem yapılacağını bu betimleyiciden hareketle belirlemektedir.
-
-``open``, ``read``, ``write``, ``lseek``, ``close`` gibi POSIX'in temel dosya fonksiyonları
-Linux sistemlerinde aslında neredeyse doğrudan Linux'un ilgili sistem fonksiyonlarını
-çağırmaktadır:
-
-.. code-block:: none
-
-   open  ---> sys_open
-   read  ---> sys_read
-   write ---> sys_write
-   lseek ---> sys_lseek
-   close ---> sys_close
-
-Bu nedenle birtakım ayrıntıları da göz ardı edersek biz Linux sistemlerinde dosya işlemlerini
-yapan temel POSIX fonksiyonlarının aslında doğrudan ``sys_xxx`` sistem fonksiyonlarını çağırdığını
-varsayabiliriz.
+POSIX dosya fonksiyonlarının Linux'taki işletim sisteminin sistem fonksiyonlarını çağırdığını belirtmiştik. İşletim 
+sisteminin sistem fonksiyonları ilgili disk bloğu sayfa önbellekte olsa bile belli bir yavaşlık oluşturmaktadır. 
+Programın akışının kullanıcı modundan çekirdek moduna geçirilmesi ve akışın ilgili sistem fonksiyonuna aktarılması 
+göreli bir zaman kaybına yol açmaktadır. Bu nedenle ayrıca bu kütüphanelerin kullanıcı modunda tamponlama yapması 
+önemli olmaktadır.
 
 UNIX/Linux sistemlerinde kullanılan standart C kütüphaneleri aynı zamanda POSIX fonksiyonlarını
 da içermektedir. Bilindiği gibi bugün masaüstü Linux sistemlerinde en fazla kullanılan standart C
@@ -682,9 +662,32 @@ faydalanabilirsiniz:
 
 `https://elixir.bootlin.com/musl/v1.2.5/source <https://elixir.bootlin.com/musl/v1.2.5/source>`_
 
-
 task_struct İçerisindeki Dosya Sistemine İlişkin Veri Yapıları
 --------------------------------------------------------------
+
+Şimdiye kadar blok ve sektör düzeyinde okuma yazmaların kabaca nasıl gerçekleştirildiğini
+açıkladık. Ancak çekirdeğin açık dosyalar için oluşturduğu organizasyon hakkında bilgi vermedik.
+Şimdi sürecin bu yönü üzerinde duracağız.
+
+Anımsanacağı gibi UNIX/Linux sistemlerinde dosyalar ``open`` isimli POSIX fonksiyonuyla
+açılmaktadır. ``open`` POSIX fonksiyonu başarı durumunda ismine *dosya betimleyicisi (file
+descriptor)* denilen bir handle değeri vermektedir. ``read``, ``write``, ``lseek``, ``close``
+gibi POSIX'in diğer dosya fonksiyonları bu dosya betimleyicisini parametre olarak alıp hangi
+dosya üzerinde işlem yapılacağını bu betimleyiciden hareketle belirlemektedir. ``open``, 
+``read``, ``write``, ``lseek``, ``close`` gibi POSIX'in temel dosya fonksiyonları Linux 
+sistemlerinde aslında neredeyse doğrudan Linux'un ilgili sistem fonksiyonlarını çağırmaktadır:
+
+.. code-block:: none
+
+   open  ---> sys_open
+   read  ---> sys_read
+   write ---> sys_write
+   lseek ---> sys_lseek
+   close ---> sys_close
+
+Bu nedenle birtakım ayrıntıları da göz ardı edersek biz Linux sistemlerinde dosya işlemlerini
+yapan temel POSIX fonksiyonlarının aslında doğrudan ``sys_xxx`` sistem fonksiyonlarını çağırdığını
+varsayabiliriz.
 
 ``task_struct`` yapısı (proses kontrol bloğu) içerisinde proseslere ilişkin dosya işlemleri için
 kullanılan iki önemli eleman bulunmaktadır:
@@ -707,11 +710,10 @@ Bu iki eleman çok uzun süredir ``task_struct`` yapısı içerisinde bulunmakta
 ``fs_struct`` ve ``files_struct`` yapılarının içeriğinde çekirdeğin versiyonları ilerledikçe
 çeşitli değişiklikler de yapılmıştır.
 
-
 fs_struct Yapısı
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
-Yuradaki ``fs_struct`` yapısı açık dosyalara ilişkin yapılan organizasyonla ilgili değildir.
+``fs_struct`` yapısı açık dosyalara ilişkin yapılan organizasyonla ilgili değildir.
 Prosesin kök dizini ve çalışma dizini gibi dosya sistemine ilişkin proses bilgileri burada
 tutulmaktadır. Mevcut çekirdeklerde ``fs_struct`` yapısı ``include/linux/fs_struct.h`` dosyası
 içerisinde şöyle bildirilmiştir:
@@ -2040,13 +2042,3 @@ Yukarıdaki test işlemlerine ilişkin tam aygıt sürücü kodu aşağıda veri
        perror(msg);
        exit(EXIT_FAILURE);
    }
-
-.. note::
-
-   Bu bölümde kullanılan grafiklerin oluşturulabilmesi için Sphinx yapılandırma dosyasında
-   (``conf.py``) ``sphinx.ext.graphviz`` uzantısının etkin olması gerekmektedir::
-
-       extensions = [
-           ...
-           'sphinx.ext.graphviz',
-       ]

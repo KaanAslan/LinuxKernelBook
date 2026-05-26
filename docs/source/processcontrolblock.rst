@@ -729,7 +729,7 @@ koşulunun sağlanacağına da dikkat ediniz.
 ``init_task`` prosesindeki ``tasks`` düğümü kök düğüm yapılıp ``tasks`` düğümleri dolaşılırsa tüm
 proseslerin ana thread'lerine ilişkin ``task_struct`` nesneleri elde edilebilir.
 
-task_struct Yapısına ilişkin Bağlı Listeler Üzerinde Gezinme İşlemleri
+task_struct Yapısına İlişkin Bağlı Listeler Üzerinde Gezinme İşlemleri
 ======================================================================
 
 Şimdi de görmüş olduğumuz ``task_struct`` yapısına ilişkin bağlı listeler üzerinde gezinme işlemlerine
