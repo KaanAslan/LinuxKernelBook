@@ -10,7 +10,8 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
    ve Gerçekleştirilmesi** kursundaki kurs notları temel alınarak oluşturulmuştur. 
    
    Kitaptaki içerik belli bir kaynak referans alınarak oluşturulmamıştır ve içeriğin oluşturulmasında yapay zeka araçlarından 
-   faydalanılmamıştır. Kitap ile benzer içeriklere sahip kaynakların listesi *Giriş* bölümünde listelenmiştir.
+   faydalanılmamıştır. Bu bakımdan içerik tamamen özgündür. Kitap ile benzer içeriklere sahip kaynakların listesi *Giriş* 
+   bölümünde listelenmiştir.
 
    Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. 
 
