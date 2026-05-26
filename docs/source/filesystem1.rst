@@ -740,11 +740,43 @@ tutmaktadır. Buradaki ``path`` yapısı da şöyle bildirilmiştir:
        struct dentry *dentry;
    } __randomize_layout;
 
-``vfsmount`` ve ``dentry`` yapıları çeşitli başka bölümlerde ele alınacaktır. Ayrıntıları göz
-ardı edersek ``fs_struct`` yapısındaki en önemli elemanlar prosesin kök dizininin yeri, prosesin
-çalışma dizininin yeri ve prosesin umask değeridir.
+``vfsmount`` ve ``dentry`` yapıları ilerleyen bölümlerde ele alınacaktır. Eskiden bu yapı biraz daha küçüktü.
+Örneğin çekirdeğin 2.2'li versiyonlarında şöyleydi:
 
-Bu yapı zaman içerisinde de geliştirilmiştir. Çekirdeğin 0.01 versiyonunda bu bilgiler doğrudan
+.. code-block:: c
+
+   struct fs_struct {
+       atomic_t count;
+       int umask;
+       struct dentry * root, * pwd;
+   };
+
+Çekirdeğin 2.4'te şu hale getirildi:
+
+.. code-block:: c
+
+   struct fs_struct {
+       atomic_t count;
+       rwlock_t lock;
+       int umask;
+       struct dentry * root, * pwd, * altroot;
+       struct vfsmount * rootmnt, * pwdmnt, * altrootmnt;
+   };
+
+2.6'da ise şu hale getirildi:
+
+.. code-block:: c
+
+   struct fs_struct {
+       int users;
+       spinlock_t lock;
+       seqcount_t seq;
+       int umask;
+       int in_exec;
+       struct path root, pwd;
+   };
+
+Çekirdeğin öğrenci ödevi gibi olan 0.01 versiyonunda bu yapı yoktu. Bu yapıdaki bilgiler doğrudan
 ``task_struct`` içerisinde bulunmaktaydı:
 
 .. code-block:: c
@@ -760,13 +792,15 @@ Bu yapı zaman içerisinde de geliştirilmiştir. Çekirdeğin 0.01 versiyonunda
        /* ... */
    };
 
+Ayrıntıları göz ardı edersek bu ``fs_struct`` yapısındaki en önemli elemanlar "prosesin kök dizinin yeri",
+"prosesin çalışma dizinin yeri" ve "prosesin *umask* değeri" dir.
 
 files_struct Yapısı
---------------------
+~~~~~~~~~~~~~~~~~~~
 
 ``task_struct`` içerisindeki ``files`` isimli gösterici prosesin açmış olduğu dosyalara ilişkin
 bilgilerin tutulduğu ``files_struct`` türünden yapı nesnesini göstermektedir. ``files_struct``
-yapısı da zaman içerisinde değişiklere uğratılmıştır. Güncel çekirdeklerde bu yapı
+yapısı da zaman içerisinde değişikliklere uğratılmıştır. Güncel çekirdeklerde bu yapı
 ``include/linux/fdtable.h`` dosyası içerisinde şöyle bildirilmiştir:
 
 .. code-block:: c
@@ -792,7 +826,28 @@ yapısı da zaman içerisinde değişiklere uğratılmıştır. Güncel çekirde
        struct file __rcu * fd_array[NR_OPEN_DEFAULT];
    };
 
-Bu yapı versiyonlar arasında önemli farklılıklar göstermiştir. 2.4 çekirdeğindeki hali:
+2.6'lı çekirdeklerde bu yapı şöyleydi:
+
+.. code-block:: c
+
+   struct files_struct {
+   /*
+    * read mostly part
+    */
+       atomic_t count;
+       struct fdtable __rcu *fdt;
+       struct fdtable fdtab;
+   /*
+    * written part on a separate cache line in SMP
+    */
+       spinlock_t file_lock ____cacheline_aligned_in_smp;
+       int next_fd;
+       struct embedded_fd_set close_on_exec_init;
+       struct embedded_fd_set open_fds_init;
+       struct file __rcu * fd_array[NR_OPEN_DEFAULT];
+   };
+
+2.4'lü çekirdeklerde şöyleydi:
 
 .. code-block:: c
 
@@ -803,6 +858,23 @@ Bu yapı versiyonlar arasında önemli farklılıklar göstermiştir. 2.4 çekir
        int max_fdset;
        int next_fd;
        struct file ** fd;          /* current fd array */
+       fd_set *close_on_exec;
+       fd_set *open_fds;
+       fd_set close_on_exec_init;
+       fd_set open_fds_init;
+       struct file * fd_array[NR_OPEN_DEFAULT];
+   };
+
+2.2'li çekirdeklerde bu yapı bir eleman dışında aşağı yukarı aynıydı:
+
+.. code-block:: c
+
+   struct files_struct {
+       atomic_t count;
+       int max_fds;
+       int max_fdset;
+       int next_fd;
+       struct file ** fd;      /* current fd array */
        fd_set *close_on_exec;
        fd_set *open_fds;
        fd_set close_on_exec_init;
@@ -825,7 +897,6 @@ Bu yapı versiyonlar arasında önemli farklılıklar göstermiştir. 2.4 çekir
        /* ... */
    };
 
-
 Dosya Nesnesi (struct file)
 ----------------------------
 
@@ -835,21 +906,19 @@ dosya işlemleri için gereken bilgileri bu yapı nesnesinin içerisine yerleşt
 ``sys_read``, ``sys_write``, ``sys_lseek``, ``sys_close`` gibi sistem fonksiyonları da dosya
 üzerinde işlem yapabilmek için bu ``file`` yapısındaki bilgileri kullanmaktadır. İşletim
 sistemlerinde bu amaçla kullanılan nesnelere *dosya nesnesi (file object)* de denilmektedir.
-
-Biz aşağıdaki gibi bir dosya açmış olalım:
+Tabii sistem fonksiyonları ve çekirdek bu dosya nesnelerine ``task_struct`` nesnesinden hareketle 
+erişmektedir. Zaten ``files_struct`` yapısı bu erişime ilişkin bilgileri de içermektedir. Biz aşağıdaki 
+gibi bir dosya açmış olalım:
 
 .. code-block:: c
 
    fd = open(...);
 
-``sys_open`` sistem fonksiyonu açılmak istenen dosyanın diskteki yerini ve metadata bilgilerini
-bulur, o bilgilerden hareketle bir dosya nesnesi (file object) oluşturur. O dosya nesnesinin
-adresini de ``files_struct`` nesnesinin içerisine yerleştirir. Böylece ``sys_read``,
-``sys_write``, ``sys_lseek``, ``sys_close`` gibi sistem fonksiyonları ``task_struct`` nesnesinden
-hareketle bu dosya nesnesine erişebilmektedir.
-
-Güncel çekirdeklerde ``file`` yapısı ``include/linux/fs.h`` dosyasının içerisinde şöyle
-bildirilmiştir:
+``sys_open`` sistem fonksiyonu açılmak istenen dosyanın diskteki yerini ve metadata bilgilerini bulur. O bilgilerden
+hareketle bir dosya nesnesi (file object) oluşturur. O dosya nesnesinin adresini de izleyen paragrafta açıklayacağımız
+gibi ``files_struct`` nesnesinin içerisine yerleştirir. Böylece ``sys_read``, ``sys_write``, ``sys_lseek``,
+``sys_close`` gibi sistem fonksiyonları ``task_struct`` nesnesinden hareketle bu dosya nesnesine erişebilmektedir.
+Güncel çekirdeklerde ``file`` yapısı ``include/linux/fs.h`` dosyasının içerisinde şöyle bildirilmiştir:
 
 .. code-block:: c
 
@@ -891,14 +960,16 @@ bildirilmiştir:
    } __randomize_layout
    __attribute__((aligned(4)));
 
+Eskiden bu yapının içeriği daha küçüktü. Zaman içerisinde bu yapıda da değişilikler ve eklemeler yapılmıştır.
 
-Dosya Betimleyici Tablosu
---------------------------
+Dosya Betimleyici Tablosu (File Descriptor Table)
+-------------------------------------------------
 
-Şimdi bir dosya ``sys_open`` sistem fonksiyonuyla açıldığında dosya nesnesinin ve dosya
-betimleyicisinin nasıl saklandığını açıklayalım. Önce çekirdeğin 0.01 versiyonunu inceleyelim.
-Bu ilkel versiyonda henüz ``files_struct`` biçiminde bir yapı yoktu. Açık dosya bilgileri doğrudan
-``task_struct`` içerisinde bulunan aşağıdaki elemanlarda saklanıyordu:
+Şimdi ``sys_open`` sistem fonksiyonuyla bir dosya açıldığında dosya betimleyicisinin (file descriptor) nasıl elde
+edildiğini açıklayalım. Güncel çekirdeklerde bu sürece ilişkin veri yapısı biraz ayrıntılıdır. Biz bu ayrıntılardan
+bahsedeceğiz ancak önce çekirdeğin "öğrenci ödevi gibi olan" 0.01 versiyonunda bu süreci açıklayalım. Bu ilkel
+versiyonda henüz ``files_struct`` biçiminde bir yapı yoktu. Açık dosya bilgileri doğrudan ``task_struct`` içerisinde
+bulunan aşağıdaki elemanlarda saklanıyordu:
 
 .. code-block:: c
 
@@ -919,9 +990,11 @@ dizisi file nesnelerinin adreslerini tutan bir gösterici dizisidir. Bu versiyon
 
    #define NR_OPEN 20
 
-Dolayısıyla bu ilkel versiyonda bir proses en fazla 20 dosyayı açık durumda tutabiliyordu.
-UNIX/Linux dünyasında dosya nesnelerinin adreslerini tutan bu gösterici dizilerine *dosya
-betimleyici tablosu (file descriptor table)* denilmektedir.
+İzleyen paragraflarda da anlayacağınız üzere bu ilkel versiyonda bir proses en fazla 20 dosyayı açık durumda
+tutabiliyordu. UNIX/Linux dünyasında dosya nesnelerinin adreslerini tutan bu gösterici dizilerine *dosya betimleyici
+tablosu (file descriptor table)* denilmektedir. Yukarıda da belirttiğimiz gibi dosya betimleyici tablosu dosya
+nesnelerinin adreslerini tutan bir gösterici dizisi biçimindedir. Bunu 0.01 çekirdeği için şöyle bir şekille
+gösterebiliriz:
 
 .. graphviz::
 
@@ -955,28 +1028,45 @@ betimleyici tablosu (file descriptor table)* denilmektedir.
        table:f3 -> fo3;
    }
 
-``open`` POSIX fonksiyonunun (yani ``sys_open`` sistem fonksiyonunun) verdiği *dosya betimleyicisi
-(file descriptor)* aslında dosya betimleyici tablosundaki dizide bir indeks belirtmektedir.
-``open`` POSIX fonksiyonunun dosya betimleyici tablosundaki en düşük boş indeksi vereceği POSIX
-standartlarında garanti altına alınmıştır.
+Buradaki sayılar dizinin indekslerini belirtmektedir. Tabii zamanla dosyalar kapanınca bu dizinin elemanları boşa
+düşecektir. Boş elemanlara ``NULL`` adres yerleştirilmektedir. İşte ``open`` POSIX fonksiyonunun (yani ``sys_open``
+sistem fonksiyonunun) verdiği *dosya betimleyicisi (file descriptor)* aslında dosya betimleyici tablosu dizisinde
+bir indeks belirtmektedir. ``open`` POSIX fonksiyonunun (dolayısıyla ``sys_open`` sistem fonksiyonunun) dosya
+betimleyici tablosundaki en düşük boş indeksi vereceği POSIX standartlarında garanti edilmiştir. Dosya betimleyici 
+tablosunun (yani ``struct file *``) dizisinin uzunluğunun "aynı anda açık tutulabilecek" dosya sayısını
+da belirttiğine dikkat ediniz.
 
-Dosya betimleyici tablosunun *prosese özgü* olduğuna dikkat ediniz. Bir proseste açılmış olan
-dosyaya ilişkin dosya nesnesinin adresi o prosesteki dosya betimleyici tablosuna yazılmaktadır.
-Dosya betimleyicileri sistem genelinde bir değer belirtmemektedir; dosya betimleyici değerleri
-yalnızca ilgili proses için anlamlıdır.
+Dosya betimleyici tablosunun prosese özgü olduğuna dikkat ediniz. Bir proseste açılmış olan dosyaya ilişkin dosya
+nesnesinin adresi o prosesteki dosya betimleyici tablosuna yazılmaktadır. Dosya betimleyicileri sistem genelinde
+bir değer belirtmemektedir, dosya betimleyici değerleri yalnızca ilgili proses için anlamlıdır. Örneğin 12 numaralı
+betimleyici bir proseste bir dosyayı belirtirken diğer bir proseste başka bir dosyayı belirtiyor olabilir.
+Dolayısıyla biz bir proseste bir dosya açıp elde ettiğimiz dosya betimleyicisini başka bir prosese prosesler arası
+haberleşme yöntemleriyle iletsek o proseste o betimleyicinin hiçbir anlamı olmaz. Ancak anımsanacağı gibi özel bir
+durum olarak üst proses ``fork`` işlemi yaptığında üst prosesin dosya betimleyici tablosu alt prosese *sığ (shallow)*
+kopyalanmaktadır. Böylece üst proses ile alt proses aynı dosya üzerinde işlem yapabilmektedir. (Linux çekirdeklerinde 
+trace işlemleri için ``sys_pidfd_getfd`` isimli bir sistem fonksiyonu bulundurulmuştur. Bu sistem fonksiyonu başka bir 
+prosesin dosya betimleyici tablosunda betimleyici tahsis etmektedir. Ayrıca çekirdekte başka bir prosesten açmış olduğu 
+dosyaya ilişkin  bir betimleyicinin elde edilmesini sağlayan ``sys_pidfd_open`` isimli bir sistem fonksiyonu da 
+bulunmaktadır.)
 
-Yukarıdaki 0.01 versiyonunda konuyla ilgili ``unsigned long`` türden ``close_on_exec`` isimli bir
-elemanın da bulunduğunu görüyorsunuz. Bu elemanın her biti bir betimleyicinin *close-on-exec*
-durumunu belirtmektedir. Söz konusu bit 1 ise ilgili betimleyici exec işlemleri sırasında close
-edilir, 0 ise close edilmez. POSIX standartlarında bir dosya açıldığında close-on-exec bayrağının
-varsayılan durumda 0 olduğu belirtilmiştir.
-
+Yukarıdaki 0.01 versiyonunda konuyla ilgili ``unsigned long`` türden ``close_on_exec`` isimli bir elemanın da
+bulunduğunu görüyorsunuz. Bu elemanın her biti bir betimleyicinin "close-on-exec" durumunu belirtmektedir. Söz
+konusu bit 1 ise ilgili betimleyici ``exec`` işlemleri sırasında kapatılır, 0 ise kapatılmaz. POSIX standartlarında
+bir dosya açıldığında close-on-exec bayrağının varsayılan durumda 0 olduğu belirtilmiştir. (Yani varsayılan durumda
+``exec`` işlemlerinde dosya kapatılmamaktadır.) Bu ilkel versiyonda zaten bir prosesin maksimum açık tutacağı dosya
+sayısı 20'dir. O zamanlarda ``long`` türü 32 bitti. Yani bu ``unsigned long`` eleman bütün dosya betimleyicilerinin
+*close-on-exec* bayraklarını tutmak için yeterliydi.
 
 İlk Boş Betimleyicinin Bulunması
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``sys_open`` sistem fonksiyonu öncelikle dosya betimleyici tablosundaki ilk boş betimleyiciyi
-bulmaya çalışır. 0.01 versiyonunda boş betimleyici şöyle bulunmuştur:
+``sys_open`` sistem fonksiyonu öncelikle dosya betimleyici tablosundaki ilk boş betimleyiciyi bulmaya çalışır.
+Çünkü dosya betimleyici tablosu tamamen doluysa zaten bir dosya nesnesinin oluşturulup işlemlere devam edilmesinin
+de bir anlamı olmayacaktır. Peki dosya betimleyici tablosundaki ilk boş betimleyici nasıl bulunmaktadır? Düz
+mantıkla "mademki dosya betimleyici tablosundaki boş indekslerde ``NULL`` adres var o zaman ilk ``NULL`` adres
+görülene kadar bir döngü ile sıralı arama yapılabilir" diye düşünebilirsiniz. Eğer dosya betimleyici tabloları
+0.01 versiyonundaki gibi çok küçük olsaydı sıralı arama yapmanın önemli bir sakıncası olmayabilirdi. Gerçekten
+de 0.01 versiyonunda boş betimleyici şöyle bulunmuştur:
 
 .. code-block:: c
 
