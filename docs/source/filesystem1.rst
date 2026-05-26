@@ -1073,96 +1073,188 @@ de 0.01 versiyonunda boş betimleyici şöyle bulunmuştur:
    int sys_open(const char * filename, int flag, int mode) {
        /* ... */
 
-       for(fd=0 ; fd<NR_OPEN ; fd++)
+       for (fd = 0; fd < NR_OPEN; fd++)
            if (!current->filp[fd])
                break;
 
        /* ... */
    }
 
-Görüldüğü gibi bu ilkel versiyonda dosya betimleyici tablosu üzerinde tek tek sıralı arama
-yapılmış, ilk boş betimleyici elde edilmiştir. Ancak uzunca bir süredir proseslerin varsayılan
-dosya betimleyici tablolarının varsayılan uzunlukları 1024'tür ve bu uzunluk da büyütülebilmektedir.
+Görüldüğü gibi bu ilkel versiyonda dosya betimleyici tablosu üzerinde tek tek sıralı arama yapılmış, ilk boş
+betimleyici (yani ``NULL`` adres içeren ilk dizi elemanının indeksi) elde edilmiştir. Ancak uzunca bir süredir
+proseslerin varsayılan dosya betimleyici tablolarının varsayılan uzunlukları 1024'tür ve bu uzunluk da
+büyütülebilmektedir. 1024 elemanlı bir tabloda sıralı arama ile ilk ``NULL`` olan dizi elemanının indeksinin
+bulunması yavaş bir işlemdir. İşte bir süre sonra Linux çekirdeklerinde bu arama işlemi bit düzeyinde aramayla
+hızlandırılmıştır. 
 
+Bit düzeyinde arama yönteminde dosya betimleyici tablosunun uzunluğu kadar bit dizisi oluşturulur. Sonra o bit 
+dizisindeki ilk 0 olan bitin indeksi bulunmaya çalışılır. Bu bit dizisindeki 0 olan bitler betimleyici tablosundaki 
+boş elemanları, 1 olan bitler dolu olan elemanları belirtmektedir. İşlemcilerde belli bir yazmaçtaki (ya da Intel 
+işlemcileri söz konusuysa bellek adresindeki) "ilk 0 olan bitin indeksini veren özel makine komutları" bulunmaktadır. 
+Tabii işlemci 32 bit ise bu makine komutları 32 bitlik yani 4 byte'lık bir veri üzerinde, 64 bit ise 64 bitlik yani 
+8 byte'lık bir veri üzerinde işlem yapabilmektedir. Örneğin elimizdeki işlemcinin 64 bit olduğunu düşünelim. Bu 
+işlemcilerdeki C derleyicilerinde ``unsigned long`` türü 8 byte yani 64 bittir. Bu durumda örneğin 1024 eleman 
+uzunluğundaki dosya betimleyici tablosu için 16 elemanlı bir ``unsigned long`` dizi bitmap olarak kullanılabilir. 
+Tabii bu sistemlerde ilk 0 bitini bulan makine komutları zaten 64 bitlik bir bilgi üzerinde bu işi yapabilmektedir.
+O halde çekirdek tasarımcısı 16 elemanlı bir döngü kullanıp dizinin her elemanı için bu özel makine komutunu 
+kullanarak işlemleri hızlandırabilir. Ancak belli bir süreden sonra bu yöntem de biraz daha geliştirilerek arama 
+işlemi biraz daha hızlandırılmıştır. Bu ikinci hızlandırma yönteminde ikinci bir bit dizisi kullanılmaktadır. 
+Ancak ikinci bit dizisinin her biti birinci bit dizisindeki ``unsigned long`` elemanın tüm bitlerinin 0 olup 
+olmadığını tutmaktadır. Bu durumda güncel çekirdeklerde önce bu ikinci bit dizisindeki ilk 1 olan bit bulunur.
+Sonra bu bitin indeksi birinci bit dizisine indeks yapılarak oradaki ``unsigned long`` değer içerisinde ilk 0 
+olan bit elde edilir. Bu yöntemde örneğin birinci bit dizisinin aşağıdaki gibi olduğunu varsayalım:
 
-Bitmap Tabanlı Hızlı Arama
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: text
 
-1024 elemanlı bir tabloda sıralı arama ile ilk boş elemanın bulunması yavaş bir işlemdir. Bu
-nedenle bir süre sonra Linux çekirdeklerinde bu arama işlemi bit düzeyinde aramayla
-hızlandırılmıştır.
+   1111 1111 1111 1111 1111 1111 1111 1111 1111 1111 - 1111 1111 1111 1111 1111 1111 1111 1111 1111 1111 -
+   1111 1111 1111 1111 1111 1111 1111 1111 1111 1111 - 1111 1101 1111 1111 1111 1111 1111 1111 1111 1111 - ....
 
-Bit düzeyinde arama yönteminde dosya betimleyici tablosunun uzunluğu kadar bit dizisi
-oluşturulur. Bu bit dizisindeki 0 olan bitler betimleyici tablosundaki boş elemanları, 1 olan
-bitler dolu elemanları belirtmektedir.
+Burada birinci bit dizisi ``unsigned long`` dizi biçimindedir. Görüldüğü gibi bu dizinin ilk üç elemanında hiç
+0 olan bit yoktur. İlk 0 olan bit 3'üncü indekstedir. Bu durumda ikinci bit dizisi de aşağıdaki gibi olacaktır:
 
-Güncel çekirdeklerde iki düzey bitmap kullanılmaktadır:
+.. code-block:: text
 
-- **Birinci düzey bitmap (open_fds):** Tüm dosya betimleyicilerinin dolu/boş olduğunu tutar.
-- **İkinci düzey bitmap (full_fds_bits):** Birinci düzey bitmap'teki tüm bitleri 0 olmayan
-  (yani tamamen dolu) ``unsigned long`` elemanların indeksini hızlıca bulmak için kullanılır.
+   0001.....
 
-Bu hızlandırma mantığında:
+Bu hızlandırma mantığında önce ikinci bit dizisindeki ilk 1 olan bitin indeksi elde edilir. Örneğimizde bu
+3'tür. Sonra birinci bit dizisinin 3'üncü indeksteki ``unsigned long`` elemanında ilk 0 olan bitin indeksi
+bulunur. Bu yöntemde birkaç makine komutuyla istenen bilginin elde edilebildiğine dikkat ediniz.
 
-1. Çekirdek hemen ikinci düzey bitmap'e yönelmez. Önce ``open_fds`` dizisinde tek bir
-   ``unsigned long`` elemanda hızlı bir arama yapar.
-2. Eğer bu arama başarısız olursa ``full_fds_bits``'te ilk 0 olan bitin indeksi elde edilir;
-   birinci düzey bitmap'te yalnızca bu indeksteki ``unsigned long`` dizi elemanında arama yapılır.
+Çekirdek dokümantasyonunda her dosya betimleyicisinin boş mu dolu mu olduğunu tutan bitmap'e "birinci düzey
+bitmap", bu bitmap'teki ilk boş ``unsigned long`` elemanın dizi indeksini veren ikinci bitmap'e ise "ikinci
+düzey bitmap" denilmektedir.
 
-Güncel çekirdeklerdeki ``sys_open`` sistem fonksiyonundan başlanarak ilk boş dosya betimleyicisinin
-bulunması için yapılan çağrılar şöyledir:
-
-.. code-block:: none
-
-   sys_open
-     → do_sys_open
-       → do_sys_openat2
-         → __get_unused_fd_flags
-           → alloc_fd
-             → find_next_fd
-               → find_next_zero_bit
-
-Güncel çekirdeklerdeki ``find_next_fd`` fonksiyonu şöyle yazılmıştır:
+2.6 çekirdeğine kadar (bu çekirdek de dahil) bit dizileri için ``fd_set`` isimli bir yapı kullanılıyordu. Sonraları
+bu ``fd_set`` yapısı bırakıldı. Örneğin çekirdeğin 2.2 ve 2.4 versiyonundaki ``include/linux/sched.h`` içerisindeki
+``files_struct`` yapısı şöyleydi:
 
 .. code-block:: c
 
-   static unsigned int find_next_fd(struct fdtable *fdt, unsigned int start)
+   struct files_struct {
+       atomic_t count;
+       rwlock_t file_lock;     /* Protects all the below members. Nests inside tsk->alloc_lock */
+       int max_fds;
+       int max_fdset;
+       int next_fd;
+       struct file ** fd;      /* current fd array */
+       fd_set *close_on_exec;
+       fd_set *open_fds;
+       fd_set close_on_exec_init;
+       fd_set open_fds_init;
+       struct file * fd_array[NR_OPEN_DEFAULT];
+   };
+
+Burada görmüş olduğunuz ``fd_set`` yapısı "bit dizilerini" temsil etmektedir. Bu yapı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   typedef __kernel_fd_set     fd_set;
+
+   typedef struct {
+       unsigned long fds_bits [__FDSET_LONGS];
+   } __kernel_fd_set;
+
+Buradaki ``__FDSET_LONGS`` sembolik sabiti 32 bit sistemlerde 32 değerini, 64 bit sistemlerde 16 değerini
+vermektedir. Yani bu yapının içerisindeki ``fds_bits`` elemanı toplamda 1024 biti tutan ``unsigned long``
+türünden dizidir. 2.6 çekirdeği dahil olmak üzere bit dizisi anlamında çekirdekte bu ``fd_set`` yapısı
+kullanılmıştır. Ancak bu ``fd_set`` temsilinin tasarımında da aslında kusurlar vardır. Bu temsilde bit dizisi
+büyütülmek istendiğinde artık bu ``fd_set`` temsili işe yaramaz hale gelmektedir. Bu nedenle artık güncel
+çekirdeklerde ``fd_set`` yerine doğrudan ``unsigned long *`` türünden bir gösterici tutulup bu göstericinin
+gösterdiği yer için belli uzunlukta ``unsigned long`` dizi tahsis edilmektedir. Aslında uzun süre kullanılmış
+olan bu ``fd_set`` temsilinden vazgeçilmesi iyi olmuştur. Yukarıdaki çekirdeğin 2.4 versiyonundaki
+``files_struct`` yapısında dosya betimleyici tablosunun uzunluğu yapının ``max_fds`` elemanında tutulmaktadır.
+Çünkü işin başında bu tablo 1024 elemanlık olsa da daha sonra büyütülebilmektedir. Bu versiyonda dosya
+betimleyici tablosunun adresinin de ``fd`` elemanında tutulduğuna dikkat ediniz. Dosyaların close-on-exec
+bayrakları da yine yapının ``close_on_exec`` elemanında tutulmaktadır.
+
+Yukarıdaki ``files_struct`` yapısı biraz kafanızı karıştırabilir. Sanki bu yapıda aynı amaçla kullanılan
+birden fazla eleman varmış gibi gelebilir. Konuya açıklık getirmek amacıyla bu versiyondaki yapı elemanlarının
+hepsinin işlevlerini tek tek açıklayalım:
+
+Bir proses yaratıldığında işin başında dosya betimleyici tablosu için, boş betimleyici tespit etmek için ve
+close-on-exec bayrakları için ``files_struct`` yapısı içerisinde alanlar ayrılmıştır:
+
+.. code-block:: c
+
+   struct files_struct {
+       /* ... */
+
+       fd_set close_on_exec_init;               /* close-on-exec bayrakları için kullanılan statik bitmap */
+       fd_set open_fds_init;                    /* açık dosya betimleyicilerini tutan statik bitmap */
+       struct file * fd_array[NR_OPEN_DEFAULT]; /* dosya betimleyici tablosu için ayrılmış statik dizi */
+
+       /* ... */
+   };
+
+Burada ``NR_OPEN_DEFAULT`` 32 bit sistemlerde 32, 64 bit sistemlerde 64 değerini vermektedir. Eğer proses dosya
+betimleyici tablosunu genişletmezse zaten bu tablolar ve bitmap'ler ``files_struct`` yapısı içerisinde hazır bir
+biçimde tutulmaktadır.
+
+Çekirdek her zaman dosya tablosunun yerini ``fd`` göstericisinin gösterdiği yerde, açık dosya betimleyicilerinin
+bitmap'ini ``open_fds`` göstericisinin gösterdiği yerde, close-on-exec bayraklarına ilişkin bitmap'i ise
+``close_on_exec`` göstericisinin gösterdiği yerde aramaktadır. Yapının bu elemanlarına dikkat ediniz:
+
+.. code-block:: c
+
+   struct files_struct {
+       /* ... */
+
+       struct file ** fd;          /* current fd array */
+       fd_set *close_on_exec;
+       fd_set *open_fds;
+
+       fd_set close_on_exec_init;
+       fd_set open_fds_init;
+       struct file * fd_array[NR_OPEN_DEFAULT];
+
+       /* ... */
+   };
+
+İşin başında varsayılan durumda ``fd`` göstericisi ``fd_array`` elemanını, ``close_on_exec`` göstericisi
+``close_on_exec_init`` elemanını ve ``open_fds`` göstericisi de ``open_fds_init`` elemanını göstermektedir.
+
+``current`` göstericisinden hareketle ``fdx`` betimleyicisinin gösterdiği yerdeki dosya nesnesine
+(``struct file``) ``current->files->fd[fdx]`` ifadesiyle erişilebilir. Bu erişimi kolaylaştırmak için 2.2 ve
+2.4 çekirdeklerinde ``fcheck`` isimli çekirdek fonksiyonu bulundurulmuştur:
+
+.. code-block:: c
+
+   static inline struct file * fcheck(unsigned int fd)
    {
-       unsigned int maxfd = fdt->max_fds;
-       unsigned int maxbit = maxfd / BITS_PER_LONG;
-       unsigned int bitbit = start / BITS_PER_LONG;
-       unsigned int bit;
+       struct file * file = NULL;
+       struct files_struct *files = current->files;
 
-       /*
-        * Try to avoid looking at the second level bitmap
-        */
-       bit = find_next_zero_bit(&fdt->open_fds[bitbit], BITS_PER_LONG,
-                   start & (BITS_PER_LONG - 1));
-       if (bit < BITS_PER_LONG)
-           return bit + bitbit * BITS_PER_LONG;
-
-       bitbit = find_next_zero_bit(fdt->full_fds_bits, maxbit, bitbit) * BITS_PER_LONG;
-       if (bitbit >= maxfd)
-           return maxfd;
-       if (bitbit > start)
-           start = bitbit;
-       return find_next_zero_bit(fdt->open_fds, maxfd, start);
+       if (fd < files->max_fds)
+           file = files->fd[fd];
+       return file;
    }
 
-Makine dili düzeyinde aramanın ``ffz`` fonksiyonunda ve ``__ffs`` fonksiyonunda yapıldığına dikkat
-ediniz.
+Ancak bu fonksiyon export edilmemiştir. Yani aygıt sürücüler tarafından kullanılamamaktadır. Aslında çekirdekte
+bir dosya betimleyicisinden hareketle dosya nesnesini elde etmek için daha yüksek seviyeli ``fget`` fonksiyonu
+kullanılmaktadır. Bu fonksiyon 2.4 ve 2.6 versiyonlarında aşağıdaki gibi yazılmıştır:
 
-``files_struct`` yapısının ``next_fd`` elemanı aramanın başlatılacağı yeri belirtmektedir. Yani
-``next_fd``'nin belirttiği değerden küçük tüm dosya betimleyicileri doludur. Dolayısıyla arama
-``full_fds_bits`` dizisinin başından başlatılmamaktadır.
+.. code-block:: c
 
+   struct file fastcall *fget(unsigned int fd)
+   {
+       struct file * file;
+       struct files_struct *files = current->files;
 
-2.6 Çekirdeğinde files_struct ve fdtable
------------------------------------------
+       read_lock(&files->file_lock);
+       file = fcheck(fd);
+       if (file)
+           get_file(file);
+       read_unlock(&files->file_lock);
+       return file;
+   }
 
-Çekirdeğin 2.6 versiyonlarına gelindiğinde ``files_struct`` yapısının içerisi ``fdtable`` isimli
-bir yapı ile biraz daha derli toplu fakat biraz daha karmaşık hale getirilmiştir. 2.6'lı
-versiyonlardaki ``files_struct`` yapısı şöyledir:
+Bu fonksiyonun ``fcheck`` fonksiyonu kullanılarak yazıldığını görüyorsunuz. Ancak bu fonksiyon ileride
+göreceğimiz gibi dosya nesnesi içerisindeki (``struct file`` yapısındaki) sayacı da güvenli bir biçimde
+artırmaktadır. ``fget`` fonksiyonu da bu versiyonlarda export edilmemiştir.
+
+Çekirdeğin 2.6 versiyonlarına gelindiğinde ``files_struct`` yapısının içerisi ``fdtable`` isimli bir yapı ile
+biraz daha derli toplu fakat biraz daha karmaşık hale getirilmiştir. 2.6'lı versiyonlardaki ``files_struct``
+yapısı şöyledir:
 
 .. code-block:: c
 
@@ -1196,17 +1288,41 @@ versiyonlardaki ``files_struct`` yapısı şöyledir:
        struct fdtable *next;
    };
 
-Bu versiyonlarda çekirdek her zaman ``fdt`` göstericisinin gösterdiği yerden işlemine
-başlamaktadır. ``fdt`` göstericisi işin başında yapı içerisindeki ``fdtab`` yapı nesnesini
-göstermektedir. ``fdtab`` yapı nesnesinin içerisinde de ``fd``, ``close_on_exec``, ``open_fds``
-göstericileri vardır. Bu göstericiler de işin başında ``files_struct`` içerisindeki ``fd_array``,
-``close_on_exec_init`` ve ``open_fds_init`` elemanlarını göstermektedir.
+Artık bu yapılar da ``include/linux/fdtable.h`` isimli dosya oluşturularak oraya taşınmıştır. Bu versiyonlarda
+çekirdek her zaman ``fdt`` göstericisinin gösterdiği yerden işlemine başlamaktadır. ``fdt`` göstericisi işin
+başında yapı içerisindeki ``fdtab`` yapı nesnesini göstermektedir. ``fdtab`` yapı nesnesinin içerisinde de
+önceki versiyonlarda olduğu gibi ``fd``, ``close_on_exec``, ``open_fds`` göstericileri vardır. Bu göstericiler
+de işin başında ``files_struct`` içerisindeki ``fd_array``, ``close_on_exec_init`` ve ``open_fds_init``
+elemanlarını göstermektedir. Ancak ileride aslında ``files_struct`` içerisindeki ``fdt`` göstericisi başka bir
+``fdtable`` nesnesini, ``fdtable`` nesnesinin içerisindeki göstericiler de büyütülmüş başka nesneleri gösterir
+hale gelebilmektedir.
 
-Bu versiyonlarda ``current`` göstericisinden hareketle ``fdx`` betimleyicisinin gösterdiği
-yerdeki dosya nesnesine ``current->files->fdt->fd[fdx]`` ifadesiyle erişilebilir.
+Bu versiyonlarda ``current`` göstericisinden hareketle ``fdx`` betimleyicisinin gösterdiği yerdeki dosya
+nesnesine (``struct file``) ``current->files->fdt->fd[fdx]`` ifadesiyle erişilebilir. Bu versiyonlarda da bu
+erişimi bazı kontrollerle sağlayan ayrı fonksiyonlar ve makrolar da bulundurulmuştur. Örneğin
+``fcheck_files`` fonksiyonu şöyle tanımlanmıştır:
 
-2.6'lı çekirdeklerde de dosya betimleyicisinden hareketle dosya nesnesine erişimi sağlayan
-``fget`` ve ``fput`` fonksiyonları bulunmaktadır:
+.. code-block:: c
+
+   static inline struct file * fcheck_files(struct files_struct *files, unsigned int fd)
+   {
+       struct file * file = NULL;
+       struct fdtable *fdt = files_fdtable(files);
+
+       if (fd < fdt->max_fds)
+           file = rcu_dereference_check_fdtable(files, fdt->fd[fd]);
+       return file;
+   }
+
+   #define files_fdtable(files)    \
+           (rcu_dereference_check_fdtable((files), (files)->fdt))
+
+   #define fcheck(fd)  fcheck_files(current->files, fd)
+
+Yani çekirdek içerisinde ``fcheck`` makrosuyla ``fd`` numaralı betimleyiciye ilişkin dosya nesnesi elde
+edilebilmektedir. Ancak ``fcheck_files`` fonksiyonu da export edilmemiştir. Yine 2.6'lı çekirdeklerde de
+dosya betimleyicisinden hareketle dosya nesnesi içerisindeki sayacı artırarak dosya nesnesini elde eden daha
+yüksek seviyeli ``fget`` isimli bir fonksiyon da bulunmaktadır:
 
 .. code-block:: c
 
@@ -1216,6 +1332,13 @@ yerdeki dosya nesnesine ``current->files->fdt->fd[fdx]`` ifadesiyle erişilebili
    }
    EXPORT_SYMBOL(fget);
 
+Biz burada bu fonksiyonun çağırdığı fonksiyonları gözden geçirmeyeceğiz. Ancak bu fonksiyonun artık export
+edildiğine dikkat ediniz. Yani bu versiyondan itibaren aygıt sürücüler de dosya betimleyicisinden hareketle
+dosya nesnesine bu fonksiyon yoluyla erişebilmektedir. Çekirdekteki nesnenin sayacını artırarak erişim sağlayan
+fonksiyonlar genel olarak ``get`` soneki ile, sayacı eksilten fonksiyonlar da ``put`` soneki ile
+isimlendirilmiştir. ``fget`` fonksiyonuyla elde edilen dosya nesnesi ``fput`` fonksiyonuyla geri
+bırakılmaktadır:
+
 .. code-block:: c
 
    void fput(struct file *file)
@@ -1224,14 +1347,9 @@ yerdeki dosya nesnesine ``current->files->fdt->fd[fdx]`` ifadesiyle erişilebili
            __fput(file);
    }
 
-``fget`` fonksiyonuyla elde edilen dosya nesnesi ``fput`` fonksiyonuyla geri bırakılmaktadır.
-
-
-Güncel Çekirdeklerdeki Dosya Veri Yapıları
--------------------------------------------
-
-Belli bir zamandan sonra artık bit dizisi oluşturmak için ``fd_set`` yapısının kullanılmasından
-vazgeçilmiştir. Güncel çekirdeklerdeki ``files_struct`` yapısı şöyledir:
+Belli bir zamandan sonra artık bit dizisi oluşturmak için ``fd_set`` yapısının kullanılmasından vazgeçilmiştir.
+Güncel çekirdeklerdeki açık dosyalara ilişkin veri yapısı 2.6 ile çok benzerdir. Ancak yukarıda da belirttiğimiz
+gibi artık ``fd_set`` yapısı kullanılmamaktadır. Güncel çekirdeklerdeki ``files_struct`` yapısı şöyledir:
 
 .. code-block:: c
 
@@ -1269,13 +1387,12 @@ vazgeçilmiştir. Güncel çekirdeklerdeki ``files_struct`` yapısı şöyledir:
        struct rcu_head rcu;
    };
 
-Görüldüğü gibi artık bit dizileri ``fd_set`` yerine doğrudan ``unsigned long`` türden bir dizi
-biçiminde oluşturulmaktadır.
-
-Güncel versiyonlarda ``fcheck`` biçiminde bir makro ve ``fcheck_files`` isimli bir fonksiyon
-yoktur. Ancak yine güncel versiyonlarda dosya betimleyicisi yoluyla dosya nesnesine erişimi
-referans sayacını artırarak yapan ``fget`` fonksiyonu ve sayacı eksilterek nesneyi bırakan
-``fput`` fonksiyonu bulunmaktadır:
+Görüldüğü gibi artık bit dizileri ``fd_set`` yerine doğrudan ``unsigned long`` türden bir dizi biçiminde
+oluşturulmaktadır. Yine bu versiyonlarda da ``fdx`` numaralı dosya betimleyicisinin gösterdiği yerdeki dosya
+nesnesine ``current->files->fdt->fd[fdx]`` ifadesiyle erişilmektedir. Fakat artık güncel versiyonlarda
+``fcheck`` biçiminde bir makro ve ``fcheck_files`` isimli bir fonksiyon yoktur. Ancak yine güncel versiyonlarda
+dosya betimleyicisi yoluyla dosya nesnesine erişimi referans sayacını artırarak yapan ``fget`` fonksiyonu
+bulunmaktadır:
 
 .. code-block:: c
 
@@ -1284,6 +1401,8 @@ referans sayacını artırarak yapan ``fget`` fonksiyonu ve sayacı eksilterek n
        return __fget(fd, FMODE_PATH);
    }
    EXPORT_SYMBOL(fget);
+
+Yine referans sayacını azaltarak nesneyi bırakmak için ``fput`` fonksiyonu kullanılmaktadır:
 
 .. code-block:: c
 
@@ -1294,6 +1413,168 @@ referans sayacını artırarak yapan ``fget`` fonksiyonu ve sayacı eksilterek n
    }
    EXPORT_SYMBOL(fput);
 
+Güncel çekirdeklerde dosya betimleyici tablosundaki ilk boş betimleyicinin bulunmasının bit dizilerinde "ilk 0
+olan bitin bulunması" problemi biçiminde ele alındığını belirtmiştik. Bunun için güncel çekirdeklerde iki düzey
+bitmap kullanılıyordu. Güncel çekirdeklerdeki ``fdtable`` yapısının içerisinde bulunan ``open_fds`` birinci
+düzey bitmap'i, ``full_fds_bits`` ise ikinci düzey bitmap'i belirtmektedir. Tüm dosya betimleyicilerinin dolu
+mu boş mu olduğu ``open_fds`` bitmap'inde tutulmaktadır. ``full_fds_bits`` bitmap'i ise ``open_fds``
+bitmap'indeki tüm bitleri 1 olan ilk ``unsigned long`` elemanın indeksinin bulunmasında kullanılmaktadır.
+``files_struct`` ve ``fdtable`` yapılarını aşağıda yeniden veriyoruz:
+
+.. code-block:: c
+
+   struct files_struct {
+   /*
+    * read mostly part
+    */
+       atomic_t count;
+       bool resize_in_progress;
+       wait_queue_head_t resize_wait;
+
+       struct fdtable __rcu *fdt;
+       struct fdtable fdtab;
+   /*
+    * written part on a separate cache line in SMP
+    */
+       spinlock_t file_lock ____cacheline_aligned_in_smp;
+       unsigned int next_fd;
+       unsigned long close_on_exec_init[1];
+       unsigned long open_fds_init[1];
+       unsigned long full_fds_bits_init[1];
+       struct file __rcu * fd_array[NR_OPEN_DEFAULT];
+   };
+
+   struct fdtable {
+       unsigned int max_fds;
+       struct file __rcu **fd;      /* current fd array */
+       unsigned long *close_on_exec;
+       unsigned long *open_fds;
+       unsigned long *full_fds_bits;
+       struct rcu_head rcu;
+   };
+
+Uzun süredir bir bit dizisi içerisindeki ilk 0 olan bitin indeksini elde etmek için ``find_next_zero_bit``
+isimli bir çekirdek fonksiyonu kullanılmaktadır. Tabii bu fonksiyon nihayetinde yukarıda da bahsettiğimiz gibi
+işlemciye özgü makine komutlarını kullanmaktadır. Çekirdeğin güncel versiyonlarında ``sys_open`` sistem
+fonksiyonundan başlanarak ilk boş dosya betimleyicisinin bulunması için yapılan çağrılar şöyledir:
+
+.. code-block:: text
+
+   sys_open --> do_sys_open --> do_sys_openat2 --> __get_unused_fd_flags --> alloc_fd --> find_next_fd -->
+   find_next_zero_bit
+
+Bu çağrı zincirinde bir dizi içerisinde ilk 0 olan bitin bulunması işlemini ``find_next_zero_bit`` fonksiyonu
+yapmaktadır. İlk 0 olan bitin bulunması aslında baştan başlanarak yapılmamaktadır. ``files_struct`` yapısı
+içerisindeki ``next_fd`` elemanı aramanın başlatılacağı yeri belirtmektedir. Yani ``next_fd`` elemanının
+belirttiği değerden küçük tüm dosya betimleyicileri doludur. Dolayısıyla arama ``full_fds_bits`` dizisinin
+hemen başından başlatılmamaktadır. Tabii eğer ``next_fd`` elemanının belirttiği dosya betimleyicisinden daha
+küçük bir betimleyici kapatılırsa çekirdek zaten bu ``next_fd`` elemanını güncellemektedir.
+
+Güncel çekirdeklerdeki ``find_next_fd`` fonksiyonu şöyle yazılmıştır:
+
+.. code-block:: c
+
+   static unsigned int find_next_fd(struct fdtable *fdt, unsigned int start)
+   {
+       unsigned int maxfd = fdt->max_fds; /* always multiple of BITS_PER_LONG */
+       unsigned int maxbit = maxfd / BITS_PER_LONG;
+       unsigned int bitbit = start / BITS_PER_LONG;
+       unsigned int bit;
+
+       /*
+        * Try to avoid looking at the second level bitmap
+        */
+       bit = find_next_zero_bit(&fdt->open_fds[bitbit], BITS_PER_LONG,
+                   start & (BITS_PER_LONG - 1));
+       if (bit < BITS_PER_LONG)
+           return bit + bitbit * BITS_PER_LONG;
+
+       bitbit = find_next_zero_bit(fdt->full_fds_bits, maxbit, bitbit) * BITS_PER_LONG;
+       if (bitbit >= maxfd)
+           return maxfd;
+       if (bitbit > start)
+           start = bitbit;
+       return find_next_zero_bit(fdt->open_fds, maxfd, start);
+   }
+
+Fonksiyonun birinci parametresi ``fdtable`` nesnesinin adresini, ikinci parametresi ise aramanın başlatılacağı
+betimleyicinin numarasını belirtmektedir. Fonksiyon önce ikinci düzey bitmap'te arama yapmadan birinci düzey
+bitmap'te, dizinin hemen aramanın yapılacağı indeksinde hızlı bir arama yapar. Eğer bu aramadan sonuç elde
+edilemezse önce ikinci düzey bitmap'te birinci düzey bitmap için dizi indeksini elde eder, sonra birinci düzey
+bitmap'te arama yapar. ``find_next_zero_bit`` fonksiyonu da güncel çekirdeklerde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+   unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size,
+                                    unsigned long offset)
+   {
+       if (small_const_nbits(size)) {
+           unsigned long val;
+
+           if (unlikely(offset >= size))
+               return size;
+
+           val = *addr | ~GENMASK(size - 1, offset);
+           return val == ~0UL ? size : ffz(val);
+       }
+
+       return _find_next_zero_bit(addr, size, offset);
+   }
+
+Buradaki ``small_const_nbits`` fonksiyonu ``find_next_fd`` fonksiyonundaki ilk hızlı aramanın ve birinci düzey
+bitmap'teki aramanın yapılabilmesi için kontrol sağlamaktadır. Yani arama tek bir dizi elemanı üzerinde
+yapılacaksa bu ``if`` deyiminin doğru olduğu kısım çalıştırılacaktır. Eğer arama birden fazla dizi elemanı
+üzerinde yapılacaksa bu durumda arama ``_find_next_zero_bit`` fonksiyonuna yaptırılmaktadır. Bu fonksiyon da
+şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+   unsigned long _find_next_zero_bit(const unsigned long *addr, unsigned long nbits,
+                                     unsigned long start)
+   {
+       return FIND_NEXT_BIT(~addr[idx], /* nop */, nbits, start);
+   }
+
+   #define FIND_NEXT_BIT(FETCH, MUNGE, size, start)                             
+   ({                                                                           \
+       unsigned long mask, idx, tmp, sz = (size), __start = (start);            \
+                                                                                \
+       if (unlikely(__start >= sz))                                             \
+           goto out;                                                            \
+                                                                                \
+       mask = MUNGE(BITMAP_FIRST_WORD_MASK(__start));                           \
+       idx = __start / BITS_PER_LONG;                                           \
+                                                                                \
+       for (tmp = (FETCH) & mask; !tmp; tmp = (FETCH)) {                        \
+           if ((idx + 1) * BITS_PER_LONG >= sz)                                 \
+               goto out;                                                        \
+           idx++;                                                               \
+       }                                                                        \
+                                                                                \
+       sz = min(idx * BITS_PER_LONG + __ffs(MUNGE(tmp)), sz);                   \
+   out:                                                                         \
+       sz;                                                                      \
+   })
+
+Burada dizi elemanlarında arama ``FIND_NEXT_BIT`` makrosuyla yapılmıştır. Tabii bu makro içerisindeki döngü
+ancak birinci düzey bitmap aramasında çalıştırılacaktır.
+
+Burada şöyle bir özet yapmak istiyoruz:
+
+1. Çekirdek hemen ikinci düzey bitmap'e (``full_fds_bits``) yönelmez. Önce ``open_fds`` dizisinde tek bir
+   ``unsigned long`` elemanda hızlı bir arama yapar.
+
+2. Eğer yukarıdaki arama başarısız olursa bu durumda önce ikinci düzey bitmap'te (``full_fds_bits``) ilk 0
+   olan bitin indeksi elde edilir. Birinci düzey bitmap'te (``open_fds``) yalnızca bu indeksteki
+   ``unsigned long`` dizi elemanında arama yapılır.
+
+3. ``find_next_zero_bit`` fonksiyonu ``unsigned long`` dizisinin yalnızca tek bir elemanında mı yoksa belli
+   bir elemandan itibaren dizinin geri kalan tüm elemanlarında mı arama yapılacağına ``small_const_nbits``
+   çağrısıyla karar vermektedir.
+
+Peki yukarıdaki kodlarda bitmap dizisinin belli bir ``unsigned long`` elemanında işlemcinin özel makine
+komutlarıyla arama işlemi tam nerede yapılmaktadır? İşte yukarıdaki kodlar incelenirse makine dili düzeyinde
+aramanın ``ffz`` fonksiyonunda ve ``__ffs`` fonksiyonunda yapıldığı görülecektir.
 
 Thread'ler, Fork ve Dosya Betimleyicileri
 ------------------------------------------
