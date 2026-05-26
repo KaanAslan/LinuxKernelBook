@@ -4,6 +4,11 @@ copyright = '2025, Kaan Aslan'
 author = 'Kaan Aslan'
 release = '1.0.0'
 
+import os
+if os.environ.get('READTHEDOCS'):
+    language = 'tr'
+    latex_engine = 'xelatex'
+
 # -- Genel yapılandırma ---------------------------------------------------
 extensions = [
     'sphinx.ext.autodoc',      # Python docstring'lerinden otomatik döküman
@@ -39,10 +44,7 @@ html_theme_options = {
 latex_elements = {
     'papersize': 'a4paper',
     'geometry': r'\usepackage[a4paper, top=2cm, bottom=2cm, left=1cm, right=1cm]{geometry}',
-   'preamble': r'''
-        \usepackage{fontspec}
-        \usepackage{polyglossia}
-        \setmainlanguage{turkish}
+    'preamble': r'''
         \usepackage{newunicodechar}
         \newunicodechar{≈}{\ensuremath{\approx}}
         \newunicodechar{×}{\ensuremath{\times}}
