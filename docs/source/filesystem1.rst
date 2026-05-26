@@ -1576,15 +1576,17 @@ Peki yukarıdaki kodlarda bitmap dizisinin belli bir ``unsigned long`` elemanın
 komutlarıyla arama işlemi tam nerede yapılmaktadır? İşte yukarıdaki kodlar incelenirse makine dili düzeyinde
 aramanın ``ffz`` fonksiyonunda ve ``__ffs`` fonksiyonunda yapıldığı görülecektir.
 
-Thread'ler, Fork ve Dosya Betimleyicileri
-------------------------------------------
+Dosya Betimleyici Tablosunu fork İşlemi Sırasında Kopyalanması
+--------------------------------------------------------------
 
-POSIX sistemlerinde dolayısıyla da Linux çekirdeğinde thread'lerin ayrı dosya betimleyici
-tabloları yoktur. Dosya betimleyicileri ve dosya betimleyici tablosu prosese özgüdür. Bir thread
-yaratıldığında thread'e ilişkin ``task_struct`` nesnesinin ``fs`` ve ``files`` gibi elemanları,
-onu yaratan thread'in ``task_struct`` nesnesinden sığ kopyalamayla kopyalanmaktadır. Dolayısıyla
-aslında prosesin bütün thread'leri açık dosyalara ilişkin aynı veri yapısı nesnelerini
-kullanmaktadır:
+POSIX sistemlerinde dolayısıyla da Linux çekirdeğinde thread'lerin ayrı dosya betimleyici tabloları yoktur.
+Dosya betimleyicileri ve dosya betimleyici tablosu prosese özgüdür. Yani siz bir prosesin hangi thread'inde
+dosya açmış olursanız olun bu dosya bilgisi prosese özgüdür, siz prosesin herhangi bir thread'inde bu dosyaya
+erişebilirsiniz. Bir thread yaratıldığında thread'e ilişkin ``task_struct`` nesnesinin ``fs`` ve ``files`` gibi
+elemanları onu yaratan thread'in ``task_struct`` nesnesinden sığ kopyalama yoluyla (yani gösterici elemanları söz
+konusu olduğunda yalnızca göstericilerin içerisindeki adreslerin kopyalanmasıyla) kopyalanmaktadır. Dolayısıyla 
+aslında prosesin bütün thread'leri açık dosyalara ilişkin aynı veri yapısı nesnelerini kullanmaktadır. ``task_struct`` 
+yapısının ilgili kısmına dikkat ediniz:
 
 .. code-block:: c
 
@@ -1600,21 +1602,91 @@ kullanmaktadır:
        /* ... */
    };
 
-Yeni ``task_struct`` nesnesi yaratılıp diğer ``task_struct`` nesnesinden sığ kopyalama
-yapıldığında ``files`` göstericisinin de aslında aynı ``files_struct`` nesnesini göstereceğine
-dikkat ediniz. Yani toplamda aslında proses için tek bir ``files_struct`` nesnesi bulunmaktadır.
+Burada yeni ``task_struct`` nesnesi yaratılıp diğer ``task_struct`` nesnesinden yeni yaratılan ``task_struct``
+nesnesine sığ kopyalama yapıldığında ``files`` göstericisinin de aslında aynı ``files_struct`` nesnesini
+göstereceğine dikkat ediniz. Yani toplamda aslında proses için tek bir ``files_struct`` nesnesi bulunmaktadır.
+Dolayısıyla bir prosesin tüm thread'leri aslında aynı bilgilere erişip onları kullanmaktadır.
 
-``fork`` işlemi sırasında ise tamamen alt proses için yeni bir ``files_struct`` nesnesi ve yeni
-bir dosya betimleyici tablosu (fd dizisi) yaratılmaktadır. Ancak üst prosesin dosya betimleyici
-tablosundaki adresler yeni yaratılan alt prosesteki dosya betimleyici tablosuna kopyalanmaktadır.
-Böylece üst prosesin dosya betimleyici tablosunun aynı numaralı betimleyicileriyle alt prosesin
-dosya betimleyici tablosunun aynı numaralı betimleyicileri aynı dosya nesnelerini gösteriyor
-durumda olur. Tabii artık üst ve alt proseslerin yeni açacağı dosyalar onlara özgü olacaktır.
-Paylaşılan dosya nesneleri yalnızca ``fork`` öncesinde açılmış olanlardır.
+Anımsanacağı gibi ``fork`` fonksiyonuyla alt proses yaratılırken alt proses üst prosesle aynı açık dosyaları
+görebiliyordu. Peki bu güncel çekirdeklerde nasıl sağlanmaktadır? Örneğin üst proses ``open`` fonksiyonuyla
+bir dosya açmış olsun. Açılan dosyanın da dosya betimleyicisi 3 olsun. Şimdi bu proses ``fork`` yaptığında
+bu prosesin tamamen özdeş bir kopyası oluşturulacaktır. Ancak alt proses 3 numaralı betimleyiciyi de ``fork``
+işleminden sonra kullanabilecektir. ``fork`` işleminden sonra üst prosesin 3 numaralı betimleyicisi ile alt
+prosesin 3 numaralı betimleyicisi aynı dosya nesnesini gösterecektir. Özetle ``fork`` işlemi sırasında üst
+prosesin açmış olduğu dosyalar da adeta alt prosese aktarılmış gibi olmaktadır. Peki bu çekirdek veri
+yapısında nasıl sağlanmaktadır? Anımsanacağı gibi ``fork`` işlemi sonrasında artık prosesler birbirinden
+bağımsızdır. Yani ``fork`` işleminden sonra artık birinin açtığı dosya diğeri tarafından görülemez. İşte
+``fork`` işlemi sırasında tamamen alt proses için yeni bir ``files_struct`` nesnesi ve yeni bir dosya
+betimleyici tablosu (``fd`` dizisi) yaratılmaktadır. Ancak üst prosesin dosya betimleyici tablosundaki
+adresler yeni yaratılan alt prosesteki dosya betimleyici tablosuna kopyalanmaktadır. Böylece üst prosesin
+dosya betimleyici tablosunun aynı numaralı betimleyicileriyle alt prosesin dosya betimleyici tablosunun aynı
+numaralı betimleyicileri aynı dosya nesnelerini gösteriyor durumda olur. Tabii artık üst ve alt proseslerin
+yeni açacağı dosyalar onlara özgü olacaktır. Paylaşılan dosya nesneleri yalnızca ``fork`` öncesinde açılmış
+olanlardır. fork işlemi sırasında yapılan işlemleri aşağıdaki şekille de pekiştirmek istiyoruz:
+
+.. graphviz::
+
+   digraph fork_fd {
+       rankdir=LR;
+       graph [fontname="DejaVu Sans", nodesep=0.6, ranksep=0.9, splines=ortho];
+       node  [shape=box, style="rounded,filled", fontname="DejaVu Sans",
+              margin="0.25,0.15", fontsize=11];
+       edge  [fontname="DejaVu Sans", fontsize=9, color="#444444"];
+
+       /* ── Üst proses yapıları ── */
+       ptask  [label="task_struct\n(üst proses)",
+               fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
+       pfiles [label="files_struct\n(üst — mevcut)",
+               fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
+       pfd    [label="fd tablosu (üst)\nfd[0]  fd[1]  fd[2]",
+               fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
+
+       /* ── Alt proses yapıları (fork sonrası yeni tahsis) ── */
+       ctask  [label="task_struct\n(alt proses)",
+               fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
+       cfiles [label="files_struct\n(alt — yeni tahsis)",
+               fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
+       cfd    [label="fd tablosu (alt)\nfd[0]  fd[1]  fd[2]",
+               fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
+
+       /* ── Paylaşılan dosya nesneleri (kopyalanmaz) ── */
+       file0  [label="struct file\n(dosya nesnesi 0)",
+               fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+       file1  [label="struct file\n(dosya nesnesi 1)",
+               fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+       file2  [label="struct file\n(dosya nesnesi 2)",
+               fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
+
+       /* ── Sütun hizalaması ── */
+       { rank=same; ptask;  ctask;  }
+       { rank=same; pfiles; cfiles; }
+       { rank=same; pfd;    cfd;    }
+       { rank=same; file0;  file1;  file2; }
+
+       /* ── Üst proses bağlantıları ── */
+       ptask  -> pfiles;
+       pfiles -> pfd;
+       pfd    -> file0;
+       pfd    -> file1;
+       pfd    -> file2;
+
+       /* ── Alt proses bağlantıları ── */
+       ctask  -> cfiles [label="yeni tahsis"];
+       cfiles -> cfd    [label="yeni tahsis"];
+       cfd    -> file0  [color="#E24B4A", penwidth=2.0,
+                          label="sığ kopya", fontcolor="#E24B4A"];
+       cfd    -> file1  [color="#E24B4A", penwidth=2.0];
+       cfd    -> file2  [color="#E24B4A", penwidth=2.0];
+
+       /* ── fork() çağrısı ── */
+       ptask -> ctask [label="fork()", style=dashed,
+                        color="#888780", fontcolor="#5F5E5A",
+                        constraint=false];
+   }
 
 
-Dosya Sistemi Temel Nesneleri
-------------------------------
+Dosya Sistemine İlişkin Üç Önemli Yapı: file, inode ve dentry 
+-------------------------------------------------------------
 
 Şimdiye kadar açık dosyalara ilişkin çekirdeğin oluşturduğu veri yapıları hakkında şu bilgileri
 edindik:
@@ -1624,11 +1696,7 @@ edindik:
   erişildiği.
 - En düşük boş betimleyicinin elde edilme biçimi.
 
-Şimdi dosya sisteminin diğer önemli veri yapıları üzerinde duracağız.
-
-
-Dosya Nesnesi, inode Nesnesi ve dentry Nesnesi
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Şimdi dosya sisteminin üç önemli veri yapısı üzerinde duracağız.
 
 Çekirdek açık bir dosya üzerinde read/write gibi işlemleri yaparken dosyanın son okunma tarihi,
 son güncelleme tarihi, dosya uzunluğu gibi bilgileri de güncelleyeceğine göre bu bilgilere nasıl
