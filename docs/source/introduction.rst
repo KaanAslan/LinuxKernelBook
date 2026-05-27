@@ -903,13 +903,13 @@ Dizinlerin açıklamaları aşağıda verilmiştir.
 ``virt``
     Burada çekirdeğin sanallaştırmaya hizmet eden kodları bulundurulmaktadır.
 
-Linux Sistemlerinin Boot Edilmesi
-==================================
+İşletim Sistemlerinin Sistemlerinin Boot Edilmesi
+=================================================
 
-Kursumuzun bu bölümünde Linux sistemlerinin boot edilmesi süreci ele alınacaktır. İşletim sisteminin otomatik olarak
-yüklenerek çalışır hale getirilmesi sürecine *boot* işlemi denilmektedir. (*Boot* terimi İngilizce *askeri bottan
-(çizmeden)* gelmektedir.) Biz bilgisayar sistemine güç verdiğimizde bir süre sonra işletim sisteminin otomatik
-yüklendiğini görmekteyiz. Aslında işletim sisteminin yüklenmesi biraz karmaşık bir süreçle gerçekleşmektedir.
+İşletim sisteminin otomatik olarak yüklenerek çalışır hale getirilmesi sürecine *boot* işlemi denilmektedir. 
+(*Boot* terimi İngilizce *askeri bottan (çizmeden)* gelmektedir.) Biz bilgisayar sistemine güç verdiğimizde bir 
+süre sonra işletim sisteminin otomatik yüklendiğini görmekteyiz. Aslında işletim sisteminin yüklenmesi biraz karmaşık 
+bir süreçle gerçekleşmektedir.
 
 
 Reset Vektörü ve BIOS/Firmware
