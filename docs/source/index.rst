@@ -10,7 +10,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
    ve Gerçekleştirilmesi** kursundaki kurs notları temel alınarak oluşturulmuştur. 
    
    Kitaptaki içerik belli bir kaynak referans alınarak oluşturulmamıştır ve içeriğin oluşturulmasında yapay zeka araçlarından 
-   faydalanılmamıştır. Kurs konuları Kaan ASLAN'ın kendi deneyimlerinden ve bilgi birikiminden damıtılarak oluşturulmuştur.
+   faydalanılmamıştır. Kurs konuları **Kaan ASLAN**'ın kendi deneyimlerinden ve bilgi birikiminden damıtılarak oluşturulmuştur.
    Bu bakımdan içerik tamamen özgündür. Kitap ile benzer içeriklere sahip kaynaklar *Kaynaklar* bölümünde listelenmiştir.
 
    Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. Dokümanın kurs formatındaki saf metin haline 
@@ -18,7 +18,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
    https://github.com/CSD-1993/KursNotlari
 
-   Notların kontrolü ve düzeltilmesi aşamalarında yardımcı olan **Sebahat Ersoy**'a teşekkür ederiz.
+   Notların içerik kontrolü ve düzeltilmesi aşamalarında yardımcı olan **Sebahat Ersoy**'a teşekkür ederiz.
 
 ----
 
