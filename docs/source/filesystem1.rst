@@ -1691,8 +1691,8 @@ Dosya betimleyici tablosunun kopyalanmasını için şöyle bir şekille de tems
    :align: center
    :width: 70%
    
-Dosya Sistemine İlişkin Üç Önemli Yapı: file, inode ve dentry 
--------------------------------------------------------------
+Dosya Sistemine İlişkin Üç Önemli Yapı: ``file``, ``inode`` ve ``dentry`` 
+-------------------------------------------------------------------------
 
 Şimdiye kadar açık dosyalara ilişkin çekirdeğin oluşturduğu veri yapıları hakkında şu bilgileri
 edindik:
@@ -1700,39 +1700,222 @@ edindik:
 - Açık dosyalara ilişkin ``task_struct`` içerisindeki veri yapıları.
 - Dosya betimleyicilerinin anlamı ve dosya betimleyicisi yoluyla dosya nesnelerine nasıl
   erişildiği.
-- En düşük boş betimleyicinin elde edilme biçimi.
+- En düşük boş betimleyicinin elde edilmesine ilişkin yöntemler.
 
-Şimdi dosya sisteminin üç önemli veri yapısı üzerinde duracağız.
+Şimdi çekirdeğin açık dosyalar üzerinde işlemler yaparken kullandığı üç önemli yapıyı ele alacağız: ``file``, ``inode`` 
+ve ``dentry``.
 
-Çekirdek açık bir dosya üzerinde read/write gibi işlemleri yaparken dosyanın son okunma tarihi,
-son güncelleme tarihi, dosya uzunluğu gibi bilgileri de güncelleyeceğine göre bu bilgilere nasıl
-erişmektedir? Dosyaların uzunluk, erişim hakları, tarih-zaman bilgisi gibi metadata bilgileri
-diskte tutulmaktadır. (Ext dosya sistemlerinde bu bilgilerin diskte tutulduğu yere inode blok
-denilmektedir.) Çekirdek dosya açılırken dosyanın bu metadata bilgilerini diskten okuyarak
-bellekte ``inode`` isimli bir yapı nesnesinin içerisine yerleştirmektedir. Biz dosyaların
-metadata bilgilerinin tutulduğu bu *inode nesnesi* türünden nesnelere *inode nesnesi* de
-diyeceğiz.
 
-Peki bir dosya açıldığında dosyanın dosya sistemindeki yeri çekirdek tarafından nasıl
-saklanmaktadır? Çekirdek her dosya açıldığında o dosyanın dizin girişi bilgilerini (yani dosya
-sisteminde nerede olduğu bilgisini ve bazı diğer bilgileri) ismine *dentry* denilen bir yapı
-nesnesine yerleştirmektedir.
+``file`` Yapısı
+~~~~~~~~~~~~~~~
 
-Dosya sistemi nesnelerini şöyle özetleyebiliriz:
+Çekirdeğin açılmış olan dosyalara ilişkin bilgileri dosya nesnesi dediğimiz ``file`` türünden bir yapı nesnesi 
+içerisinde tuttuğunu zaten daha önce söylemiştik. Burada biraz daha ayrıntılara girecğiz.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 70
+Dosya nesnesini temsil eden ``file`` yapısı güncel çekirdeklerde``include/linux/fs.h`` dosyasında aşağıdaki gibi bildirilmiştir:
 
-   * - Nesne
-     - Açıklama
-   * - **Dosya Nesnesi** (``struct file``)
-     - Açılmış dosyalar üzerinde işlem yapmak için gereken tüm bilgilerin tutulduğu nesne.
-   * - **inode Nesnesi** (``struct inode``)
-     - Dosyanın diskteki metadata bilgilerini tutan nesne.
-   * - **dentry Nesnesi** (``struct dentry``)
-     - Dosyanın dosya sistemi üzerindeki yerini ve buna ilişkin bazı bilgileri tutan nesne.
+.. code-block:: c
 
+   struct file {
+       spinlock_t                      f_lock;
+       fmode_t                         f_mode;
+       const struct file_operations    *f_op;
+       struct address_space            *f_mapping;
+       void                            *private_data;
+       struct inode                    *f_inode;
+       unsigned int                    f_flags;
+       unsigned int                    f_iocb_flags;
+       const struct cred               *f_cred;
+       struct fown_struct              *f_owner;
+       /* --- cacheline 1 boundary (64 bytes) --- */
+       struct path                     f_path;
+       union {
+           /* regular files (with FMODE_ATOMIC_POS) and directories */
+           struct mutex                f_pos_lock;
+           /* pipes */
+           u64                         f_pipe;
+       };
+       loff_t                          f_pos;
+   #ifdef CONFIG_SECURITY
+       void                            *f_security;
+   #endif
+       /* --- cacheline 2 boundary (128 bytes) --- */
+       errseq_t                        f_wb_err;
+       errseq_t                        f_sb_err;
+   #ifdef CONFIG_EPOLL
+       struct hlist_head               *f_ep;
+   #endif
+       union {
+           struct callback_head        f_task_work;
+           struct llist_node           f_llist;
+           struct file_ra_state        f_ra;
+           freeptr_t                   f_freeptr;
+       };
+       file_ref_t                      f_ref;
+       /* --- cacheline 3 boundary (192 bytes) --- */
+   } __randomize_layout
+   __attribute__((aligned(4)));    /* lest something weird decides that 2 is OK */
+
+Yapı bildirimindeki bazı elemanların bazı konfigürasyon seçenekleri seçildiğinde yapıya dahil edildiğine dikkat
+ediniz. Eskiden ``file`` yapısı daha az elemana sahipti. Zaman içerisinde bu yapıda değişiklikler ve eklemeler
+yapılmış, yapı bugünkü durumuna gelmiştir. Örneğin çekirdeğin "öğrenci ödevi gibi olan" 0.01 versiyonunda bu
+yapı şöyleydi:
+
+.. code-block:: c
+
+   struct file {
+       unsigned short f_mode;
+       unsigned short f_flags;
+       unsigned short f_count;
+       struct m_inode * f_inode;
+       off_t f_pos;
+   };
+
+Çekirdeğin 2.2'li versiyonlarında yapı şöyle bildirilmişti:
+
+.. code-block:: c
+
+   struct file {
+       struct file             *f_next, **f_pprev;
+       struct dentry           *f_dentry;
+       struct file_operations  *f_op;
+       mode_t                  f_mode;
+       loff_t                  f_pos;
+       unsigned int            f_count, f_flags;
+       unsigned long           f_reada, f_ramax, f_raend, f_ralen, f_rawin;
+       struct fown_struct      f_owner;
+       unsigned int            f_uid, f_gid;
+       int                     f_error;
+
+       unsigned long           f_version;
+
+       /* needed for tty driver, and maybe others */
+       void                    *private_data;
+   };
+
+Çekirdeğin 2.4 versiyonunda ``file`` yapısı şöyleydi:
+
+.. code-block:: c
+
+   struct file {
+       struct list_head        f_list;
+       struct dentry           *f_dentry;
+       struct vfsmount         *f_vfsmnt;
+       struct file_operations  *f_op;
+       atomic_t                f_count;
+       unsigned int            f_flags;
+       mode_t                  f_mode;
+       loff_t                  f_pos;
+       unsigned long           f_reada, f_ramax, f_raend, f_ralen, f_rawin;
+       struct fown_struct      f_owner;
+       unsigned int            f_uid, f_gid;
+       int                     f_error;
+
+       size_t                  f_maxcount;
+       unsigned long           f_version;
+
+       /* needed for tty driver, and maybe others */
+       void                    *private_data;
+
+       /* preallocated helper kiobuf to speedup O_DIRECT */
+       struct kiobuf           *f_iobuf;
+       long                    f_iobuf_lock;
+   };
+
+Çekirdeğin 2.6 versiyonundaki ``file`` yapısı güncel versiyonlara daha fazla benzemektedir:
+
+.. code-block:: c
+
+   struct file {
+       /*
+        * fu_list becomes invalid after file_free is called and queued via
+        * fu_rcuhead for RCU freeing
+        */
+       union {
+           struct list_head            fu_list;
+           struct rcu_head             fu_rcuhead;
+       } f_u;
+       struct path                     f_path;
+   #define f_dentry                    f_path.dentry
+   #define f_vfsmnt                    f_path.mnt
+       const struct file_operations    *f_op;
+       spinlock_t                      f_lock;  /* f_ep_links, f_flags, no IRQ */
+   #ifdef CONFIG_SMP
+       int                             f_sb_list_cpu;
+   #endif
+       atomic_long_t                   f_count;
+       unsigned int                    f_flags;
+       fmode_t                         f_mode;
+       loff_t                          f_pos;
+       struct fown_struct              f_owner;
+       const struct cred               *f_cred;
+       struct file_ra_state            f_ra;
+
+       u64                             f_version;
+   #ifdef CONFIG_SECURITY
+       void                            *f_security;
+   #endif
+       /* needed for tty driver, and maybe others */
+       void                            *private_data;
+
+   #ifdef CONFIG_EPOLL
+       /* Used by fs/eventpoll.c to link all the hooks to this file */
+       struct list_head                f_ep_links;
+   #endif /* #ifdef CONFIG_EPOLL */
+       struct address_space            *f_mapping;
+   #ifdef CONFIG_DEBUG_WRITECOUNT
+       unsigned long f_mnt_write_state;
+   #endif
+   };
+
+``file`` yapısının tüm elemanlarının ``f_`` öneki ile başlatılarak isimlendirildiğine de dikkat ediniz.
+
+``file`` Yapısının elemanları
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Biz yukarıda çekirdeğin çeşitli versiyonlarına ilişkin ``file`` yapılarını verdik. Peki bu yapının elemanları
+nelerdir ve ne amaçla bu yapıda yer almaktadır? Aslında ``file`` yapısında çekirdeğin açık bir dosya üzerinde işlem
+yapabilmesi için gerekli olan bilgiler bulunmaktadır. ``file`` yapısındaki elemanlar farklı konulara ilişkin olduğu
+için bu noktada bu elemanların hepsini tek tek açıklamayacağız. Ancak ``file`` yapısının dosya işlemleri için
+kritik önemdeki bazı elemanları hakkında açıklamalar yapmak istiyoruz.
+
+Açık bir dosyanın ``open`` POSIX fonksiyonunda (yani ``sys_open`` sistem fonksiyonunda) kullanılan açış
+bayrakları (``O_`` ile başlayan bayrakları kastediyoruz) ``file`` yapısının ``f_flags`` elemanında
+saklanmaktadır. Örneğin ``open`` fonksiyonu ile dosya şöyle açılmış olsun:
+
+.. code-block:: c
+
+   fd = open("test.txt", O_RDWR|O_APPEND);
+
+Buradaki ``O_RDWR`` ve ``O_APPEND`` bayrakları ``file`` yapısının ``f_flags`` elemanında saklanmaktadır.
+Bu f_flags elemanının daha etkin işleme sokulabilecek biçimde yeniden düzenlenmiş hali yapının f_mode elemanında 
+saklanmaktadır. Bu ``f_mode`` elemanının ``inode`` yapısındaki ``i_mode`` elemanıyla doğrudan bir ilgisi
+yoktur.) Okuma yazma işlemlerinin *dosya göstericisi (file pointer)* denilen bir offset'ten itibaren yapıldığını
+anımsayınız. İşte dosya göstericisinin konumu da ``file`` yapısının ``f_pos`` elemanında tutulmaktadır. Dosya
+nesnelerini birden fazla betimleyici gösterebilmektedir. Örneğin ``dup`` ve ``dup2`` POSIX fonksiyonları aynı
+dosya nesnesini gösteren farklı bir betimleyicinin oluşturulmasına yol açmaktadır. Benzer biçimde ``fork``
+işlemi sonrasında üst prosesin dosya betimleyici tablosunun betimleyicileri ile alt prosesin dosya betimleyici
+tablosunun aynı numaralı betimleyicileri aynı dosya nesnesini gösteriyor durumda olur. Bu durumda ``close``
+fonksiyonu ile dosya kapatıldığında dosya nesnesi hemen silinmez. Çünkü onu kullanan başka betimleyiciler de
+bulunuyor olabilir. İşte ``file`` yapısının içerisindeki ``f_count`` elemanı o dosya nesnesinin kaç
+betimleyici tarafından gösterildiği bilgisini tutmaktadır. Her betimleyici ``close`` fonksiyonu ile
+kapatıldığında bu sayaç 1 eksiltilir. Sayaç 0'a düştüğünde dosya nesnesi silinir. İşte bu referans sayacı
+``file`` yapısının içerisinde uzunca bir süredir ``f_count`` ismiyle bulunuyordu. Ancak güncel 6'lı
+çekirdeklerde artık bu elemanın ismi ``f_ref`` biçimindedir. Aşağıda ``file`` yapısının gördüğümüz önemli
+elemanlarının listesini veriyoruz:
+
+.. code-block:: c
+
+   struct file {
+       /* ... */
+
+       fmode_t         f_mode;
+       unsigned int    f_flags;
+       loff_t          f_pos;
+       atomic_long_t   f_count;    /* güncel çekirdeklerde: file_ref_t f_ref */
+
+       /* ... */
+   };
 
 Nesneler Arası İlişki
 ~~~~~~~~~~~~~~~~~~~~~~

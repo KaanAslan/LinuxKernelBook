@@ -134,8 +134,8 @@ toolchains)* kullanılması gerekmektedir. Linux çekirdeğinin derlenmesinde ya
 değil pek çok yardımcı programlara da gereksinim duyulmaktadır.
 
 
-Çekirdek Kaynak Kodlarının İndirilmesi
----------------------------------------
+Çekirdek Kaynak Kodlarının İndirilmesi ve Açılması
+--------------------------------------------------
 
 Çekirdeğin derlenmesi için öncelikle çekirdek kaynak kodlarının derleme yapılacak bilgisayara
 indirilmesi gerekir. Bazı dağıtımlar default durumda çekirdeğin kaynak kodlarını da kurulum sırasında
@@ -405,10 +405,9 @@ sağlayacağız.
 
 
 Çekirdek Derleme Adımları
-==========================
+=========================
 
 Linux'ta çekirdek derlemesi tipik olarak aşağıdaki aşamalardan geçilerek gerçekleştirilmektedir.
-
 
 Adım 1: Gerekli Araçların Kurulması
 -------------------------------------
@@ -699,7 +698,7 @@ Burada aygıt sürücü dosyaları ``/lib/modules/<çekirdek_sürümü>`` dizini
 
 
 Adım 7: Aygıt Ağacı Dosyalarının Derlenmesi
----------------------------------------------
+-------------------------------------------
 
 Eğer gömülü sistemler için derleme yapıyorsanız kaynak kod ağacında
 ``arch/<platform>/boot/dts`` dizini içerisindeki aygıt ağacı kaynak dosyalarını da derlemelisiniz.
