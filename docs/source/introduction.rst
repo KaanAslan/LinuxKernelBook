@@ -456,8 +456,8 @@ Mac OS X / OS X / macOS
     getirilmesiyle oluşturulmuştur. İlk versiyonu 2001 yılında piyasaya sürülmüştür.
 
 
-Mac OS X Türevi Sistemler
-==========================
+Mac OS X (macOS) Türevi Sistemler
+=================================
 
 İşletim sistemlerinin tarihsel gelişimini ele aldığımız önceki bölümde de belirttiğimiz gibi
 Apple firmasının Mac bilgisayarları Mac OS'un 10 versiyonu ile birlikte yeni bir çekirdeğe
