@@ -10,8 +10,8 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
    ve Gerçekleştirilmesi** kursundaki kurs notları temel alınarak oluşturulmuştur. 
    
    Kitaptaki içerik belli bir kaynak referans alınarak oluşturulmamıştır ve içeriğin oluşturulmasında yapay zeka araçlarından 
-   faydalanılmamıştır. Bu bakımdan içerik tamamen özgündür. Kitap ile benzer içeriklere sahip kaynakların listesi *Giriş* 
-   bölümünde listelenmiştir.
+   faydalanılmamıştır. Kurs konuları Kaan ASLAN'ın kendi deneyimlerinden ve bilgi birikiminden damıtılarak oluşturulmuştur.
+   Bu bakımdan içerik tamamen özgündür. Kitap ile benzer içeriklere sahip kaynaklar *Kaynaklar* bölümünde listelenmiştir.
 
    Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. Dokümanın kurs formatındaki saf metin haline 
    aşağıdaki bağlantıdan erişebilirsiniz:
@@ -40,5 +40,6 @@ ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
    kernellinkedlistandhashtable.rst
    processcontrolblock
    filesystem1
+   bibliography
 
    

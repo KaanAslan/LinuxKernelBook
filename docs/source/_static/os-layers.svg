@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="210" viewBox="0 0 600 210" xmlns="http://www.w3.org/2000/svg">
+  <!-- Donanım (en geniş, altta) -->
+  <rect x="0" y="120" width="600" height="60" fill="#FAEEDA" stroke="#854F0B" stroke-width="1.5"/>
+  <text x="300" y="157" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+        font-size="18" font-weight="bold" fill="#633806">Bilgisayar Donanımı</text>
+
+  <!-- İşletim Sistemi (orta) -->
+  <rect x="60" y="60" width="480" height="60" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
+  <text x="300" y="97" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+        font-size="18" font-weight="bold" fill="#085041">İşletim Sistemi</text>
+
+  <!-- Uygulama (en dar, üstte) -->
+  <rect x="150" y="0" width="300" height="60" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+  <text x="300" y="37" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+        font-size="18" font-weight="bold" fill="#3C3489">Uygulama Programları</text>
+</svg>
