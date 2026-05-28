@@ -1708,8 +1708,8 @@ edindik:
 ve ``dentry``.
 
 
-``file`` Yapısı
-~~~~~~~~~~~~~~~
+file Yapısı
+~~~~~~~~~~~
 
 Çekirdeğin açılmış olan dosyalara ilişkin bilgileri dosya nesnesi dediğimiz ``file`` türünden bir yapı nesnesi 
 içerisinde tuttuğunu zaten daha önce söylemiştik. Burada biraz daha ayrıntılara girecğiz.
@@ -1872,7 +1872,7 @@ yapı şöyleydi:
 
 ``file`` yapısının tüm elemanlarının ``f_`` öneki ile başlatılarak isimlendirildiğine de dikkat ediniz.
 
-``file`` Yapısının Elemanları
+file Yapısının Elemanları
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Biz yukarıda çekirdeğin çeşitli versiyonlarına ilişkin ``file`` yapılarını verdik. Peki bu yapının elemanları
@@ -1919,8 +1919,8 @@ elemanlarının listesini veriyoruz:
        /* ... */
    };
 
-``inode`` Yapısı
-~~~~~~~~~~~~~~~~~
+inode Yapısı
+~~~~~~~~~~~~~
 
 Çekirdek açık bir dosya üzerinde read/write gibi işlemleri yaparken bir biçimde dosyanın diskteki bloklarına
 erişeceğine göre ve dosyanın son okunma tarihi, son güncelleme tarihi, dosya uzunluğu gibi bilgileri de
@@ -2365,6 +2365,6 @@ ilişkin bilgiler ileride açıklayacağımız gibi gömme sistemiyle yapıyla i
         void                            *i_private;         /* fs or device private pointer */
     };
 
-``dentry`` Yapısı
+dentry Yapısı
 ~~~~~~~~~~~~~~~~~~
 
