@@ -39,7 +39,7 @@ bilgilerden bazıları şunlardır:
 - Prosesin açmış olduğu dosyalara ilişkin bilgiler
 
 
-``task_struct`` Yapısı
+task_struct Yapısı
 ==================================
 
 Linux çekirdeğinde proses kontrol bloğu ``<include/linux/sched.h>`` dosyası içerisinde bulunan
@@ -175,9 +175,8 @@ nesnesinden kopyalanmaktadır.
 POSIX thread sisteminde thread'ler arasında önemli bir altlık-üstlük ilişkisi yoktur. Yani birkaç özel
 durum dışında bir thread'i hangi thread'in yarattığının önemi yoktur.
 
-
-``task_struct`` Yapısının Dallı Budaklı Tasarımı
-==================================================
+task_struct Yapısının Dallı Budaklı Tasarımı
+=============================================
 
 ``task_struct`` yapısının pek çok gösterici elemanı vardır. Bu gösterici elemanları başka yapıları
 göstermektedir. Hatta o gösterici elemanların gösterdiği yapıların elemanları da başka yapıları
@@ -247,7 +246,7 @@ aşağıdaki gibi bir yapıyı göstermektedir:
 nesnelerini gösteriyor olacaktır.
 
 
-``current`` Makrosu 
+current Makrosu 
 ===================
 Thread'lerin de tıpkı prosesler gibi ``task_struct`` nesnelerine sahip olduğunu belirtmiştik. Peki
 işletim sisteminin çizelgeleyici (scheduler) alt sistemi neleri çizelgelemektedir? İşte çizelgeleyici
@@ -282,7 +281,7 @@ bir bölümde ele alınacaktır.
 Biz kursumuzda *current* için "current göstericisi" ya da "current makrosu" terimlerini kullanacağız.
 
 
-``fork`` ve ``pthread_create`` Çağrı Zincirleri
+fork ve pthread_create Çağrı Zincirleri
 ================================================
 
 Bilindiği gibi UNIX/Linux sistemlerinde kullanıcı modunda yeni bir proses *fork* POSIX fonksiyonu ile,
@@ -325,7 +324,7 @@ Yani bu yaratımda iki thread söz konusudur: Yaratan thread ve yaratılan threa
 zaten ``task_struct`` nesnesi mevcuttur. O halde yaratılan thread için de bir ``task_struct`` nesnesi
 oluşturulup bir biçimde bu yapılar ilişkilendirilecektir.
 
-``task_struct`` Nesneleri Arasındaki İlişkiler
+task_struct Nesneleri Arasındaki Bağ İlişkileri
 ================================================
 
 Şimdi de ``task_struct`` nesneleri arasındaki ilişkilerin bağlı listelerle nasıl oluşturulduğu üzerinde
@@ -551,8 +550,8 @@ bir ``task_struct`` nesnesini de (reparenting işlemi) gösteriyor durumda olabi
 ``tgid`` değerini geri döndürmektedir.
 
 
-Alt Proses Listesi: ``children`` / ``sibling``
-------------------------------------------------
+Alt Proses Listesi: ``children`` ve ``sibling`` Elemanları
+----------------------------------------------------------
 
 Şimdi de bir prosesin alt proseslerinin nasıl bağlı listelerde tutulduğu üzerinde duralım. Örneğin bir
 proses üç kez *fork* yapmış olsun. Bu durumda bu prosesin üç tane alt prosesi olacaktır. Üst prosesleri
@@ -672,7 +671,7 @@ proseslerin ana thread ``task_struct`` nesneleri açık mavi renktedir:
    }
 
 
-Özet: ``task_struct`` İlişkileri
+Özet: task_struct İlişkileri
 ----------------------------------
 
 Yukarıda açıkladığımız konuyu madde madde özetleyelim:
@@ -729,8 +728,8 @@ koşulunun sağlanacağına da dikkat ediniz.
 ``init_task`` prosesindeki ``tasks`` düğümü kök düğüm yapılıp ``tasks`` düğümleri dolaşılırsa tüm
 proseslerin ana thread'lerine ilişkin ``task_struct`` nesneleri elde edilebilir.
 
-task_struct Yapısına İlişkin Bağlı Listeler Üzerinde Gezinme İşlemleri
-======================================================================
+task_struct Yapısına İlişkin Bağlı Listeler Üzerinde Gezinmelere Örnekler
+==========================================================================
 
 Şimdi de görmüş olduğumuz ``task_struct`` yapısına ilişkin bağlı listeler üzerinde gezinme işlemlerine
 örnekler verelim. Bu biçimdeki küçük testler için çekirdeği yeniden derlememize gerek yoktur. Basit bir
@@ -1605,7 +1604,7 @@ aygıt sürücüdeki ioctl kodunu çalıştırmaktadır.
    }
 
 
-Tüm ``task_struct`` Nesnelerini Dolaşma
+Tüm task_struct Nesnelerinin Dolaşılması
 =========================================
 
 Peki sistemdeki bütün ``task_struct`` nesnelerini dolaşabilir miyiz? Bunu yapmanın en pratik yolu
@@ -1667,8 +1666,8 @@ içerisine yerleştirmektedir:
    [ 6022.928090] Process Main Thread PID = 4612, COMM = insmod
 
 
-Alt Proses Listesini Dolaşma
-----------------------------
+Alt Proses Listesininin Dolaşılması
+-----------------------------------
 
 Anımsanacağı gibi prosesin alt proses listesinin kök düğümü ana prosesin ana thread'ine ilişkin
 ``task_struct`` nesnesinin ``children`` elemanında tutuluyordu. ``children``/``sibling`` listesinde
@@ -2467,8 +2466,8 @@ XArray üstün gelir. Güncel çekirdeklerde hem pid aramaları hem de boş pid 
 işlemleri bu XArray gerçekleştirimi ile sağlanmaktadır.
 
 
-Güncel Çekirdek: pid Araması (4.20+)
-------------------------------------
+Güncel Çekirdeklerde pid Araması (4.20+)
+----------------------------------------
 
 Çekirdeğin 4.20 versiyonundan itibaren her pid isim alanı için ayrı bir XArray ağacı oluşturulmaya
 başlanmıştır. Anımsanacağı gibi 2.6'lı versiyonlarda hash tablolarına geçildiğinde tüm pid isim alanları
