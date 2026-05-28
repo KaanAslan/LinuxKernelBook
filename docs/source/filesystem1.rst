@@ -1693,7 +1693,7 @@ Dosya betimleyici tablosunun kopyalanmasını için şöyle bir şekille de tems
    :align: center
    :width: 70%
    
-Dosya Sistemine İlişkin Üç Önemli Yapı: ``file``, ``inode`` ve ``dentry`` 
+Dosya Sistemine İlişkin Üç Önemli Yapı: file, inode ve dentry 
 -------------------------------------------------------------------------
 
 Şimdiye kadar açık dosyalara ilişkin çekirdeğin oluşturduğu veri yapıları hakkında şu bilgileri
@@ -1903,14 +1903,16 @@ bulunuyor olabilir. İşte ``file`` yapısının içerisindeki ``f_count`` elema
 betimleyici tarafından gösterildiği bilgisini tutmaktadır. Her betimleyici ``close`` fonksiyonu ile
 kapatıldığında bu sayaç 1 eksiltilir. Sayaç 0'a düştüğünde dosya nesnesi silinir. İşte bu referans sayacı
 ``file`` yapısının içerisinde uzunca bir süredir ``f_count`` ismiyle bulunuyordu. Ancak güncel 6'lı
-çekirdeklerde artık bu elemanın ismi ``f_ref`` biçimindedir. Aşağıda ``file`` yapısının gördüğümüz önemli
-elemanlarının listesini veriyoruz:
+çekirdeklerde artık bu elemanın ismi ``f_ref`` biçimindedir. Çekirdek ``file`` nesnesi üzerinde işlemlerde
+yapının ``f_lock`` elemanı ile belirtilen spinlock nesnesini kullanmaktadır. Aşağıda ``file`` yapısının gördüğümüz 
+önemli elemanlarının listesini veriyoruz:
 
 .. code-block:: c
 
    struct file {
        /* ... */
 
+       spinlock_t      f_lock;
        fmode_t         f_mode;
        unsigned int    f_flags;
        loff_t          f_pos;
@@ -2054,6 +2056,7 @@ erişim haklarını (rwx) belirtmektedir. Dosyanın byte uzunluğu yapının ``i
 dosyaya yapılan son yazma zamanını ve ``i_ctime_sec``, ``i_ctime_nsec`` ise dosyanın ``inode`` bilgilerinin
 son değiştirilme zamanını belirtmektedir. Yapının ``i_sb`` elemanı dosyanın içinde bulunduğu blok aygıtına
 ilişkin ``super_block`` nesnesinin adresini tutmaktadır. ``super_block`` nesneleri hakkında bilgiler vereceğiz.
+Nesne üzerindeki işlemlerde senkronizasyon sağlamak için yapının ``i_lock`` elemanı kullanılmaktadır. 
 ``inode`` genel bir yapıdır. Dosyanın disk bloklarının yeri doğrudan ``inode`` nesnesinde tutulmaz. Dosya
 sistemine ilişkin nesnelerin içerisinde tutulmaktadır. Aşağıda ``inode`` yapısının önemli elemanlarını bir
 tablo halinde veriyoruz:
@@ -2064,6 +2067,8 @@ tablo halinde veriyoruz:
 
    * - Eleman
      - Açıklama
+   * - ``i_lock``
+     - Nesneye erişimde kullanılan senkronşzasyon nesnesi
    * - ``i_sb->s_dev``
      - Dosyanın yaşadığı aygıtın numarası
    * - ``i_ino``
