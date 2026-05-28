@@ -1231,7 +1231,7 @@ bitmap'ini ``open_fds`` göstericisinin gösterdiği yerde, close-on-exec bayrak
 
 Ancak bu fonksiyon export edilmemiştir. Yani aygıt sürücüler tarafından kullanılamamaktadır. Aslında çekirdekte
 bir dosya betimleyicisinden hareketle dosya nesnesini elde etmek için daha yüksek seviyeli ``fget`` fonksiyonu
-kullanılmaktadır. Bu fonksiyon 2.4 ve 2.6 versiyonlarında aşağıdaki gibi yazılmıştır:
+kullanılmaktadır. Bu fonksiyon 2.2 ve 2.4 versiyonlarında aşağıdaki gibi yazılmıştır:
 
 .. code-block:: c
 
@@ -1245,6 +1245,7 @@ kullanılmaktadır. Bu fonksiyon 2.4 ve 2.6 versiyonlarında aşağıdaki gibi y
        if (file)
            get_file(file);
        read_unlock(&files->file_lock);
+
        return file;
    }
 
@@ -1319,10 +1320,10 @@ erişimi bazı kontrollerle sağlayan ayrı fonksiyonlar ve makrolar da bulundur
 
    #define fcheck(fd)  fcheck_files(current->files, fd)
 
-Yani çekirdek içerisinde ``fcheck`` makrosuyla ``fd`` numaralı betimleyiciye ilişkin dosya nesnesi elde
-edilebilmektedir. Ancak ``fcheck_files`` fonksiyonu da export edilmemiştir. Yine 2.6'lı çekirdeklerde de
-dosya betimleyicisinden hareketle dosya nesnesi içerisindeki sayacı artırarak dosya nesnesini elde eden daha
-yüksek seviyeli ``fget`` isimli bir fonksiyon da bulunmaktadır:
+Yani çekirdek içerisinde fcheck makrosuyla fd numaralı betimleyiciye ilişkin dosya nesnesi elde edilebilmektedir. 
+Ancak ``check_files`` fonksiyonu da export edilmemiştir. 2.6'lı çekirdeklerde de dosya betimleyicisinden hareketle dosya 
+nesnesi içerisindeki sayacı artırarak dosya nesnesini elde eden daha yüksek seviyeli ``fget`` fonksiyon 
+da bulunmaktadır:
 
 .. code-block:: c
 
@@ -1390,7 +1391,7 @@ gibi artık ``fd_set`` yapısı kullanılmamaktadır. Güncel çekirdeklerdeki `
 Görüldüğü gibi artık bit dizileri ``fd_set`` yerine doğrudan ``unsigned long`` türden bir dizi biçiminde
 oluşturulmaktadır. Yine bu versiyonlarda da ``fdx`` numaralı dosya betimleyicisinin gösterdiği yerdeki dosya
 nesnesine ``current->files->fdt->fd[fdx]`` ifadesiyle erişilmektedir. Fakat artık güncel versiyonlarda
-``fcheck`` biçiminde bir makro ve ``fcheck_files`` isimli bir fonksiyon yoktur. Ancak yine güncel versiyonlarda
+``fcheck`` biçiminde bir makro ve ``fcheck_files`` isimli bir fonksiyon yoktur. Ancak yine güncel versiyonlarda da
 dosya betimleyicisi yoluyla dosya nesnesine erişimi referans sayacını artırarak yapan ``fget`` fonksiyonu
 bulunmaktadır:
 
@@ -1417,9 +1418,9 @@ Güncel çekirdeklerde dosya betimleyici tablosundaki ilk boş betimleyicinin bu
 olan bitin bulunması" problemi biçiminde ele alındığını belirtmiştik. Bunun için güncel çekirdeklerde iki düzey
 bitmap kullanılıyordu. Güncel çekirdeklerdeki ``fdtable`` yapısının içerisinde bulunan ``open_fds`` birinci
 düzey bitmap'i, ``full_fds_bits`` ise ikinci düzey bitmap'i belirtmektedir. Tüm dosya betimleyicilerinin dolu
-mu boş mu olduğu ``open_fds`` bitmap'inde tutulmaktadır. ``full_fds_bits`` bitmap'i ise ``open_fds``
+mu boş mu olduğu bilgisi ``open_fds`` bitmap'inde tutulmaktadır. ``full_fds_bits`` bitmap'i ise ``open_fds``
 bitmap'indeki tüm bitleri 1 olan ilk ``unsigned long`` elemanın indeksinin bulunmasında kullanılmaktadır.
-``files_struct`` ve ``fdtable`` yapılarını aşağıda yeniden veriyoruz:
+Güncel çekirdeklerdeki ``files_struct`` ve ``fdtable`` yapılarını aşağıda yeniden veriyoruz:
 
 .. code-block:: c
 
@@ -1453,6 +1454,7 @@ bitmap'indeki tüm bitleri 1 olan ilk ``unsigned long`` elemanın indeksinin bul
        struct rcu_head rcu;
    };
 
+Şimdi de bir dizisi içerisindek,i ilk 0 olan bitin nasıl elde edildiği üzerinde duralım. 
 Uzun süredir bir bit dizisi içerisindeki ilk 0 olan bitin indeksini elde etmek için ``find_next_zero_bit``
 isimli bir çekirdek fonksiyonu kullanılmaktadır. Tabii bu fonksiyon nihayetinde yukarıda da bahsettiğimiz gibi
 işlemciye özgü makine komutlarını kullanmaktadır. Çekirdeğin güncel versiyonlarında ``sys_open`` sistem
@@ -1870,7 +1872,7 @@ yapı şöyleydi:
 
 ``file`` yapısının tüm elemanlarının ``f_`` öneki ile başlatılarak isimlendirildiğine de dikkat ediniz.
 
-``file`` Yapısının elemanları
+``file`` Yapısının Elemanları
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Biz yukarıda çekirdeğin çeşitli versiyonlarına ilişkin ``file`` yapılarını verdik. Peki bu yapının elemanları
@@ -1888,8 +1890,8 @@ saklanmaktadır. Örneğin ``open`` fonksiyonu ile dosya şöyle açılmış ols
    fd = open("test.txt", O_RDWR|O_APPEND);
 
 Buradaki ``O_RDWR`` ve ``O_APPEND`` bayrakları ``file`` yapısının ``f_flags`` elemanında saklanmaktadır.
-Bu f_flags elemanının daha etkin işleme sokulabilecek biçimde yeniden düzenlenmiş hali yapının f_mode elemanında 
-saklanmaktadır. Bu ``f_mode`` elemanının ``inode`` yapısındaki ``i_mode`` elemanıyla doğrudan bir ilgisi
+Bu ``f_flags``elemanının daha etkin işleme sokulabilecek biçimde yeniden düzenlenmiş hali yapının ``f_mode`` 
+elemanında saklanmaktadır. (Bu ``f_mode`` elemanının ``inode`` yapısındaki ``i_mode`` elemanıyla doğrudan bir ilgisi
 yoktur.) Okuma yazma işlemlerinin *dosya göstericisi (file pointer)* denilen bir offset'ten itibaren yapıldığını
 anımsayınız. İşte dosya göstericisinin konumu da ``file`` yapısının ``f_pos`` elemanında tutulmaktadır. Dosya
 nesnelerini birden fazla betimleyici gösterebilmektedir. Örneğin ``dup`` ve ``dup2`` POSIX fonksiyonları aynı
@@ -2046,8 +2048,7 @@ Güncel çekirdeklerde ``inode`` yapısı *include/linux/fs.h* dosyası içerisi
     } __randomize_layout;
 
 Yapının pek çok elemanı olduğunu görüyorsunuz. Biz burada yalnızca yapının bazı elemanlarını
-açıklayacağız.
-Yapının ``i_uid`` ve ``i_gid`` elemanları dosyanın kullanıcı ve grup id'lerini, ``i_mode`` elemanı dosyanın
+açıklayacağız. Yapının ``i_uid`` ve ``i_gid`` elemanları dosyanın kullanıcı ve grup id'lerini, ``i_mode`` elemanı dosyanın
 erişim haklarını (rwx) belirtmektedir. Dosyanın byte uzunluğu yapının ``i_size`` elemanında tutulmaktadır.
 ``i_atime_sec``, ``i_atime_nsec`` dosyadan yapılan son okuma zamanını, ``i_mtime_sec``, ``i_mtime_nsec``
 dosyaya yapılan son yazma zamanını ve ``i_ctime_sec``, ``i_ctime_nsec`` ise dosyanın ``inode`` bilgilerinin
