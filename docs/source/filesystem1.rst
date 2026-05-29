@@ -1,8 +1,8 @@
 .. _dosya-sistemi-1:
 
-===========================================
-Linux Çekirdeğinde Dosya Sistemi - I. Bölüm
-===========================================
+=========================
+Dosya Sistemi - I. Bölüm
+=========================
 
 Bu bölümde dikkatimizi dosya sistemine illişkin çekirdek veri yapıları üzerine yönelteceğiz. Bilindiği gibi 
 UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilmektedir. Biz bu birinci bölümde belli bir derinliğe 
@@ -740,18 +740,22 @@ tutmaktadır. Buradaki ``path`` yapısı da şöyle bildirilmiştir:
        struct dentry *dentry;
    } __randomize_layout;
 
-``vfsmount`` ve ``dentry`` yapıları ilerleyen bölümlerde ele alınacaktır. Eskiden bu yapı biraz daha küçüktü.
-Örneğin çekirdeğin 2.2'li versiyonlarında şöyleydi:
+``vfsmount`` ve ``dentry`` yapıları ilerleyen bölümlerde ele alınacaktır. 
+
+Çekirdeğin 2.6'lı versiyonlarında ``fs_struct`` yapısı şöyleydi:
 
 .. code-block:: c
 
    struct fs_struct {
-       atomic_t count;
+       int users;
+       spinlock_t lock;
+       seqcount_t seq;
        int umask;
-       struct dentry * root, * pwd;
+       int in_exec;
+       struct path root, pwd;
    };
 
-Çekirdeğin 2.4'te şu hale getirildi:
+Çekirdeğin 2.4'lü versiyonlarında şöyleydi:
 
 .. code-block:: c
 
@@ -763,17 +767,15 @@ tutmaktadır. Buradaki ``path`` yapısı da şöyle bildirilmiştir:
        struct vfsmount * rootmnt, * pwdmnt, * altrootmnt;
    };
 
-2.6'da ise şu hale getirildi:
+
+2.2'li versiyonlarında da şöyleydi:
 
 .. code-block:: c
 
    struct fs_struct {
-       int users;
-       spinlock_t lock;
-       seqcount_t seq;
+       atomic_t count;
        int umask;
-       int in_exec;
-       struct path root, pwd;
+       struct dentry * root, * pwd;
    };
 
 Çekirdeğin öğrenci ödevi gibi olan 0.01 versiyonunda bu yapı yoktu. Bu yapıdaki bilgiler doğrudan
@@ -825,6 +827,19 @@ yapısı da zaman içerisinde değişikliklere uğratılmıştır. Güncel çeki
        unsigned long full_fds_bits_init[1];
        struct file __rcu * fd_array[NR_OPEN_DEFAULT];
    };
+
+Buradaki ``fdtable`` yapısı da şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct fdtable {
+        unsigned int max_fds;
+        struct file __rcu **fd;      /* current fd array */
+        unsigned long *close_on_exec;
+        unsigned long *open_fds;
+        unsigned long *full_fds_bits;
+        struct rcu_head rcu;
+    };
 
 2.6'lı çekirdeklerde bu yapı şöyleydi:
 
@@ -897,8 +912,8 @@ yapısı da zaman içerisinde değişikliklere uğratılmıştır. Güncel çeki
        /* ... */
    };
 
-Dosya Nesnesi (file Yapısı)
-----------------------------
+Dosya Nesnesi ve Dosya Betimleyici Tablosu
+------------------------------------------
 
 Linux'ta ne zaman ``open`` POSIX fonksiyonuyla bir dosya açılsa ``sys_open`` sistem fonksiyonu
 açılan dosya için ``file`` isimli (``struct file`` türünden) bir yapı nesnesini tahsis edip
@@ -914,11 +929,12 @@ gibi bir dosya açmış olalım:
 
    fd = open(...);
 
-``sys_open`` sistem fonksiyonu açılmak istenen dosyanın diskteki yerini ve metadata bilgilerini bulur. O bilgilerden
-hareketle bir dosya nesnesi (file object) oluşturur. O dosya nesnesinin adresini de izleyen paragrafta açıklayacağımız
-gibi ``files_struct`` nesnesinin içerisine yerleştirir. Böylece ``sys_read``, ``sys_write``, ``sys_lseek``,
-``sys_close`` gibi sistem fonksiyonları ``task_struct`` nesnesinden hareketle bu dosya nesnesine erişebilmektedir.
-Güncel çekirdeklerde ``file`` yapısı ``include/linux/fs.h`` dosyasının içerisinde şöyle bildirilmiştir:
+``sys_open`` sistem fonksiyonu açılmak istenen dosyanın diskteki yerini ve metadata bilgilerini bulur O bilgilerden 
+hareketle bir dosya nesnesi (``file`` yapısı türünden bir nesne) oluşturur o dosya nesnesinin adresini de izleyen paragrafta 
+açıklayacağımız gibi *dosya betimleyici tablosu (file desciptor table)* denilen bir tablonun içerisine yerleştirir. Böylece 
+``sys_read``, ``sys_write``, ``sys_lseek``, `sys_close`` gibi sistem fonksiyonları ``task_struct`` nesnesinden hareketle bu 
+dosya nesnesine erişebilmektedir. Güncel çekirdeklerde ``file`` yapısı ``include/linux/fs.h`` dosyasının içerisinde şöyle 
+bildirilmiştir:
 
 .. code-block:: c
 
@@ -926,7 +942,7 @@ Güncel çekirdeklerde ``file`` yapısı ``include/linux/fs.h`` dosyasının iç
        spinlock_t                   f_lock;
        fmode_t                      f_mode;
        const struct file_operations *f_op;
-       struct address_space        *f_mapping;
+    struct address_space         *f_mapping;
        void                        *private_data;
        struct inode                *f_inode;
        unsigned int                 f_flags;
@@ -961,9 +977,37 @@ Güncel çekirdeklerde ``file`` yapısı ``include/linux/fs.h`` dosyasının iç
    __attribute__((aligned(4)));
 
 Eskiden bu yapının içeriği daha küçüktü. Zaman içerisinde bu yapıda da değişilikler ve eklemeler yapılmıştır.
+Biz bu ``file`` yapısını izleyen paragraflarda yeniden ele alacağız. 
 
-Dosya Betimleyici Tablosu (File Descriptor Table)
--------------------------------------------------
+UNIX/Linux sistemlerinde bir dosya açıldığında ``open`` POSIX fonksiyonunun açık dosyaya erişmekte kullanılan ve ismine 
+*dosya betimleyicisi (file descriptor)* denilen int türden bir handle değeri ile geri döndüğünü anımsayınız. İşte dosya 
+betimleyicileri aslında dosya betimleyici tablosunda bir indeks belirtmektedir. Dosya betimleyici tablosu dosya nesnelerinin
+(yani ``file`` yapısı türünden nesnelerin) adreslerini tutan bir gösterici dizisidir. Bu tabloyu şöyle temsil edebiliriz:
+
+.. image:: /_static/fd-table.svg
+   :alt: Dosya Betimleyici Tablosu
+   :align: center
+   :width: 70%
+   
+Güncel çekirdeklerde dosya betimleyici tablosuna ``task_struct`` nesnesinden hareketle birkaç hamlede erişilmektedir:
+
+.. image:: /_static/access-to-fdtable.svg
+   :alt: Dosya Betimleyici Tablosuna Erişim
+   :align: center
+   :width: 70%
+
+Dosya betimleyici tablosunun prosese özgü olduğuna dikkat ediniz. Bir proseste açılmış olan dosyaya ilişkin dosya
+nesnesinin adresi o prosesteki dosya betimleyici tablosuna yazılmaktadır. Dosya betimleyicileri sistem genelinde
+bir değer belirtmemektedir, dosya betimleyici değerleri yalnızca ilgili proses için anlamlıdır. Örneğin 12 numaralı
+betimleyici bir proseste bir dosyayı belirtirken diğer bir proseste başka bir dosyayı belirtiyor olabilir.
+Dolayısıyla biz bir proseste bir dosya açıp elde ettiğimiz dosya betimleyicisini başka bir prosese prosesler arası
+haberleşme yöntemleriyle iletsek o proseste o betimleyicinin hiçbir anlamı olmaz. Ancak anımsanacağı gibi özel bir
+durum olarak üst proses ``fork`` işlemi yaptığında üst prosesin dosya betimleyici tablosu alt prosese *sığ (shallow)*
+kopyalanmaktadır. Böylece üst proses ile alt proses aynı dosya üzerinde işlem yapabilmektedir. (Linux çekirdeklerinde 
+trace işlemleri için ``sys_pidfd_getfd`` isimli bir sistem fonksiyonu bulundurulmuştur. Bu sistem fonksiyonu başka bir 
+prosesin dosya betimleyici tablosunda betimleyici tahsis etmektedir. Ayrıca çekirdekte başka bir prosesten açmış olduğu 
+dosyaya ilişkin  bir betimleyicinin elde edilmesini sağlayan ``sys_pidfd_open`` isimli bir sistem fonksiyonu da 
+bulunmaktadır.)
 
 Şimdi ``sys_open`` sistem fonksiyonuyla bir dosya açıldığında dosya betimleyicisinin (file descriptor) nasıl elde
 edildiğini açıklayalım. Güncel çekirdeklerde bu sürece ilişkin veri yapısı biraz ayrıntılıdır. Biz bu ayrıntılardan
@@ -993,72 +1037,29 @@ dizisi file nesnelerinin adreslerini tutan bir gösterici dizisidir. Bu versiyon
 İzleyen paragraflarda da anlayacağınız üzere bu ilkel versiyonda bir proses en fazla 20 dosyayı açık durumda
 tutabiliyordu. UNIX/Linux dünyasında dosya nesnelerinin adreslerini tutan bu gösterici dizilerine *dosya betimleyici
 tablosu (file descriptor table)* denilmektedir. Yukarıda da belirttiğimiz gibi dosya betimleyici tablosu dosya
-nesnelerinin adreslerini tutan bir gösterici dizisi biçimindedir. Bunu 0.01 çekirdeği için şöyle bir şekille
-gösterebiliriz:
+nesnelerinin adreslerini tutan bir gösterici dizisi biçimindedir. Bir kez daha dosya betimleyici tablosunu temsili 
+biçimde gösteriyoruz:
 
-.. graphviz::
+.. image:: /_static/fd-table.svg
+   :alt: Dosya Betimleyici Tablosu
+   :align: center
+   :width: 70%
 
-   digraph fd_table {
-       rankdir=LR;
-       node [fontname="DejaVu Sans"];
-
-       table [
-           shape=none,
-           label=<
-           <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6">
-             <TR><TD BGCOLOR="#D6E8FA"><B>İndeks</B></TD><TD BGCOLOR="#D6E8FA"><B>Gösterici</B></TD></TR>
-             <TR><TD>0</TD><TD PORT="f0">●</TD></TR>
-             <TR><TD>1</TD><TD PORT="f1">●</TD></TR>
-             <TR><TD>2</TD><TD PORT="f2">●</TD></TR>
-             <TR><TD>3</TD><TD PORT="f3">●</TD></TR>
-             <TR><TD>...</TD><TD>...</TD></TR>
-             <TR><TD>18</TD><TD>(boş)</TD></TR>
-             <TR><TD>19</TD><TD>(boş)</TD></TR>
-           </TABLE>>
-       ];
-
-       fo0 [label="Dosya Nesnesi\n(fd=0)", shape=box, style="rounded,filled", fillcolor="#D5F5D5"];
-       fo1 [label="Dosya Nesnesi\n(fd=1)", shape=box, style="rounded,filled", fillcolor="#D5F5D5"];
-       fo2 [label="Dosya Nesnesi\n(fd=2)", shape=box, style="rounded,filled", fillcolor="#D5F5D5"];
-       fo3 [label="Dosya Nesnesi\n(fd=3)", shape=box, style="rounded,filled", fillcolor="#D5F5D5"];
-
-       table:f0 -> fo0;
-       table:f1 -> fo1;
-       table:f2 -> fo2;
-       table:f3 -> fo3;
-   }
-
-Buradaki sayılar dizinin indekslerini belirtmektedir. Tabii zamanla dosyalar kapanınca bu dizinin elemanları boşa
-düşecektir. Boş elemanlara ``NULL`` adres yerleştirilmektedir. İşte ``open`` POSIX fonksiyonunun (yani ``sys_open``
-sistem fonksiyonunun) verdiği *dosya betimleyicisi (file descriptor)* aslında dosya betimleyici tablosu dizisinde
-bir indeks belirtmektedir. ``open`` POSIX fonksiyonunun (dolayısıyla ``sys_open`` sistem fonksiyonunun) dosya
-betimleyici tablosundaki en düşük boş indeksi vereceği POSIX standartlarında garanti edilmiştir. Dosya betimleyici 
+Buradaki sayılar dizinin indekslerini belirtmektedir. Tabii zamanla dosyalar kapanınca bu dizinin elemanlarının da 
+boşa düşeceğine dikkat ediniz. Boş elemanlara NULL adres yerleştirilmektedir. İşte ``open`` POSIX fonksiyonunun 
+(yani ``sys_open`` sistem fonksiyonunun) verdiği *dosya betimleyicisi (file descriptor)* aslında dosya betimleyici 
+tablosu dizisinde bir indeks belirtmektedir. ``open`` POSIX fonksiyonunun (dolayısıyla ``sys_open`` sistem fonksiyonunun) 
+dosya betimleyici tablosundaki en düşük boş indeksi vereceği POSIX standartlarında garanti edilmiştir. Dosya betimleyici 
 tablosunun (yani ``struct file *``) dizisinin uzunluğunun "aynı anda açık tutulabilecek" dosya sayısını
 da belirttiğine dikkat ediniz.
 
-Dosya betimleyici tablosunun prosese özgü olduğuna dikkat ediniz. Bir proseste açılmış olan dosyaya ilişkin dosya
-nesnesinin adresi o prosesteki dosya betimleyici tablosuna yazılmaktadır. Dosya betimleyicileri sistem genelinde
-bir değer belirtmemektedir, dosya betimleyici değerleri yalnızca ilgili proses için anlamlıdır. Örneğin 12 numaralı
-betimleyici bir proseste bir dosyayı belirtirken diğer bir proseste başka bir dosyayı belirtiyor olabilir.
-Dolayısıyla biz bir proseste bir dosya açıp elde ettiğimiz dosya betimleyicisini başka bir prosese prosesler arası
-haberleşme yöntemleriyle iletsek o proseste o betimleyicinin hiçbir anlamı olmaz. Ancak anımsanacağı gibi özel bir
-durum olarak üst proses ``fork`` işlemi yaptığında üst prosesin dosya betimleyici tablosu alt prosese *sığ (shallow)*
-kopyalanmaktadır. Böylece üst proses ile alt proses aynı dosya üzerinde işlem yapabilmektedir. (Linux çekirdeklerinde 
-trace işlemleri için ``sys_pidfd_getfd`` isimli bir sistem fonksiyonu bulundurulmuştur. Bu sistem fonksiyonu başka bir 
-prosesin dosya betimleyici tablosunda betimleyici tahsis etmektedir. Ayrıca çekirdekte başka bir prosesten açmış olduğu 
-dosyaya ilişkin  bir betimleyicinin elde edilmesini sağlayan ``sys_pidfd_open`` isimli bir sistem fonksiyonu da 
-bulunmaktadır.)
-
 Yukarıdaki 0.01 versiyonunda konuyla ilgili ``unsigned long`` türden ``close_on_exec`` isimli bir elemanın da
-bulunduğunu görüyorsunuz. Bu elemanın her biti bir betimleyicinin "close-on-exec" durumunu belirtmektedir. Söz
+bulunduğunu görüyorsunuz. Bu elemanın her biti bir betimleyicinin *close-on-exec* durumunu belirtmektedir. Söz
 konusu bit 1 ise ilgili betimleyici ``exec`` işlemleri sırasında kapatılır, 0 ise kapatılmaz. POSIX standartlarında
 bir dosya açıldığında close-on-exec bayrağının varsayılan durumda 0 olduğu belirtilmiştir. (Yani varsayılan durumda
 ``exec`` işlemlerinde dosya kapatılmamaktadır.) Bu ilkel versiyonda zaten bir prosesin maksimum açık tutacağı dosya
 sayısı 20'dir. O zamanlarda ``long`` türü 32 bitti. Yani bu ``unsigned long`` eleman bütün dosya betimleyicilerinin
 *close-on-exec* bayraklarını tutmak için yeterliydi.
-
-İlk Boş Betimleyicinin Bulunması
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``sys_open`` sistem fonksiyonu öncelikle dosya betimleyici tablosundaki ilk boş betimleyiciyi bulmaya çalışır.
 Çünkü dosya betimleyici tablosu tamamen doluysa zaten bir dosya nesnesinin oluşturulup işlemlere devam edilmesinin
@@ -1320,7 +1321,7 @@ erişimi bazı kontrollerle sağlayan ayrı fonksiyonlar ve makrolar da bulundur
 
    #define fcheck(fd)  fcheck_files(current->files, fd)
 
-Yani çekirdek içerisinde fcheck makrosuyla fd numaralı betimleyiciye ilişkin dosya nesnesi elde edilebilmektedir. 
+Yani çekirdek içerisinde ``fcheck`` makrosuyla fd numaralı betimleyiciye ilişkin dosya nesnesi elde edilebilmektedir. 
 Ancak ``check_files`` fonksiyonu da export edilmemiştir. 2.6'lı çekirdeklerde de dosya betimleyicisinden hareketle dosya 
 nesnesi içerisindeki sayacı artırarak dosya nesnesini elde eden daha yüksek seviyeli ``fget`` fonksiyon 
 da bulunmaktadır:
@@ -1578,8 +1579,8 @@ Peki yukarıdaki kodlarda bitmap dizisinin belli bir ``unsigned long`` elemanın
 komutlarıyla arama işlemi tam nerede yapılmaktadır? İşte yukarıdaki kodlar incelenirse makine dili düzeyinde
 aramanın ``ffz`` fonksiyonunda ve ``__ffs`` fonksiyonunda yapıldığı görülecektir.
 
-Dosya Betimleyici Tablosunu fork İşlemi Sırasında Kopyalanması
---------------------------------------------------------------
+Dosya Betimleyici Tablolarının clone ve fork İşlemleri Sırasında Kopyalanması
+-----------------------------------------------------------------------------
 
 POSIX sistemlerinde dolayısıyla da Linux çekirdeğinde thread'lerin ayrı dosya betimleyici tabloları yoktur.
 Dosya betimleyicileri ve dosya betimleyici tablosu prosese özgüdür. Yani siz bir prosesin hangi thread'inde
@@ -1873,7 +1874,7 @@ yapı şöyleydi:
 ``file`` yapısının tüm elemanlarının ``f_`` öneki ile başlatılarak isimlendirildiğine de dikkat ediniz.
 
 file Yapısının Elemanları
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Biz yukarıda çekirdeğin çeşitli versiyonlarına ilişkin ``file`` yapılarını verdik. Peki bu yapının elemanları
 nelerdir ve ne amaçla bu yapıda yer almaktadır? Aslında ``file`` yapısında çekirdeğin açık bir dosya üzerinde işlem
@@ -2373,3 +2374,263 @@ ilişkin bilgiler ileride açıklayacağımız gibi gömme sistemiyle yapıyla i
 dentry Yapısı
 ~~~~~~~~~~~~~~~~~~
 
+Peki bir dosya açıldığında dosyanın dosya sistemindeki yeri (örneğin yol ifadesi) çekirdek tarafından
+nasıl saklanmaktadır? İşte çekirdek her dosya açıldığında o dosyanın dizin girişi bilgilerini (yani
+dosya sisteminde nerede olduğu bilgisini ve bazı diğer bilgileri) ismine *dentry* denilen bir yapı
+nesnesine yerleştirmektedir. Açılmış olan dosyanın dosya sistemindeki yerine ilişkin bu nesnelere biz
+*dentry nesneleri* diyeceğiz. Bu noktada hikayeye *dentry* isimli başka bir aktörün daha katıldığını
+görüyorsunuz. Güncel çekirdeklerde ``dentry`` yapısı *include/linux/dcache.h* dosyası içerisinde şöyle
+bildirilmiştir:
+
+.. code-block:: c
+
+    struct dentry {
+        /* RCU lookup touched fields */
+        unsigned int d_flags;               /* protected by d_lock */
+        seqcount_spinlock_t d_seq;          /* per dentry seqlock */
+        struct hlist_bl_node d_hash;        /* lookup hash list */
+        struct dentry *d_parent;            /* parent directory */
+        union {
+            struct qstr __d_name;           /* for use ONLY in fs/dcache.c */
+            const struct qstr d_name;
+        };
+        struct inode *d_inode;              /* Where the name belongs to - NULL is
+                                             * negative */
+        union shortname_store d_shortname;
+        /* --- cacheline 1 boundary (64 bytes) was 32 bytes ago --- */
+
+        /* Ref lookup also touches following */
+        const struct dentry_operations *d_op;
+        struct super_block *d_sb;           /* The root of the dentry tree */
+        unsigned long d_time;               /* used by d_revalidate */
+        void *d_fsdata;                     /* fs-specific data */
+        /* --- cacheline 2 boundary (128 bytes) --- */
+        struct lockref d_lockref;           /* per-dentry lock and refcount
+                                             * keep separate from RCU lookup area if
+                                             * possible!
+                                             */
+
+        union {
+            struct list_head d_lru;         /* LRU list */
+            wait_queue_head_t *d_wait;      /* in-lookup ones only */
+        };
+        struct hlist_node d_sib;            /* child of parent list */
+        struct hlist_head d_children;       /* our children */
+        /*
+         * d_alias and d_rcu can share memory
+         */
+        union {
+            struct hlist_node d_alias;              /* inode alias list */
+            struct hlist_bl_node d_in_lookup_hash;  /* only for in-lookup ones */
+            struct rcu_head d_rcu;
+        } d_u;
+    };
+
+2.6'lı çekirdeklerde ``dentry`` yapısı şöyleydi:
+
+.. code-block:: c
+
+    struct dentry {
+        /* RCU lookup touched fields */
+        unsigned int d_flags;               /* protected by d_lock */
+        seqcount_t d_seq;                   /* per dentry seqlock */
+        struct hlist_bl_node d_hash;        /* lookup hash list */
+        struct dentry *d_parent;            /* parent directory */
+        struct qstr d_name;
+        struct inode *d_inode;              /* Where the name belongs to - NULL is
+                                             * negative */
+        unsigned char d_iname[DNAME_INLINE_LEN];    /* small names */
+
+        /* Ref lookup also touches following */
+        unsigned int d_count;               /* protected by d_lock */
+        spinlock_t d_lock;                  /* per dentry lock */
+        const struct dentry_operations *d_op;
+        struct super_block *d_sb;           /* The root of the dentry tree */
+        unsigned long d_time;               /* used by d_revalidate */
+        void *d_fsdata;                     /* fs-specific data */
+
+        struct list_head d_lru;             /* LRU list */
+        /*
+         * d_child and d_rcu can share memory
+         */
+        union {
+            struct list_head d_child;       /* child of parent list */
+            struct rcu_head d_rcu;
+        } d_u;
+        struct list_head d_subdirs;         /* our children */
+        struct list_head d_alias;           /* inode alias list */
+    };
+
+2.4'lü ve 2.2'li çekirdeklerde ``dentry`` yapısı daha sadeydi:
+
+.. code-block:: c
+
+    struct dentry {
+        atomic_t d_count;
+        unsigned int d_flags;
+        struct inode  *d_inode;         /* Where the name belongs to - NULL is negative */
+        struct dentry *d_parent;        /* parent directory */
+        struct list_head d_hash;        /* lookup hash list */
+        struct list_head d_lru;         /* d_count = 0 LRU list */
+        struct list_head d_child;       /* child of parent list */
+        struct list_head d_subdirs;     /* our children */
+        struct list_head d_alias;       /* inode alias list */
+        int d_mounted;
+        struct qstr d_name;
+        unsigned long d_time;           /* used by d_revalidate */
+        struct dentry_operations  *d_op;
+        struct super_block *d_sb;       /* The root of the dentry tree */
+        unsigned long d_vfs_flags;
+        void *d_fsdata;                 /* fs-specific data */
+        unsigned char d_iname[DNAME_INLINE_LEN];    /* small names */
+    };
+
+Çekirdeğin öğrenci ödevi gibi olan 0.01 versiyonunda dizin girişleri için ``dentry`` ya da benzeri
+bir yapı yoktu.
+
+Peki ``dentry`` nesnelerinin içerisinde neler tutulmaktadır? Temel olarak ``dentry`` nesnelerinin
+içerisinde dosyaya erişmek için kullanılan *dizin girişi (directory entry)* bilgileri tutulmaktadır.
+Ancak bu bilgiler iyi bir biçimde organize edilmiştir. Örneğin ``dentry`` nesneleri içerisinde hızlı
+erişim sağlamak için üst dizine ilişkin ``dentry`` nesnesinin adresi de tutulmaktadır. İzleyen
+paragraflarda da açıklayacağımız üzere ``dentry`` nesneleri bir önbellek içerisinde de saklanmaktadır.
+Bu önbellek yönetimi için gereken bilgiler de ``dentry`` nesnelerinin içerisinde tutulmaktadır. Biz
+aşağıda bir tablo biçiminde güncel çekirdeklerdeki ``dentry`` yapısının önemli elemanlarını listeliyoruz:
+
+.. list-table:: ``dentry`` Yapısının Önemli Elemanları
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Eleman
+     - Açıklama
+   * - ``d_flags``
+     - Dentry durum bayrakları. RCU lookup sırasında kontrol edilir, ``d_lock`` ile korunur.
+   * - ``d_hash``
+     - Global dcache hash tablosundaki bucket zinciri (``hlist_bl_node``, bit-lock korumalı).
+       ``__d_lookup_rcu()`` bu zinciri tarar.
+   * - ``d_parent``
+     - Üst dizin ``dentry``'sini gösterir. Lookup sırasında path bileşeni doğrulamasında
+       kullanılır.
+   * - ``d_name`` / ``__d_name``
+     - Bileşen adı (``struct qstr``: hash + len + name gösterici). Hash karşılaştırması
+       lookup'un ilk hızlı eleme adımıdır.
+   * - ``d_inode``
+     - Lookup sonucunda döndürülen ``inode``.
+   * - ``d_sb``
+     - Kök superblock işaretçisi. Lookup sırasında ``dentry``'nin doğru mount noktasına
+       ait olup olmadığı bu alan üzerinden doğrulanır.
+
+Dizin girişinin isminin ``d_name`` elemanında ``qstr`` olarak tutulduğuna dikkat ediniz. ``qstr``
+yapısı güncel çekirdeklerde *include/linux/dcache.h* dosyası içerisinde şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct qstr {
+        union {
+            struct {
+                HASH_LEN_DECLARE;
+            };
+            u64 hash_len;
+        };
+        const unsigned char *name;
+    };
+
+Burada dizin girişinin isminin bulunduğu adresin ve ismin uzunluğunun tutulduğuna dikkat ediniz.
+
+file, inode ve dentry Nesneleri Arasındaki İlişki
+-------------------------------------------------
+
+Şimdi dosya sistemine ilişkin nesnelerin birbirleriyle ilişkisi hakkında bir özet yapalım:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Nesne
+     - Açıklama
+   * - Dosya Nesnesi (``struct file``)
+     - Açılmış dosyalar üzerinde işlem yapmak için gereken tüm bilgilerin tutulduğu nesne.
+   * - Inode Nesnesi (``struct inode``)
+     - Dosyanın diskteki metadata bilgilerini tutan nesne.
+   * - Dentry Nesnesi (``struct dentry``)
+     - Dosyanın dosya sistemi üzerinde yerini ve buna ilişkin bazı bilgileri tutan nesne.
+
+Peki dosyanın ilişkin olduğu ``inode`` nesnesine ve ``dentry`` nesnesine dosya nesnesi yoluyla
+nasıl erişilmektedir? Uzunca bir süre (2.6'ya kadar ve 2.6'lı versiyonlar da dahil olmak üzere)
+dosya nesnesinin (``file`` yapısının) içerisinde ``dentry`` nesnesinin adresi, ``dentry`` nesnesinin
+içerisinde de o dizin girişinin ``inode`` nesnesinin adresi tutuluyordu:
+
+.. figure:: _static/file-dentry-inode-1.png
+   :align: center
+   :alt: file → dentry → inode zinciri
+   :width: 80%
+
+   ``file`` nesnesinden ``dentry`` üzerinden ``inode`` nesnesine erişim zinciri.
+
+Ancak daha sonraları dosya nesnesinden hareketle ``inode`` nesnesine daha kolay bir erişimin
+sağlanabilmesi için dosya nesnesinin içerisinde de doğrudan ``inode`` nesnesinin adresi tutulmaya
+başlanmıştır:
+
+.. figure:: _static/file-dentry-inode-2.png
+   :align: center
+   :alt: file → dentry → inode zinciri ve file → inode doğrudan erişimi
+   :width: 80%
+
+   ``f_inode`` alanıyla eklenen doğrudan ``inode`` erişim kısayolu.
+
+
+UNIX/Linux sistemlerinde bir dosya sistemi kök dizinde bir yere mount edilebilmektedir. Yani aslında
+bir yol ifadesine ilişkin dosya ile diğer bir yol ifadesine ilişkin dosya farklı fiziksel aygıtlarda
+bulunuyor olabilir. Çekirdeğin bazı durumlarda bir dosyanın hangi dosya sisteminin içerisinde
+bulunduğunu anlaması da gerekebilmektedir. Bu bilgilere dosyanın *mount* bilgileri denilmektedir.
+Eskiden çekirdeğin 2.2 versiyonunda dosyanın mount bilgileri ``dentry`` nesnesi içerisinde
+tutuluyordu. 2.4 ile birlikte dosyanın mount bilgileri daha düzenli bir biçimde ``file`` yapısının
+(dosya nesnesinin) ``vfsmount`` isimli yapı türünden ``f_vfsmnt`` elemanında tutulmaya başlandı.
+2.6 çekirdeklerinden itibaren de dosyanın ``dentry`` nesnesinin adresi ve ``vfsmount`` bilgileri
+``path`` isimli bir yapıya yerleştirilmiş ve ``file`` yapısının içerisindeki ``f_path`` elemanında
+tutulmaya başlanmıştır. 2.6 ve sonrasına ilişkin durum şöyledir:
+
+.. code-block:: c
+
+    struct file {
+        /* ... */
+
+        struct path     f_path;
+        struct inode    *f_inode;
+
+        /* ... */
+    };
+
+``path`` yapısı da şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct path {
+        struct vfsmount *mnt;
+        struct dentry   *dentry;
+    } __randomize_layout;
+
+Buradaki ``__randomize_layout`` belirleyicisi sonraları eklenmiştir.
+
+Biz aynı dosyayı birden fazla kez ``open`` fonksiyonuyla açmış olalım. Örneğin:
+
+.. code-block:: c
+
+    fd1 = open("test.txt", O_RDONLY);
+    fd2 = open("test.txt", O_RDONLY);
+
+Bu durumda ne olacaktır? İşte çekirdek farklı dosya da olsa aynı dosya da olsa her açılan dosya için
+ayrı bir dosya nesnesi (yani ``struct file`` nesnesi) oluşturmaktadır. (Çünkü örneğin aynı dosyayı
+birden fazla kez açtığımızda bu dosyaların hepsinin dosya göstericileri farklı olmaktadır. Dosya
+göstericilerinin de dosya nesnesi içerisinde saklandığını anımsayınız.) Ancak örneğimizdeki iki dosya
+neticede aslında diskte aynı dosyayı belirtmektedir. O halde bu iki dosya için ayrı ``dentry`` ve
+``inode`` nesnelerinin oluşturulmasına gerek yoktur. Kaldı ki farklı prosesler de aynı dosyayı açmış
+olabilirler. Bunlar için de ayrı ``dentry`` ve ``inode`` nesnelerinin oluşturulmasına gerek yoktur.
+O halde her açılan yeni dosya için çekirdek yeni bir dosya nesnesi yarattığı halde aynı dosyalar
+açıldığında bu dosyalar için tek bir ``dentry`` ve ``inode`` nesnesi oluşturmaktadır. Bunun için
+tabii ``open`` fonksiyonuyla bir dosya açıldığında çekirdeğin
+*bu dosyaya ilişkin dentry nesnesi ve inode nesnesi daha önce yaratılmış mı*
+diye bir araştırma yapması gerekmektedir. Bu araştırmayı yapabilmesi için de çekirdeğin bir biçimde
+bütün yaratılmış olan ``dentry`` ve ``inode`` nesnelerini bir yerde tutması gerekir.
+
+dentry ve inode Önbellekşeri
+----------------------------

@@ -495,12 +495,15 @@ araya ekleme işlemini de yapmaktadır. Örneğin biz araya şöyle ekleme yapab
 Burada ``ps`` eklenecek düğümün asıl yapı adresini, ``ps_insert`` ise önüne eklemenin yapılacağı asıl
 yapı adresini belirtmektedir.
 
+Bağli Listelerin Yok Edilmesi 
+-----------------------------
+
 Bir bağlı listeyi tümden serbest bırakmak için düğümlerin tek tek serbest bırakılması gerekmektedir.
 Buradaki düğümler aslında başka yapıların içerisinde olduğuna göre liste içerisindeki o yapı nesnelerinin
 serbest bırakılması gerekir.
 
 Bağlı Listelere RCU Desteği 
---------------------------
+---------------------------
 
 Belli bir süreden sonra ``list.h`` dosyasına RCU (Read-Copy-Update) mekanizmasını destekleyecek biçimde
 dolaşım yapan ``list_for_each_rcu`` isimli makro da eklenmiştir. Bu makro bir yazıcı varsa okuyucuları
@@ -1287,12 +1290,70 @@ Bir hash tablosunun tamamen yok edilmesi için yalnızca hash tablosunun değil 
 zincirlerdeki elemanlarının da serbest bırakılması gerekir. Çekirdekte genel olarak böyle
 bir gereksinim yoktur.
 
-
 Hash Tablosu Gerçekleştirimine Bir Örnek
 ----------------------------------------
 
-Aşağıda ``list.h`` içerisindeki hash tablosu işlemleri için kullanıcı modunda
-çalıştırılabilecek tam bir örnek verilmiştir.
+Aşağıda *list.h* içerisindeki hash tablosu işlemleri için kullanıcı modunda çalıştırılabilecek
+bir örnek verilmiştir. Örnekte ``TABLE_SIZE`` uzunluğunda her bir elemanı ``hlist_head`` türünden
+olan bir dizi oluşturulmuştur:
+
+.. code-block:: c
+
+    if ((hash_table = (struct hlist_head *)malloc(sizeof(struct hlist_head) * TABLE_SIZE)) == NULL) {
+        fprintf(stderr, "cannot allocate memory!...\n");
+        exit(EXIT_FAILURE);
+    }
+
+Sonra bu ``hlist_head`` elemanlarına ilkdeğer verilmiştir. (Yani onların ``first`` göstericilerine
+``NULL`` adres yerleştirilmiştir):
+
+.. code-block:: c
+
+    for (int i = 0; i < TABLE_SIZE; ++i)
+        INIT_HLIST_HEAD(&hash_table[i]);
+
+Ondan sonra hash tablosuna rastgele 100 eleman eklenmiştir. Ancak bunun yanı sıra belli bir eleman
+da listeye ayrıca eklenmiştir:
+
+.. code-block:: c
+
+    for (int i = 0; i < 100; ++i) {
+        if ((per = (struct PERSON *)malloc(sizeof(struct PERSON))) == NULL) {
+            fprintf(stderr, "cannot allocate memory!...\n");
+            exit(EXIT_FAILURE);
+        }
+        if (i == 50) {
+            strcpy(per->name, "ALI SERCE");
+            per->no = 12345678;
+        }
+        else
+            set_random_person(per);
+        hash = hash_func(per->no);
+        hlist_add_head(&per->hlink, &hash_table[hash]);
+    }
+
+Sonra liste dolaşılmıştır. Program biterken de tüm hash tablosu zincirleriyle birlikte serbest
+bırakılmıştır:
+
+.. code-block:: c
+
+    {
+        struct PERSON *per, *temp;
+        struct hlist_node *node;
+
+        for (int i = 0; i < TABLE_SIZE; ++i) {
+            temp = NULL;
+            hlist_for_each_entry_safe(per, node, &hash_table[i], hlink) {
+                free(temp);
+                temp = per;
+            }
+            free(temp);
+        }
+        free(hash_table);
+    }
+
+Bağlı liste düğümleri serbest bırakılırken sonraki düğümün adresini saklamak gerekir. ``NULL``
+adrese ``free`` uygulamanın bir soruna yol açmayacağını anımsayınız. Aşağıda örneği bir bütün olarak veriyoruz:
 
 .. code-block:: c
 
