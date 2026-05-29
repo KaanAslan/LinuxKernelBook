@@ -2710,7 +2710,7 @@ Açık Dosyalara İlişkin Alıştırmalar
 alıştırmalar yapalım. Alıştırmaların kodlarını en sonunda bir bütün olarak vereceğiz. 
 
 ``f_pos`` Elemanının Elde Edilmesi
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 İlk örneğimizde bir dosya betimleyicisine ilişkin dosya nesnesini elde ederek onun ``f_pos`` elemanını
 yazdırmaya çalışalım. Dosya nesnesindeki ``f_pos`` elemanının dosya göstericisinin değerini tuttuğunu
@@ -2897,3 +2897,256 @@ Bir süre önceye kadar ``fdget`` ve ``fdput`` export edilmemişti. Ancak günce
 
 Her ne kadar yeni çekirdeklerde ``fdget`` ve ``fdput`` daha hızlı çalışıyorsa da ``fget`` ve ``fput``
 basit arayüzü ve kullanım kolaylığı ve eskiden beri aynı biçimde bulunması nedeniyle tercih edilebilir.
+
+``dup`` Fonksiyonunun Gerçekleştirimi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Şimdi de ``dup`` POSIX fonksiyonunun işlevini yerine getiren (yani ``sys_dup`` sistem fonksiyonu gibi
+çalışan) bir fonksiyonu kendimiz yazalım. Çekirdeği yeniden derlememek için bu işlemi de bir aygıt
+sürücüye yaptırabiliriz. Bunun için bir ``ioctl`` kodu oluşturacağız. Bu ``ioctl`` kodu kullanıcı
+modundan çağrılırken ``ioctl`` fonksiyonunun üçüncü parametresine aşağıdaki gibi bir yapı nesnesinin
+adresini geçireceğiz:
+
+.. code-block:: c
+
+    struct FDDUP {
+        int fd;
+        int fd_dup;
+    };
+
+Burada yapının ``fd`` elemanı çiftlenecek dosya betimleyicisini belirtmektedir. ``fd_dup`` elemanı ise
+çiftleme sonucunda elde edilecek yeni betimleyiciyi belirtmektedir. (Yani biz fonksiyonu çağırmadan
+önce yapının ``fd`` elemanına çiftlenecek betimleyiciyi yerleştireceğiz, fonksiyon da bunu çiftleyip
+yeni betimleyiciyi yapının ``fd_dup`` elemanına yerleştirecek.) Bu elemanların ``dup`` fonksiyonu ile
+ilişkisini şöyle temsil edebiliriz:
+
+.. code-block:: c
+
+    fd_dup = dup(fd);
+
+Dosya betimleyicisini çiftleyen ``ioctl`` kodu düz bir biçimde test amaçlı olarak (yani bazı
+kusurlarla) şöyle yazılabilir:
+
+.. code-block:: c
+
+    static long ioctl_test3(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        struct fdtable *fdt;
+        struct file **fd_table;
+        struct FDDUP fddup;
+        int i;
+
+        f = NULL;
+
+        if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
+            return -EFAULT;
+
+        fdt = current->files->fdt;
+        fd_table = fdt->fd;
+
+        if (fddup.fd < 0 || fddup.fd >= fdt->max_fds)
+            return -EBADF;
+        if (fd_table[fddup.fd] == NULL)
+            return -EBADF;
+
+        for (i = 0; i < fdt->max_fds; ++i)
+            if (fd_table[i] == NULL) {
+                f = fd_table[fddup.fd];
+                fd_table[i] = f;
+                ++f->f_count.counter;       /* atomic_long_inc(&f->f_count); */
+                fddup.fd_dup = i;
+                break;
+            }
+        if (f == NULL)
+            return -EMFILE;
+
+        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0)
+            return -EFAULT;
+
+        return 0;
+    }
+
+Fonksiyonumuzda önce kullanıcı modundaki ``fddup`` nesnesini çekirdek moduna ``copy_from_user``
+fonksiyonu ile kopyaladık:
+
+.. code-block:: c
+
+    if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
+        return -EFAULT;
+
+Sonra fonksiyonumuzda çiftlenecek dosya betimleyicisinin geçerli bir betimleyici olup olmadığına
+baktık:
+
+.. code-block:: c
+
+    fdt = current->files->fdt;
+    fd_table = fdt->fd;
+
+    if (fddup.fd < 0 || fddup.fd >= fdt->max_fds)
+        return -EBADF;
+    if (fd_table[fddup.fd] == NULL)
+        return -EBADF;
+
+Bu işlemden sonra fonksiyonumuzda bir döngü içerisinde ilk boş betimleyiciyi bulup, çiftlenecek olan
+betimleyicinin gösterdiği dosya nesnesinin adresini bu boş betimleyiciye yerleştirdik. Bu tür
+işlemlerde dosya nesnesinin sayacının artırılması gerektiğini anımsayınız:
+
+.. code-block:: c
+
+    for (i = 0; i < fdt->max_fds; ++i)
+        if (fd_table[i] == NULL) {
+            f = fd_table[fddup.fd];
+            fd_table[i] = f;
+            ++f->f_count.counter;       /* atomic_long_inc(&f->f_count); */
+            fddup.fd_dup = i;
+            break;
+        }
+    if (f == NULL)
+        return -EMFILE;
+
+Kursumuzun yapıldığı 6.9.2 çekirdeğinde dosya nesnesinin sayacının ``file`` yapısının içerisinde şöyle
+tutulduğunu yeniden anımsatmak istiyoruz:
+
+.. code-block:: c
+
+    struct file {
+        /* ... */
+
+        atomic_long_t   f_count;
+
+        /* ... */
+    };
+
+Burada aslında ``atomic_long_t`` türü bir yapı biçiminde bildirilmiştir:
+
+.. code-block:: c
+
+    typedef struct {
+        long counter;
+    } atomic_long_t;
+
+Neden bu sayacın doğrudan ``long`` bir yapı elemanında tutulmayıp başka bir yapının elemanı yapıldığını
+merak edebilirsiniz. Bunun amacı aslında bu elemanın gizlenmek istenmesidir. Bu ``atomic_long_t``
+türüyle belirtilen değerler üzerinde işlemler atomik düzeyde özel fonksiyonlarla yapılmaktadır. Aslında
+``atomic_long_t`` türünün ``atomic_t`` isimli ``int`` türden versiyonu da vardır. Eskiden çekirdeklerde
+``atomic_long_t`` yerine yalnızca ``atomic_t`` türü bulunuyordu. Sonra ``atomic_long_t`` türü de
+eklendi. ``atomic_long_t`` türü üzerinde atomik işlem yapan fonksiyonların bizim için bu konu bağlamında
+önemli olan birkaçını aşağıda veriyoruz:
+
+.. code-block:: c
+
+    void atomic_long_set(atomic_long_t *v, long i);
+    long atomic_long_read(const atomic_long_t *v);
+    void atomic_long_inc(atomic_long_t *v);
+    void atomic_long_dec(atomic_long_t *v);
+
+``atomic_t`` ve ``atomic_long_t`` türleri hakkında ayrıntıları başka bir başlıkta ele alacağız.
+
+Fonksiyonumuzda en sonunda yeniden çekirdek modundaki ``fddup`` nesnesi kullanıcı modundaki prosesin
+``fddup`` nesnesine ``copy_to_user`` fonksiyonu ile kopyalanmıştır:
+
+.. code-block:: c
+
+    if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0)
+        return -EFAULT;
+
+Fonksiyonumuzdaki döngüde aslında mantıksal bir kusur da vardır. Biz döngüde yalnızca o andaki dosya
+betimleyici tablosunda arama yaptık. Halbuki çekirdek aslında başlangıçta küçük bir dosya betimleyici
+tablosunu tutarken daha sonra bunu gerektiğinde proses limitinin izin verdiği kadar yükseltebilmektedir.
+Halbuki bizim kodumuz bunu göz ardı etmiştir. Yani aslında işin başında anımsayacağınız gibi
+``max_fds`` 64 bit sistemlerde 64 elemanlı bir dosya betimleyici tablosunun uzunluğunu tutmaktadır.
+Halbuki default durumda prosesin dosya betimleyici tablosu 1024 geçerli uzunluğa sahiptir. O halde
+aslında bizim ``max_fds`` ile belirtilen dosya betimleyici tablosu elemanlarının hepsi doluysa dosya
+betimleyici tablosunu prosesin kaynak limitlerinde belirtilen değere (default durumda 1024) büyütüp
+arama işlemini oradan devam ettirmemiz gerekirdi. Ancak bunu biz yapmadık.
+
+Fonksiyonumuzda ilk boş betimleyicinin aranmasının düz mantıkla bir ``for`` döngüsü içerisinde —tıpkı
+çekirdeğin ilkel versiyonlarındaki gibi— yapıldığına dikkat ediniz. Aslında testi yaptığımız makinedeki
+Linux çekirdeğinde anımsayacağınız gibi ilk boş betimleyiciyi hızlı bir biçimde bulabilmek için iki
+düzey bitmap kullanılıyordu. Bu versiyonlarda ilk boş betimleyiciyi bulan ``get_unused_fd_flags``
+isimli daha yüksek seviyeli bir çekirdek fonksiyonu bulunmaktadır. Bu fonksiyon export edildiği için
+aygıt sürücülerden de kullanılabilmektedir. Fonksiyon şöyle yazılmıştır:
+
+.. code-block:: c
+
+    int get_unused_fd_flags(unsigned flags)
+    {
+        return __get_unused_fd_flags(flags, rlimit(RLIMIT_NOFILE));
+    }
+    EXPORT_SYMBOL(get_unused_fd_flags);
+
+Fonksiyonun başka bir fonksiyonu çağırdığını görüyorsunuz. Fonksiyonun ``flags`` parametresi boş dosya
+betimleyicisini bulurken aynı zamanda dosyaya ilişkin ``O_CLOEXEC`` bayrağının da set edilmesini
+sağlayabilmektedir. Tabii böyle bir şeyi istemiyorsanız bu parametreye 0 geçebilirsiniz. (Yani bu
+fonksiyonun parametresi ya ``O_CLOEXEC`` biçiminde ya da 0 biçiminde geçilebilmektedir.)
+``get_unused_fd_flags`` fonksiyonu aynı zamanda *gerektiğinde dosya betimleyici tablosunu büyütme
+işlemini de* kendisi yapmaktadır. Dolayısıyla bu yüksek seviyeli fonksiyon hem aygıt sürücüler
+tarafından hem de çekirdek kodları üzerinde değişiklik yapacak kişiler tarafından bu tür durumlarda
+tercih edilmektedir. ``get_unused_fd_flags`` fonksiyonu başarı durumunda yeni boş betimleyiciye,
+başarısızlık durumunda ise ``-EMFILE`` ya da ``-ENOMEM`` değerlerinden birine geri dönmektedir.
+Eskiden (örneğin çekirdeğin 2.2, 2.4 ve 2.6 versiyonlarında) ``get_unused_fd_flags`` fonksiyonu
+yerine ``flags``'siz ``get_unused_fd`` fonksiyonu bulunuyordu:
+
+.. code-block:: c
+
+    int get_unused_fd(void);
+
+``get_unused_fd_flags`` fonksiyonu çekirdeğin 2.6.23 versiyonunda eklenmiştir.
+
+Aslında çekirdek içerisinde RCU mekanizması eşliğinde ``files_struct`` yapısının adresini alarak
+``current->files->fdt`` gösterisini elde eden ``files_fdtable`` isimli bir çekirdek fonksiyonu da
+bulunmaktadır. Bu durumda dosya betimleyici tablosuna şöyle de erişebilirdik:
+
+.. code-block:: c
+
+    fdt = files_fdtable(current->files);
+    fd_table = fdt->fd;
+
+RCU mekanizması eşliğinde dosya nesnesini (``struct file`` nesnesini) dosya betimleyici tablosuna
+yerleştiren ``fd_install`` isimli export edilmiş yüksek seviyeli bir çekirdek fonksiyonu da
+bulunmaktadır:
+
+.. code-block:: c
+
+    void fd_install(unsigned int fd, struct file *file);
+
+Eğer işlemler RCU mekanizmasına uyumlu olacaksa dosya betimleyicisinin dosya betimleyici tablosuna
+yerleştirilmesi için ``fd_install`` fonksiyonu tercih edilmelidir. Linux çekirdeğinde dosyalar kapatılması 
+close_fd fonksiyonu ile sağlanmatadır. Biz örneğimizde bu fonksiyonu kullandık fakat bu fonksiyonun açıklamasını 
+başka bir başlık altında yapacapız.
+
+Böylece yukarıdaki fonksiyonu şu hale getirebiliriz:
+
+.. code-block:: c
+
+    static long ioctl_test4(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        struct FDDUP fddup;
+
+        if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
+            return -EFAULT;
+
+        if ((f = fget(fddup.fd)) == NULL)
+            return -EBADF;
+
+        if ((fddup.fd_dup = get_unused_fd_flags(0)) < 0) {
+            fput(f);
+            return fddup.fd_dup;
+        }
+
+        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0) {
+            fput(f);
+            return -EFAULT;
+        }
+
+        fd_install(fddup.fd_dup, f);
+
+        /*
+        fd_table = current->files->fdt->fd;
+        fd_table[fddup.fd_dup] = f;
+        */
+
+        return 0;
+    }
