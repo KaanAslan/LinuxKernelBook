@@ -3136,12 +3136,12 @@ Böylece yukarıdaki fonksiyonu şu hale getirebiliriz:
             return fddup.fd_dup;
         }
 
-        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0) {
-            fput(f);
-            return -EFAULT;
-        }
-
         fd_install(fddup.fd_dup, f);
+
+        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0) {
+            close_fd(fddup.fd_dup);
+            return -EFAULT;
+        }      
 
         /*
         fd_table = current->files->fdt->fd;
