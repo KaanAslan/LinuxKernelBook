@@ -2669,9 +2669,6 @@ durumunda sırasıyla şunların yapıldığını söyleyebiliriz:
 
 Ancak dosya açılırken henüz ele almadığımız başka süreçler de işin içerisine girmektedir.
 
-Prosesin Çalışma Dizini ve Kök Dizininin Tutulması
----------------------------------------------------
-
 Burada bir noktaya dikkatinizi çekmek istiyoruz. Prosesin çalışma dizini ve kök dizini proses kontrol
 bloğunda yol ifadesi ile değil ``dentry`` nesnesi ile tutulmaktadır. Güncel çekirdeklerde bu bilgiler
 şöyle tutuluyordu:
@@ -2705,3 +2702,198 @@ bloğunda yol ifadesi ile değil ``dentry`` nesnesi ile tutulmaktadır. Güncel 
 
 Görüldüğü gibi çekirdek prosesin kök dizinini ve çalışma dizinini yol ifadesi biçiminde değil
 ``dentry`` nesnesi biçiminde tutmaktadır.
+
+Açık Dosyalara İlişkin Alıştırmalar
+-----------------------------------
+
+Şimdi dosya sisteminin temel veri yapıları üzerinde görmüş olduğumuz konulara ilişkin bazı
+alıştırmalar yapalım. Alıştırmaların kodlarını en sonunda bir bütün olarak vereceğiz. 
+
+``f_pos`` Elemanının Elde Edilmesi
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+İlk örneğimizde bir dosya betimleyicisine ilişkin dosya nesnesini elde ederek onun ``f_pos`` elemanını
+yazdırmaya çalışalım. Dosya nesnesindeki ``f_pos`` elemanının dosya göstericisinin değerini tuttuğunu
+anımsayınız. Bu işlemi bir aygıt sürücü yazarak ``ioctl`` yoluyla gerçekleştirebiliriz. (Kursumuzda
+kullandığımız Linux makinedeki çekirdek sürümü 6.9.2'dir.) Bunun için oluşturduğumuz ``ioctl``
+fonksiyonuna dikkat ediniz:
+
+.. code-block:: c
+
+    static long ioctl_test1(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        int fd = (int) arg;
+        loff_t fpos;
+
+        if (fd < 0 || fd >= current->files->fdt->max_fds) {
+            printk(KERN_INFO "file descriptor is not valid!..\n");
+            return -EBADF;
+        }
+
+        f = current->files->fdt->fd[fd];
+        if (f == NULL) {
+            printk(KERN_INFO "file descriptor is not valid!..\n");
+            return -EBADF;
+        }
+
+        spin_lock(&fd_file(f)->f_lock);
+        pos = f->f_pos;
+        spin_unlock(&fd_file(f)->f_lock);
+
+        printk(KERN_INFO "File pointer offset: %lld\n", (long long)pos);
+
+        return 0;
+    }
+
+Burada daha önceden de belirttiğimiz gibi dosya betimleyicisinden hareketle dosya nesnesine
+``current->files->fdt->fd[fd]`` ifadesiyle erişilmiştir. Ancak erişmeden önce ``fd`` ile belirtilen
+betimleyicinin o anda çekirdek tarafından tahsis edilmiş olan dosya betimleyici tablosunun
+uzunluğundan büyük olup olmadığına da bakılmıştır:
+
+.. code-block:: c
+
+    if (fd < 0 || fd >= current->files->fdt->max_fds) {
+        printk(KERN_INFO "file descriptor is not valid!..\n");
+        return -EBADF;
+    }
+
+Örneğimizde ``file`` yapısının ``f_pos`` elemanına ``spinlock`` kilidi ile erişildiğini de görüyorsunuz.
+``spinlock`` nesnelerinin kullanımını ayrı bir bölümde ele alacağız.
+
+Burada önemli bir nokta üzerinde durmak istiyoruz. Biz test amacıyla dosya betimleyicisinden hareketle
+dosya nesnesine ``current->files->fdt->fd[fd]`` ifadesiyle eriştik. Ancak bu erişim aslında güvenli
+değildir. Çünkü tam bu erişim yapılırken eğer dosya betimleyici tablosu büyütülürse ya da bu
+betimleyici üzerinde işlem yapılırsa bizim kodumuz kararsız bir durumla karşı karşıya kalır. Tabii
+çekirdek durup dururken dosya betimleyici tablomuz üzerinde işlem yapmaz. Çekirdek ancak biz bir dosya
+işlemi yaptığımızda bizim dosya betimleyici tablomuza erişmektedir. Çünkü dosya betimleyici tablosu
+prosese özgüdür. O halde biz ``ioctl`` çağrısı yaparken aynı zamanda başka bir thread'te (ya da alt
+proseste) dosya işlemi yapmıyorsak bir sorun da oluşmayacaktır. Ancak genel olarak çekirdeğin
+uyguladığı senkronizasyon mekanizmasına uygun hareket etmek gerekir. Linux çekirdeklerinin bir süredir
+*kilitsiz (lock-free)* veri yapılarından olan RCU mekanizmasının kullandığını belirtmiştik. Biz bu
+veri yapısı üzerindeki ayrıntıları *çekirdeğin senkronizasyon mekanizmalarını* anlattığımız bölümde
+açıklayacağız.
+
+Buradaki diğer bir nokta da nesnelerin referans sayaçlarıyla ilgilidir. Daha önceden de belirttiğimiz
+gibi çekirdek nesneleri farklı amaçlarla birden fazla kaynak tarafından kullanılabilmektedir. Bu tür
+çekirdek nesnelerinde bu nedenle hep bir sayaç tutulmaktadır. Bir çekirdek nesnesi üzerinde işlem
+yapacak kişi eğer bu sayacı artırmazsa çekirdek onu boşaltabilir. İşlem yapan kişi de tanımsız
+davranışla karşılaşabilir. Tabii yukarıdaki gibi prosese özgü test işlemlerinde çekirdek bizim
+programımız talep etmedikten sonra kapatma işlemleri yapmayacaktır. Ancak genel olarak bu tür
+durumlarda *çekirdek kaynağı boşaltmasın diye* nesnenin referans sayacı artırılmalı, kullanım
+bittikten sonra da azaltılmalıdır. Daha önceden de belirttiğimiz gibi Linux çekirdeklerinde sayacı
+artırarak nesneyi elde eden fonksiyonlar *get* soneki ile sayacı azaltarak nesneyi bırakan fonksiyonlar
+ise *put* soneki ile isimlendirilmiştir. Örneğin ``fget`` isimli yüksek seviyeli çekirdek fonksiyonu
+dosya betimleyicisinden hareketle bize dosya nesnesini RCU mekanizmasını kullanarak dosya nesnesinin
+sayacını da artırarak vermektedir. ``fput`` fonksiyonu da sayacı azaltarak dosya nesnesini geri
+bırakmaktadır. ``fget`` ve ``fput`` fonksiyonlarının prototipleri şöyledir:
+
+.. code-block:: c
+
+    struct file *fget(unsigned int fd);
+    void fput(struct file *);
+
+Bu fonksiyonların prototipleri *include/linux/file.h* dosyası içerisindedir. Güncel çekirdeklerde
+``fget`` fonksiyonu *fs/file.c* dosyası içerisinde, ``fput`` fonksiyonu ise *fs/file_table.c*
+içerisinde tanımlanmıştır. ``fget`` ve ``fput`` fonksiyonları export edildiği için aygıt sürücüler
+içerisinde de kullanılabilmektedir. Bu durumda biz yukarıdaki testi daha basit bir biçimde ``fget``
+ve ``fput`` fonksiyonlarını kullanarak aşağıdaki gibi de yapabiliriz:
+
+.. code-block:: c
+
+    static long ioctl_test2(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        loff_t pos;
+        int fd;
+
+        fd = (int)arg;
+        if ((f = fget(fd)) == NULL) {
+            printk(KERN_INFO "file descriptor is not valid!..\n");
+            return -EBADF;
+        }
+
+        spin_lock(&f->f_lock);
+        pos = f->f_pos;
+        spin_unlock(&f->f_lock);
+
+        printk(KERN_INFO "File pointer offset: %ld\n", (long)pos);
+
+        fput(f);
+
+        return 0;
+    }
+
+Güncel çekirdeklere ``fget`` ve ``fput`` işlemlerini daha etkin gerçekleştirmek için ``fdget`` ve
+``fdput`` isimli fonksiyonlar da eklenmiştir. Bu fonksiyonların prototipleri şöyledir:
+
+.. code-block:: c
+
+    static struct fd fdget(unsigned int fd);
+    static void fdput(struct fd fd);
+
+Kursun yapıldığı makinede bulunan 6.9.2 çekirdeğinde ``struct fd`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct fd {
+        struct file *file;
+        unsigned int flags;
+    };
+
+Ancak en yeni çekirdeklerde ``fd`` yapısı şöyledir:
+
+.. code-block:: c
+
+    struct fd {
+        unsigned long word;
+    };
+
+    #define FDPUT_FPUT       1
+    #define FDPUT_POS_UNLOCK 2
+
+``struct fd`` yapısı bir süre önceye kadar ``flags`` elemanı da içeriyordu, sonra bu eleman kaldırılıp
+göstericinin en düşük anlamlı 2 biti kullanılmaya başlandı. Her durumda buradaki bayrak değeri
+``FDPUT_FPUT`` (1) ya da ``FDPUT_POS_UNLOCK`` (2) değerini içermektedir. Bu fonksiyonlar referans
+sayacının gereksiz artırılıp eksiltilmesinin önüne geçmek için bulundurulmuştur. Eğer proseste bu
+``files_struct`` yapısını kullanan başka bir thread yoksa bu durumda referans sayacının artırılıp
+eksiltilmesine de gerek yoktur. Bu fonksiyonlar bu bilgiyi ``flags`` olarak kodlayıp işlemin daha
+etkin yapılmasını sağlamaktadır. Bu işlemleri şekilsel olarak şöyle ifade edebiliriz:
+
+.. code-block:: none
+
+    fdget(fd)
+    └── __fdget(fd)
+            ├── files->count == 1  →  FDPUT_FPUT = 0
+            └── files->count  > 1  →  FDPUT_FPUT = 1
+
+    fdput(f)
+    └── FDPUT_FPUT set edilmiş mi?
+            ├── Evet   →  fput() çağır
+            └── Hayır  →  hiçbir şey yapma
+
+En yeni çekirdeklerde dosya nesnesine erişim için yalnızca ``fdget`` değil ``fd_file`` fonksiyonun da
+kullanılması gerekmektedir. ``fd_file`` fonksiyonu ``fd`` yapısını parametre olarak alıp onun
+içerisindeki dosya nesnesinin adresini vermektedir. ``fdput`` güncel çekirdeklerde
+*include/linux/file.h* dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static inline void fdput(struct fd fd)
+    {
+        if (unlikely(fd.word & FDPUT_FPUT))
+            fput(fd_file(fd));
+    }
+
+Örneğin:
+
+.. code-block:: c
+
+    struct fd f = fdget(fd);
+    struct file *file = fd_file(f);
+
+Bir süre önceye kadar ``fdget`` ve ``fdput`` export edilmemişti. Ancak güncel çekirdeklerde artık
+``fdget`` ve ``fdput`` fonksiyonları export edilmiştir.
+
+Her ne kadar yeni çekirdeklerde ``fdget`` ve ``fdput`` daha hızlı çalışıyorsa da ``fget`` ve ``fput``
+basit arayüzü ve kullanım kolaylığı ve eskiden beri aynı biçimde bulunması nedeniyle tercih edilebilir.
