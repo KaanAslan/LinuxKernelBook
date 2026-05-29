@@ -2650,3 +2650,58 @@ vardır. Bu önbellek sistemleri dolduğunda ``dentry`` ve ``inode`` nesnelerini
 olarak *LRU (Least Recently Used)* denilen *önbellek yer değiştirme (cache replacement) algoritması*
 işletilmektedir. Yani önbellekten toplamda en az kullanılanlar değil *son zamanlarda en az
 kullanılanlar* çıkartılmaktadır.
+
+Geldiğimiz noktaya kadarki konuları dikkate aldığımızda ``open`` fonksiyonuyla bir dosyanın açılması
+durumunda sırasıyla şunların yapıldığını söyleyebiliriz:
+
+1. Prosesin dosya betimleyici tablosunda ilk boş bir betimleyici (yani dizi indeksi) hızlı bir biçimde
+   bulunur.
+
+2. Bir dosya nesnesi (``struct file`` nesnesi) yaratılır ve elemanlarına gerekli ilkdeğerler verilir.
+
+3. Dosyaya ilişkin ``dentry`` nesnesi ve ``inode`` nesnesi ``dentry`` önbelleğinde ve ``inode``
+   önbelleğinde varsa oradan alınır, yoksa bu nesnelere ilişkin bilgiler diskten hareketle elde edilir
+   ve bu nesneler yaratılarak bu önbelleklere yerleştirilir. Aynı zamanda ``dentry`` ve ``inode``
+   nesnelerinin adresleri dosya nesnesine de yerleştirilmektedir.
+
+4. Dosya nesnesinin adresi dosya betimleyici tablosuna yerleştirilir ve yerleştirilen dizi indeksi
+   dosya betimleyicisi olarak geri döndürülür.
+
+Ancak dosya açılırken henüz ele almadığımız başka süreçler de işin içerisine girmektedir.
+
+Prosesin Çalışma Dizini ve Kök Dizininin Tutulması
+---------------------------------------------------
+
+Burada bir noktaya dikkatinizi çekmek istiyoruz. Prosesin çalışma dizini ve kök dizini proses kontrol
+bloğunda yol ifadesi ile değil ``dentry`` nesnesi ile tutulmaktadır. Güncel çekirdeklerde bu bilgiler
+şöyle tutuluyordu:
+
+.. code-block:: c
+
+    struct task_struct {
+        /* ... */
+
+        struct fs_struct *fs;
+
+        /* ... */
+    };
+
+    struct fs_struct {
+        /* ... */
+
+        struct path root, pwd;
+
+        /* ... */
+    } __randomize_layout;
+
+``path`` yapısı da şöyleydi:
+
+.. code-block:: c
+
+    struct path {
+        struct vfsmount *mnt;
+        struct dentry   *dentry;
+    } __randomize_layout;
+
+Görüldüğü gibi çekirdek prosesin kök dizinini ve çalışma dizinini yol ifadesi biçiminde değil
+``dentry`` nesnesi biçiminde tutmaktadır.
