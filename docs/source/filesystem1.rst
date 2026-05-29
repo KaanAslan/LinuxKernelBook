@@ -3150,3 +3150,368 @@ Böylece yukarıdaki fonksiyonu şu hale getirebiliriz:
 
         return 0;
     }
+
+Alıştırmalara İlişkin Aygıt Sürücünün Kaynak Kodu
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir bütün olarak aşağıda veriyoruz:
+
+``test-driver.h``
+
+.. code-block:: c
+
+    /* test-driver.h */
+
+    #ifndef TEST_DRIVER_H_
+    #define TEST_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    struct FDDUP {
+        int fd;
+        int fd_dup;
+    };
+
+    #define TEST_DRIVER_MAGIC       't'
+    #define IOC_TEST1               _IOR(TEST_DRIVER_MAGIC, 0, int)
+    #define IOC_TEST2               _IOR(TEST_DRIVER_MAGIC, 1, int)
+    #define IOC_TEST3               _IOWR(TEST_DRIVER_MAGIC, struct FDDUP)
+    #define IOC_TEST4               _IOWR(TEST_DRIVER_MAGIC, 3, struct FDDUP)
+
+    #endif
+
+
+``test-driver.c``
+
+.. code-block:: c
+
+    /* test-driver.c */
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/fdtable.h>
+    #include <linux/file.h>
+    #include "test-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+    static long ioctl_test1(struct file *filp, unsigned long arg);
+    static long ioctl_test2(struct file *filp, unsigned long arg);
+    static long ioctl_test3(struct file *filp, unsigned long arg);
+    static long ioctl_test4(struct file *filp, unsigned long arg);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner          = THIS_MODULE,
+        .open           = test_driver_open,
+        .read           = test_driver_read,
+        .write          = test_driver_write,
+        .release        = test_driver_release,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "test-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "test-driver opened...\n");
+
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "test-driver closed...\n");
+
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        printk(KERN_INFO "test-driver read...\n");
+
+        return 0;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        printk(KERN_INFO "test-driver write...\n");
+
+        return 0;
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        printk(KERN_INFO "test_driver_ioctl...\n");
+
+        switch (cmd) {
+            case IOC_TEST1:
+                result = ioctl_test1(filp, arg);
+                break;
+            case IOC_TEST2:
+                result = ioctl_test2(filp, arg);
+                break;
+            case IOC_TEST3:
+                result = ioctl_test3(filp, arg);
+                break;
+            case IOC_TEST4:
+                result = ioctl_test4(filp, arg);
+                break;
+            default:
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    static long ioctl_test1(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        loff_t fpos;
+        int fd;
+
+        fd = (int) arg;
+        if (fd < 0 || fd >= current->files->fdt->max_fds) {
+            printk(KERN_INFO "file descriptor is not valid!..\n");
+            return -EBADF;
+        }
+
+        f = current->files->fdt->fd[fd];
+        if (f == NULL) {
+            printk(KERN_INFO "file descriptor is not valid!..\n");
+            return -EBADF;
+        }
+
+        spin_lock(&fd_file(f)->f_lock);
+        pos = f->f_pos;
+        spin_unlock(&fd_file(f)->f_lock);
+
+        printk(KERN_INFO "File pointer offset: %lld\n", (long long)pos);
+
+        return 0;
+    }
+
+    static long ioctl_test2(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        int fd = (int)arg;
+
+        if ((f = fget(fd)) == NULL) {
+            printk(KERN_INFO "file descriptor is not valid!..\n");
+            return -EBADF;
+        }
+
+        printk(KERN_INFO "File pointer offset: %ld\n", (long)f->f_pos);
+
+        fput(f);
+
+        return 0;
+    }
+
+    static long ioctl_test3(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        struct fdtable *fdt;
+        struct file **fd_table;
+        struct FDDUP fddup;
+        int i;
+
+        f = NULL;
+
+        if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
+            return -EFAULT;
+
+        fdt = current->files->fdt;
+        fd_table = fdt->fd;
+
+        if (fddup.fd < 0 || fddup.fd >= fdt->max_fds)
+            return -EBADF;
+        if (fd_table[fddup.fd] == NULL)
+            return -EBADF;
+
+        for (i = 0; i < fdt->max_fds; ++i)
+            if (fd_table[i] == NULL) {
+                f = fd_table[fddup.fd];
+                fd_table[i] = f;
+                ++f->f_count.counter;       /* atomic_long_inc(&f->f_count); */
+                fddup.fd_dup = i;
+                break;
+            }
+        if (f == NULL)
+            return -EMFILE;
+
+        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0)
+            return -EFAULT;
+
+        return 0;
+    }
+
+    static long ioctl_test4(struct file *filp, unsigned long arg)
+    {
+        struct file *f;
+        struct FDDUP fddup;
+
+        if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
+            return -EFAULT;
+
+        if ((f = fget(fddup.fd)) == NULL)
+            return -EBADF;
+
+        if ((fddup.fd_dup = get_unused_fd_flags(0)) < 0) {
+            fput(f);
+            return fddup.fd_dup;
+        }
+
+        fd_install(fddup.fd_dup, f);
+
+        /*
+        fd_table = current->files->fdt->fd;
+        fd_table[fddup.fd_dup] = f;
+        */
+
+        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0) {
+            close_fd(fddup.fd_dup);
+            return -EFAULT;
+        }
+
+        return 0;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+
+``Makefile``
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+
+``load``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+
+``unload``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+
+
+``app.c``
+
+.. code-block:: c
+
+    /* app.c */
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <stdint.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "test-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(int argc, char *argv[])
+    {
+        int fd_dev;
+        int fd;
+        struct FDDUP fddup;
+        off_t pos;
+
+        if (argc != 2) {
+            fprintf(stderr, "wrong number of arguments!..\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if ((fd_dev = open("test-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if ((fd = open(argv[1], O_RDONLY)) == -1)
+            exit_sys("open");
+        lseek(fd, 100, 0);
+
+        fddup.fd = fd;
+        if (ioctl(fd_dev, IOC_TEST4, &fddup) == -1)
+            exit_sys("ioctl");
+
+        pos = lseek(fddup.fd_dup, 0, 1);
+        printf("%jd\n", (intmax_t)pos);
+
+        close(fd);
+        close(fddup.fd);
+        close(fd_dev);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+
+        exit(EXIT_FAILURE);
+    }
