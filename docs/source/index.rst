@@ -6,7 +6,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
 .. rst-class:: lead
 
-   Bu kitap **Kaan ASLAN** tarafından *C ve Sistem Programcıları Derneğindeki* **Linux Kernel İşletim Sistemlerinin Tasarımı 
+   Bu kitap **Kaan ASLAN** tarafından *C ve Sistem Programcıları Derneğindeki* **Linux Kernel - sİşletim Sistemlerinin Tasarımı 
    ve Gerçekleştirilmesi** kursundaki kurs notları temel alınarak oluşturulmuştur. 
    
    Kitaptaki içerik belli bir kaynak referans alınarak oluşturulmamıştır ve içeriğin oluşturulmasında yapay zeka araçlarından 
@@ -25,8 +25,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 .. rubric:: Ön Gereksinimler
 
 Okuyucunun C programlama diline hâkim olduğu ve temel Linux komut satırını
-kullanabildiği varsayılmaktadır. Çekirdeği derleyip denemek için sanallaştırma
-ortamına kurulu bir Debian türevi Linux dağıtımı önerilmektedir.
+kullanabildiği varsayılmaktadır. 
 
 ----
 

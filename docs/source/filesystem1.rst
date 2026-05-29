@@ -2632,5 +2632,21 @@ tabii ``open`` fonksiyonuyla bir dosya açıldığında çekirdeğin
 diye bir araştırma yapması gerekmektedir. Bu araştırmayı yapabilmesi için de çekirdeğin bir biçimde
 bütün yaratılmış olan ``dentry`` ve ``inode`` nesnelerini bir yerde tutması gerekir.
 
-dentry ve inode Önbellekşeri
+dentry ve inode Önbellekleri
 ----------------------------
+
+Çekirdek ``dentry`` ve ``inode`` nesneleri için ayrı önbellek (cache) sistemleri oluşturmaktadır.
+Bunlara Linux sistemlerinde *dentry önbelleği (dentry cache)* ve *inode önbelleği (inode cache)*
+denilmektedir. Bir dosya açıldığında çekirdek o dosyaya ilişkin ``dentry`` ve ``inode`` nesneleri
+zaten bu önbellek sistemlerinde varsa hiç diske gitmeden doğrudan bu önbelleklerden onları alıp
+kullanmaktadır. Bir dosyayı onu açmış olan bütün prosesler kapatmış olsa bile o dosyaya ilişkin
+``dentry`` ve ``inode`` nesneleri bu önbellek sistemlerinde kalmaya devam edebilir. Çünkü dosyalar
+(özellikle bazı merkezi dosyalar) bir kere değil farklı prosesler tarafından defalarca açılıp
+kullanılabilmektedir. (Örneğin ``/etc/passwd`` dosyası pek çok proses tarafından dolaylı bir biçimde
+açılıp kullanılabilmektedir.) Bu tür durumlarda onların bu önbellekler içerisinde biriktirilmesi
+sistem performansını oldukça iyileştirmektedir. Tabii bu önbellek sistemlerinin de belli bir büyüklüğü
+vardır. Bu önbellek sistemleri dolduğunda ``dentry`` ve ``inode`` nesnelerinin bazıları bu
+önbelleklerden atılmaktadır. Linux'taki bu tür önbellek sistemlerinde önbellekten çıkarma için genel
+olarak *LRU (Least Recently Used)* denilen *önbellek yer değiştirme (cache replacement) algoritması*
+işletilmektedir. Yani önbellekten toplamda en az kullanılanlar değil *son zamanlarda en az
+kullanılanlar* çıkartılmaktadır.
