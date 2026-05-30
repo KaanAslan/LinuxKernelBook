@@ -3935,6 +3935,138 @@ içi 0'larla dolu dinamik tahsisat yapmaktadır. Modülü yükledikten sonra oku
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
+
+Çekirdeği 0.01 Versiyonundaki sys_open Fonksiyonu
+-------------------------------------------------
+
+Şimdi yeniden çekirdeğin öğrenci ödevi gibi olan ilkel 0.01 versiyonundaki ``sys_open`` fonksiyonuna göz
+gezdirelim:
+
+.. code-block:: c
+
+    int sys_open(const char * filename,int flag,int mode)
+    {
+        struct m_inode * inode;
+        struct file * f;
+        int i,fd;
+
+        mode &= 0777 & ~current->umask;
+        for(fd=0 ; fd<NR_OPEN ; fd++)
+            if (!current->filp[fd])
+                break;
+        if (fd>=NR_OPEN)
+            return -EINVAL;
+        current->close_on_exec &= ~(1<<fd);
+        f=0+file_table;
+        for (i=0 ; i<NR_FILE ; i++,f++)
+            if (!f->f_count) break;
+        if (i>=NR_FILE)
+            return -EINVAL;
+        (current->filp[fd]=f)->f_count++;
+        if ((i=open_namei(filename,flag,mode,&inode))<0) {
+            current->filp[fd]=NULL;
+            f->f_count=0;
+            return i;
+        }
+    /* ttys are somewhat special (ttyxx major==4, tty major==5) */
+        if (S_ISCHR(inode->i_mode))
+            if (MAJOR(inode->i_zone[0])==4) {
+                if (current->leader && current->tty<0) {
+                    current->tty = MINOR(inode->i_zone[0]);
+                    tty_table[current->tty].pgrp = current->pgrp;
+                }
+            } else if (MAJOR(inode->i_zone[0])==5)
+                if (current->tty<0) {
+                    iput(inode);
+                    current->filp[fd]=NULL;
+                    f->f_count=0;
+                    return -EPERM;
+                }
+        f->f_mode = inode->i_mode;
+        f->f_flags = flag;
+        f->f_count = 1;
+        f->f_inode = inode;
+        f->f_pos = 0;
+        return (fd);
+    }
+
+Bu ilkel versiyonda sistemde neredeyse modern işletim sistemlerinin sahip olduğu hiçbir önbellek sistemi ve
+hızlandırıcı unsur yoktur. Fonksiyon işlemine şöyle başlatılmıştır:
+
+.. code-block:: c
+
+    mode &= 0777 & ~current->umask;
+
+Burada önce prosesin ``umask`` değeri ile dosya açış modu maskelenmiştir. Sonra dosya betimleyici tablosundaki
+ilk boş betimleyici bir döngü ile elde edilmiştir:
+
+.. code-block:: c
+
+    for(fd=0 ; fd<NR_OPEN ; fd++)
+        if (!current->filp[fd])
+            break;
+    if (fd>=NR_OPEN)
+        return -EINVAL;
+
+Bu ilkel versiyonda zaten prosesin açabileceği dosya sayısı (``NR_OPEN`` değeri) 20 idi. Bundan sonra prosesin
+*close-on-exec* bayrağı reset edilmiştir:
+
+.. code-block:: c
+
+    current->close_on_exec &= ~(1<<fd);
+
+Tüm dosyaların *close-on-exec bayrakları* ``task_struct`` içerisindeki ``unsigned long`` türden ``close_on_exec``
+elemanında tutulmaktadır. Zaten bu versiyonda prosesin açabileceği dosya sayısı 20 ile kısıtlıdır.
+
+Bu ilkel versiyonda henüz çekirdekte bir heap sistemi yoktu. Dolayısıyla bütün dosya nesneleri baştan statik
+düzeyde bir dizide saklanmıştır:
+
+.. code-block:: c
+
+    struct file file_table[NR_FILE];
+
+Bütün dosya nesnelerinin toplam sayısı da (``NR_FILE`` değeri) 64'tü. Fonksiyonda daha sonra bu 64 dosya
+betimleyicisi dolaşılarak sıralı arama ile boş olan bir tanesi elde edilmiştir:
+
+.. code-block:: c
+
+    f=0+file_table;
+    for (i=0 ; i<NR_FILE ; i++,f++)
+        if (!f->f_count) break;
+    if (i>=NR_FILE)
+        return -EINVAL;
+
+Dosya nesnesinin o zamanlarda da ``f_count`` isimli bir sayaç elemanı bulunmaktaydı. Burada sayacı 0 olan dosya
+nesnesinin elde edildiğine dikkat ediniz. Bundan sonra bu nesnenin adresi dosya betimleyici tablosundaki ilgili
+betimleyicinin belirttiği dizi elemanına yerleştirilmiştir:
+
+.. code-block:: c
+
+    (current->filp[fd]=f)->f_count++;
+
+Bu noktada henüz dosya nesnesinin elemanlarına atamalar yapılmamıştır. Bu versiyonda dosya açım işleminin
+büyük kısmı ``open_namei`` isimli fonksiyon tarafından yapılmaktadır:
+
+.. code-block:: c
+
+    if ((i=open_namei(filename,flag,mode,&inode))<0) {
+        current->filp[fd]=NULL;
+        f->f_count=0;
+        return i;
+    }
+
+``open_namei`` fonksiyonu isimsel olarak uzun süre kullanılmıştır. Nihayet bu ilkel versiyonda dosya nesnesinin
+elemanlarına ilk değerler verilerek fonksiyon dosya betimleyicisiyle geri döndürülmüştür:
+
+.. code-block:: c
+
+    f->f_mode = inode->i_mode;
+    f->f_flags = flag;
+    f->f_count = 1;
+    f->f_inode = inode;
+    f->f_pos = 0;
+    return (fd);
+
 sys_close Sistem Fonksiyonunun Çekirdek Gerçekleştirimi
 -------------------------------------------------------
 
@@ -3992,3 +4124,826 @@ Bu fonksiyonda kabaca şunlar yapılmaktadır:
 
 - ``fput_close_sync`` fonksiyonu dosya nesnesinin sayacını azaltıp dosyaya ilişkin dentry ve inode nesneleri
   üzerinde ayrıntıları daha sonra anlatılacak olan bazı güncellemeleri yapmaktadır.
+
+Yol İfadelerinin Çözümlenmesi ve dentry Önbelleğinin Organizasyonu
+==================================================================
+
+İşletim sistemlerinde bir yol ifadesi verildiğinde çekirdek, yol ifadesine ilişkin dosya ya da dizinin ve o
+dosya ya da dizinin içinde bulunduğu dizininin ``dentry`` ve ``inode`` nesnelerini bulmaya çalışır. (Bir dizindeki
+dosya ya da dizin üzerinde işlem yapıldığında o dosya ya da dizinin içerisinde bulunduğu dizinler üzerinde
+de işlemlerin yapılması gerekebilmektedir.) Bu sürece işletim sistemlerinde *yol ifadesinin çözümlenmesi
+(pathname resolution)* ya da *yol ifadesinin aranması (pathname lookup)* denilmektedir. Örneğin ``open``
+fonksiyonuyla aşağıdaki gibi bir dosya açmak isteyelim:
+
+.. code-block:: c
+
+    fd = open("/home/kaan/Study/LinuxKernel/sample.c", O_RDONLY);
+
+Çekirdek ``"/home/kaan/Study/LinuxKernel/sample.c"`` biçiminde bir yol ifadesini aldığında
+öncelikle bu yol ifadesinin hedefi olan dosya ya da dizinin (burada *sample.c*) ve o dosya ya da
+dizinin içinde bulunduğu dizinin (burada ``"LinuxKernel"``) inode ve dentry nesnelerini bulmaya çalışır.
+Çekirdek bu işlemi bir döngü içerisinde yol ifadesini *yol bileşenlerine (path component)* ayırarak
+adım adım gerçekleştirmektedir. Yukarıdaki yol ifadesinin yol bileşenleri şunlardır:
+
+.. code-block:: c
+
+    "home"
+    "kaan"
+    "Study"
+    "LinuxKernel"
+    "sample.c"
+
+Tabii çekirdeğin bu yol bileşenlerini tek tek doğrulaması da gerekmektedir. Örneğin burada ``"kaan"`` yol
+bileşeninin bir dizin belirtmesi gerekir. Eğer kaan dizin girişi ``"home"`` dizinin altında varsa ama bir
+dosya belirtiyorsa (yani bir dizin belirtmiyorsa) çözümleme işlemine devam etmenin bir anlamı yoktur.
+Ayrıca çekirdeğin yol ifadesini çözümlerken ilgili dizinler için erişim haklarını da kontrol etmesi
+gerekmektedir. Bir yol ifadesindeki tüm dizinlerin ``"x"`` hakkına sahip olması gerektiğini anımsayınız.
+
+Yol ifadelerinin çözümlenmesi sırasında yol bileşenleri öncelikle *dentry önbelleğinde (dentry cache)*
+aranmaktadır. Örneğin "kökün altında home dizini var mı?" araması yapılırken ``"home"`` dizinine ilişkin
+dentry nesnesi dentry önbelleğinden hızlı bir biçimde elde edilebilmektedir. İzleyen paragraflarda da
+açıklayacağımız gibi dentry önbelleği içerisindeki bir dentry nesnesi "negatif değilse" zaten ona ilişkin
+inode nesnesi de inode önbelleği içerisinde bulunmaktadır. Böylece pek çok yol ifadesi aslında hiç diske
+başvurulmadan dentry ve inode önbellek mekanizması sayesinde hızlı bir biçimde çözülebilmektedir. Tabii
+bir yol bileşeni bu önbelleklerde yoksa bu durumda artık disk okumaları yapılıp ilgili yol bileşenine
+ilişkin dentry ve inode nesneleri önbelleklere alınacaktır. Daha önceden de belirttiğimiz gibi aslında
+diskte son okunan bloklar da "sayfa önbelleğinin (page cache)" içerisindedir. Disk okuması sırasında
+hemen diske yönelinmemekte önce bu sayfa önbelleğine bakılmaktadır. Şimdi yol ifadesinin bu önbellek
+sistemleri kullanılarak nasıl çözüldüğüne ilişkin örnek verelim. Yol ifadesi aşağıdaki gibi olsun:
+
+.. code-block:: c
+
+    "/home/kaan/Study/LinuxKernel/sample.c"
+
+Çekirdek önce dentry önbelleğinde üst dizini kök olan ``"home"`` isminde dizin belirten bir giriş var mı
+diye arama yapar. Bu girişin bulunduğunu düşünelim. Bundan sonra çekirdek bu sefer üst dizini ``"home"``
+olan ``"kaan"`` isminde dizin belirten bir giriş var mı diye bakar. Aramalar böyle devam eder. Örneğin
+çekirdeğin üst dizini ``"LinuxKernel"`` olan ``"sample.c"`` isimli girişi dentry önbelleğinde bulamadığını
+varsayalım. Bu durumda artık gerçekten bu bilgiler diskten alınacak ve ``"sample.c"`` dosyasına ilişkin
+dentry nesnesi ve inode nesnesi ilgili önbelleklere yerleştirilecektir.
+
+Yol ifadeleri çözümlenirken her yol bileşeni önce *dentry önbelleğinde (dentry cache)* aranmaktadır.
+Eğer yol bileşeni dentry önbelleğinde varsa doğrudan oradan alınarak çözümleme işlemine devam edilir.
+Eğer yol bileşeni dentry önbelleğinde yoksa disk okuması yapılarak bir dentry nesnesi oluşturulur ve
+tabii yeni oluşturulan nesne de dentry önbelleğine yerleştirilir. Örneğin aşağıdaki gibi bir yol
+ifadesi olsun:
+
+.. code-block:: c
+
+    "/home/kaan/Study/LinuxKernel/sample.c"
+
+Burada kökün altında ``"home"`` isimli yol bileşeni dentry önbelleğinde varsa hemen oradan alınır. Benzer
+biçimde ``"home"`` dizininin altında ``"kaan"`` isimli dizin için dentry önbelleğinde bir dentry nesnesi zaten
+varsa hemen bu nesne oradan alınacaktır. Ancak örneğin ``"Study"`` yol bileşenine ilişkin bir dentry nesnesi
+dentry önbelleğinde yoksa artık bu yol bileşeni için dentry nesnesi disk okuması yapılarak elde edilecek
+ve dentry önbelleğine yerleştirilecektir. Böylece çok kullanılan yol bileşenleri zamanla dentry
+önbelleği içerisinde biriktirilmiş olmaktadır. Bu da yol ifadelerinin çözümlenmesini oldukça
+hızlandırmaktadır. Dentry önbellek sistemi Linux çekirdeklerine 2'li versiyonlarla eklenmiştir. Bunun
+öncesinde dentry nesneleri bir önbellek sisteminde biriktirilmiyordu. Her zaman tekrar tekrar bu bilgiler
+disk işlemi yapılarak (tabii *sayfa önbelleğine (page cache)* de bakılarak) elde ediliyordu.
+
+dentry Yapısının Dentry Önbelleği İle İlgili Elemanları 
+--------------------------------------------------------
+
+Önclikle güncel çekirdeklerdeki ``dentry`` yapısını anımsatmak istiyoruz: 
+
+.. code-block:: c
+
+    struct dentry {
+        /* ... */
+
+        struct qstr d_name;
+        union shortname_store d_shortname;
+        struct dentry *d_parent;
+        struct hlist_node d_sib;        /* child of parent list */
+        struct hlist_head d_children;   /* our children */
+        struct inode *d_inode;
+        struct lockref d_lockref;       /* per-dentry lock and refcount
+                                         * keep separate from RCU lookup area if
+                                         * possible!
+                                         */
+        struct super_block *d_sb;
+        struct hlist_bl_node d_hash;    /* lookup hash list */
+
+        /* ... */
+    };
+
+Yapının ``qstr`` elemanının yol bileşeninin (yani dizin girişinin) ismini tuttuğunu anımsayınız. ``qstr``
+yapısı güncel çekirdeklerde şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct qstr {
+        union {
+            struct {
+                HASH_LEN_DECLARE;
+            };
+            u64 hash_len;
+        };
+        const unsigned char *name;
+    };
+
+Eskiden bu yapı şöyle bildirilmişti:
+
+.. code-block:: c
+
+    struct qstr {
+        unsigned int hash;
+        unsigned int len;
+        const unsigned char *name;
+    };
+
+Dentry Nesnelerinde Dizin Girişi İsminin Saklanması
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Günümüz çekirdeklerinde dentry önbelleği için kullanılan hash algoritması biraz karmaşık hale
+gelmiştir. Bu durum ``qstr`` yapısının da değişmesine yol açmıştır. Dentry nesnesi içerisindeki
+``qstr`` yapısında ilgili dizin girişinin ismi (``name`` elemanını kastediyoruz), bunun byte uzunluğu
+(``len`` elemanını kastediyoruz) ve ilgili ismin hash değeri tutulmaktadır. Burada ismin başlangıç
+adresinin yanı sıra neden aynı zamanda onun byte uzunluğunun da tutulduğunu merak edebilirsiniz. Linux'un
+dosya sistemi farklı dosya sistemlerini destekleyecek biçimde genel oluşturulmuştur. Bazı dosya
+sistemlerinde ismin sonunda null karakterin bulundurulması uygun olmayabilmektedir. Bu nedenle buradaki
+ismin sonunda null karakter olmak zorunda olmadığı için ayrıca ismin uzunluğu da saklanmıştır. Aynı
+zamanda isim uzunluğunun saklanması hash tablosunda arama yapılırken de performans kazancı sağlamaktadır.
+
+``qstr`` içerisindeki hash değeri dentry nesnesi için oluşturulan bütünsel hash değeri değil yalnızca
+buradaki ismin hash değeridir. Dentry nesnelerinin bütünsel hash değerleri o dizin girişinin içinde
+bulunduğu dizine ilişkin dentry nesnesinin adresi de kullanılarak oluşturulmaktadır. Bu konuyu izleyen
+paragraflarda açacağız.
+
+İki dizin girişinin isimlerinin karşılaştırılmak istendiğini varsayalım (çekirdekte bu durumla sık
+karşılaşılmaktadır). Bildiğiniz gibi iki yazının karşılaştırılması bir döngü içerisinde onların
+karşılıklı karakterlerinin karşılaştırılması yoluyla yapılmaktadır. Oysa karşılaştırma işleminden önce
+bunların hash değerlerine ve uzunluklarına bakılarak bu işlem hızlandırılabilir. Yani önce isimlerin hash
+değerleri, sonra isimlerin uzunlukları karşılaştırılabilir. Eğer isimlerin hash değerleri ve uzunluklar
+aynıysa karşılıklı karakterlerin karşılaştırması aşamasına geçilebilir. Örneğin ``"mehmet.c"`` dizin girişi
+ismi ile ``"mehtap.c"`` dizin girişi isminin karşılaştırılacağını düşünelim. Bunların önce hash değerlerine,
+sonra uzunluklarına bakılır. Bunların hash değerleri ve uzunlukları aynıysa karşılıklı karakterler
+karşılaştırılır. Tabii isimden hash değerinin elde edilmesi de bir çaba gerektirmektedir. Fakat çekirdek
+çoğu durumda zaten karşılaştırılacak isim için hash değerini elde etmek zorundadır. Ancak
+karşılaştırılacak isim için hash değerinin elde edilmesi gerekmiyorsa hash karşılaştırması yapılmadan
+isimlerin uzunluklarına bakılıp, uzunluklar eşit değilse karşılıklı karakterlerin karşılaştırılması
+işlemine geçilir.
+
+Güncel çekirdeklerdeki ``qstr`` yapısı içerisindeki birliğin ve yapının anonim (anonymous) olduğuna 
+dikkat ediniz. Buradaki ``HASH_LEN_DECLARE`` makrosu şöyle define edilmiştir:
+
+.. code-block:: c
+
+    #define HASH_LEN_DECLARE    u32 hash; u32 len
+
+Dolayısıyla aslında burada ``hash_len`` elemanı bütünü, ``hash`` ve ``len`` elemanları ise bütünün
+parçalarını belirtmektedir. Yani aslında bu yapının eski çekirdeklerdeki ``qstr`` yapısı ile
+organizasyonel bir farklılığı yoktur. Bu yapıda yalnızca hash değeri ile uzunluk 64 bit içerisinde
+birleştirilmiştir. Böylece hash değeri ile uzunluk bilgisi 64 bit sistemlerde tek hamlede (tek bir
+makine komutuyla) karşılaştırılabilmektedir.
+
+Bir dentry nesnesinin isminin tutulacağı alan çekirdeğin heap sisteminde ``kmalloc`` fonksiyonu ile tahsis edilmektedir. 
+Ancak bu konuda bir zaman kazancı sağlayabilmek amacıyla kısa dizin girişi isimleri doğrudan dentry yapısının
+içerisindeki küçük bir dizide saklanmaktadır. Güncel çekirdeklerde yapının ``d_shortname`` elemanı bu
+diziyi barındırmaktadır:
+
+.. code-block:: c
+
+    union shortname_store {
+        unsigned char string[DNAME_INLINE_LEN];
+        unsigned long words[DNAME_INLINE_WORDS];
+    };
+
+Buradaki ``string`` elemanı ``DNAME_INLINE_LEN`` uzunluğundadır. ``DNAME_INLINE_LEN`` ise güncel
+çekirdeklerde şöyle define edilmiştir:
+
+.. code-block:: c
+
+    #define DNAME_INLINE_LEN (DNAME_INLINE_WORDS*sizeof(unsigned long))
+
+    #ifdef CONFIG_64BIT
+    # define DNAME_INLINE_WORDS 5
+    #else
+    # ifdef CONFIG_SMP
+    #  define DNAME_INLINE_WORDS 9
+    # else
+    #  define DNAME_INLINE_WORDS 11
+    # endif
+    #endif
+
+Bugünkü 64 bit Linux sistemlerinde bu dizi 40 byte uzunluğunda, 32 bit sistemlerde ise 36 byte ya da 44
+byte uzunluğundadır. Bu durumda çekirdek her zaman dizin girişi ismini ``qstr`` yapısının ``name``
+elemanının gösterdiği yerde arar. İşin başında bu ``name`` elemanı zaten ``dentry`` içerisindeki bir diziyi
+göstermektedir. Ancak eğer bu dizinin uzunluğu isim için yetmezse çekirdeğin heap alanında isim için
+tahsisat yapılır, isim o tahsis edilmiş alana kopyalanır ve yapının bu ``name`` elemanı da o alanı
+gösterir hale getirilir. (Biz bu temayı dosya betimleyici tablosu ve ``close-on-exec`` dizisinin tahsis
+edilmesi konusunda da görmüştük.) Eski çekirdeklerde bu küçük dizi doğrudan dentry yapısının ``d_iname``
+elemanında tutuluyordu.
+
+Dentry Nesnelerindeki Hiyerarşik İlişkiler: d_parent, d_sib ve d_children
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Bir dentry nesnesine ilişkin üst dizinin dentry nesnesi de genellikle dentry önbelleğinde
+bulunmaktadır. Ancak bunun bir garantisi yoktur. Yol ifadesi çözümlenirken üst dizinlere ilişkin dentry
+nesneleri de dentry önbelleğine yerleştirilmektedir. (Ancak daha sonra üst dizine ilişkin dentry nesnesi
+az kullanıldığından dolayı dentry önbelleğinden atılmış da olabilir.) İşte dentry yapısının ``d_parent``
+elemanı ilgili dizin girişinin içinde bulunduğu dizinin dentry nesnesinin adresini tutmaktadır. O halde
+çekirdek bir dentry nesnesini dentry önbelleğinde bulursa onun üst dizinine ilişkin dentry nesnesine
+hızlı bir biçimde erişebilmektedir. Aynı durum yapının ``d_sib`` ve ``d_children`` elemanları için de
+benzerdir. Yapının ``d_sib`` elemanı aynı dizindeki dizin girişlerine ilişkin kardeş dentry nesnelerinin
+tutulduğu bağlı liste düğümüdür. Kardeş dentry nesnelerinin kök düğümü de yapının ``d_children``
+elemanında saklanmaktadır. Burada bağlı liste için ``list_head`` yerine ``hlist_node`` yapısı kullanılmış
+olsa da aslında bu elemanların hash tablosuyla bir ilgisi yoktur. Bu elemanlar bağlı liste düğümleri
+belirtmektedir. Çekirdek bir dizinin altındaki girişleri gözden geçirmek istediğinde dizine ilişkin
+dentry nesnesini bulup onun ``d_children`` bağlı listesini dolaşmaktadır. Tabii bu bağlı listede
+dizindeki tüm dizin girişlerine ilişkin dentry nesnelerinin hepsi dentry önbelleğinde bulunmak zorunda
+değildir. Ancak arama sırasında olmayanlar zaten diskten okunup önbelleğe alınmaktadır.
+
+Dentry nesnelerinin ilişkin olduğu inode nesnelerinin adresleri dentry yapısının ``d_inode`` elemanında
+tutulmaktadır. Dentry nesnelerinin yalnızca yol ifadelerinin çözümlenmesi gibi işlemlerde kullanıldığına
+dikkat ediniz. Dosya üzerinde işlem yapabilmek için o dosyaya ilişkin inode nesnesinin elde edilmesi
+gerekmektedir.
+
+Dentry Nesnelerinin Sayaçları ve Kilitlenmesi: d_lockref
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Pek çok çekirdek nesnesinde olduğu gibi dentry nesnelerinde de bir sayaç vardır. Güncel çekirdeklerde bu
+sayaç yapının ``lockref`` yapısı türünden ``d_lockref`` elemanında tutulmaktadır. Eski çekirdeklerde bu
+sayaç doğrudan ``int`` ya da ``unsigned int`` türünden ``d_count`` elemanında tutuluyordu. Güncel
+çekirdeklerde bu sayaç ``lockref`` yapısı içerisindeki spinlock nesnesi ile korunmaktadır:
+
+.. code-block:: c
+
+    struct lockref {
+        union {
+    #if USE_CMPXCHG_LOCKREF
+            aligned_u64 lock_count;
+    #endif
+            struct {
+                spinlock_t lock;
+                int count;
+            };
+        };
+    };
+
+Eski çekirdeklerde RCU mekanizması bu kadar yoğun kullanılmıyordu. Bu nedenle bu sayaç dentry yapısının
+içerisindeki nesnenin diğer elemanlarını da koruyan ``d_lock`` nesnesi yoluyla korunuyordu.
+
+Dentry Nesnelerinde Dosya Sistemi Bilgisinin Saklanması: d_sb
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Her dentry nesnesi bir dosya sisteminin içerisindedir. UNIX/Linux sistemlerinde tek bir dizin ağacının
+bulunduğunu anımsayınız. Farklı dosya sistemleri aynı ağaca mount edilmektedir. Ağacın bir dizini bir
+dosya sisteminin içerisindeyken diğer bir dizini başka bir dosya sisteminin (ya da disk bölümünün)
+içerisinde olabilir. İşte her dentry nesnesinin hangi dosya sisteminin (ya da disk bölümünün) içerisinde
+olduğu dentry nesnesinin ``super_block`` yapısı türünden ``d_sb`` elemanında tutulmaktadır. ``super_block``
+yapısı bir dosya sisteminin bilgilerini tutan bir yapıdır. Her mount işleminde —eğer daha önce
+yaratılmadıysa— bir ``super_block`` nesnesi yaratılmaktadır. ``super_block`` yapısı ileride ayrıntılı bir
+biçimde ele alınacaktır.
+
+.. note::
+
+   Aslında sizin de gördüğünüz gibi çekirdeğin dosya sistemi *nesne yönelimli* bir tasarımı
+   andırmaktadır. Ancak işletim sisteminin çekirdekleri C++ gibi C'den daha yüksek seviyeli
+   nesne yönelimli dillerle kodlanmazlar. Bu dillerdeki yüksek seviye kontrol kaybına yol
+   açabilmektedir. Rust ise daha önceden de belirttiğimiz gibi yeni çekirdeklerde halen çok
+   çok küçük bir oranda kullanılmaktadır.
+
+Dentry Önbelleğinin Yapısı 
+----------------------------
+
+Şimdi dentry önbelleğinin nasıl organize edildiği üzerinde duralım. (Dentry önbelleğine İngilizce
+kısaca *dcache* de denilmektedir.) Dentry önbelleği bir hash tablosu biçiminde oluşturulmuştur. Bu hash
+tablosunun adresi güncel çekirdeklerde ``fs/dcache.c`` dosyası içerisinde ``dentry_hashtable`` global
+değişkeninde tutulmaktadır:
+
+.. code-block:: c
+
+    static struct hlist_bl_head *dentry_hashtable __ro_after_init __used;
+
+Tanımdaki ``__ro_after_init`` ve ``__used`` belirleyicileri gcc'ye özgüdür. 2.2 ve 2.4 çekirdeklerinde
+dentry hash tablosu şöyle tanımlanmıştı:
+
+.. code-block:: c
+
+    static struct list_head *dentry_hashtable;
+
+2.6 çekirdeklerindeki tanımlama ise şöyleydi:
+
+.. code-block:: c
+
+    static struct hlist_head *dentry_hashtable __read_mostly;
+
+2.6 çekirdeklerinin son versiyonlarında bu tanımlama değiştirilerek güncel çekirdeklerdekine benzer hale
+getirilmiştir.
+
+Güncel çekirdeklerdeki ``hlist_bl_head``, hash tablosunun bağlı liste zincirlerini tutan bir yapıdır.
+Bu yapı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct hlist_bl_head {
+        struct hlist_bl_node *first;
+    };
+
+Görüldüğü gibi aslında ``hlist_bl_head`` yalnızca ``hlist_bl_node`` türünden bir adres tutmaktadır.
+``hlist_bl_node`` yapısı da şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct hlist_bl_node {
+        struct hlist_bl_node *next, **pprev;
+    };
+
+Bu durumda ``dentry_hashtable`` göstericisi aslında ``hlist_bl_head`` türünden nesnelerden oluşan diziyi
+göstermektedir. Bu dizinin uzunluğu ise 2'nin kuvveti biçiminde ``d_cache_shift``` global değişkeninde tutulmaktadır. 
+
+Tabii kursumuzun başında da gördüğümüz gibi aslında ``hlist_bl_node`` yapısı başka bir yapının içerisine 
+(burada ``dentry``yapısı) gömülmüş durumdadır. Güncel çekirdeklerde hash tablosuna ilişkin zincirler dentry yapısının
+``d_hash`` elemanlarını göstermektedir. Başka bir deyişle hash tablosu zincirleri aslında dentry yapısı
+içerisindeki ``d_hash`` elemanlarını birbirine bağlamaktadır.
+
+Biz daha önce hash tablolarının çekirdekte ``hlist_head`` ve ``hlist_node`` yapılarıyla oluşturulduğunu
+görmüştük. Ancak buradaki yapılar elemanları aynı olsa da ``hlist_bl_head`` ve ``hlist_bl_node``
+biçimindedir. İsimlerdeki ``bl`` harfleri *bit lock* sözcüklerinden kısaltılmıştır. Çünkü dentry hash
+tablosunda ``hlist_bl_head`` yapısındaki ``first`` isimli göstericinin düşük anlamlı biti spinlock kilidi
+için kullanılmaktadır.
+
+Dentry Hash Değerinin Hesaplanması
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dentry hash tablosu için dentry nesnesinden hash değeri oluştururken hem dizin girişinin ismi hem de onun
+üst dizinine ilişkin dentry nesnesinin adresi kullanılmaktadır. Arama sırasında hash değeri yine dizin
+girişinin isminden ve üst dizine ilişkin dentry nesnesinin adresinden elde edilmektedir. Ancak çakışma
+durumunda zincirde arama yapılırken hem dizin girişinin ismine hem de onun üst dizinine ilişkin dentry
+nesnesinin adresine bakılmaktadır. Örneğin ``"/home/kaan/Study"`` yol ifadesinde *Study* girişinin hash
+tablosunda arandığını düşünelim. Bu noktaya gelindiğine göre çekirdeğin zaten *kaan* dizininin dentry
+nesnesini bulmuş olması gerekir. O halde *kaan* dizininin dentry nesnesinin adresinden ve *Study*
+isminden hash değeri oluşturularak hash tablosunun o indeksindeki bağlı listede arama yapılacaktır. Tabii
+bu arama yapılırken dizin girişinin ismiyle üst dizinin dentry nesnesinin adresi uyuşuyor mu diye
+bakılacaktır. Yukarıda da belirttiğimiz gibi isimler hemen karşılaştırılmamakta önce onların hash
+değerleri ve uzunlukları karşılaştırılmaktadır. Buradan da görüldüğü gibi dentry hash tablosunda *Study*
+isminde bir giriş aranmamaktadır; *üst dizini falanca olan Study isminde bir giriş* aranmaktadır. Burada
+bir noktaya dikkat ediniz. Üst dizini *kaan* olan pek çok *Study* dizin girişi olabilir. Bu nedenle
+zincirdeki karşılaştırmada üst dizinin ismi değil üst dizinin dentry nesnesinin adresi kullanılmaktadır.
+Çünkü isimler aynı olsa da her farklı dizin girişi için ayrı bir dentry nesnesi oluşturulmaktadır.
+
+Şimdi yeniden yol ifadesinin nasıl çözümlendiğine dikkat edelim. Yol ifadesi aşağıdaki gibi olsun:
+
+.. code-block:: c
+
+    fd = open("/home/kaan/Study/LinuxKernel/sample.c", O_RDONLY);
+
+Burada çekirdek önce yol ifadesinin mutlak mı göreli mi olduğuna bakar. Böylece arama işlemi için ilk
+dentry nesnesini çekirdek yol ifadesini veren prosesin ``task_struct`` yapısı içerisinden elde eder.
+(Prosesin ``task_struct`` yapısı içerisinde prosesin kök dizininin ve çalışma dizinin dentry nesne
+adreslerinin tutulduğunu anımsayınız.) Örneğimizdeki yol ifadesi mutlaktır. Böylece çekirdek kök dizine
+ilişkin dentry nesnesinin adresini ve *home* ismini kullanarak hash değerini hesaplar ve hash tablosunda
+*home* girişini arar. Eğer bulursa sonraki yol bileşenine geçer, bulamazsa önce onu diskten elde edip
+ondan sonra yoluna devam eder. Biz *home* girişinin dentry hash tablosunda bulunduğunu varsayalım. Bu
+sefer çekirdek aynı biçimde *kaan* ismiyle *home* girişinin dentry nesne adresini kullanarak hash
+değerini elde edecek ve *kaan* girişini benzer biçimde arayacaktır. İşlemler bu biçimde bir döngü
+içerisinde devam edecektir.
+
+Dentry Hash Tablosunun Uzunluğu
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Peki dentry hash tablosu hangi uzunluktadır? Dentry hash tablosunun kova (bucket) uzunluğu (yani kaç
+tane dizi elemanından oluştuğu) sistem boot edilirken eldeki fiziksel RAM'e bakılarak belirlenmektedir.
+Hash tablosunun tahsisatı bu süreç içerisinde güncel çekirdeklerde *mm/mm_init.c* dosyasındaki
+``alloc_large_system_hash`` fonksiyonu tarafından yapılmaktadır. Tahsisatın yapılmasında kullanılan çağrı
+şöyledir:
+
+.. code-block:: c
+
+    dentry_hashtable =
+        alloc_large_system_hash("Dentry cache",
+                    sizeof(struct hlist_bl_head),
+                    dhash_entries,
+                    13,
+                    HASH_EARLY | HASH_ZERO,
+                    &d_hash_shift,
+                    NULL,
+                    0,
+                    0);
+    d_hash_shift = 32 - d_hash_shift;
+
+Bu çağrı ile tahsisat yapıldıktan sonra ``d_cache_shift`` değeri elde edilmektedir. Gördüğünüz gibi bu
+değer de 32'den çıkartılarak saklanmıştır. Yani sonuç olarak ``d_hash_shift`` değişkeninde hash
+tablosunun uzunluğu *sola öteleme miktarı ile* başka bir deyişle 2'nin kuvveti ile tutulmaktadır. Aslında
+bu tür tabloların uzunlukları genellikle çekirdek parametreleriyle de ayarlanabilmektedir. Dentry hash
+tablosunun uzunluğu çekirdeğin ``dhash_entries`` parametresiyle boot işleminde ayarlanabilmektedir. Bunun
+için boot parametresi aşağıdaki örnekteki gibi oluşturulabilir:
+
+.. code-block:: text
+
+    dhash_entries=262144
+
+Çekirdek bu biçimde boot edilirse ``d_hash_shift`` değeri 18 olacaktır. ``d_hash_shift`` değişkeni
+*fs/dcache.c* dosyası içerisinde tanımlanmıştır, ancak export edilmemiştir. Çekirdek boot işlemiyle
+birlikte kendini initialize ederken ``printk`` fonksiyonu ile çeşitli log mesajlarını da çekirdeğin ring
+tamponuna yazdırmaktadır. Çalışan çekirdekte dentry hash tablosunun uzunluğu aşağıdaki komutla elde
+edilebilir:
+
+.. code-block:: console
+
+    $ dmesg | grep "Dentry cache"
+
+Kursun yapıldığı makinedeki çıktı şöyledir:
+
+.. code-block:: text
+
+    [    0.461843] Dentry cache hash table entries: 1048576 (order: 11, 8388608 bytes, linear)
+
+Burada tablonun toplam 1048576 elemandan (yani kovadan) oluştuğu belirtilmiştir. *Order: 11* bilgisi bu
+hash tablosu için toplam 2 üzeri kaç sayfanın ayrıldığını belirtmektedir. Bir sayfa 4K (4096 byte)
+olduğundan hash tablosu için toplam 2\ :sup:`11` × 4096 = 8.388.608 byte yer ayrılmıştır. Tablonun her
+elemanı bir gösterici tuttuğuna göre ve göstericiler de 64 bit Linux sistemlerinde 8 byte uzunlukta
+olduğuna göre tablonun toplam eleman sayısı 2\ :sup:`11` × 4096 / 8 = 1.048.576 kadardır.
+
+Dentry hash tablosunun uzunluğunu (yani kova sayısını) ayarlamak için bir çekirdek konfigürasyon
+parametresi bulunmamaktadır.
+
+Burada bir noktaya dikkat ediniz. Yukarıda açıkladığımız uzunluk hash tablosunun uzunluğudur. Her dentry
+nesnesi yaratıldıkça bu tabloya eklenmektedir. Zamanla dentry nesnelerinin sayısı artabilir ve dentry
+nesneleri çekirdek alanında fazla yer kaplar hale gelebilir. Çekirdek bellek baskısı oluştuğunda bazı alt
+sistemlere yönelerek orada boşaltımlar yapabilmektedir. İşte bellek baskısı altında çekirdek son
+zamanlarda en az başvurulan kullanılmayan dentry nesnelerini bellekten atarak onların kapladığı alanı geri
+alabilmektedir. (Ancak çekirdek hiçbir zaman initialize aşamasında yarattığı dentry hash tablosunu
+küçültmemektedir. Yalnızca tablodaki dentry nesnelerini gerektiğinde boşaltmaktadır.)
+
+Dentry Nesnelerinin Grupları
+-----------------------------
+
+Dentry önbelleğindeki dentry nesneleri üç gruba ayrılmaktadır:
+
+1. **Kullanımda olan dentry nesneleri.** Bunlara *pozitif dentry nesneleri* de denilmektedir. Bunların
+   referans sayaçları 0'dan büyüktür.
+2. **Kullanımda olmayan dentry nesneleri.** Bunların referans sayaçları 0'dır.
+3. **Negatif dentry nesneleri.** Bunların da referans sayaçları 0'dır.
+
+Hem kullanımda olmayan dentry nesnelerinin hem de negatif dentry nesnelerinin referans sayaçları 0
+olduğuna göre bunların arasında ne farklılık vardır? Kullanımda olan ve kullanımda olmayan dentry
+nesnelerinin ilişkin olduğu inode nesneleri inode önbelleğinde bulunmaktadır. Yani örneğin bir dentry
+nesnesinin referans sayacı 0'a düşmüş olsa bile ona ilişkin inode nesnesi o anda inode önbelleğinde
+tutulmaya devam etmektedir. Ancak negatif dentry nesnelerine ilişkin inode nesneleri inode önbelleğinde
+bulunmamaktadır. O halde referans sayacı 0 olan dentry nesneleri kendi aralarında iki gruba ayrılmaktadır:
+inode nesneleri inode önbelleğinde bulunanlar ve inode nesneleri inode önbelleğinde bulunmayanlar. İşte
+referans sayacı 0 olan ancak o girişe ilişkin inode nesneleri inode önbelleğinde bulunmayan dentry
+nesnelerine *negatif dentry nesneleri* denilmektedir. Negatif dentry nesnelerinin ``d_inode`` göstericileri
+``NULL`` durumundadır. Negatif dentry nesneleri tipik olarak *aslında olmayan bir dosya üzerinde işlem
+yapılmak istendiğinde* oluşturulmaktadır. Örneğin ``open`` fonksiyonu ile *xxx.txt* isimli bir dosyayı
+``O_RDONLY`` modunda açmaya çalışalım. Ancak dosya diskte mevcut olmasın. Bu durumda çekirdek *xxx.txt*
+dosyasına ilişkin dizin girişi için dentry nesnesini yine de oluşturup dentry önbelleğine
+yerleştirmektedir. Ancak bu girişe ilişkin bir inode nesnesi bulunmamaktadır. Şimdi siz "mademki dosya
+diskte yok bu durumda neden onun için bir dentry nesnesi oluşturulup dentry önbelleğinde saklanıyor" diye
+düşünebilirsiniz. İşte olmayan dosyalara erişmeye çalışmak aslında çok karşılaşılan durumlardandır.
+Bazen dosyalar üzerinde *var mı yok mu* biçiminde senkronizasyon amaçlı kontrol işlemleri
+yapılabilmektedir. Bazı olmayan dosyaların ya da dizinlerin aranması da sanıldığından çok daha fazla
+olabilmektedir. (Örneğin bir dizin silinmiş olabilir. Ancak ``PATH`` çevre değişkeninde o dizin hala
+bulunuyor olabilir. Bu durumda ``exec`` işlemlerinde ``exec`` fonksiyonları o dizinler üzerinde başarısız
+açma işlemleri yapacaktır.) Deneyimlere göre yol ifadesinin çözümlenme işlemlerinde %30–50 oranındaki
+işlemler bir dizin girişinin var olmaması nedeniyle başarısızlıkla sonuçlanmaktadır. İşte bu tür
+durumlarda başarısız aramalara ilişkin dizin girişlerine ilişkin dentry nesnelerinin *bir sonraki sefer
+başarısızlık daha kolay anlaşılsın diye* dentry önbelleğinde saklanması performansı artırmaktadır.
+
+Burada *negatif dentry* tanımlamasıyla ilgili bir nokta üzerinde de durmak istiyoruz. Negatif dentry
+nesnelerine ilişkin bir inode nesnesinin inode önbelleğinde bulunmadığını belirtmiştik. Bu nedenle bu
+dentry nesnelerinin ``d_inode`` göstericileri ``NULL`` durumundaydı. Ancak aslında negatif dentry
+nesnelerinin referans sayaçları geçici olarak 0'dan büyük hale gelebilmektedir. Örneğin başarısız aramalar
+yapılırken dentry nesnesinin referans sayacı artırılıp geçici bir süre 0'dan büyük hale gelebilmektedir.
+Ancak kararlı durumda onların referans sayaçları 0 olur.
+
+Yukarıdaki üç grup dentry nesnesi de dentry önbelleğinde yani dentry hash tablosunda tutulmaktadır. Pekiyi
+sistem bellek baskısı altında hangi dentry nesnelerini önbellekten atmaktadır? İzleyen paragrafta bunun
+üzerinde duracağız.
+
+LRU Politikası
+---------------
+
+Bellek baskısı altında çekirdek her zaman referans sayacı 0 olan dentry nesnelerini dentry önbelleğinden
+(yani dentry hash tablosundan) atmaktadır. Kullanımda olan yani referans sayacı 0'dan büyük olan dentry
+nesneleri dentry önbelleğinden atılmamaktadır. Pekiyi çok fazla sayıda referans sayacı 0 olan dentry
+nesnesi dentry önbelleğinde bulunuyorsa ve çekirdek bunların bir kısmını önbellekten atmak istiyorsa ne
+olacaktır? İşte çekirdek genel olarak bu tür durumlarda *son zamanlarda en az kullanılan nesneleri* bu
+tür önbelleklerden atma yoluna gitmektedir. Buna İngilizce *LRU (Least Recently Used)* politikası
+denilmektedir. Genellikle LRU politikası bir bağlı liste ile gerçekleştirilmektedir. Bu
+gerçekleştirimde aday nesneler bir bağlı listede tutulur. Bunlara erişilince erişilen eleman bağlı
+listede öne alınır. Böylece son zamanlarda az erişilenler bağlı listenin sonunda kalmış olur. İşte
+bellek baskısı oluştuğunda da bağlı listenin sonundan atma yapılmaktadır.
+
+Eskiden referans sayacı 0 olan (yani referans sayacı 0'a düşmüş olan ve negatif olan) dentry nesneleri
+toplamda tek bir LRU bağlı listesinde tutuluyordu. Çekirdeğin 2.6.18 versiyonuyla birlikte her dosya
+sistemi ya da disk bölümü için ayrı bir LRU bağlı listesi tutulmaya başlandı. Güncel çekirdeklerde bu
+nedenle dentry önbelleği için LRU bağlı listeleri *include/linux/fs.h* ``super_block`` yapısı içerisine
+taşınmıştır:
+
+.. code-block:: c
+
+    struct super_block {
+        /* ... */
+
+        struct list_lru s_dentry_lru;
+
+        /* ... */
+    };
+
+Buradaki ``list_lru`` yapısı da *include/linux/list_lru.h* dosyası içerisinde şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct list_lru {
+        struct list_lru_node *node;
+    #ifdef CONFIG_MEMCG
+        struct list_head      list;
+        int                   shrinker_id;
+        bool                  memcg_aware;
+        struct xarray         xa;
+    #endif
+    #ifdef CONFIG_LOCKDEP
+        struct lock_class_key *key;
+    #endif
+    };
+
+Burada bazı konfigürasyon parametrelerine bağlı olarak bazı elemanların yapıya dahil edildiğini
+görüyorsunuz. Yapının ``node`` elemanında ``list_lru_node`` isimli bir yapı türünden dizinin adresi
+tutulmaktadır. (Dizinin uzunluğu çekirdek tarafından biliniyor durumdadır.) ``list_lru_node`` yapısı da
+yine *include/linux/list_lru.h* dosyası içerisinde şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct list_lru_node {
+        /* global list, used for the root cgroup in cgroup aware lrus */
+        struct list_lru_one lru;
+        atomic_long_t       nr_items;
+    } ____cacheline_aligned_in_smp;
+
+Buradaki ``list_lru_one`` yapısı da yine *include/linux/list_lru.h* dosyasında şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct list_lru_one {
+        struct list_head list;
+        /* may become negative during memcg reparenting */
+        long             nr_items;
+        /* protects all fields above */
+        spinlock_t       lock;
+    };
+
+Bu yapılar neden bu kadar karmaşıktır? İşte zaman içerisinde dentry önbelleği için LRU bağlı listeleri
+NUMA mimarisinde her NUMA bank'ı için ayrı bir tane olacak biçimde çoklanmıştır. Eğer söz konusu
+bilgisayar NUMA değil de SMP kullanıyorsa aslında burada bir tane bağlı liste bulunmaktadır. NUMA
+(Non-uniform Memory Access) ve SMP (Symmetric Multiprocessor) mimariler kursumuzun bellek yönetimi
+kısmında ele alınacaktır. Bugün kullandığımız bilgisayar kartlarının çok büyük bölümü SMP mimarisine
+uygun tasarlanmıştır. Ancak çekirdek kodları hem NUMA hem de SMP mimarilerini destekleyecek biçimde genel
+oluşturulmuştur. Yukarıdaki veri yapısının özeti şöyle ifade edilebilir: *"super_block yapısı içerisinde
+bir tane değil NUMA bank'larının (node'larının) sayısı kadar LRU listesi vardır. Bu LRU listeleri bir
+dizi biçiminde tutulmaktadır."*
+
+Dentry önbelleğindeki LRU listelerinde dentry nesneleri dentry yapısının ``d_lru`` elemanı yoluyla
+tutulmaktadır:
+
+.. code-block:: c
+
+    struct dentry {
+        /* ... */
+
+        struct list_head d_lru;
+
+        /* ... */
+    };
+
+Eskiden dentry önbelleğine ilişkin LRU listesi NUMA mimarisi için özel bir organizasyona sahip değildi.
+Dolayısıyla çok daha basitti. Dentry önbellek sisteminin zaten Linux çekirdeklerine 2'li versiyonlarla
+eklendiğini belirtmiştik. Çekirdeğin 2.2 versiyonlarında dentry önbelleği olmasına karşın ayrı bir LRU
+listesi bulunmuyordu. Referans sayacı 0 olan dentry nesneleri için LRU listesi çekirdeğin 2.4
+versiyonuyla eklenmiştir. O zamanlarda yukarıda da belirttiğimiz gibi zaten tek bir liste vardı ve NUMA
+mimarisi için özel bir destek düşünülmemişti. 2.4 ve 2.6 versiyonlarının sonlarına kadar dentry
+önbelleğine ilişkin LRU listesi *fs/dcache.c* dosyasında aşağıdaki gibi tanımlanmıştır:
+
+.. code-block:: c
+
+    static LIST_HEAD(dentry_unused);
+
+Bellek Baskısı Altında Dentry Nesnelerinin Atılması
+-----------------------------------------------------
+
+Biz bellek baskısı oluştuğunda LRU listesinin sonunda kalanların dentry önbelleğinden atıldığını
+belirttik. Ancak aslında dentry önbelleğinden atma sürecinde LRU listesinin sonundaki dentry nesneleri
+bazı kontrollere sokularak dentry önbelleğinden atılmaktadır. Güncel çekirdeklerde yapılan kontroller
+şunlardır:
+
+- Eğer dentry nesnesi kilitlenmişse önbellekten atılmamaktadır.
+- Eğer dentry nesnesi bir dizine ilişkinse ve bu dizinin altında önbellekte bulunan başka dentry nesneleri
+  varsa (başka bir deyişle ``d_subdirs`` listesi boş değilse) bu dentry önbellekten atılmaz.
+- Çekirdek dentry nesnesine eriştiğinde dentry yapısı içerisindeki ``d_flags`` elemanının
+  ``DCACHE_REFERENCED`` bitini 1 yapar. Bellek baskısı oluşup çekirdek *shrink* işlemi için devreye
+  girdiğinde LRU bağlı listesinin sonundan başlayarak başa doğru dentry nesnelerinin
+  ``DCACHE_REFERENCED`` bitlerini kontrol eder. Bu biti 1 olan dentry nesnelerini dentry önbelleğinden
+  atmaz; bu biti 0 yaparak onu LRU listesinin başına alır. Eğer bu bit zaten 0 ise ilgili dentry
+  nesnesini önbellekten atar.
+
+Aşağıda güncel çekirdeklerde bellek baskısı oluştuğunda çağrılan fonksiyonları özet olarak veriyoruz.
+Bu konuyu ileride bellek yönetimini ele aldığımız bölümde açıklayacağız:
+
+.. code-block:: text
+
+            .....
+            shrink_slab()  ← Tüm slab cache'ler için shrinker'ları çağırır
+                    ↓
+     ┌──────────────────────────────┐
+     │   DENTRY SHRINKER ÇAĞRISI    │
+     └──────────────────────────────┘
+                    ↓
+        super_cache_scan()  ← dentry cache shrinker
+                    ↓
+        prune_dcache_sb(sb, sc->nr_to_scan)
+                    ↓
+                    ├─> freed = list_lru_shrink_walk(
+                    │       &sb->s_dentry_lru,
+                    │       sc,
+                    │       dentry_lru_isolate,  ← Callback fonksiyon
+                    │       &dispose)
+                    │
+                    └─> LRU listesini tara
+                            ↓
+        ┌───────────────────────────────────────┐
+        │   HER DENTRY İÇİN ÇAĞRILIR            │
+        └───────────────────────────────────────┘
+                            ↓
+        dentry_lru_isolate(item, lru, lru_lock, &dispose)
+                            ↓
+        ┌───────────────────────────────────────┐
+        │  DCACHE_REFERENCED KONTROLÜ BURADA!   │
+        └───────────────────────────────────────┘
+                            ↓
+            spin_lock(&dentry->d_lock)
+                            ↓
+            if (d_flags & DCACHE_REFERENCED) {
+                d_flags &= ~DCACHE_REFERENCED;  ← Bit temizle
+                return LRU_ROTATE;              ← Başa döndür, silme!
+            }
+                            ↓
+            d_lru_shrink_move(lru, dentry, &dispose);
+            return LRU_REMOVED;  ← Silinecekler listesine ekle
+                            │
+        ┌───────────────────┘
+        │
+        └─> shrink_dentry_list(&dispose)        ← Seçilmiş dentry'leri sil
+                    ↓
+            while (!list_empty(&dispose)) {
+                dentry = list_entry(...)
+                    ↓
+                lock_for_kill(dentry)            ← Güvenli kilitleme
+                    ↓
+                shrink_kill(dentry)
+                    ↓
+                __dentry_kill(dentry)
+                    ↓
+                dentry_unlink_inode()           ← inode ilişkisini kes
+                    ↓
+                __d_free()                      ← Belleği serbest bırak
+            }
+            .....
+
+Şimdi dentry LRU listesinin nasıl çalıştığını yeniden gözden geçirelim. Çekirdek yol ifadesinden
+hareketle dosya araması (name lookup) yaparken eriştiği her dentry nesnesini aslında LRU bağlı
+listesinin başına atmamakta yalnızca onların ``DCACHE_REFERENCED`` bitini 1 yapmaktadır. Bellek baskısı
+oluşup dentry cache sistemlerinden dentry nesneleri atılmak istendiğinde ise çekirdek listenin sonundan
+başına doğru ilerlemekte; eğer bir dentry nesnesinin ``DCACHE_REFERENCED`` biti 0 ise ve yukarıda
+belirttiğimiz koşullar da sağlanıyorsa onu önbellekten atmaktadır. Ancak dentry nesnesinin
+``DCACHE_REFERENCED`` biti 1 ise onu listenin başına çekip bu biti 0'lamaktadır ve o dentry nesnesini
+önbellekten atmamaktadır.
+
+Son olarak dentry önbellek sistemi için bir özet yapmak istiyoruz:
+
+- Toplamda tek bir dentry önbellek sistemi vardır.
+- Her ``super_block`` nesnesinde ayrı dentry LRU listeleri tutulmaktadır. Her LRU listesindeki dentry
+  nesnelerinin bir biti isim aramasında set edilmekte, sonra reclaim işlemi sırasında o biti 1 olanlar
+  listenin başına alınmaktadır.
+- Dentry hash tablosuna dentry elemanları üst dizinin dentry nesnesi ve dizin giriş ismi anahtar
+  yapılarak yerleştirilmektedir.
+
+Dentry Önbelleğinin /proc ile İzlenmesi
+-----------------------------------------
+
+Bilindiği gibi çekirdek çalışma sırasında bazı bilgileri kullanıcı modundan erişilebilsin diye *proc*
+dosya sistemi içerisindeki çeşitli dosyalara yazmaktadır. (Aslında proc dosya sistemindeki bilgiler
+talep edildiğinde verilmektedir.) Dentry önbellek sistemi için önemli olacak birkaç proc dosyası vardır.
+Bunlar hakkında kısaca bilgiler vermek istiyoruz:
+
+*/proc/sys/fs/dentry-state* dosyasında dentry önbelleğinin genel durumu hakkında bilgiler
+bulunmaktadır. Bu dosyanın içeriği aşağıdakine benzer biçimdedir:
+
+.. code-block:: console
+
+    $ cat /proc/sys/fs/dentry-state
+    188967  139941  45  0  25807  0
+
+Buradaki bilgiler şöyledir:
+
+.. list-table:: /proc/sys/fs/dentry-state Alanları
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Alan Adı
+     - Açıklama
+   * - ``nr_dentry``
+     - Toplam dentry sayısı
+   * - ``nr_unused``
+     - Kullanılmayan (LRU listesinde) dentry sayısı
+   * - ``age_limit``
+     - Yaşlandırma eşiği (saniye)
+   * - ``want_pages``
+     - Reclaim sırasında istenen sayfa sayısı
+   * - ``shrink_list_len``
+     - Shrinker listesi uzunluğu
+   * - ``unused_ratio``
+     - Kullanılmayan oran (bazı sürümlerde)
+
+Buradaki *nr_dentry* alanında dentry önbelleğindeki toplam dentry nesne sayısı belirtilmektedir. *nr_unused*
+alanında LRU listesindeki toplam nesne sayısı (yani referans sayacı 0 olan) belirtilmektedir. Buradaki
+*age_limit* çekirdeklerde hiçbir zaman kullanılmamıştır. Dolayısıyla buradaki 45 saniye belirlemesine
+ilişkin çekirdeğin herhangi bir yerinde bir gerçekleştirim bulunmamaktadır. *unused_ratio* ise tüm
+dentry nesneleri ile kullanılmayanların oranını belirtmektedir. Ancak bu bilgi her çekirdekte
+güncellenmemektedir.
+
+*/proc/slabinfo* dosyası dilimli tahsisat sistemindeki öğelerin izlenmesi için kullanılan genel bir
+dosyadır. Dentry nesneleri de (tabii inode nesneleri de) dilimli tahsisat sistemiyle tahsis edildiği için
+dentry nesnelerinin tahsisatları hakkında bu dosyaya başvurularak bir bilgi edinilebilir. Dosyadaki
+dentry dilimli tahsisat sistemi hakkında örnek bilgi aşağıdakine benzer bir biçimde rapor edilmektedir:
+
+.. code-block:: console
+
+    $ sudo cat /proc/slabinfo | grep dentry
+    dentry  189187 189231  192  21  1 : tunables  0  0  0 : slabdata  9011  9011  0
+
+Buradaki sütunların başlıkları şöyledir:
+
+.. code-block:: text
+
+    name <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> : tunables <limit>
+    <batchcount> <sharedfactor> : slabdata <active_slabs> <num_slabs> <sharedavail>
+
+Biz kursumuzda *dilimli tahsisat sistemini (slab allocator)* çekirdeğin heap sisteminin anlatıldığı
+bölümde ayrıntılarıyla inceleyeceğiz. Buradaki *aktif nesne sayısı (örneğimizdeki 189187 değeri)* tahsis
+edilmiş olan ve henüz iade edilmemiş olan dentry nesnelerinin sayısını, *toplam nesne sayısı
+(örneğimizdeki 189231 değeri)* ise çekirdek tarafından dilimli tahsisat sistemi yoluyla tahsis edilmiş
+nesnelerin toplam sayısını belirtmektedir.
+
+Ayrıca *sys* dosya sistemi içerisinde dilimli tahsisat sistemine ilişkin */sys/kernel/slab/dentry* dizini
+bulundurulmaktadır. Bu dizinin içeriği şöyledir:
+
+.. code-block:: console
+
+    $ ls
+    aliases      ctor            object_size      poison                    shrink             store_user
+    align        destroy_by_rcu  objects_partial  reclaim_account           skip_kfence        total_objects
+    cache_dma    hwcache_align   objs_per_slab    red_zone                  slabs              trace
+    cpu_partial  min_partial     order            remote_node_defrag_ratio  slabs_cpu_partial  usersize
+    cpu_slabs    objects         partial          sanity_checks             slab_size          validate
+
+Burada görüldüğü gibi dentry dilimli tahsisat sistemi hakkında daha ayrıntılı bilgiler yer almaktadır.
+Bu konu ileride ele alınacaktır.
+
+Güncel çekirdeklerde */proc/dentry-state* dosyasındaki dentry önbelleğine ilişkin bilgiler çekirdek
+tarafından *fs/dcache.c* dosyası içerisindeki ``dentry_stat_t`` türünden ``dentry_stat`` isimli bir yapı
+nesnesinde tutulmaktadır:
+
+.. code-block:: c
+
+    struct dentry_stat_t {
+        long nr_dentry;
+        long nr_unused;
+        long age_limit;   /* age in seconds */
+        long want_pages;  /* pages requested by system */
+        long nr_negative; /* # of unused negative dentries */
+        long dummy;       /* Reserved for future use */
+    };
+
+    static struct dentry_stat_t dentry_stat = {
+        .age_limit = 45,
+    };
+
+Aslında bu yapı nesnesinin içeriği doğrudan */proc/dentry-state* dosyasına yansıtılmaktadır. Çekirdek
+bu yapıyı işlemler sırasında güncellemektedir. İlgili *proc* dosyaları okunduğunda da değerler bu yapıdan
+alınarak verilmektedir. *UNIX/Linux Sistem Programlama* kurslarından da anımsayacağınız gibi aslında
+*proc* ve *sys* dosya sistemleri içerisindeki dosyalar gerçek birer dosya değildir. Bu dosyalar okunmak
+istendiğinde çekirdek modüllerinin ilgili fonksiyonları çağrılmakta; çekirdek modülleri de bu bilgileri
+sağlayıp o anda talep eden prosese vermektedir. Yani örneğin biz */proc/dentry-state* dosyasını okumak
+istediğimizde çekirdek içerisindeki aşağıdaki fonksiyon çağrılıp bilgiler çekirdekteki fonksiyonlar
+yoluyla elde edilip talep eden prosese verilmektedir:
+
+.. code-block:: c
+
+    static int proc_nr_dentry(const struct ctl_table *table, int write,
+                              void *buffer, size_t *lenp, loff_t *ppos)
+    {
+        dentry_stat.nr_dentry = get_nr_dentry();
+        dentry_stat.nr_unused = get_nr_dentry_unused();
+        dentry_stat.nr_negative = get_nr_dentry_negative();
+        return proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
+    }
+
+Biz burada bellek baskısı oluştuğunda dentry önbelleğinden dentry nesnelerinin nasıl atıldığı konusunun
+ayrıntıları üzerinde durmayacağız. Bu konu aslında birincil olarak *bellek yönetimi (memory management)*
+ile ilgilidir. Dolayısıyla *bellek yönetimi (memory management)* konusu içerisinde ele alınacaktır.
+
+Biz dentry nesneleri hakkında belli bir derinliğe kadar bilgiler edindik. Şimdi de inode nesneleri
+hakkında belli bir derinliğe kadar bilgiler edineceğiz.
