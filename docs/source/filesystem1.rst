@@ -4692,7 +4692,7 @@ bilgisayar NUMA değil de SMP kullanıyorsa aslında burada bir tane bağlı lis
 (Non-uniform Memory Access) ve SMP (Symmetric Multiprocessor) mimariler kursumuzun bellek yönetimi
 kısmında ele alınacaktır. Bugün kullandığımız bilgisayar kartlarının çok büyük bölümü SMP mimarisine
 uygun tasarlanmıştır. Ancak çekirdek kodları hem NUMA hem de SMP mimarilerini destekleyecek biçimde genel
-oluşturulmuştur. Yukarıdaki veri yapısının özeti şöyle ifade edilebilir: "super_block yapısı içerisinde
+oluşturulmuştur. Yukarıdaki veri yapısının özeti şöyle ifade edilebilir: "``super_block`` yapısı içerisinde
 bir tane değil NUMA bank'larının (node'larının) sayısı kadar LRU listesi vardır. Bu LRU listeleri bir
 dizi biçiminde tutulmaktadır."
 
@@ -4721,9 +4721,6 @@ mimarisi için özel bir destek düşünülmemişti. 2.4 ve 2.6 versiyonlarını
 
     static LIST_HEAD(dentry_unused);
 
-Bellek Baskısı Altında Dentry Nesnelerinin Atılması
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 Biz bellek baskısı oluştuğunda LRU listesinin sonunda kalanların dentry önbelleğinden atıldığını
 belirttik. Ancak aslında dentry önbelleğinden atma sürecinde LRU listesinin sonundaki dentry nesneleri
 bazı kontrollere sokularak dentry önbelleğinden atılmaktadır. Güncel çekirdeklerde yapılan kontroller
@@ -4732,12 +4729,13 @@ bazı kontrollere sokularak dentry önbelleğinden atılmaktadır. Güncel çeki
 - Eğer dentry nesnesi kilitlenmişse önbellekten atılmamaktadır.
 - Eğer dentry nesnesi bir dizine ilişkinse ve bu dizinin altında önbellekte bulunan başka dentry nesneleri
   varsa (başka bir deyişle ``d_subdirs`` listesi boş değilse) bu dentry önbellekten atılmaz.
-- Çekirdek dentry nesnesine eriştiğinde dentry yapısı içerisindeki ``d_flags`` elemanının
-  ``DCACHE_REFERENCED`` bitini 1 yapar. Bellek baskısı oluşup çekirdek *shrink* işlemi için devreye
-  girdiğinde LRU bağlı listesinin sonundan başlayarak başa doğru dentry nesnelerinin
-  ``DCACHE_REFERENCED`` bitlerini kontrol eder. Bu biti 1 olan dentry nesnelerini dentry önbelleğinden
-  atmaz; bu biti 0 yaparak onu LRU listesinin başına alır. Eğer bu bit zaten 0 ise ilgili dentry
-  nesnesini önbellekten atar.
+
+Çekirdek dentry nesnesine eriştiğinde dentry yapısı içerisindeki ``d_flags`` elemanının ``DCACHE_REFERENCED`` bitini 1 
+yapmaktadır. Bellek baskısı oluşup çekirdek *shrink* işlemi için devreye girdiğinde LRU bağlı listesinin sonundan başlayarak 
+başa doğru dentry nesnelerinin ```DCACHE_REFERENCED`` bitlerini kontrol eder. Bu biti 1 olan dentry nesnelerini dentry önbelleğinden
+atmaz; bu biti 0 yaparak onu LRU listesinin başına alır. Eğer bu bit zaten 0 ise ilgili dentry nesnesini önbellekten atar. Yani
+dentry nesneleri kullanıldığı anda listenin başına alınmamaktadır. Erişilenlerin listenin abşına alınması *shrink* işlemi 
+sırasında yapılmaktadır. 
 
 Aşağıda güncel çekirdeklerde bellek baskısı oluştuğunda çağrılan fonksiyonları özet olarak veriyoruz.
 Bu konuyu ileride bellek yönetimini ele aldığımız bölümde açıklayacağız:
@@ -4814,21 +4812,21 @@ belirttiğimiz koşullar da sağlanıyorsa onu önbellekten atmaktadır. Ancak d
 Son olarak dentry önbellek sistemi için bir özet yapmak istiyoruz:
 
 - Toplamda tek bir dentry önbellek sistemi vardır.
-- Her ``super_block`` nesnesinde ayrı dentry LRU listeleri tutulmaktadır. Her LRU listesindeki dentry
+- Her ``super_block`` nesnesinde her NUMA düğümü için ayrı birer dentry LRU listesi vardır. Her LRU listesindeki dentry
   nesnelerinin bir biti isim aramasında set edilmekte, sonra reclaim işlemi sırasında o biti 1 olanlar
   listenin başına alınmaktadır.
 - Dentry hash tablosuna dentry elemanları üst dizinin dentry nesnesi ve dizin giriş ismi anahtar
   yapılarak yerleştirilmektedir.
 
 Dentry Önbelleğinin /proc ile İzlenmesi
------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Bilindiği gibi çekirdek çalışma sırasında bazı bilgileri kullanıcı modundan erişilebilsin diye *proc*
+Bilindiği gibi çekirdek çalışma sırasında bazı bilgileri kullanıcı modundan erişilebilsin diye proc
 dosya sistemi içerisindeki çeşitli dosyalara yazmaktadır. (Aslında proc dosya sistemindeki bilgiler
 talep edildiğinde verilmektedir.) Dentry önbellek sistemi için önemli olacak birkaç proc dosyası vardır.
 Bunlar hakkında kısaca bilgiler vermek istiyoruz:
 
-*/proc/sys/fs/dentry-state* dosyasında dentry önbelleğinin genel durumu hakkında bilgiler
+``/proc/sys/fs/dentry-state`` dosyasında dentry önbelleğinin genel durumu hakkında bilgiler
 bulunmaktadır. Bu dosyanın içeriği aşağıdakine benzer biçimdedir:
 
 .. code-block:: console
@@ -4857,14 +4855,14 @@ Buradaki bilgiler şöyledir:
    * - ``unused_ratio``
      - Kullanılmayan oran (bazı sürümlerde)
 
-Buradaki *nr_dentry* alanında dentry önbelleğindeki toplam dentry nesne sayısı belirtilmektedir. *nr_unused*
+Buradaki ``nr_dentry`` alanında dentry önbelleğindeki toplam dentry nesne sayısı belirtilmektedir. ``nr_unused``
 alanında LRU listesindeki toplam nesne sayısı (yani referans sayacı 0 olan) belirtilmektedir. Buradaki
-*age_limit* çekirdeklerde hiçbir zaman kullanılmamıştır. Dolayısıyla buradaki 45 saniye belirlemesine
-ilişkin çekirdeğin herhangi bir yerinde bir gerçekleştirim bulunmamaktadır. *unused_ratio* ise tüm
+``age_limit`` çekirdeklerde hiçbir zaman kullanılmamıştır. Dolayısıyla buradaki 45 saniye belirlemesine
+ilişkin çekirdeğin herhangi bir yerinde bir gerçekleştirim bulunmamaktadır. ``unused_ratio`` ise tüm
 dentry nesneleri ile kullanılmayanların oranını belirtmektedir. Ancak bu bilgi her çekirdekte
 güncellenmemektedir.
 
-*/proc/slabinfo* dosyası dilimli tahsisat sistemindeki öğelerin izlenmesi için kullanılan genel bir
+``/proc/slabinfo`` dosyası dilimli tahsisat sistemindeki öğelerin izlenmesi için kullanılan genel bir
 dosyadır. Dentry nesneleri de (tabii inode nesneleri de) dilimli tahsisat sistemiyle tahsis edildiği için
 dentry nesnelerinin tahsisatları hakkında bu dosyaya başvurularak bir bilgi edinilebilir. Dosyadaki
 dentry dilimli tahsisat sistemi hakkında örnek bilgi aşağıdakine benzer bir biçimde rapor edilmektedir:
@@ -4887,7 +4885,7 @@ edilmiş olan ve henüz iade edilmemiş olan dentry nesnelerinin sayısını, *t
 (örneğimizdeki 189231 değeri)* ise çekirdek tarafından dilimli tahsisat sistemi yoluyla tahsis edilmiş
 nesnelerin toplam sayısını belirtmektedir.
 
-Ayrıca *sys* dosya sistemi içerisinde dilimli tahsisat sistemine ilişkin */sys/kernel/slab/dentry* dizini
+Ayrıca *sys* dosya sistemi içerisinde dilimli tahsisat sistemine ilişkin ``/sys/kernel/slab/dentry`` dizini
 bulundurulmaktadır. Bu dizinin içeriği şöyledir:
 
 .. code-block:: console
@@ -4902,8 +4900,8 @@ bulundurulmaktadır. Bu dizinin içeriği şöyledir:
 Burada görüldüğü gibi dentry dilimli tahsisat sistemi hakkında daha ayrıntılı bilgiler yer almaktadır.
 Bu konu ileride ele alınacaktır.
 
-Güncel çekirdeklerde */proc/dentry-state* dosyasındaki dentry önbelleğine ilişkin bilgiler çekirdek
-tarafından *fs/dcache.c* dosyası içerisindeki ``dentry_stat_t`` türünden ``dentry_stat`` isimli bir yapı
+Güncel çekirdeklerde ``/proc/dentry-state`` dosyasındaki dentry önbelleğine ilişkin bilgiler çekirdek
+tarafından ``fs/dcache.c`` dosyası içerisindeki ``dentry_stat_t`` türünden ``dentry_stat`` isimli bir yapı
 nesnesinde tutulmaktadır:
 
 .. code-block:: c
@@ -4921,12 +4919,12 @@ nesnesinde tutulmaktadır:
         .age_limit = 45,
     };
 
-Aslında bu yapı nesnesinin içeriği doğrudan */proc/dentry-state* dosyasına yansıtılmaktadır. Çekirdek
-bu yapıyı işlemler sırasında güncellemektedir. İlgili *proc* dosyaları okunduğunda da değerler bu yapıdan
+Aslında bu yapı nesnesinin içeriği doğrudan ``/proc/dentry-state`` dosyasına yansıtılmaktadır. Çekirdek
+bu yapıyı işlemler sırasında güncellemektedir. İlgili proc dosyaları okunduğunda da değerler bu yapıdan
 alınarak verilmektedir. *UNIX/Linux Sistem Programlama* kurslarından da anımsayacağınız gibi aslında
-*proc* ve *sys* dosya sistemleri içerisindeki dosyalar gerçek birer dosya değildir. Bu dosyalar okunmak
+proc ve sys dosya sistemleri içerisindeki dosyalar gerçek birer dosya değildir. Bu dosyalar okunmak
 istendiğinde çekirdek modüllerinin ilgili fonksiyonları çağrılmakta; çekirdek modülleri de bu bilgileri
-sağlayıp o anda talep eden prosese vermektedir. Yani örneğin biz */proc/dentry-state* dosyasını okumak
+sağlayıp o anda talep eden prosese vermektedir. Yani örneğin biz ``/proc/dentry-state`` dosyasını okumak
 istediğimizde çekirdek içerisindeki aşağıdaki fonksiyon çağrılıp bilgiler çekirdekteki fonksiyonlar
 yoluyla elde edilip talep eden prosese verilmektedir:
 
