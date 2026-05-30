@@ -7,7 +7,7 @@ Giriş
 Gereksinimler
 =============
 
-Okuyucunun bir sanak makineye herhangi bir Linux dağıtımını kurmasını tavsiye ediyoruz. 
+Okuyucunun bir sanal makineye herhangi bir Linux dağıtımını kurmasını tavsiye ediyoruz. 
 Dağıtım minimalist biçimde kurulabilir. Ancak Linux içerisinde C derleyicisinin (gcc ya da
 clang) ve binary utility araçlarının bulunuyor olması gerekir. Kursumuzda Linux kaynak
 kodları üzerinde değişiklikler yapıp çekirdeği yeniden derleyerek çeşitli denemeler
