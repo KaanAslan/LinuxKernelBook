@@ -1552,8 +1552,6 @@ sonra ``app`` programı çalıştırmalısınız. Bu program önce 10 tane threa
 
 .. code-block:: c
 
-    /* test-driver.h */
-
     #ifndef TEST_DRIVER_H_
     #define TEST_DRIVER_H_
 
@@ -1568,8 +1566,6 @@ sonra ``app`` programı çalıştırmalısınız. Bu program önce 10 tane threa
 ``test-driver.c``
 
 .. code-block:: c
-
-    /* test-driver.c */
 
     #include <linux/module.h>
     #include <linux/kernel.h>
@@ -1741,8 +1737,6 @@ sonra ``app`` programı çalıştırmalısınız. Bu program önce 10 tane threa
 
 .. code-block:: c
 
-    /* app.c */
-
     #define _GNU_SOURCE
 
     #include <stdio.h>
@@ -1902,8 +1896,6 @@ Aşağıda bu işlemi yapan çekirdek modülünün tüm kodları verilmiştir.
 
 .. code-block:: c
 
-    /* test-module.c */
-
     #include <linux/module.h>
     #include <linux/kernel.h>
     #include <linux/sched/signal.h>
@@ -2041,8 +2033,6 @@ Aşağıda tüm kodları bütünsel olarak veriyoruz:
 
 .. code-block:: c
 
-    /* test-driver.h */
-
     #ifndef TEST_DRIVER_H_
     #define TEST_DRIVER_H_
 
@@ -2058,8 +2048,6 @@ Aşağıda tüm kodları bütünsel olarak veriyoruz:
 ``test-driver.c``
 
 .. code-block:: c
-
-    /* test-driver.c */
 
     #include <linux/module.h>
     #include <linux/kernel.h>
@@ -2230,8 +2218,6 @@ Aşağıda tüm kodları bütünsel olarak veriyoruz:
 ``app.c``
 
 .. code-block:: c
-
-    /* app.c */
 
     #define _GNU_SOURCE
 
