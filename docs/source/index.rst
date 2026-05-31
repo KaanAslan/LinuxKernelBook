@@ -6,8 +6,8 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
 .. rst-class:: lead
 
-   Bu kitap **Kaan ASLAN** tarafından *C ve Sistem Programcıları Derneğindeki* **Linux Kernel - İşletim Sistemlerinin Tasarımı 
-   ve Gerçekleştirilmesi** kursundaki kurs notları temel alınarak oluşturulmuştur. 
+   Bu kitap **Kaan ASLAN** ve **Sebahat ERSOY** tarafından *C ve Sistem Programcıları Derneğindeki* **Kaan Aslan** tarafından verilen 
+   **Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi** kursundaki kurs notları temel alınarak oluşturulmuştur. 
    
    Kitaptaki içerik belli bir kaynak referans alınarak oluşturulmamıştır ve içeriğin oluşturulmasında yapay zeka araçlarından 
    faydalanılmamıştır. Bu bakımdan içerik tamamen özgündür. Kitap ile benzer içeriklere sahip kaynaklar *Kaynaklar* bölümünde 
@@ -17,8 +17,6 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
    aşağıdaki bağlantıdan erişebilirsiniz:
 
    https://github.com/CSD-1993/KursNotlari
-
-   Notların içerik kontrolü ve düzeltilmesi aşamalarında yardımcı olan **Sebahat Ersoy**'a teşekkür ederiz.
 
 ----
 

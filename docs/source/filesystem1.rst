@@ -5194,7 +5194,7 @@ vermiştik. Burada güncel çekirdeklerdeki inode yapısını yeniden anımsatma
         void                                    *i_private;        /* fs or device private pointer */
     } __randomize_layout;
 
-INode Tabanlı Dosya Sistemlerinde Dizin Girişlerinin Diskteki Organizasyonu
+Inode Tabanlı Dosya Sistemlerinde Dizin Girişlerinin Diskteki Organizasyonu
 ---------------------------------------------------------------------------
 
 UNIX/Linux sistemlerinde kullanılan inode tabanlı dosya sistemlerinde dizinlerle (directories) dosyaların
