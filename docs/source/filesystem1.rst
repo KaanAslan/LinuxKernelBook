@@ -19,8 +19,13 @@ metadata bilgilerinin diskte nasıl saklandığı gibi belirlemeler dosya sistem
 diskteki dosya sisteminin çekirdekteki temsilinin oluşturulması ve işletim sisteminin açılan
 dosyalar için yaptığı düzenlemeler ise dosya sisteminin bellek tarafını oluşturmaktadır.
 
+Temel Kavramlar
+===============
+
+Önce temel kavramları tanıtacağız. Konuları ele alırken bu kavramlardan faydalanacağız. 
+
 Disk Aktarımına İlişkin Temel Bilgiler
-======================================
+--------------------------------------
 
 Biz kursumuzda "disk" terimini ikinci bellekleri belirten genel bir terim olarak kullanacağız. 
 Bir süre önceye kadar disk olarak ağırlıklı biçimde *hard disk* dnilen elektromekanik birimler 
@@ -33,7 +38,7 @@ bozulabilmektedir. Tabii teknoloji bu bakımdan da ilerleme içerisindedir. SSD 
 taktığımız flash belleklerin teknolojisi birbirine benzemektedir.
 
 Sektörler ve Disk Denetleyicisi
-===============================
+-------------------------------
 
 Kullandığımız disk birimi ister *hard disk* olsun isterse SSD olsun disk ile bilgisayarımızın
 RAM'i arasındaki transferler *sektör (sector)* denilen byte blokları düzeyinde yapılmaktadır. Sektör
@@ -77,7 +82,7 @@ Bugünkü masaüstü bilgisayarlarımızda *SATA* ve *NVMe* en çok kullanılan 
 
 
 DMA (Direct Memory Access)
-==========================
+--------------------------
 
 Peki işletim sistemi tarafından disk denetleyicisi "falanca sektörleri oku" ya da "falanca 
 sektörlere yaz" biçiminde  programlandıktan sonra aktarım nasıl yapılmaktadır?  Aktarım CPU
@@ -190,9 +195,8 @@ yazım yapıldığında o bölgenin *aşınmasını (wearing)* engellemektedir. 
 birimleri tarafından içsel olarak (built-in) işletilmektedir. Bu önbellek sistemleri işletim sistemleri tarafından 
 erişilebilir değildir.
 
-
 Blok Kavramı
-============
+------------
 
 Yukarıda da belirttiğimiz gibi bir disk biriminde transfer edilecek en küçük birime sektör denilmektedir. Bir sektör 
 tipik olarak 512 byte uzunluğundadır. Ancak aslında sektör uzunlukları da disk üreticilerine bağlı olarak değişebilmektedir. 
@@ -263,7 +267,7 @@ olduğu mantıksal bir depolama alanı gibi ele almaktadır. Yani işletim siste
 sektörlerin değil aynı zamanda dosya sistemine ilişkin blokların da numaraları vardır.
 
 Sayfa Önbelleği (Page Cache)
-============================
+----------------------------
 
 İşletim sistemleri son okunan ya da yazılan disk bloklarını RAM'de bir önbellek sisteminde
 saklamaktadır. Bu önbellek sistemine genel olarak *işletim sisteminin disk önbellek sistemi*
@@ -274,8 +278,12 @@ bu önbellek sistemi iyileştirildi ve ismi *page cache* olarak değiştirildi.
 sistem performansı üzerinde en önemli olumlu etkilerden birini oluşturmaktadır. Eğer işletim
 sistemlerinde böyle bir disk önbellek sistemi olmasaydı sistemler çok yavaş çalışırdı.
 
-Dosyalardan Okuma ve Yazma İşlemleri
-====================================
+Linux sistemlerinde sayfa önbelleği oldukça kritik öğelerden biridir. Biz burada yalnızca bu 
+kavramı tanıttık. Sayfa önbelleği "bellek yönetiminin" ele alındığı bölümde ayrı bir başlık altında 
+ayrıntılarıyla gözden geçirilecektir.  
+
+Okuma ve Yazma İşlemleri
+========================
 
 Biz UNIX/Linux sistemlerinde bir dosyadan okuma yapmak için ya da bir dosyaya yazma yapmak için
 ``read``/``write`` POSIX fonksiyonlarını kullanmış olalım. Bu fonksiyonlar çekirdek içerisindeki
