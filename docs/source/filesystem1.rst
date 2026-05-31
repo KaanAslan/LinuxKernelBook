@@ -5325,3 +5325,728 @@ sayaç 1 artırılır. Her hard link dizin girişi silindiğinde bu sayaç 1 eks
 0'a düştüğünde gerçek anlamda silinmektedir. İnode elemanlarındaki hard link sayacının *"ls -l"*
 komutunda da görüntülendiğini anımsayınız. Yukarıdaki *ls* komutunda görüntülenen iki girişin de hard
 link sayacının 2 olduğuna dikkat ediniz.
+
+Aynı Inode Nesnesini Gösteren Dentry Nesneleri
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Önceki paragrafta bir inode elemanının diskte birden fazla dizin girişi tarafından gösterilebildiğini belirtmiştik. Aynı durum dosya
+sisteminin bellek tarafında da söz konusudur. Yani dentry önbelleğindeki birden fazla dentry nesnesi aynı inode
+nesnesini gösterebilmektedir. Çekirdek, aynı zamanda bir inode elemanının hangi dentry nesneleri tarafından
+gösterildiğini de bir bağlı listede tutmaktadır. (Ancak disk tarafındaki organizasyonda inode elemanının içerisinde
+ona referans eden dizin girişleri tutulmamaktadır. Bu nedenle bir dosyanın tüm hard link'leri ancak tüm dizin
+ağacının gözden geçirilmesiyle elde edilebilmektedir.) İnode nesnesine referans eden dentry nesneleri, Linux
+çekirdeklerinde uzun süredir inode yapısının ``i_dentry`` bağlı liste elemanında tutulmaktadır. Güncel çekirdeklerde
+bu eleman şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct inode {
+        /* ... */
+
+        union {
+            struct hlist_head   i_dentry;
+            struct rcu_head     i_rcu;
+        };
+
+        /* ... */
+    };
+
+2.2 ve 2.4 çekirdeklerinde yukarıdaki gibi bir birlik (``union``) yoktu. ``i_dentry`` bağlı listesi doğrudan inode
+yapısının içerisindeydi. İlk ilkel versiyon olan 0.01 versiyonunda ``m_inode`` yapısında böyle bir eleman zaten
+bulunmuyordu. (Bu eleman ilk kez 0.11 versiyonunda eklenmiştir.)
+
+İnode Önbelleği
+===============
+
+Linux çekirdeği inode nesnelerini de *inode önbelleği (inode cache)* denilen bir önbellekte tutmaktadır. Nasıl
+erişilen dizin girişleri dentry önbelleğinde tutuluyorsa erişilen inode nesneleri de inode önbelleğinde
+tutulmaktadır. Linux çekirdeğinde temel işlem yönü dentry nesnelerinden inode nesnelerine doğrudur. Dolayısıyla
+eğer bir dentry nesnesi dentry önbelleğinde bulunuyorsa her zaman ona ilişkin inode nesnesi de inode önbelleğinde
+bulunmak zorundadır. Tabii istisna olarak eğer dentry nesnesi var olan bir dizin girişini göstermiyorsa (bu durum
+olmayan bir dosyaya ilişkin dosya araması (*name lookup*) yapıldığında oluşabilmektedir) bu durumda dentry
+nesnesine ilişkin bir inode nesnesi inode önbelleğinde bulunmayacaktır. Bunlara *negatif dentry nesneleri*
+dendiğini anımsayınız.
+
+İnode Önbelleğinin Organizasyonu
+---------------------------------
+
+Linux'ta inode önbelleğinin organizasyonu zaman içerisinde değişikliklere uğratılmıştır. Güncel çekirdeklerde
+inode nesneleri için tek bir hash tablosu kullanılmaktadır. Bu hash tablosunun adresi de ``fs/inode.c``
+içerisindeki global ``inode_hashtable`` değişkeninde tutulmaktadır. Hash tablosunun büyüklüğü de aynı dosyadaki
+``i_hash_shift`` değişkeninde saklanmaktadır. Bu değişken hash tablosunun büyüklüğünü 2'nin kuvveti olarak tutar.
+(Yani örneğin bu değer 16 ise tablo 2^16 = 65536 kova uzunluğundadır.) Ayrıca çekirdek hash fonksiyonunda indeks
+elde etmede kullanmak için 2^i_hash_shift - 1 değerini de ``i_hash_mask`` global değişkeninde tutmaktadır.
+(Yani bu ``i_hash_mask`` değeri toplam kova sayısının 1 eksik değeridir.) Inode hash tablosunun büyüklüğü (yani
+kova sayısı) güncel çekirdeklerde sistemdeki RAM miktarı dikkate alınarak aşağıdaki formülle hesaplanmaktadır:
+
+.. code-block:: none
+
+   Toplam kova sayısı ≈ (toplam_ram_miktarı / 8192)
+
+Örneğin 8GB RAM bulunan bir sistemdeki inode hash tablosunun kova uzunluğu 1M kadar olacaktır. Hash tablosunun
+uzunluğu (yani kova sayısı) sistem boot edilirken ``ihash_entries`` isimli çekirdek parametresiyle de
+değiştirilebilmektedir. Ancak bunun için bir çekirdek konfigürasyon parametresi bulunmamaktadır. Çekirdeğin inode
+hash tablosu için belirlediği uzunluk ``dmesg`` komutuyla da aşağıdaki gibi elde edilebilmektedir:
+
+.. code-block:: bash
+
+   $ dmesg | grep -i "inode-cache"
+
+Buradan aşağıdakine benzer çıktı görüntülenecektir:
+
+.. code-block:: none
+
+   Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes)
+
+
+İnode Önbelleğine İlişkin Hash Tablosunun Yapısı ve LRU Listeleri
+-----------------------------------------------------------------
+
+Inode hash tablosuna inode nesneleri ``super_block`` nesnesi ve inode numarası anahtar yapılarak
+yerleştirilmektedir. Arama da buna göre yapılmaktadır. Çünkü UNIX/Linux sistemlerinde farklı dosya sistemlerindeki
+dosyaların inode numaraları aynı olabilmektedir. Yani inode numaraları tüm dizin ağacında *tek (unique)* olmak
+zorunda değildir, yalnızca belli bir dosya sisteminde tek olmak zorundadır.
+
+Tıpkı dentry önbellek sisteminde olduğu gibi inode önbellek sisteminde de "son zamanlarda en az kullanılan" inode
+nesnelerinin önbellekte tutulmasını sağlamak amacıyla bir LRU bağlı listesi oluşturulmuştur. Ancak bu LRU bağlı
+listesi toplamda bir tane değil dentry LRU listelerinde olduğu gibi her ``super_block`` nesnesi için bir tanedir.
+İnode önbelleğinin LRU listesi ``super_block`` yapısı içerisinde ``s_inode_lru`` elemanında tutulmaktadır:
+
+.. code-block:: c
+
+   struct super_block {
+       /* ... */
+
+       struct list_lru     s_inode_lru;
+
+       /* ... */
+   };
+
+Biz dentry LRU listelerini incelerken zaten ``list_lru`` yapısını ele almıştık. Anımsanacağı gibi LRU listeleri
+NUMA mimarisinde bir tane değil NUMA bank'larının sayısı kadardı. Güncel çekirdeklerde inode LRU listelerinde de
+dentry LRU listelerinde olduğu gibi "son zamanlarda kullanılanları işaretlemek için" bir bit mekanizması
+kullanılmaktadır. Çekirdek her inode nesne sayacını azalttığında (``iput`` fonksiyonunda) inode yapısının
+``i_state`` elemanının ``I_REFERENCED`` bitini 1 yapmakta, bellek baskısı oluştuğunda da bu bite bakarak bu biti
+1 olanları LRU listesinin başına alarak bu biti 0'lamaktadır.
+
+Çekirdek ayrıca ``super_block`` yapısının içerisinde o süper bloğa ilişkin disk bölümünün önbelleğinde bulunan
+bütün inode nesnelerini de ``s_inodes`` isimli bir bağlı listede tutmaktadır:
+
+.. code-block:: c
+
+   struct super_block {
+       /* ... */
+
+       struct list_lru     s_inode_lru;
+       struct list_head    s_inodes;        /* all inodes */
+
+       /* ... */
+   };
+
+Bu durumda mevcut çekirdeklerdeki inode önbellek sistemini şöyle özetleyebiliriz:
+
+- Toplamda tek bir inode önbellek sistemi vardır.
+- Her ``super_block`` nesnesinde ayrı LRU listeleri tutulmaktadır.
+- Bir disk bölümündeki tüm inode nesneleri de ayrıca ``super_block`` yapısı içerisinde tutulmaktadır.
+- İnode nesneleri inode hash tablosuna ``super_block`` nesne adresi ve inode numarası anahtar yapılarak
+  yerleştirilmektedir.
+
+2.6 çekirdeklerinde de inode hash tablosunun genel organizasyonu güncel çekirdeklerdekiyle aynıydı. Yine toplamda
+tek bir hash tablosu vardı. Ancak LRU listeleri her ``super_block`` nesnesinde bulunmuyordu. Toplamda global
+düzeyde ``fs/inode.c`` dosyasında iki inode listesi bulunduruluyordu:
+
+.. code-block:: c
+
+   LIST_HEAD(inode_in_use);
+   LIST_HEAD(inode_unused);
+   static struct hlist_head *inode_hashtable __read_mostly;
+
+Buradaki ``inode_unused`` listesi referans sayacı 0'a düşmüş olan inode nesnelerinin bulunduğu listeydi. Bu liste
+teknik olarak bir LRU listesi değildi. Ancak inode nesnelerinin referans sayacı 0'a düştüğünde çekirdek bu
+nesneleri ``inode_unused`` listesinin başına yerleştiriyordu. Bellek baskısı oluştuğunda reclaim işlemi yine
+sondan başa doğru yapılıyordu.
+
+2.4 ve 2.2 çekirdeklerinde de genel organizasyon ``fs/inode.c`` dosyasında 2.6 çekirdeğindeki gibiydi:
+
+.. code-block:: c
+
+   static LIST_HEAD(inode_in_use);
+   static LIST_HEAD(inode_unused);
+   static struct list_head *inode_hashtable;
+
+Linux'un öğrenci ödevi gibi olan ilkel 0.01 versiyonunda zaten çekirdeğin bir heap sistemi ve bir inode önbellek
+sistemi yoktu. Sistemde bütün inode elemanları global bir dizide tutuluyordu ve oradan boş olanlar tahsis
+ediliyordu. Bu inode dizisi de 32 elemanlı çok küçük bir diziydi. Eğer inode dizisindeki tüm inode elemanları
+kullanılıyorsa çekirdek panic oluşturup çöküyordu. Aşağıda bu versiyondaki ``fs/inode.c`` dosyası içerisindeki
+``get_empty_inode`` fonksiyonunu görüyorsunuz:
+
+.. code-block:: c
+
+   #define NR_INODE 32
+
+   struct m_inode inode_table[NR_INODE]={{0,},};
+
+   struct m_inode * get_empty_inode(void)
+   {
+       struct m_inode * inode;
+       int inr;
+
+       while (1) {
+           inode = NULL;
+           inr = last_allocated_inode;
+           do {
+               if (!inode_table[inr].i_count) {
+                   inode = inr + inode_table;
+                   break;
+               }
+               inr++;
+               if (inr>=NR_INODE)
+                   inr=0;
+           } while (inr != last_allocated_inode);
+           if (!inode) {
+               for (inr=0 ; inr<NR_INODE ; inr++)
+                   printk("%04x: %6d\t",inode_table[inr].i_dev,
+                       inode_table[inr].i_num);
+               panic("No free inodes in mem");
+           }
+           last_allocated_inode = inr;
+           wait_on_inode(inode);
+           while (inode->i_dirt) {
+               write_inode(inode);
+               wait_on_inode(inode);
+           }
+           if (!inode->i_count)
+               break;
+       }
+       memset(inode,0,sizeof(*inode));
+       inode->i_count = 1;
+       return inode;
+   }
+
+
+İnode Nesnelerinin Önbellekten Atılması
+-----------------------------------------
+
+Peki inode önbelleğinden inode nesneleri nasıl çıkarılmaktadır? Daha önceden de belirttiğimiz gibi bir dentry
+nesnesi dentry önbelleğinde bulunuyorsa ona ilişkin inode nesnesi de inode önbelleğinde bulunmaktadır. Çünkü
+dentry nesneleri inode nesnelerinin nesne sayacını (inode yapısındaki ``i_count`` elemanı) artırmaktadır. Bir
+inode nesnesinin inode önbelleğinden atılabilmesi için onun referans sayacının 0'a düşmüş olması gerekir. (Zaten
+inode nesnesi LRU listesine referans sayacı 0 olduğunda girmektedir.) Bellek baskısı oluştuğunda çekirdek yine
+``super_block`` nesnelerinden hareketle LRU listelerini sondan itibaren dolaşıp belirlenen miktarda inode
+nesnesini önbellekten atmaktadır. Çekirdek bir inode nesnesi *kirli (dirty)* durumdaysa onu inode önbelleğinden
+atmamaktadır. Çünkü kirli inode elemanları başka bir çekirdek thread'i tarafından flush edilmektedir. Benzer
+biçimde o anda inode nesnesi kilitliyse yine o inode elemanı da inode önbelleğinden atılmamaktadır. Özetle inode
+nesnesinin inode önbelleğinden atılmasının koşulları şunlardır:
+
+1. İnode nesnesinin referans sayacı (yani ``i_count`` elemanı) 0 olmalıdır. (Zaten nesne LRU listesindeyse onun
+   referans sayacı 0 olmak zorundadır. Ancak bu durumun bazı istisnaları olabilmektedir.)
+2. İnode nesnesi *kirli (dirty)* olmamalıdır. (İnode nesnesi kirli olduğu halde inode önbelleğinde
+   bulunabilmektedir.)
+3. İnode nesnesi o anda *kilitli (locked)* olmamalıdır.
+
+Güncel çekirdeklerde LRU listesindeki inode nesnelerinin inode önbelleğinden atılıp atılmayacağına ``fs/inode.c``
+dosyası içerisindeki ``inode_lru_isolate`` fonksiyonunda karar verilmektedir:
+
+.. code-block:: c
+
+   static enum lru_status inode_lru_isolate(struct list_head *item,
+       struct list_lru_one *lru, spinlock_t *lru_lock, void *arg)
+   {
+       struct list_head *freeable = arg;
+       struct inode *inode = container_of(item, struct inode, i_lru);
+
+       if (!spin_trylock(&inode->i_lock))
+           return LRU_SKIP;
+
+       /*
+       * Referenced or dirty inodes are still in use. Give them another pass
+       * through the LRU as we cannot reclaim them now.
+       */
+       if (atomic_read(&inode->i_count) ||
+           (inode->i_state & ~I_REFERENCED)) {
+           list_lru_isolate(lru, &inode->i_lru);
+           spin_unlock(&inode->i_lock);
+           this_cpu_dec(nr_unused);
+           return LRU_REMOVED;
+       }
+
+       /* recently referenced inodes get one more pass */
+       if (inode->i_state & I_REFERENCED) {
+           inode->i_state &= ~I_REFERENCED;
+           spin_unlock(&inode->i_lock);
+           return LRU_ROTATE;
+       }
+
+       if (inode_has_buffers(inode) || !mapping_empty(&inode->i_data)) {
+           inode_pin_lru_isolating(inode);
+           spin_unlock(&inode->i_lock);
+           spin_unlock(&lru->lock);
+           if (remove_inode_buffers(inode)) {
+               unsigned long reap;
+               reap = invalidate_mapping_pages(&inode->i_data, 0, -1);
+               if (current_is_kswapd())
+                   __count_vm_events(KSWAPD_INODESTEAL, reap);
+               else
+                   __count_vm_events(PGINODESTEAL, reap);
+               mm_account_reclaimed_pages(reap);
+           }
+           inode_unpin_lru_isolating(inode);
+           return LRU_RETRY;
+       }
+
+       WARN_ON(inode->i_state & I_NEW);
+       inode->i_state |= I_FREEING;
+       list_lru_isolate_move(lru, &inode->i_lru, freeable);
+       spin_unlock(&inode->i_lock);
+
+       this_cpu_dec(nr_unused);
+       return LRU_REMOVED;
+   }
+
+Dentry önbelleğinden bir dentry nesnesinin atıldığını varsayalım. Peki buna ilişkin inode nesnesinin bu olay
+nedeniyle referans sayacı 0'a düşmüşse o inode nesnesi de inode önbelleğinden o sırada atılacak mıdır? İşte
+dentry önbelleğinin shrink edilmesi ile inode önbelleğinin shrink edilmesi farklı zamanlarda yapılmaktadır.
+Dolayısıyla çekirdek bir dentry nesnesini dentry önbelleğinden atarken o sırada ona ilişkin inode nesnesini
+koşullar sağlanmış olsa bile inode önbelleğinden atmaya çalışmamaktadır. İnode önbelleğinin shrink edilmesi
+farklı bir periyotta yapılmaktadır.
+
+
+Örnek Senaryolar
+-----------------
+
+Şimdi de bu önbellek sisteminin nasıl işletildiğini daha iyi anlayabilmek için birkaç örnek senaryo üzerinde
+durmak istiyoruz.
+
+**Senaryo 1: Dosyanın Açılıp Kapatılması**
+
+Varsayalım ki ``sample.txt`` isimli bir dosya ``open`` fonksiyonuyla açılıp hemen ``close`` fonksiyonuyla
+kapatılmış olsun. Bu sırada dentry ve inode önbelleklerine ilişkin şu olaylar gerçekleşecektir:
+
+1. Dosya açılırken *yol ifadesinin çözümlenmesi (pathname resolution)* sırasında ilgili dosyanın dentry nesnesi
+   dentry önbelleğinde yoksa dentry önbelleğine alınacaktır. Dosya açılmasından dolayı yaratılan dosya nesnesi 
+   (yani ``struct file`` nesnesi) bu dentry nesnesine referans ettiği için dentry nesnesinin referans sayacı 
+   eğer dentry nesnesi yeni yaratılmışsa 1 yapılacak, zaten dentry önbelleğpinde varsa  1 artırılıacaktır.
+
+2. Dosya açılırken ilgili dosyanın inode bilgileri inode önbelleğinde aranacak, yoksa inode önbelleğine
+   yerleştirilecektir. Bu inode nesnesi dentry nesnesi tarafından referans edildiği için onun da referans sayacı
+   1 artırılacaktır.
+
+3. Dosya kapatıldığında dosya nesnesi yok edilirken dentry nesnesinin referans sayacı 1 eksiltilecektir. Eğer
+   dentry nesnesinin referans sayacı 0'a düşerse çekirdek onu dentry LRU listesinin sonuna yerleştirecektir.
+   Tabii bu dentry nesnesinin referans sayacı düşürülürken ona ilişkin inode nesnesinin de referans sayacı
+   düşürülmektedir. O inode nesnesinin de referans sayacı eğer 0'a düşerse o inode nesnesi de inode LRU
+   listesinin sonuna yerleştirilecektir.
+
+4. Eğer dentry nesnesi ve ona ilişkin inode nesnesi LRU listelerine aktarılmışsa artık zamanla bellek baskısı
+   oluştuğunda listenin sonundan itibaren boşaltım yapılırken bunlar bu önbelleklerden tamamen atılacaktır.
+
+Burada bir noktaya dikkat ediniz: Dosya nesnesi dentry nesnesinin referans sayacını 1 artırmaktadır, dentry
+nesnesi de inode nesnesinin referans sayacını 1 artırmaktadır.
+
+**Senaryo 2: stat Fonksiyonunun Kullanımı**
+
+Şimdi de dosya nesnesi oluşturmayan bir işlem yapıldığında önbellek bağlamında neler olduğuna bakalım. Örneğin
+bir dosyanın bilgileri ``stat`` fonksiyonuyla elde edilmek istensin. Bu durumda önbellek bağlamında sırasıyla
+şunlar olacaktır:
+
+1. İlgili dosyaya ilişkin dentry nesnesi dentry önbelleğinde aranacak, bulunamazsa oluşturularak dentry
+   önbelleğine yerleştirilecektir. Bu işlem dentry nesnesinin referans sayacını 1 artıracaktır.
+
+2. Dentry nesnesine ilişkin inode nesnesi inode önbelleğinde aranacak, bulunamazsa oluşturularak inode
+   önbelleğine yerleştirilecektir. Bu işlem inode nesnesinin referans sayacını 1 artıracaktır.
+
+3. İnode nesnesi içerisindeki bilgiler kullanıcı modundaki prosese teslim edilecektir.
+
+4. İşlem bittikten sonra dentry nesnesinin referans sayacı 1 eksiltilecektir. Eğer nesnenin referans sayacı 0'a
+   düşerse nesne dentry LRU listesinin sonuna yerleştirilecektir. Tabii bu sırada inode nesnesinin referans
+   sayacı da 1 eksiltilecektir. Eğer inode referans sayacı da 0'a düşerse inode nesnesi de inode LRU listesinin
+   sonuna yerleştirilecektir.
+
+6. Bellek baskısı oluştuğunda eğer bu nesneler kullanılmamışlarsa ve listenin sonlarına doğru da ilerlemişlerse
+   bu önbelleklerden atılacaklardır.
+
+
+İnode Önbelleği İzleme Araçları
+---------------------------------
+
+Çekirdek inode önbellek sistemi hakkında da bazı bilgileri *proc* dosya sistemi yoluyla dış dünyaya iletmektedir.
+Bunları da açıklamak istiyoruz:
+
+``/proc/sys/fs/inode-state`` dosyası inode önbelleği hakkında bilgi veren temel bir dosyadır. Bu dosya
+okunduğunda aşağıdaki formatta bilgiler verilmektedir:
+
+.. code-block:: bash
+
+   $ cat /proc/sys/fs/inode-state
+   42418	532	0	0	0	0	0
+
+Buradaki birinci sütunda (örneğimizdeki 42418) inode önbelleğindeki toplam inode nesnelerinin sayısı, ikinci
+sütunda ise LRU listesindeki kullanılmayan inode nesnelerinin sayısı (örneğimizde 532) rapor edilmektedir.
+Kullanılmayan inode nesneleri referans sayacı (yani ``i_count`` elemanı) 0 olan nesnelerdir. Bazı istisnalar
+dışında zaten kullanılmayan inode nesneleri LRU listelerine alınmaktadır. Diğer sütunlar güncel çekirdeklerde
+kullanılmamaktadır. Bu sütunlarda hep 0 bulunmaktadır. Bu dosya okunduğunda çekirdekte ``fs/inode.c`` dosyasında
+bulunan aşağıdaki fonksiyon çağrılmaktadır:
+
+.. code-block:: c
+
+   static int proc_nr_inodes(const struct ctl_table *table, int write,
+       void *buffer, size_t *lenp, loff_t *ppos)
+   {
+       inodes_stat.nr_inodes = get_nr_inodes();
+       inodes_stat.nr_unused = get_nr_inodes_unused();
+       return proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
+   }
+
+``/proc/sys/fs/inode-nr`` dosyası da yukarıdaki iki sütunu vermektedir:
+
+.. code-block:: bash
+
+   $ cat /proc/sys/fs/inode-nr
+   42421	532
+
+Yine dilimli tahsisat sistemi yoluyla inode önbellek tahsisat dilimleri hakkında bilgiler ``/proc/slabinfo``
+dosyasından elde edilebilmektedir. Örneğin:
+
+.. code-block:: bash
+
+   $ sudo cat /proc/slabinfo | grep inode
+   isofs_inode_cache        46     46    688   23    4 : tunables    0    0    0 : slabdata      2      2      0
+   btrfs_inode               0      0   1088   30    8 : tunables    0    0    0 : slabdata      0      0      0
+   fscrypt_inode_info        0      0    128   32    1 : tunables    0    0    0 : slabdata      0      0      0
+   mqueue_inode_cache       34     34    960   34    8 : tunables    0    0    0 : slabdata      1      1      0
+   fuse_inode               72     72    896   36    8 : tunables    0    0    0 : slabdata      2      2      0
+   ecryptfs_inode_cache      0      0   1024   32    8 : tunables    0    0    0 : slabdata      0      0      0
+   fat_inode_cache          20     20    792   20    4 : tunables    0    0    0 : slabdata      1      1      0
+   squashfs_inode_cache      0      0    704   23    4 : tunables    0    0    0 : slabdata      0      0      0
+   ext4_inode_cache      14013  14013   1184   27    8 : tunables    0    0    0 : slabdata    519    519      0
+   hugetlbfs_inode_cache    50     50    648   25    4 : tunables    0    0    0 : slabdata      2      2      0
+   sock_inode_cache       1498   1521    832   39    8 : tunables    0    0    0 : slabdata     39     39      0
+   tracefs_inode_cache    1584   1584    672   24    4 : tunables    0    0    0 : slabdata     66     66      0
+   proc_inode_cache       5060   5060    712   23    4 : tunables    0    0    0 : slabdata    220    220      0
+   shmem_inode_cache      1965   1980    792   20    4 : tunables    0    0    0 : slabdata     99     99      0
+   inode_cache           19289  19350    640   25    4 : tunables    0    0    0 : slabdata    774    774      0
+
+
+Süper Blok Nesneleri
+=====================
+
+Şimdi de dikkatimizi süper blok nesnelerine ve dosya sistemlerinin kaydettirilmesine (file system registration)
+çevirelim. Daha önceden de belirttiğimiz gibi mount edilen her dosya sistemi için Linux çekirdeği süper blok
+nesnesi denilen bir nesne oluşturmaktadır. Süper blok nesneleri çekirdekte ``include/fs.h`` dosyası içerisindeki
+``super_block`` yapısıyla temsil edilmektedir. Görüldüğü gibi yapı oldukça büyüktür ve bazı elemanlar çeşitli
+konfigürasyon seçenekleriyle yapıya dahil edilmektedir.
+
+Güncel Çekirdeklerde ``super_block`` Yapısı
+--------------------------------------------
+
+Güncel çekirdeklerde ``super_block`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct super_block {
+       struct list_head            s_list;             /* Keep this first */
+       dev_t                       s_dev;              /* search index; _not_ kdev_t */
+       unsigned char               s_blocksize_bits;
+       unsigned long               s_blocksize;
+       loff_t                      s_maxbytes;         /* Max file size */
+       struct file_system_type     *s_type;
+       const struct super_operations   *s_op;
+       const struct dquot_operations   *dq_op;
+       const struct quotactl_ops       *s_qcop;
+       const struct export_operations  *s_export_op;
+       unsigned long               s_flags;
+       unsigned long               s_iflags;           /* internal SB_I_* flags */
+       unsigned long               s_magic;
+       struct dentry               *s_root;
+       struct rw_semaphore         s_umount;
+       int                         s_count;
+       atomic_t                    s_active;
+   #ifdef CONFIG_SECURITY
+       void                        *s_security;
+   #endif
+       const struct xattr_handler * const *s_xattr;
+   #ifdef CONFIG_FS_ENCRYPTION
+       const struct fscrypt_operations *s_cop;
+       struct fscrypt_keyring       *s_master_keys;    /* master crypto keys in use */
+   #endif
+   #ifdef CONFIG_FS_VERITY
+       const struct fsverity_operations *s_vop;
+   #endif
+   #if IS_ENABLED(CONFIG_UNICODE)
+       struct unicode_map          *s_encoding;
+       __u16                       s_encoding_flags;
+   #endif
+       struct hlist_bl_head        s_roots;            /* alternate root dentries for NFS */
+       struct list_head            s_mounts;           /* list of mounts; _not_ for fs use */
+       struct block_device         *s_bdev;
+       struct file                 *s_bdev_file;
+       struct backing_dev_info     *s_bdi;
+       struct mtd_info             *s_mtd;
+       struct hlist_node           s_instances;
+       unsigned int                s_quota_types;      /* Bitmask of supported quota types */
+       struct quota_info           s_dquot;            /* Diskquota specific options */
+
+       struct sb_writers           s_writers;
+
+       /*
+       * Keep s_fs_info, s_time_gran, s_fsnotify_mask, and
+       * s_fsnotify_info together for cache efficiency. They are frequently
+       * accessed and rarely modified.
+       */
+       void                        *s_fs_info;         /* Filesystem private info */
+
+       /* Granularity of c/m/atime in ns (cannot be worse than a second) */
+       u32                         s_time_gran;
+       /* Time limits for c/m/atime in seconds */
+       time64_t                    s_time_min;
+       time64_t                    s_time_max;
+   #ifdef CONFIG_FSNOTIFY
+       u32                         s_fsnotify_mask;
+       struct fsnotify_sb_info     *s_fsnotify_info;
+   #endif
+
+       /*
+       * q: why are s_id and s_sysfs_name not the same? both are human
+       * readable strings that identify the filesystem
+       * a: s_id is allowed to change at runtime; it's used in log messages,
+       * and we want to when a device starts out as single device (s_id is dev
+       * name) but then a device is hot added and we have to switch to
+       * identifying it by UUID
+       * but s_sysfs_name is a handle for programmatic access, and can't
+       * change at runtime
+       */
+       char                        s_id[32];           /* Informational name */
+       uuid_t                      s_uuid;             /* UUID */
+       u8                          s_uuid_len;         /* Default 16, possibly smaller for weird filesystems */
+
+       /* if set, fs shows up under sysfs at /sys/fs/$FSTYP/s_sysfs_name */
+       char                        s_sysfs_name[UUID_STRING_LEN + 1];
+
+       unsigned int                s_max_links;
+
+       /*
+       * The next field is for VFS *only*. No filesystems have any business
+       * even looking at it. You had been warned.
+       */
+       struct mutex                s_vfs_rename_mutex; /* Kludge */
+
+       /*
+       * Filesystem subtype. If non-empty the filesystem type field
+       * in /proc/mounts will be "type.subtype"
+       */
+       const char                  *s_subtype;
+
+       const struct dentry_operations *s_d_op;         /* default d_op for dentries */
+
+       struct shrinker             *s_shrink;          /* per-sb shrinker handle */
+
+       /* Number of inodes with nlink == 0 but still referenced */
+       atomic_long_t               s_remove_count;
+
+       /* Read-only state of the superblock is being changed */
+       int                         s_readonly_remount;
+
+       /* per-sb errseq_t for reporting writeback errors via syncfs */
+       errseq_t                    s_wb_err;
+
+       /* AIO completions deferred from interrupt context */
+       struct workqueue_struct     *s_dio_done_wq;
+       struct hlist_head           s_pins;
+
+       /*
+       * Owning user namespace and default context in which to
+       * interpret filesystem uids, gids, quotas, device nodes,
+       * xattrs and security labels.
+       */
+       struct user_namespace       *s_user_ns;
+
+       /*
+       * The list_lru structure is essentially just a pointer to a table
+       * of per-node lru lists, each of which has its own spinlock.
+       * There is no need to put them into separate cachelines.
+       */
+       struct list_lru             s_dentry_lru;
+       struct list_lru             s_inode_lru;
+       struct rcu_head             rcu;
+       struct work_struct          destroy_work;
+
+       struct mutex                s_sync_lock;        /* sync serialisation lock */
+
+       /*
+       * Indicates how deep in a filesystem stack this SB is
+       */
+       int                         s_stack_depth;
+
+       /* s_inode_list_lock protects s_inodes */
+       spinlock_t      s_inode_list_lock ____cacheline_aligned_in_smp;
+       struct list_head            s_inodes;           /* all inodes */
+
+       spinlock_t                  s_inode_wblist_lock;
+       struct list_head            s_inodes_wb;        /* writeback inodes */
+   } __randomize_layout;
+
+2.6 Çekirdeklerinde ``super_block`` Yapısı
+-------------------------------------------
+
+2.6 çekirdeklerinde ``super_block`` yapısı şöyleydi:
+
+.. code-block:: c
+
+   struct super_block {
+       struct list_head            s_list;             /* Keep this first */
+       dev_t                       s_dev;              /* search index; _not_ kdev_t */
+       unsigned long               s_blocksize;
+       unsigned char               s_blocksize_bits;
+       unsigned char               s_dirt;
+       loff_t                      s_maxbytes;         /* Max file size */
+       struct file_system_type     *s_type;
+       const struct super_operations   *s_op;
+       const struct dquot_operations   *dq_op;
+       const struct quotactl_ops       *s_qcop;
+       const struct export_operations  *s_export_op;
+       unsigned long               s_flags;
+       unsigned long               s_magic;
+       struct dentry               *s_root;
+       struct rw_semaphore         s_umount;
+       struct mutex                s_lock;
+       int                         s_count;
+       int                         s_need_sync;
+       atomic_t                    s_active;
+   #ifdef CONFIG_SECURITY
+       void                        *s_security;
+   #endif
+       struct xattr_handler        **s_xattr;
+
+       struct list_head            s_inodes;           /* all inodes */
+       struct hlist_head           s_anon;             /* anonymous dentries for (nfs) exporting */
+       struct list_head            s_files;
+       /* s_dentry_lru and s_nr_dentry_unused are protected by dcache_lock */
+       struct list_head            s_dentry_lru;       /* unused dentry lru */
+       int                         s_nr_dentry_unused; /* # of dentry on lru */
+
+       struct block_device         *s_bdev;
+       struct backing_dev_info     *s_bdi;
+       struct mtd_info             *s_mtd;
+       struct list_head            s_instances;
+       struct quota_info           s_dquot;            /* Diskquota specific options */
+
+       int                         s_frozen;
+       wait_queue_head_t           s_wait_unfrozen;
+
+       char                        s_id[32];           /* Informational name */
+
+       void                        *s_fs_info;         /* Filesystem private info */
+       fmode_t                     s_mode;
+
+       /*
+       * The next field is for VFS *only*. No filesystems have any business
+       * even looking at it. You had been warned.
+       */
+       struct mutex                s_vfs_rename_mutex; /* Kludge */
+
+       /* Granularity of c/m/atime in ns. Cannot be worse than a second */
+       u32                         s_time_gran;
+
+       /*
+       * Filesystem subtype.  If non-empty the filesystem type field
+       * in /proc/mounts will be "type.subtype"
+       */
+       char                        *s_subtype;
+
+       /*
+       * Saved mount options for lazy filesystems using
+       * generic_show_options()
+       */
+       char                        *s_options;
+   };
+
+2.4 ve 2.2 Çekirdeklerinde ``super_block`` Yapısı
+---------------------------------------------------
+
+2.4 ve 2.2 çekirdeklerinde ise ``super_block`` yapısı şöyleydi:
+
+.. code-block:: c
+
+   struct super_block {
+       struct list_head            s_list;             /* Keep this first */
+       kdev_t                      s_dev;
+       unsigned long               s_blocksize;
+       unsigned char               s_blocksize_bits;
+       unsigned char               s_dirt;
+       unsigned long long          s_maxbytes;         /* Max file size */
+       struct file_system_type     *s_type;
+       struct super_operations     *s_op;
+       struct dquot_operations     *dq_op;
+       struct quotactl_ops         *s_qcop;
+       unsigned long               s_flags;
+       unsigned long               s_magic;
+       struct dentry               *s_root;
+       struct rw_semaphore         s_umount;
+       struct semaphore            s_lock;
+       int                         s_count;
+       atomic_t                    s_active;
+
+       struct list_head            s_dirty;            /* dirty inodes */
+       struct list_head            s_locked_inodes;    /* inodes being synced */
+       struct list_head            s_files;
+
+       struct block_device         *s_bdev;
+       struct list_head            s_instances;
+       struct quota_info           s_dquot;            /* Diskquota specific options */
+
+       union {
+           struct minix_sb_info    minix_sb;
+           struct ext2_sb_info     ext2_sb;
+           struct ext3_sb_info     ext3_sb;
+           struct hpfs_sb_info     hpfs_sb;
+           struct ntfs_sb_info     ntfs_sb;
+           struct msdos_sb_info    msdos_sb;
+           struct isofs_sb_info    isofs_sb;
+           struct nfs_sb_info      nfs_sb;
+           struct sysv_sb_info     sysv_sb;
+           struct affs_sb_info     affs_sb;
+           struct ufs_sb_info      ufs_sb;
+           struct efs_sb_info      efs_sb;
+           struct shmem_sb_info    shmem_sb;
+           struct romfs_sb_info    romfs_sb;
+           struct smb_sb_info      smbfs_sb;
+           struct hfs_sb_info      hfs_sb;
+           struct adfs_sb_info     adfs_sb;
+           struct qnx4_sb_info     qnx4_sb;
+           struct reiserfs_sb_info reiserfs_sb;
+           struct bfs_sb_info      bfs_sb;
+           struct udf_sb_info      udf_sb;
+           struct ncp_sb_info      ncpfs_sb;
+           struct usbdev_sb_info   usbdevfs_sb;
+           struct jffs2_sb_info    jffs2_sb;
+           struct cramfs_sb_info   cramfs_sb;
+           void                    *generic_sbp;
+       } u;
+   };
+
+0.01 Versiyonunda ``super_block`` Yapısı
+-----------------------------------------
+
+Linux'un ilkel 0.01 versiyonunda ``super_block`` yapısı da oldukça minimalistti:
+
+.. code-block:: c
+
+   struct super_block {
+       unsigned short      s_ninodes;
+       unsigned short      s_nzones;
+       unsigned short      s_imap_blocks;
+       unsigned short      s_zmap_blocks;
+       unsigned short      s_firstdatazone;
+       unsigned short      s_log_zone_size;
+       unsigned long       s_max_size;
+       unsigned short      s_magic;
+   /* These are only in memory */
+       struct buffer_head  *s_imap[8];
+       struct buffer_head  *s_zmap[8];
+       unsigned short      s_dev;
+       struct m_inode      *s_isup;
+       struct m_inode      *s_imount;
+       unsigned long       s_time;
+       unsigned char       s_rd_only;
+       unsigned char       s_dirt;
+   };
