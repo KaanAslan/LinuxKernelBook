@@ -1317,6 +1317,13 @@ da listeye ayrıca eklenmiştir:
 
 .. code-block:: c
 
+    struct PERSON {
+        char name[32];
+        int no;
+        struct hlist_node hlink;
+    };
+    /* ... */
+    
     for (int i = 0; i < 100; ++i) {
         if ((per = (struct PERSON *)malloc(sizeof(struct PERSON))) == NULL) {
             fprintf(stderr, "cannot allocate memory!...\n");

@@ -997,10 +997,10 @@ betimleyicileri aslında dosya betimleyici tablosunda bir indeks belirtmektedir.
    
 Güncel çekirdeklerde dosya betimleyici tablosuna ``task_struct`` nesnesinden hareketle birkaç hamlede erişilmektedir:
 
-.. image:: /_static/access-to-fdtable.svg
+.. image:: /_static/access-to-fdtable.png
    :alt: Dosya Betimleyici Tablosuna Erişim
    :align: center
-   :width: 70%
+   :width: 75%
 
 Dosya betimleyici tablosunun prosese özgü olduğuna dikkat ediniz. Bir proseste açılmış olan dosyaya ilişkin dosya
 nesnesinin adresi o prosesteki dosya betimleyici tablosuna yazılmaktadır. Dosya betimleyicileri sistem genelinde
@@ -5759,8 +5759,6 @@ nesnesi denilen bir nesne oluşturmaktadır. Süper blok nesneleri çekirdekte `
 ``super_block`` yapısıyla temsil edilmektedir. Görüldüğü gibi yapı oldukça büyüktür ve bazı elemanlar çeşitli
 konfigürasyon seçenekleriyle yapıya dahil edilmektedir.
 
-Güncel Çekirdeklerde ``super_block`` Yapısı
---------------------------------------------
 
 Güncel çekirdeklerde ``super_block`` yapısı şöyle bildirilmiştir:
 
@@ -5908,9 +5906,6 @@ Güncel çekirdeklerde ``super_block`` yapısı şöyle bildirilmiştir:
        struct list_head            s_inodes_wb;        /* writeback inodes */
    } __randomize_layout;
 
-2.6 Çekirdeklerinde ``super_block`` Yapısı
--------------------------------------------
-
 2.6 çekirdeklerinde ``super_block`` yapısı şöyleydi:
 
 .. code-block:: c
@@ -5983,9 +5978,6 @@ Güncel çekirdeklerde ``super_block`` yapısı şöyle bildirilmiştir:
        char                        *s_options;
    };
 
-2.4 ve 2.2 Çekirdeklerinde ``super_block`` Yapısı
----------------------------------------------------
-
 2.4 ve 2.2 çekirdeklerinde ise ``super_block`` yapısı şöyleydi:
 
 .. code-block:: c
@@ -6046,9 +6038,6 @@ Güncel çekirdeklerde ``super_block`` yapısı şöyle bildirilmiştir:
            void                    *generic_sbp;
        } u;
    };
-
-0.01 Versiyonunda ``super_block`` Yapısı
------------------------------------------
 
 Linux'un ilkel 0.01 versiyonunda ``super_block`` yapısı da oldukça minimalistti:
 
