@@ -21,10 +21,10 @@ exclude_patterns = []
 language = 'tr'  # veya 'en'
 
 # -- HTML çıktı seçenekleri ----------------------------------------------
-html_theme = 'sphinx_rtd_theme'  # Read the Docs teması
+html_theme = 'sphinx_rtd_theme'         # Read the Docs teması
 html_static_path = ['_static']
-html_logo = '_static/logo.jpeg'  # İsteğe bağlı logo
-html_favicon = '_static/favicon.ico'  # İsteğe bağlı favicon
+html_logo = '_static/logo.jpeg'         # İsteğe bağlı logo
+html_favicon = '_static/favicon.ico'    # İsteğe bağlı favicon
 html_css_files = ['custom.css']
 
 # -- Tema seçenekleri ---------------------------------------------------
@@ -38,7 +38,7 @@ html_theme_options = {
 
 latex_elements = {
     'papersize': 'a4paper',
-    'geometry': r'\usepackage[a4paper, top=2cm, bottom=2cm, left=1cm, right=1cm]{geometry}',
+    'geometry': r'\usepackage[a4paper, top=2cm, bottom=2cm, left=1.5cm, right=1.5cm]{geometry}',
     'preamble': r'''
         \usepackage{newunicodechar}
         \newunicodechar{≈}{\ensuremath{\approx}}

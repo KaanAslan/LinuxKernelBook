@@ -4762,7 +4762,7 @@ nesnenin referans sayacı düşürülür. Böylece nesne LRU listesine geri dön
 set ederek nesneye ikinci bir şans vermektedir. İkinci şansın verildiği yani ``DCACHE_REFERENCED`` bitinin set
 edildiği diğer bazı durumlar şunlardır:
 
-- ``d_move`` fonksiyonunda bir dentry nesnesi yer değiştirdiğinde çekirdek bu biti set etmektedir.
+- ``d_move`` fonksiyonunda bir dentry nesnesinin ismi değiştirdiğinde çekirdek bu biti set etmektedir.
 - ``d_splice_alias`` fonksiyonunda bir inode ile bir dentry nesnesi arasında bağlantı kurulurken veya bu bağlantı
   güncellenirken bu bayrak set edilmektedir.
 
@@ -5394,13 +5394,12 @@ Inode Önbelleğinin Organizasyonu
 ---------------------------------
 
 Linux'ta inode önbelleğinin organizasyonu zaman içerisinde değişikliklere uğratılmıştır. Güncel çekirdeklerde
-inode nesneleri için tek bir hash tablosu kullanılmaktadır. Bu hash tablosunun adresi de ``fs/inode.c``
-içerisindeki global ``inode_hashtable`` değişkeninde tutulmaktadır. Hash tablosunun büyüklüğü de aynı dosyadaki
-``i_hash_shift`` değişkeninde saklanmaktadır. Bu değişken hash tablosunun büyüklüğünü 2'nin kuvveti olarak tutar.
-(Yani örneğin bu değer 16 ise tablo 2^16 = 65536 kova uzunluğundadır.) Ayrıca çekirdek hash fonksiyonunda indeks
-elde etmede kullanmak için 2^i_hash_shift - 1 değerini de ``i_hash_mask`` global değişkeninde tutmaktadır.
-(Yani bu ``i_hash_mask`` değeri toplam kova sayısının 1 eksik değeridir.) Inode hash tablosunun büyüklüğü (yani
-kova sayısı) güncel çekirdeklerde sistemdeki RAM miktarı dikkate alınarak aşağıdaki formülle hesaplanmaktadır:
+inode nesneleri için tek bir hash tablosu kullanılmaktadır. Bu hash tablosunun adresi ``fs/inode.c`` içerisindeki 
+global ``inode_hashtable`` değişkeninde, büyüklüğü de nin kuvveti olarak 2'aynı dosyadaki ``i_hash_shift`` değişkeninde 
+saklanmaktadır. (Yani örneğin bu değer 16 ise tablo 2^16 = 65536 kova uzunluğundadır.) Ayrıca çekirdek hash fonksiyonunda 
+indeks elde etmede kullanmak için 2^i_hash_shift - 1 değerini de ``i_hash_mask`` global değişkeninde tutmaktadır. 
+(Yani bu ``i_hash_mask`` değeri toplam kova sayısının 1 eksik değeridir.) Inode hash tablosunun büyüklüğü (yani kova sayısı) 
+güncel çekirdeklerde sistemdeki RAM miktarı dikkate alınarak aşağıdaki formülle hesaplanmaktadır:
 
 .. code-block:: none
 
@@ -5425,15 +5424,15 @@ Buradan aşağıdakine benzer çıktı görüntülenecektir:
 Inode Önbelleğine İlişkin Hash Tablosunun Yapısı ve LRU Listeleri
 -----------------------------------------------------------------
 
-Inode hash tablosuna inode nesneleri ``super_block`` nesnesi ve inode numarası anahtar yapılarak
+Inode hash tablosuna inode nesneleri ``super_block`` nesnesinin adresi ve inode numarası anahtar yapılarak
 yerleştirilmektedir. Arama da buna göre yapılmaktadır. Çünkü UNIX/Linux sistemlerinde farklı dosya sistemlerindeki
 dosyaların inode numaraları aynı olabilmektedir. Yani inode numaraları tüm dizin ağacında *tek (unique)* olmak
 zorunda değildir, yalnızca belli bir dosya sisteminde tek olmak zorundadır.
 
-Tıpkı dentry önbellek sisteminde olduğu gibi inode önbellek sisteminde de "son zamanlarda en az kullanılan" inode
-nesnelerinin önbellekte tutulmasını sağlamak amacıyla bir LRU bağlı listesi oluşturulmuştur. Ancak bu LRU bağlı
-listesi toplamda bir tane değil dentry LRU listelerinde olduğu gibi her ``super_block`` nesnesi için bir tanedir.
-Inode önbelleğinin LRU listesi ``super_block`` yapısı içerisinde ``s_inode_lru`` elemanında tutulmaktadır:
+Tıpkı dentry önbellek sisteminde olduğu gibi inode önbellek sisteminde de son zamanlarda en az kullanılan inode 
+nesnelerinin önbellekte tutulmasını sağlamak amacıyla bir LRU bağlı listesi oluşturulmuştur. Tıpkı dentry önbelleğinde 
+olduğu gibi LRU listesi her süper bloktaki her NUMA düğümü için bir tane oluşturulmaktadır. inode önbelleğinin 
+LRU listeleri ``super_block`` yapısı içerisinde ``s_inode_lru`` elemanında tutulmaktadır:
 
 .. code-block:: c
 
@@ -5445,12 +5444,19 @@ Inode önbelleğinin LRU listesi ``super_block`` yapısı içerisinde ``s_inode_
        /* ... */
    };
 
-Biz dentry LRU listelerini incelerken zaten ``list_lru`` yapısını ele almıştık. Anımsanacağı gibi LRU listeleri
-NUMA mimarisinde bir tane değil NUMA bank'larının sayısı kadardı. Güncel çekirdeklerde inode LRU listelerinde de
-dentry LRU listelerinde olduğu gibi "son zamanlarda kullanılanları işaretlemek için" bir bit mekanizması
-kullanılmaktadır. Çekirdek her inode nesne sayacını azalttığında (``iput`` fonksiyonunda) inode yapısının
-``i_state`` elemanının ``I_REFERENCED`` bitini 1 yapmakta, bellek baskısı oluştuğunda da bu bite bakarak bu biti
-1 olanları LRU listesinin başına alarak bu biti 0'lamaktadır.
+Biz dentry LRU listelerini incelerken zaten ``list_lru`` yapısını ele almıştık. 
+
+Inode LRU listelerinde kullanılmakta olan inode nesneleri tutulmaz. Yalnızca referans sayacı 0'a düşmüş olan inode 
+nesneleri tutulur. Bir inode nesnesinin referans sayacı 0'a düştüğünde çekirdek inode nesnesini ilgili LRU listesinin
+sonuna (başına değil) yerleştirmektedir. LRU listelerinde bulunan bir inode nesnesi kullanıldığında onun referans sayacı 
+artırılacağı için LRU listesinden de çıkartılmaktadır. Güncel çekirdeklerde tıpkı dentry nesnelerinde olduğu gibi inode 
+nesnelerinde de bayrak mekanizmasıyla "ikinci şans" yöntemi aynı gerekçelerle kullanılmaktadır. ``I_REFERENCED`` bayrağının
+set edildiği tipik durumlar şunlardır:
+
+- Yol ifadesinin çözümlenmesi sırasında
+- d_move fonksiyonunda bir dentry nesnesinin ismi eğiştirildiğinde çekirdek bu biti set etmektedir. 
+- d_splice_alias fonksiyonunda bir inode ile bir dentry nesnesi arasında bağlantı kurulurken veya bu bağlantı güncellenirken 
+  bu bayrak set edilmektedir.
 
 Çekirdek ayrıca ``super_block`` yapısının içerisinde o süper bloğa ilişkin disk bölümünün önbelleğinde bulunan
 bütün inode nesnelerini de ``s_inodes`` isimli bir bağlı listede tutmaktadır:
@@ -5469,7 +5475,7 @@ bütün inode nesnelerini de ``s_inodes`` isimli bir bağlı listede tutmaktadı
 Bu durumda mevcut çekirdeklerdeki inode önbellek sistemini şöyle özetleyebiliriz:
 
 - Toplamda tek bir inode önbellek sistemi vardır.
-- Her ``super_block`` nesnesinde ayrı LRU listeleri tutulmaktadır.
+- Her ``super_block`` nesnesinde her NUMA düğümü için ayrı LRU listeleri tutulmaktadır.
 - Bir disk bölümündeki tüm inode nesneleri de ayrıca ``super_block`` yapısı içerisinde tutulmaktadır.
 - Inode nesneleri inode hash tablosuna ``super_block`` nesne adresi ve inode numarası anahtar yapılarak
   yerleştirilmektedir.
@@ -5556,7 +5562,7 @@ dentry nesneleri inode nesnelerinin nesne sayacını (inode yapısındaki ``i_co
 inode nesnesinin inode önbelleğinden atılabilmesi için onun referans sayacının 0'a düşmüş olması gerekir. (Zaten
 inode nesnesi LRU listesine referans sayacı 0 olduğunda girmektedir.) Bellek baskısı oluştuğunda çekirdek yine
 ``super_block`` nesnelerinden hareketle LRU listelerini sondan itibaren dolaşıp belirlenen miktarda inode
-nesnesini önbellekten atmaktadır. Çekirdek bir inode nesnesi *kirli (dirty)* durumdaysa onu inode önbelleğinden
+nesnesini önbellekten atmaktadır. Tabii çekirdek bir inode nesnesi *kirli (dirty)* durumdaysa onu inode önbelleğinden
 atmamaktadır. Çünkü kirli inode elemanları başka bir çekirdek thread'i tarafından flush edilmektedir. Benzer
 biçimde o anda inode nesnesi kilitliyse yine o inode elemanı da inode önbelleğinden atılmamaktadır. Özetle inode
 nesnesinin inode önbelleğinden atılmasının koşulları şunlardır:
@@ -5648,7 +5654,7 @@ kapatılmış olsun. Bu sırada dentry ve inode önbelleklerine ilişkin şu ola
 1. Dosya açılırken *yol ifadesinin çözümlenmesi (pathname resolution)* sırasında ilgili dosyanın dentry nesnesi
    dentry önbelleğinde yoksa dentry önbelleğine alınacaktır. Dosya açılmasından dolayı yaratılan dosya nesnesi 
    (yani ``struct file`` nesnesi) bu dentry nesnesine referans ettiği için dentry nesnesinin referans sayacı 
-   eğer dentry nesnesi yeni yaratılmışsa 1 yapılacak, zaten dentry önbelleğpinde varsa  1 artırılıacaktır.
+   eğer dentry nesnesi yeni yaratılmışsa 1 yapılacak, zaten dentry önbelleğinde varsa  1 artırılacaktır.
 
 2. Dosya açılırken ilgili dosyanın inode bilgileri inode önbelleğinde aranacak, yoksa inode önbelleğine
    yerleştirilecektir. Bu inode nesnesi dentry nesnesi tarafından referans edildiği için onun da referans sayacı
