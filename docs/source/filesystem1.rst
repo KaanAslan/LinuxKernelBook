@@ -5759,12 +5759,11 @@ dosyasından elde edilebilmektedir. Örneğin:
 Süper Blok Nesneleri
 =====================
 
-Şimdi de dikkatimizi süper blok nesnelerine ve dosya sistemlerinin kaydettirilmesine (file system registration)
+Şimdi de dikkatimizi süper blok nesnelerine ve *dosya sistemlerinin kaydettirilmesine (file system registration)*
 çevirelim. Daha önceden de belirttiğimiz gibi mount edilen her dosya sistemi için Linux çekirdeği süper blok
 nesnesi denilen bir nesne oluşturmaktadır. Süper blok nesneleri çekirdekte ``include/fs.h`` dosyası içerisindeki
 ``super_block`` yapısıyla temsil edilmektedir. Görüldüğü gibi yapı oldukça büyüktür ve bazı elemanlar çeşitli
 konfigürasyon seçenekleriyle yapıya dahil edilmektedir.
-
 
 Güncel çekirdeklerde ``super_block`` yapısı şöyle bildirilmiştir:
 
@@ -6068,3 +6067,99 @@ Linux'un ilkel 0.01 versiyonunda ``super_block`` yapısı da oldukça minimalist
        unsigned char       s_rd_only;
        unsigned char       s_dirt;
    };
+
+Dosya Sisteminin Mount Edilmesi
+================================
+
+Bir dosya sistemi biraz karmaşık bir süreçle çekirdek tarafında kullanılabilir hale gelmektedir. Şimdi bu
+süreçlerin üzerinde duracağız.
+
+Süper blok nesneleri dosya sistemi mount edilirken oluşturulmaktadır. Mount işlemi bir dosya sisteminin dizin
+ağacındaki bir dizine iliştirilmesi anlamına gelmektedir. Mount işlemi tipik olarak komut satırında *mount*
+isimli komut ile (tabii biz komut diyoruz ama aslında *mount* bir programdır) yapılmaktadır. Komutun yalın
+genel biçimi şöyledir:
+
+.. code-block:: none
+
+   mount [-t <dosya_sisteminin_tür_ismi>] <blok_aygıt_dosyası> <mount_noktası>
+
+Burada mount noktası dosya sisteminin kökünün monte edileceği dizini belirtmektedir. Örneğin:
+
+.. code-block:: bash
+
+   $ mount -t ext4 /dev/sbd1 /home/kaan
+
+Mount işlemi sırasında dosya sisteminin tür ismi hiç belirtilmeyebilir. Bu durumda tür otomatik belirlenmeye
+çalışılır. Tabii dosya sisteminin türü otomatik olarak belirlenemezse hata oluşmaktadır. *mount* programı
+aslında Linux sistemlerinde *mount* isimli kütüphane fonksiyonunu çağırarak işlemini yapmaktadır. Bu
+fonksiyonun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+   #include <sys/mount.h>
+
+   int mount(const char *source, const char *target, const char *filesystemtype,
+             unsigned long mountflags, const void *_Nullable data);
+
+*mount* komutu ve ``mount`` fonksiyonu POSIX standartlarında bulunmamaktadır. Linux'ta ``mount`` kütüphane
+fonksiyonu ``sys_mount`` sistem fonksiyonunu çağırmaktadır. Yani aslında ``mount`` kütüphane fonksiyonunun
+tek yaptığı şey ``mount`` sistem fonksiyonunu çağırmaktır:
+
+.. figure:: _static/mount-call-chain.png
+   :align: center
+   :alt: mount işlemi çağrı zinciri
+   :width: 50%
+
+   *mount* komutundan çekirdek moduna uzanan çağrı zinciri
+
+Mount edilmiş olan dosya sistemi komut satırında *umount* komutuyla unmount edilebilmektedir. Komutun yalın
+genel biçimi şöyledir:
+
+.. code-block:: none
+
+   umount <mount_noktası ya da blok_aygıt_dosyası>
+
+Örneğin:
+
+.. code-block:: bash
+
+   $ umount /home/kaan
+
+*umount* komutu ``umount`` ya da ``umount2`` kütüphane fonksiyonlarını çağırarak işlemini yapmaktadır.
+``umount`` fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+   #include <sys/mount.h>
+
+   int umount(const char *target);
+   int umount2(const char *target, int flags);
+
+``umount`` ve ``umount2`` kütüphane fonksiyonları da sırasıyla ``sys_umount`` ve ``sys_umount2`` sistem
+fonksiyonlarını çağırmaktadır.
+
+Mount edilmiş olan dosya sistemi komut satırında *umount* komutuyla unmount edilebilmektedir. Komutun yalın
+genel biçimi şöyledir:
+
+.. code-block:: none
+
+   umount <mount_noktası ya da blok_aygıt_dosyası>
+
+Örneğin:
+
+.. code-block:: bash
+
+   $ umount /home/kaan
+
+*umount* komutu ``umount`` ya da ``umount2`` kütüphane fonksiyonlarını çağırarak işlemini yapmaktadır.
+``umount`` fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+   #include <sys/mount.h>
+
+   int umount(const char *target);
+   int umount2(const char *target, int flags);
+
+``umount`` ve ``umount2`` kütüphane fonksiyonları da sırasıyla ``sys_umount`` ve ``sys_umount2`` sistem
+fonksiyonlarını çağırmaktadır.
