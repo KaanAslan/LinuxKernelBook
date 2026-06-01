@@ -4975,13 +4975,13 @@ ayrıntılı bir biçimde ele alacağız.
 
 .. _inode-disk-organizasyonu:
 
-Inode Disk Organizasyonu
-------------------------
+Inode Tabanlı Dosya Sistemlerinin Disk Organizasyonu
+----------------------------------------------------
 
 Bir dosyaya ilişkin tüm bilgiler (yani *stat* fonksiyonuyla elde ettiğimiz tüm bilgiler) aslında diskte bir
-metadata alanda tutulmaktadır. İnode tabanlı dosya sistemlerinde bu metadata alanına *inode blok (inode block)*
+metadata alanda tutulmaktadır. Inode tabanlı dosya sistemlerinde bu metadata alanına *inode blok (inode block)*
 denilmektedir. Ayrıntıları bir yana bırakırsak tipik bir ext ailesi (ext2, ext3, ext4) inode tabanlı dosya
-sisteminin disk tarafında disk bölümü üç bölgeye ayrılmaktadır: Süper blok, inode blok ve data block. Bunu
+sisteminin disk tarafında disk bölümü kabaca üç bölgeye ayrılmaktadır: Süper blok, inode blok ve data block. Bunu
 şekilsel olarak şöyle gösterebiliriz:
 
 .. figure:: _static/fs-inode-disk-layout.png
@@ -4991,13 +4991,13 @@ sisteminin disk tarafında disk bölümü üç bölgeye ayrılmaktadır: Süper 
 
    Disk bölümünün üç temel bölgesi: Süper Blok, Inode Blok ve Data Blok.
 
-Disk bölümünün tüm metadata alanlarına yönelik parametrik bilgiler süper blokta tutulmaktadır. İnode blok
+Disk bölümünün tüm metadata alanlarına yönelik parametrik bilgiler süper blokta tutulmaktadır. Inode blok
 dosyalara ilişkin metadata bilgilerinin tutulduğu bölümdür. Dosyaların parçaları ise data blokta tutulmaktadır.
-İnode blok, inode elemanlarından oluşmaktadır:
+Inode blok, inode elemanlarından oluşmaktadır:
 
 .. figure:: _static/inode-block-layout.png
    :align: center
-   :alt: İnode Bloğu Organizasyonu
+   :alt: Inode Bloğu Organizasyonu
    :width: 30%
 
    Inode blok her dosya için bir inode elemanı içeren indeksli bir yapıdır.
@@ -5219,7 +5219,7 @@ Inode Tabanlı Dosya Sistemlerinde Dizin Girişlerinin Diskteki Organizasyonu
 UNIX/Linux sistemlerinde kullanılan inode tabanlı dosya sistemlerinde dizinlerle (directories) dosyaların
 (regular files) disk organizasyonu tamamen aynıdır. Yani diskte bir dosya nasıl tutuluyorsa bir dizin de
 aynı biçimde tutulmaktadır. Bir dosyanın normal bir dosya mı yoksa bir dizin mi belirttiği inode
-elemanındaki ``i_mode`` değişkeninin bir bitinde saklanmaktadır. (Bu dosya sistemleri aramaları
+elemanındaki ``i_mode`` alanının bir bitinde saklanmaktadır. (Bu dosya sistemleri aramaları
 hızlandırmak için zamanla dosyanın hangi türden olduğu bilgisini dizin girişlerinde de tutmaya
 başlamıştır.) Bir dizini siz "dizin girişlerinden (directory entries)" oluşan bir dosya gibi
 düşünebilirsiniz. Bir dizinin içeriği temsili olarak şöyledir:
@@ -5340,10 +5340,15 @@ dizin girişlerine *"ls -l"* ile bakıldığında tüm bilgileri aynı görünec
 Bu durumda bir dizin girişi silindiğinde işletim sisteminin hemen ona karşı gelen inode elemanını
 diskten silmemesi gerekir. Çünkü o inode elemanını kullanan başka dizin girişleri de olabilmektedir. İşte bunu
 sağlamak için inode elemanın içerisinde bir sayaç tutulmaktadır. Her hard link oluşturulduğunda bu
-sayaç 1 artırılır. Her hard link dizin girişi silindiğinde bu sayaç 1 eksiltilir. İnode elemanı sayaç
-0'a düştüğünde gerçek anlamda silinmektedir. İnode elemanlarındaki hard link sayacının *"ls -l"*
+sayaç 1 artırılır. Her hard link dizin girişi silindiğinde bu sayaç 1 eksiltilir. Inode elemanı sayaç
+0'a düştüğünde gerçek anlamda silinmektedir. Inode elemanlarındaki hard link sayacının *"ls -l"*
 komutunda da görüntülendiğini anımsayınız. Yukarıdaki *ls* komutunda görüntülenen iki girişin de hard
 link sayacının 2 olduğuna dikkat ediniz.
+
+Burada bir noktaya da dikkatinizi çekmek istiyoruz. Inode kavramı her ne kadar inode tabanlı dosya sisemlerinden
+geliyorsa da aslında Linux çekirdeği inode tabanlı olmayan dosya sistemlerindeki dosyalar için de bellekte 
+bir inode nesnesi oluşturup onlara birer inode numarası atamaktadır. Bu işlemlerden dosya sistemine ilişkin 
+çekirdek modülleri sorumludur.
 
 Aynı Inode Nesnesini Gösteren Dentry Nesneleri
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5353,7 +5358,7 @@ sisteminin bellek tarafında da söz konusudur. Yani dentry önbelleğindeki bir
 nesnesini gösterebilmektedir. Çekirdek, aynı zamanda bir inode elemanının hangi dentry nesneleri tarafından
 gösterildiğini de bir bağlı listede tutmaktadır. (Ancak disk tarafındaki organizasyonda inode elemanının içerisinde
 ona referans eden dizin girişleri tutulmamaktadır. Bu nedenle bir dosyanın tüm hard link'leri ancak tüm dizin
-ağacının gözden geçirilmesiyle elde edilebilmektedir.) İnode nesnesine referans eden dentry nesneleri, Linux
+ağacının gözden geçirilmesiyle elde edilebilmektedir.) Inode nesnesine referans eden dentry nesneleri, Linux
 çekirdeklerinde uzun süredir inode yapısının ``i_dentry`` bağlı liste elemanında tutulmaktadır. Güncel çekirdeklerde
 bu eleman şöyle bildirilmiştir:
 
@@ -5374,19 +5379,18 @@ bu eleman şöyle bildirilmiştir:
 yapısının içerisindeydi. İlk ilkel versiyon olan 0.01 versiyonunda ``m_inode`` yapısında böyle bir eleman zaten
 bulunmuyordu. (Bu eleman ilk kez 0.11 versiyonunda eklenmiştir.)
 
-İnode Önbelleği
+Inode Önbelleği
 ===============
 
-Linux çekirdeği inode nesnelerini de *inode önbelleği (inode cache)* denilen bir önbellekte tutmaktadır. Nasıl
-erişilen dizin girişleri dentry önbelleğinde tutuluyorsa erişilen inode nesneleri de inode önbelleğinde
-tutulmaktadır. Linux çekirdeğinde temel işlem yönü dentry nesnelerinden inode nesnelerine doğrudur. Dolayısıyla
-eğer bir dentry nesnesi dentry önbelleğinde bulunuyorsa her zaman ona ilişkin inode nesnesi de inode önbelleğinde
-bulunmak zorundadır. Tabii istisna olarak eğer dentry nesnesi var olan bir dizin girişini göstermiyorsa (bu durum
-olmayan bir dosyaya ilişkin dosya araması (*name lookup*) yapıldığında oluşabilmektedir) bu durumda dentry
-nesnesine ilişkin bir inode nesnesi inode önbelleğinde bulunmayacaktır. Bunlara *negatif dentry nesneleri*
-dendiğini anımsayınız.
+Linux çekirdeği inode nesnelerini de *inode önbelleği (inode cache)* denilen bir önbellekte tutmaktadır. Nasıl 
+erişilen dizin girişleri dentry önbelleğinde tutuluyorsa erişilen inode nesneleri de inode önbelleğinde tutulmaktadır. 
+Linux çekirdeğinde temel işlem yönü dentry nesnelerinden inode nesnelerine doğrudur. Dolayıyla eğer bir dentry nesnesi 
+dentry önbelleğinde bulunuyorsa ona ilişkin inode nesnesi de inode önbelleğinde bulunmaktadır. Ancak bunun tek bir 
+istisnası vardır.  Eğer bir dentry nesnesi var olmayan bir dizin girişini belirtiyorsa (bu durum olmayan bir dosyaya 
+ilişkin *dosya araması (name lookup)* yapıldığında oluşabilmektedir) bu durumda dentry nesnesine ilişkin bir inode 
+nesnesi inode önbelleğinde bulunmayacaktır. Bunlara *negatif dentry nesneleri* dendiğini anımsayınız.
 
-İnode Önbelleğinin Organizasyonu
+Inode Önbelleğinin Organizasyonu
 ---------------------------------
 
 Linux'ta inode önbelleğinin organizasyonu zaman içerisinde değişikliklere uğratılmıştır. Güncel çekirdeklerde
@@ -5418,7 +5422,7 @@ Buradan aşağıdakine benzer çıktı görüntülenecektir:
    Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes)
 
 
-İnode Önbelleğine İlişkin Hash Tablosunun Yapısı ve LRU Listeleri
+Inode Önbelleğine İlişkin Hash Tablosunun Yapısı ve LRU Listeleri
 -----------------------------------------------------------------
 
 Inode hash tablosuna inode nesneleri ``super_block`` nesnesi ve inode numarası anahtar yapılarak
@@ -5429,7 +5433,7 @@ zorunda değildir, yalnızca belli bir dosya sisteminde tek olmak zorundadır.
 Tıpkı dentry önbellek sisteminde olduğu gibi inode önbellek sisteminde de "son zamanlarda en az kullanılan" inode
 nesnelerinin önbellekte tutulmasını sağlamak amacıyla bir LRU bağlı listesi oluşturulmuştur. Ancak bu LRU bağlı
 listesi toplamda bir tane değil dentry LRU listelerinde olduğu gibi her ``super_block`` nesnesi için bir tanedir.
-İnode önbelleğinin LRU listesi ``super_block`` yapısı içerisinde ``s_inode_lru`` elemanında tutulmaktadır:
+Inode önbelleğinin LRU listesi ``super_block`` yapısı içerisinde ``s_inode_lru`` elemanında tutulmaktadır:
 
 .. code-block:: c
 
@@ -5467,7 +5471,7 @@ Bu durumda mevcut çekirdeklerdeki inode önbellek sistemini şöyle özetleyebi
 - Toplamda tek bir inode önbellek sistemi vardır.
 - Her ``super_block`` nesnesinde ayrı LRU listeleri tutulmaktadır.
 - Bir disk bölümündeki tüm inode nesneleri de ayrıca ``super_block`` yapısı içerisinde tutulmaktadır.
-- İnode nesneleri inode hash tablosuna ``super_block`` nesne adresi ve inode numarası anahtar yapılarak
+- Inode nesneleri inode hash tablosuna ``super_block`` nesne adresi ve inode numarası anahtar yapılarak
   yerleştirilmektedir.
 
 2.6 çekirdeklerinde de inode hash tablosunun genel organizasyonu güncel çekirdeklerdekiyle aynıydı. Yine toplamda
@@ -5543,12 +5547,12 @@ kullanılıyorsa çekirdek panic oluşturup çöküyordu. Aşağıda bu versiyon
    }
 
 
-İnode Nesnelerinin Önbellekten Atılması
+Inode Nesnelerinin Önbellekten Atılması
 -----------------------------------------
 
 Peki inode önbelleğinden inode nesneleri nasıl çıkarılmaktadır? Daha önceden de belirttiğimiz gibi bir dentry
 nesnesi dentry önbelleğinde bulunuyorsa ona ilişkin inode nesnesi de inode önbelleğinde bulunmaktadır. Çünkü
-dentry nesneleri inode nesnelerinin nesne sayacını (inode yapısındaki ``i_count`` elemanı) artırmaktadır. Bir
+dentry nesneleri inode nesnelerinin nesne sayacını (inode yapısındaki ``i_count`` elemanını) artırmaktadır. Bir
 inode nesnesinin inode önbelleğinden atılabilmesi için onun referans sayacının 0'a düşmüş olması gerekir. (Zaten
 inode nesnesi LRU listesine referans sayacı 0 olduğunda girmektedir.) Bellek baskısı oluştuğunda çekirdek yine
 ``super_block`` nesnelerinden hareketle LRU listelerini sondan itibaren dolaşıp belirlenen miktarda inode
@@ -5557,11 +5561,11 @@ atmamaktadır. Çünkü kirli inode elemanları başka bir çekirdek thread'i ta
 biçimde o anda inode nesnesi kilitliyse yine o inode elemanı da inode önbelleğinden atılmamaktadır. Özetle inode
 nesnesinin inode önbelleğinden atılmasının koşulları şunlardır:
 
-1. İnode nesnesinin referans sayacı (yani ``i_count`` elemanı) 0 olmalıdır. (Zaten nesne LRU listesindeyse onun
+1. Inode nesnesinin referans sayacı (yani ``i_count`` elemanı) 0 olmalıdır. (Zaten nesne LRU listesindeyse onun
    referans sayacı 0 olmak zorundadır. Ancak bu durumun bazı istisnaları olabilmektedir.)
-2. İnode nesnesi *kirli (dirty)* olmamalıdır. (İnode nesnesi kirli olduğu halde inode önbelleğinde
+2. Inode nesnesi *kirli (dirty)* olmamalıdır. (Inode nesnesi kirli olduğu halde inode önbelleğinde
    bulunabilmektedir.)
-3. İnode nesnesi o anda *kilitli (locked)* olmamalıdır.
+3. Inode nesnesi o anda *kilitli (locked)* olmamalıdır.
 
 Güncel çekirdeklerde LRU listesindeki inode nesnelerinin inode önbelleğinden atılıp atılmayacağına ``fs/inode.c``
 dosyası içerisindeki ``inode_lru_isolate`` fonksiyonunda karar verilmektedir:
@@ -5626,7 +5630,7 @@ Dentry önbelleğinden bir dentry nesnesinin atıldığını varsayalım. Peki b
 nedeniyle referans sayacı 0'a düşmüşse o inode nesnesi de inode önbelleğinden o sırada atılacak mıdır? İşte
 dentry önbelleğinin shrink edilmesi ile inode önbelleğinin shrink edilmesi farklı zamanlarda yapılmaktadır.
 Dolayısıyla çekirdek bir dentry nesnesini dentry önbelleğinden atarken o sırada ona ilişkin inode nesnesini
-koşullar sağlanmış olsa bile inode önbelleğinden atmaya çalışmamaktadır. İnode önbelleğinin shrink edilmesi
+koşullar sağlanmış olsa bile inode önbelleğinden atmaya çalışmamaktadır. Inode önbelleğinin shrink edilmesi
 farklı bir periyotta yapılmaktadır.
 
 
@@ -5674,7 +5678,7 @@ bir dosyanın bilgileri ``stat`` fonksiyonuyla elde edilmek istensin. Bu durumda
 2. Dentry nesnesine ilişkin inode nesnesi inode önbelleğinde aranacak, bulunamazsa oluşturularak inode
    önbelleğine yerleştirilecektir. Bu işlem inode nesnesinin referans sayacını 1 artıracaktır.
 
-3. İnode nesnesi içerisindeki bilgiler kullanıcı modundaki prosese teslim edilecektir.
+3. Inode nesnesi içerisindeki bilgiler kullanıcı modundaki prosese teslim edilecektir.
 
 4. İşlem bittikten sonra dentry nesnesinin referans sayacı 1 eksiltilecektir. Eğer nesnenin referans sayacı 0'a
    düşerse nesne dentry LRU listesinin sonuna yerleştirilecektir. Tabii bu sırada inode nesnesinin referans
@@ -5685,7 +5689,7 @@ bir dosyanın bilgileri ``stat`` fonksiyonuyla elde edilmek istensin. Bu durumda
    bu önbelleklerden atılacaklardır.
 
 
-İnode Önbelleği İzleme Araçları
+Inode Önbelleği İzleme Araçları
 ---------------------------------
 
 Çekirdek inode önbellek sistemi hakkında da bazı bilgileri *proc* dosya sistemi yoluyla dış dünyaya iletmektedir.
