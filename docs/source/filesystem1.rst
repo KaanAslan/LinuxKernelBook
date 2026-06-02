@@ -6155,7 +6155,7 @@ Fonksiyonun eğer ilgili düğüm bulunamazsa son düğümün ``next`` gösteric
 geri döndüğüne dikkat ediniz.
 
 ``register_filesystem`` fonksiyonu export edilmiş olduğu için çekirdek modülleri tarafından da
-çağrılabilmektedir. Dosya sistemini bu fonksiyonla register ettirecek kişi önce ``file_system_type`` yapısı
+çağrılabilmektedir. Dosya sistemini bu fonksiyonla kaydettirecek kişi önce ``file_system_type`` yapısı
 türünden statik ömürlü bir nesne oluşturup onun adresini ``register_filesystem`` fonksiyonuna geçirmelidir.
 ``file_system_type`` yapısı güncel çekirdeklerde ``include/fs.h`` dosyası içerisinde şöyle bildirilmiştir:
 
@@ -6232,8 +6232,8 @@ görünümündeydi. Örneğin 2.6 çekirdeklerinde şöyleydi:
        struct  list_head fs_supers;
    };
 
-Linux'un ilkel 0.01 versiyonunda zaten dosya sisteminin register ettirilmesi diye bir kavram da yoktu.
-
+Linux'un ilkel 0.01 versiyonunda zaten dosya sisteminin kaydettirilmesi diye bir kavram da yoktu.
+<BURADA KALDIM>
 ``register_filesystem`` fonksiyonu ile register ettirilmiş olan dosya sistemi ``unregister_filesystem``
 fonksiyonuyla unregister ettirilebilir. Tipik olarak ``register_filesystem`` fonksiyonu çekirdek modülünün
 init fonksiyonunda, ``unregister_filesystem`` fonksiyonu ise çekirdek modülünün exit fonksiyonunda
