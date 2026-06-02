@@ -3883,7 +3883,7 @@ içi 0'larla dolu dinamik tahsisat yapmaktadır. Modülü yükledikten sonra oku
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
 
-Çekirdeği 0.01 Versiyonundaki sys_open Fonksiyonu
+Çekirdeğin 0.01 Versiyonundaki sys_open Fonksiyonu
 -------------------------------------------------
 
 Şimdi yeniden çekirdeğin öğrenci ödevi gibi olan ilkel 0.01 versiyonundaki ``sys_open`` fonksiyonuna göz
