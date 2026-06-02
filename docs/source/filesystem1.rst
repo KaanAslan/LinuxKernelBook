@@ -2660,7 +2660,7 @@ Açık Dosyalara İlişkin Alıştırmalar
 Şimdi dosya sisteminin temel veri yapıları üzerinde görmüş olduğumuz konulara ilişkin bazı
 alıştırmalar yapalım. Alıştırmaların kodlarını en sonunda bir bütün olarak vereceğiz. 
 
-``f_pos`` Elemanının Elde Edilmesi
+f_pos Elemanının Elde Edilmesi
 ----------------------------------
 
 İlk örneğimizde bir dosya betimleyicisine ilişkin dosya nesnesini elde ederek onun ``f_pos`` elemanını
@@ -2849,7 +2849,7 @@ Bir süre önceye kadar ``fdget`` ve ``fdput`` export edilmemişti. Ancak günce
 Her ne kadar yeni çekirdeklerde ``fdget`` ve ``fdput`` daha hızlı çalışıyorsa da ``fget`` ve ``fput``
 basit arayüzü ve kullanım kolaylığı ve eskiden beri aynı biçimde bulunması nedeniyle tercih edilebilir.
 
-``dup`` Fonksiyonunun Gerçekleştirimi
+dup Fonksiyonunun Gerçekleştirimi
 -------------------------------------
 
 Şimdi de ``dup`` POSIX fonksiyonunun işlevini yerine getiren (yani ``sys_dup`` sistem fonksiyonu gibi
@@ -3524,10 +3524,9 @@ Görüldüğü gibi ``openat`` sistem fonksiyonu da aslında ``do_sys_open`` fon
     }
 
 Fonksiyonda önce ``build_open_how`` fonksiyonu çağrılmıştır. Bu fonksiyon açış bayraklarını ve
-erişim haklarını
-bazı kontroller uygulayarak ek bir yapı içinde toplamaktadır. Fonksiyonun bu işlemden sonra ``do_sys_openat2``
-fonksiyonunu çağırdığını görüyorsunuz. Güncel çekirdeklerde bu fonksiyon da *fs/open.c* dosyasında şöyle
-tanımlanmıştır:
+erişim haklarını bazı kontroller uygulayarak ek bir yapı içinde toplamaktadır. Fonksiyonun bu işlemden 
+sonra ``do_sys_openat2`` fonksiyonunu çağırdığını görüyorsunuz. Güncel çekirdeklerde bu fonksiyon da *fs/open.c* 
+dosyasında şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -3884,7 +3883,7 @@ içi 0'larla dolu dinamik tahsisat yapmaktadır. Modülü yükledikten sonra oku
 
 
 Çekirdeğin 0.01 Versiyonundaki sys_open Fonksiyonu
--------------------------------------------------
+--------------------------------------------------
 
 Şimdi yeniden çekirdeğin öğrenci ödevi gibi olan ilkel 0.01 versiyonundaki ``sys_open`` fonksiyonuna göz
 gezdirelim:
@@ -6264,7 +6263,7 @@ tanımlanmıştır:
        return -EINVAL;
    }
 
-``file_system_type`` Nesnesinin İçinin Doldurulması  
+file_system_type Nesnesinin İçinin Doldurulması  
 ---------------------------------------------------
 
 Güncel Linux çekirdeklerinde ``file_system_type`` nesnesinin dosya sistemini yazanlar tarafından doldurması 
