@@ -6015,7 +6015,7 @@ Linux'un ilkel 0.01 versiyonunda ``super_block`` yapısı da oldukça minimalist
 Dosya Sisteminin Mount Edilmesi
 ================================
 
-Bir dosya sistemi biraz karmaşık bir süreçle çekirdek tarafında kullanılabilir hale gelmektedir. Şimdi bu
+Bir dosya sistemi biraz karmaşık bir süreçle çekirdek tarafından kullanılabilir hale gelmektedir. Şimdi bu
 süreçlerin üzerinde duracağız.
 
 Süper blok nesneleri dosya sistemi mount edilirken oluşturulmaktadır. Mount işlemi bir dosya sisteminin dizin
@@ -6233,12 +6233,12 @@ görünümündeydi. Örneğin 2.6 çekirdeklerinde şöyleydi:
    };
 
 Linux'un ilkel 0.01 versiyonunda zaten dosya sisteminin kaydettirilmesi diye bir kavram da yoktu.
-<BURADA KALDIM>
-``register_filesystem`` fonksiyonu ile register ettirilmiş olan dosya sistemi ``unregister_filesystem``
-fonksiyonuyla unregister ettirilebilir. Tipik olarak ``register_filesystem`` fonksiyonu çekirdek modülünün
-init fonksiyonunda, ``unregister_filesystem`` fonksiyonu ise çekirdek modülünün exit fonksiyonunda
-çağrılmalıdır. ``unregister_filesystem`` fonksiyonu ``file_system_type`` nesnesini bağlı listeden
-silmektedir. Güncel çekirdeklerde bu fonksiyon ``fs/filesystem.c`` dosyasında aşağıdaki gibi
+
+``register_filesystem`` fonksiyonu ile kaydettirilmiş olan dosya sisteminin ``unregister_filesystem``
+fonksiyonuyla kaydı kaldırılabilir. Tipik olarak ``register_filesystem`` fonksiyonu çekirdek modülünün
+*init* fonksiyonunda, ``unregister_filesystem`` fonksiyonu ise çekirdek modülünün *exit* fonksiyonunda
+çağrılmaktadır. ``unregister_filesystem`` fonksiyonu ``file_system_type`` nesnesini bağlı listeden
+atmaktadır. Güncel çekirdeklerde bu fonksiyon ``fs/filesystem.c`` dosyasında aşağıdaki gibi
 tanımlanmıştır:
 
 .. code-block:: c
@@ -6264,12 +6264,11 @@ tanımlanmıştır:
        return -EINVAL;
    }
 
+``file_system_type`` Nesnesinin İçinin Doldurulması  
+---------------------------------------------------
 
-``file_system_type`` Yapısının Doldurulması
---------------------------------------------
-
-Güncel Linux çekirdeklerinde ``file_system_type`` yapısının, eğer yüksek seviyeli çekirdek fonksiyonlarından
-faydalanılacaksa, dosya sistemini yazanlar tarafından doldurması gereken elemanları şunlardır:
+Güncel Linux çekirdeklerinde ``file_system_type`` nesnesinin dosya sistemini yazanlar tarafından doldurması 
+gereken elemanları şunlardır:
 
 .. code-block:: c
 
@@ -6283,22 +6282,21 @@ faydalanılacaksa, dosya sistemini yazanlar tarafından doldurması gereken elem
 Yapının ``owner`` elemanına ``THIS_MODULE`` değeri atanmalıdır. Her dosya sisteminin bir ismi vardır. Yapının
 ``name`` elemanı bu ismi belirtmektedir. Dosya sistemi mount edilmek istendiğinde çekirdek ``file_systems``
 bağlı listesinde arama yaparak bizim yerleştirdiğimiz yapı nesnesini bulur ve onun ``mount`` elemanında
-belirtilen fonksiyonu çağırır. Yani bu yapının ``mount`` elemanına *dosya sistemimiz mount edildiğinde
-çağrılacak fonksiyonu* yerleştirmeliyiz. Dosya sistemi unmount edilirken eğer ``super_block`` nesnesinin
-referans sayacı 0'a düşerse ``kill_sb`` elemanında belirtilen fonksiyon çağrılmaktadır. O halde dosya
-sistemini gerçekleştiren sistem programcısı yapının ``mount`` elemanına ve ``kill_sb`` elemanına uygun
-parametrik yapılara sahip fonksiyonların adreslerini yerleştirmesi gerekir. Örneğimizde yapının bu
-elemanlarına ``myfs_mount`` ve ``myfs_kill_super`` fonksiyonlarının adresleri yerleştirilmiştir.
+belirtilen fonksiyonu çağırır. Yani bu yapının ``mount`` elemanına *dosya sistemi mount edildiğinde çağrılacak fonksiyonu* 
+yerleştirilmelidir. Dosya sistemi unmount edilirken eğer ``super_block`` nesnesinin referans sayacı 0'a düşerse 
+``kill_sb`` elemanında belirtilen fonksiyon çağrılmaktadır. O halde dosya sistemini gerçekleştiren sistem programcısı 
+yapının ``mount`` elemanına ve ``kill_sb`` elemanına uygun parametrik yapılara sahip fonksiyonların adreslerini yerleştirmesi 
+gerekir. Örneğimizde yapının bu elemanlarına ``myfs_mount`` ve ``myfs_kill_super`` fonksiyonlarının adresleri 
+yerleştirilmiştir.
 
-Yeni çekirdeklerde bir süredir yapının ``mount`` elemanına alternatif olarak ``init_fs_context`` isimli bir
+Yeni çekirdeklerde bir süredir yapıda ``mount`` elemanına alternatif olarak ``init_fs_context`` isimli bir
 eleman daha bulundurulmaktadır. ``init_fs_context`` elemanı da bir fonksiyon göstericisidir ve mount işlemi
 sırasında çağrılmaktadır. ``init_fs_context`` elemanı ``mount`` elemanına daha modern bir alternatiftir.
 Sistem programcısı yapının ya ``mount`` elemanını ya da ``init_fs_context`` elemanını kullanır. Eğer yapının
-bu iki elemanı da set edilmişse çekirdek yalnızca mount işlemi sırasında ``init_fs_context`` elemanında
+bu iki elemanı da set edilmişse çekirdek mount işlemi sırasında yalnızca ``init_fs_context`` elemanında
 belirtilen fonksiyonu çağırmaktadır. Her ne kadar ``init_fs_context`` elemanı ile yeni bir alternatif
 oluşturulmuşsa da ``mount`` elemanı *deprecated* yapılmamıştır. Yani eski ``mount`` elemanının kullanımı
 devam etmektedir ve bu eleman ``init_fs_context`` elemanından daha kolay bir kullanım sunmaktadır.
-
 
 mount Fonksiyonu ve mount_bdev / mount_nodev
 ---------------------------------------------
