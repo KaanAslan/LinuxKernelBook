@@ -6703,7 +6703,155 @@ Güncel çekirdeklerde ``super_operations`` yapısı şöyle bildirilmiştir:
 .. code-block:: c
 
    struct super_operations {
-       /* ... (yukarıda verilmiştir) ... */
+       struct inode *(*alloc_inode)(struct super_block *sb);
+       void (*destroy_inode)(struct inode *);
+       void (*free_inode)(struct inode *);
+
+       void (*dirty_inode) (struct inode *, int flags);
+       int (*write_inode) (struct inode *, struct writeback_control *wbc);
+       int (*drop_inode) (struct inode *);
+       void (*evict_inode) (struct inode *);
+       void (*put_super) (struct super_block *);
+       int (*sync_fs)(struct super_block *sb, int wait);
+       int (*freeze_super) (struct super_block *, enum freeze_holder who, const void *owner);
+       int (*freeze_fs) (struct super_block *);
+       int (*thaw_super) (struct super_block *, enum freeze_holder who, const void *owner);
+       int (*unfreeze_fs) (struct super_block *);
+       int (*statfs) (struct dentry *, struct kstatfs *);
+       int (*remount_fs) (struct super_block *, int *, char *);
+       void (*umount_begin) (struct super_block *);
+
+       int (*show_options)(struct seq_file *, struct dentry *);
+       int (*show_devname)(struct seq_file *, struct dentry *);
+       int (*show_path)(struct seq_file *, struct dentry *);
+       int (*show_stats)(struct seq_file *, struct dentry *);
+   #ifdef CONFIG_QUOTA
+       ssize_t (*quota_read)(struct super_block *, int, char *, size_t, loff_t);
+       ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
+       struct dquot __rcu **(*get_dquots)(struct inode *);
+   #endif
+       long (*nr_cached_objects)(struct super_block *, struct shrink_control *);
+       long (*free_cached_objects)(struct super_block *, struct shrink_control *);
+       void (*shutdown)(struct super_block *sb);
    };
 
-(Kod blokları önceki RST çıktısında tam olarak yer almaktadır.)
+``inode_operations`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct inode_operations {
+       struct dentry * (*lookup) (struct inode *, struct dentry *, unsigned int);
+       const char * (*get_link) (struct dentry *, struct inode *, struct delayed_call *);
+       int (*permission) (struct mnt_idmap *, struct inode *, int);
+       struct posix_acl * (*get_inode_acl)(struct inode *, int, bool);
+
+       int (*readlink) (struct dentry *, char __user *, int);
+
+       int (*create) (struct mnt_idmap *, struct inode *, struct dentry *, umode_t, bool);
+       int (*link) (struct dentry *, struct inode *, struct dentry *);
+       int (*unlink) (struct inode *, struct dentry *);
+       int (*symlink) (struct mnt_idmap *, struct inode *, struct dentry *, const char *);
+       struct dentry *(*mkdir) (struct mnt_idmap *, struct inode *,
+                   struct dentry *, umode_t);
+       int (*rmdir) (struct inode *, struct dentry *);
+       int (*mknod) (struct mnt_idmap *, struct inode *, struct dentry *, umode_t, dev_t);
+       int (*rename) (struct mnt_idmap *, struct inode *, struct dentry *,
+               struct inode *, struct dentry *, unsigned int);
+       int (*setattr) (struct mnt_idmap *, struct dentry *, struct iattr *);
+       int (*getattr) (struct mnt_idmap *, const struct path *,
+               struct kstat *, u32, unsigned int);
+       ssize_t (*listxattr) (struct dentry *, char *, size_t);
+       int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start, u64 len);
+       int (*update_time)(struct inode *, int);
+       int (*atomic_open)(struct inode *, struct dentry *, struct file *,
+               unsigned open_flag, umode_t create_mode);
+       int (*tmpfile) (struct mnt_idmap *, struct inode *, struct file *, umode_t);
+       struct posix_acl *(*get_acl)(struct mnt_idmap *, struct dentry *, int);
+       int (*set_acl)(struct mnt_idmap *, struct dentry *, struct posix_acl *, int);
+       int (*fileattr_set)(struct mnt_idmap *idmap,
+                   struct dentry *dentry, struct fileattr *fa);
+       int (*fileattr_get)(struct dentry *dentry, struct fileattr *fa);
+       struct offset_ctx *(*get_offset_ctx)(struct inode *inode);
+   } ____cacheline_aligned;
+
+``dentry_operations`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct dentry_operations {
+       int (*d_revalidate)(struct inode *, const struct qstr *,
+                   struct dentry *, unsigned int);
+       int (*d_weak_revalidate)(struct dentry *, unsigned int);
+       int (*d_hash)(const struct dentry *, struct qstr *);
+       int (*d_compare)(const struct dentry *,
+               unsigned int, const char *, const struct qstr *);
+       int (*d_delete)(const struct dentry *);
+       int (*d_init)(struct dentry *);
+       void (*d_release)(struct dentry *);
+       void (*d_prune)(struct dentry *);
+       void (*d_iput)(struct dentry *, struct inode *);
+       char *(*d_dname)(struct dentry *, char *, int);
+       struct vfsmount *(*d_automount)(struct path *);
+       int (*d_manage)(const struct path *, bool);
+       struct dentry *(*d_real)(struct dentry *, enum d_real_type type);
+       bool (*d_unalias_trylock)(const struct dentry *);
+       void (*d_unalias_unlock)(const struct dentry *);
+   } ____cacheline_aligned;
+
+``file_operations`` yapısı ise şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct file_operations {
+       struct module *owner;
+       fop_flags_t fop_flags;
+       loff_t (*llseek) (struct file *, loff_t, int);
+       ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
+       ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+       ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
+       ssize_t (*write_iter) (struct kiocb *, struct iov_iter *);
+       int (*iopoll)(struct kiocb *kiocb, struct io_comp_batch *, unsigned int flags);
+       int (*iterate_shared) (struct file *, struct dir_context *);
+       __poll_t (*poll) (struct file *, struct poll_table_struct *);
+       long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
+       long (*compat_ioctl) (struct file *, unsigned int, unsigned long);
+       int (*mmap) (struct file *, struct vm_area_struct *);
+       int (*open) (struct inode *, struct file *);
+       int (*flush) (struct file *, fl_owner_t id);
+       int (*release) (struct inode *, struct file *);
+       int (*fsync) (struct file *, loff_t, loff_t, int datasync);
+       int (*fasync) (int, struct file *, int);
+       int (*lock) (struct file *, int, struct file_lock *);
+       unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long,
+                   unsigned long, unsigned long);
+       int (*check_flags)(int);
+       int (*flock) (struct file *, int, struct file_lock *);
+       ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *,
+                   size_t, unsigned int);
+       ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *,
+                   size_t, unsigned int);
+       void (*splice_eof)(struct file *file);
+       int (*setlease)(struct file *, int, struct file_lease **, void **);
+       long (*fallocate)(struct file *file, int mode, loff_t offset, loff_t len);
+       void (*show_fdinfo)(struct seq_file *m, struct file *f);
+   #ifndef CONFIG_MMU
+       unsigned (*mmap_capabilities)(struct file *);
+   #endif
+       ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
+               loff_t, size_t, unsigned int);
+       loff_t (*remap_file_range)(struct file *file_in, loff_t pos_in,
+                   struct file *file_out, loff_t pos_out,
+                   loff_t len, unsigned int remap_flags);
+       int (*fadvise)(struct file *, loff_t, loff_t, int);
+       int (*uring_cmd)(struct io_uring_cmd *ioucmd, unsigned int issue_flags);
+       int (*uring_cmd_iopoll)(struct io_uring_cmd *, struct io_comp_batch *,
+                   unsigned int poll_flags);
+       int (*mmap_prepare)(struct vm_area_desc *);
+   } __randomize_layout;
+
+Şimdi aklınıza "ben bir dosya sistemini gerçekleştireceksem bütün bu sanal fonksiyonları yazmak zorunda
+mıyım?" sorusu gelebilir. İşte aslında dosya sistemlerini gerçekleştirenler bu fonksiyonların hepsini yazmak
+zorunda değillerdir. Bazı fonksiyonlar için zaten çekirdekte bulunan hazır fonksiyonları kullanabilirler.
+Bazılarını boş (NULL adres) bırakabilirler. Bazı fonksiyonların NULL bırakılması durumunda çekirdek, ilgili
+generic fallback fonksiyonu varsa onu çağırır; yoksa ilgili sistem çağrısı ``ENOSYS`` ya da ``EOPNOTSUPP``
+ile başarısızlıkla döner; bir kısmında ise özellik sessizce devre dışı kalır.
