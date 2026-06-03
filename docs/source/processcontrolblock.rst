@@ -2,8 +2,8 @@
 Proses Kontrol Bloğu ve task_struct Yapısı
 =======================================================
 
-Bu bölümde proses kavramı ve proses kontrol bloğu üzerinde duracağız ve Linux çekirdeğindeki proses
-kontrol bloğunu temsil eden task_struct yapısını ele alacağız. 
+Bu bölümde proses kavramı ve proses kontrol bloğu üzerinde duracağız ve Linux çekirdeğindeki *proses
+kontrol bloğunu* temsil eden ``task_struct`` yapısını ele alacağız. 
 
 Proses Kavramı
 ================================
