@@ -6297,9 +6297,6 @@ belirtilen fonksiyonu çağırmaktadır. Her ne kadar ``init_fs_context`` eleman
 oluşturulmuşsa da ``mount`` elemanı *deprecated* yapılmamıştır. Yani eski ``mount`` elemanının kullanımı
 devam etmektedir ve bu eleman ``init_fs_context`` elemanından daha kolay bir kullanım sunmaktadır.
 
-mount Fonksiyonu ve mount_bdev / mount_nodev
----------------------------------------------
-
 ``file_system_type`` yapısının ``mount`` elemanına adresi yerleştirilecek fonksiyonun parametrik yapısı şöyle
 olmalıdır:
 
@@ -6326,6 +6323,9 @@ parametresine ve mount edilecek sisteme ilişkin özel bilgiler de dördüncü p
    dentry önbelleklerine yerleştirmelidir.
 3. Fonksiyon kök dizine ilişkin dentry nesnesinin adresiyle geri dönmelidir.
 
+Süper Blok Nesnesini Oluşturan Yüksek Seviyeli Fonksiyonlar: mount_nodev ve mount_bdev
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Aslında Linux çekirdeğinde mount edilecek dosya sistemi için ``super_block`` nesnesini oluşturan daha yüksek
 seviyeli fonksiyonlar da bulunmaktadır. Bu amaçla kullanılan iki önemli çekirdek fonksiyonu ``mount_nodev``
 ve ``mount_bdev`` isimli fonksiyonlarıdır. Bu fonksiyonlar export edilmiştir. ``mount_nodev`` ve
@@ -6345,88 +6345,8 @@ Bu fonksiyonların tanımlamaları ``fs/super.c`` dosyası içerisinde yapılmı
 ``mount_nodev`` fonksiyonu ramdisk gibi disk tabanlı olmayan dosya sistemlerinin gerçekleştirilmesinde,
 ``mount_bdev`` fonksiyonu ise disk tabanlı dosya sistemlerinin gerçekleştirilmesinde kullanılmaktadır.
 
-Çekirdeğin en yeni versiyonlarında artık ``mount_bdev`` ve ``mount_nodev`` gibi fonksiyonlar kaldırılmıştır.
-Artık mount işlemi sırasında ``file_system_type`` yapısının ``init_fs_context`` elemanındaki fonksiyon
-çağrılmaktadır. (Geçmişe doğru uyumu korumak için en yeni versiyonlarda da ``mount`` elemanı muhafaza
-edilmiştir. Ancak bu eleman NULL adres içeriyorsa yapının ``init_fs_context`` elemanına başvurulmaktadır.)
-En yeni çekirdeklerde ``mount_bdev`` ve ``mount_nodev`` fonksiyonlarının işlevlerini ``get_tree_bdev``
-fonksiyonu almıştır. Mount sırasında ``file_system_type`` yapısının ``mount`` elemanı yerine alternatif
-``init_fs_context`` elemanının da kullanılmaya başlanması 2019 başlarında Linux 5.1 ile başlamıştır. Bu yeni
-``init_fs_context`` elemanına context oluşturan bir fonksiyon girilmektedir. Bu fonksiyon içerisinde de
-context işlemlerine yönelik fonksiyonlar set edilmektedir. Örneğin:
-
-.. code-block:: c
-
-   static const struct fs_context_operations myfs_context_ops = {
-       .get_tree = myfs_get_tree,
-   };
-
-   static int myfs_init_fs_context(struct fs_context *fc)
-   {
-       fc->ops = &myfs_context_ops;
-       return 0;
-   }
-
-   static struct file_system_type myfs_type = {
-       .owner            = THIS_MODULE,
-       .name             = "myfs",
-       .init_fs_context  = myfs_fs_init_context,
-       .kill_sb          = myfs_kill_super,
-   };
-
-   static int myfs_get_tree(struct fs_context *fc)
-   {
-       return get_tree_bdev(fc, myfs_fill_super);
-   }
-
-Burada mount işlemi sırasında artık ``myfs_fs_init_context`` fonksiyonundan hareketle ``myfs_context_ops``
-fonksiyonu çağrılacaktır. İşte bu fonksiyon içerisinde de ``get_tree_bdev`` fonksiyonu çağrılmıştır. Biz
-izleyen paragraflarda daha çok eski arayüz olan ``mount_bdev`` ve ``mount_nodev`` fonksiyonlarını temel
-alacağız.
-
-Çekirdek süper blok nesnelerini ``file_system_type`` yapısının ``fs_supers`` elemanındaki bağlı listede
-tutmaktadır. Yani her dosya sistemi türü için o dosya sistemi türünden disk bölümlerinin mount edilmesi
-sonucunda elde edilen süper blok nesneleri o dosya sistemi türüne ilişkin ``file_system_type`` yapısının
-içerisinde tutulmaktadır:
-
-.. code-block:: c
-
-   struct file_system_type {
-       /* ... */
-
-       struct hlist_head   fs_supers;
-
-       /* ... */
-   };
-
-Bu bağlı listenin düğümlerini ``super_block`` yapısının ``s_list`` elemanı oluşturmaktadır:
-
-.. code-block:: c
-
-   struct super_block {
-       /* ... */
-
-       struct list_head    s_list;
-
-       /* ... */
-   };
-
-Ayrıca Linux çekirdeği tüm süper blok nesnelerini de ``fs/super.c`` dosyası içerisindeki ``super_blocks``
-isimli bağlı listede tutmaktadır:
-
-.. code-block:: c
-
-   static LIST_HEAD(super_blocks);
-
-Böylece çekirdek gerektiğinde hem belli bir dosya sistemine ilişkin süper blok nesnelerine hem de sistemdeki
-tüm süper blok nesnelerine bu bağlı listeler yoluyla erişebilmektedir.
-
-
-mount_bdev ile Disk Tabanlı Dosya Sistemi Yazımı
--------------------------------------------------
-
-O halde disk tabanlı bir dosya sistemini çekirdeğin yüksek seviyeli ``mount_bdev`` fonksiyonunu kullanarak
-yazacak olan sistem programcıları ``mount`` fonksiyonunun içerisinde doğrudan bu fonksiyonu çağırırlar.
+Disk tabanlı bir dosya sistemini çekirdeğin yüksek seviyeli ``mount_bdev`` fonksiyonunu kullanarak
+yazacak olan sistem programcıları tipik olarak ``mount`` fonksiyonunun içerisinde doğrudan bu fonksiyonu çağırırlar.
 Örneğin:
 
 .. code-block:: c
@@ -6440,12 +6360,56 @@ yazacak olan sistem programcıları ``mount`` fonksiyonunun içerisinde doğruda
 Burada ``mount`` fonksiyonunun parametrelerinin ``mount_bdev`` fonksiyonuna doğrudan aktarıldığını
 görüyorsunuz. Ancak ``mount_bdev`` fonksiyonunun son parametresi dosya sistemini gerçekleştiren programcı
 tarafından oluşturulup fonksiyona verilmektedir. Bu son parametre bir callback fonksiyondur ve süper blok
-nesnesinin içinin sistem programcısı tarafından doldurulmasına olanak sağlamaktadır. ``mount_bdev`` fonksiyonu
-kabaca bizim için şunları yapmaktadır:
+nesnesinin içinin sistem programcısı tarafından doldurulmasına olanak sağlamaktadır.
 
-1. ``dev_name`` parametresindeki aygıt dosyasını kullanarak blok aygıt sürücüsüne erişir.
-2. Daha önce bu disk bölümü için bir süper blok nesnesi oluşturulmuş mu diye kontrol eder ve
-   oluşturulmamışsa süper blok nesnesini oluşturur.
+``mount_bdev`` fonksiyonunun gerçekleştirimi ``linux/super.c`` dosyasında şöyle yapılmıştır:
+
+.. code-block:: c
+
+   struct dentry *mount_bdev(struct file_system_type *fs_type,
+           int flags, const char *dev_name, void *data,
+           int (*fill_super)(struct super_block *, void *, int))
+   {
+       struct super_block *s;
+       int error;
+       dev_t dev;
+
+       error = lookup_bdev(dev_name, &dev);
+       if (error)
+           return ERR_PTR(error);
+
+       flags |= SB_NOSEC;
+       s = sget(fs_type, test_bdev_super, set_bdev_super, flags, &dev);
+       if (IS_ERR(s))
+           return ERR_CAST(s);
+
+       if (s->s_root) {
+           if ((flags ^ s->s_flags) & SB_RDONLY) {
+               deactivate_locked_super(s);
+               return ERR_PTR(-EBUSY);
+           }
+       } else {
+           error = setup_bdev_super(s, flags, NULL);
+           if (!error)
+               error = fill_super(s, data, flags & SB_SILENT ? 1 : 0);
+           if (error) {
+               deactivate_locked_super(s);
+               return ERR_PTR(error);
+           }
+
+           s->s_flags |= SB_ACTIVE;
+       }
+
+       return dget(s->s_root);
+   }
+   EXPORT_SYMBOL(mount_bdev);
+
+``mount_bdev`` fonksiyonu kabaca bizim için şunları yapmaktadır:
+
+1. ``lookup_bdev`` fonksiyonu ile ``dev_name`` parametresindeki aygıt dosyasını kullanarak blok aygıt
+   sürücüsüne erişir.
+2. ``sget`` fonksiyonu ile daha önce bu disk bölümü için bir süper blok nesnesi oluşturulmuş mu diye kontrol
+   eder ve oluşturulmamışsa süper blok nesnesini oluşturur.
 3. Oluşturduğu ``super_block`` nesnesinin ``s_bdev`` ve ``s_dev`` elemanlarına değerlerini atar.
 4. Sistem programcısının son parametreye geçirdiği ``fill_super`` fonksiyonunu çağırarak oluşturduğu süper
    blok nesnesinin içinin sistem programcısı tarafından doldurulmasını sağlar.
@@ -6470,10 +6434,10 @@ anımsatmak istiyoruz:
    }
 
    static struct file_system_type myfs_type = {
-       .owner            = THIS_MODULE,
-       .name             = "myfs",
-       .init_fs_context  = myfs_fs_init_context,
-       .kill_sb          = myfs_kill_super,
+       .owner           = THIS_MODULE,
+       .name            = "myfs",
+       .init_fs_context = myfs_fs_init_context,
+       .kill_sb         = myfs_kill_super,
    };
 
    static int myfs_get_tree(struct fs_context *fc)
@@ -6485,10 +6449,21 @@ anımsatmak istiyoruz:
 bazı aşamalar farklı bir biçimde gerçekleştirilmektedir. ``mount_nodev`` fonksiyonu da en yeni çekirdeklerde
 kaldırılmıştır. Bunun yerine ``get_tree_nodev`` fonksiyonu kullanılmaktadır.
 
-Sistem programcısının ``mount`` fonksiyonunun ``mount_bdev`` ya da ``mount_nodev`` fonksiyonlarının geri
-dönüş değeriyle geri döndürüldüğüne dikkat ediniz.
+Sistem programcısının ``mount`` fonksiyonunu ``mount_bdev`` ya da ``mount_nodev`` fonksiyonlarının geri
+dönüş değeriyle geri döndürdüğüne dikkat ediniz:
 
-Peki o halde mount edilecek dosya sisteminin kök dizinine ilişkin inode ve dentry nesneleri nerede
+.. code-block:: c
+
+   static struct dentry *myfs_mount(struct file_system_type *fs_type, int flags,
+                                    const char *dev_name, void *data)
+   {
+       return mount_bdev(fs_type, flags, dev_name, data, myfs_fill_super);
+   }
+
+Kök Dizine İlişkin inode ve dentry Nesnelerinin Yaratılması
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Peki mount edilecek dosya sisteminin kök dizinine ilişkin inode ve dentry nesneleri nerede
 yaratılmaktadır? İşte aslında bu nesneleri sistem programcısı ``fill_super`` fonksiyonunun içerisinde
 yaratmaktadır. ``fill_super`` fonksiyonu içerisinde minimal olarak sistem programcısı ``super_block``
 yapısının aşağıdaki elemanlarını doldurmalıdır:
@@ -6545,17 +6520,99 @@ yapısının aşağıdaki elemanlarını doldurmalıdır:
 
 - Sistem programcının ``fill_super`` fonksiyonu içerisinde kök dizine ilişkin inode ve dentry nesnelerini
   yaratması ve bu yaratımları yaptıktan sonra da ``super_block`` yapısının ``s_root`` elemanına kök dizine
-  ilişkin dentry nesnesinin adresini yerleştirmesi gerekir. Güncel çekirdeklerin içerisinde bir inode nesnesi
-  yaratılmışsa onu gösterecek bir dentry nesnesinin yaratılmasını sağlayan ``d_make_root`` isimli export
-  edilmiş bir çekirdek fonksiyonu da bulunmaktadır:
+  ilişkin dentry nesnesinin adresini yerleştirmesi gerekir. Zaten ``mount_bdev`` fonksiyonu ``fill_super``fonksiyonu
+  tarafından ``super_block`` nesnesinin ``s_root`` elemanına yerleştirilen dentry nesnesiyle geri dönmektedir. 
+  Güncel çekirdeklerin içerisinde bir inode nesnesi yaratılmışsa onu gösterecek bir dentry nesnesinin yaratılmasını 
+  sağlayan ``d_make_root`` isimli export  edilmiş bir çekirdek fonksiyonu da bulunmaktadır:
 
   .. code-block:: c
 
      struct dentry *d_make_root(struct inode *root_inode);
 
-İşte aslında ``mount_bdev`` ve ``mount_nodev`` fonksiyonları ``fill_super`` fonksiyonu tarafından
-``super_block`` yapısının ``s_root`` elemanına yerleştirilen dentry nesnesinin adresiyle geri dönmektedir.
+Biz "simplefs" dosya esisteminin gerçekleştirilmesi konusunda da ``mount_nodev`` ve ``mount_bdev`` fonksiyonları 
+üzerinde duracağız. 
 
+Yeni Çekirdeklerdeki Yüksek Seviyeli Mekanizma: init_fs_context
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Çekirdeğin en yeni versiyonlarında artık ``mount_bdev`` ve ``mount_nodev`` gibi fonksiyonlar kaldırılmıştır.
+Artık mount işlemi sırasında ``file_system_type`` yapısının ``init_fs_context`` elemanındaki fonksiyon
+çağrılmaktadır. (Geçmişe doğru uyumu korumak için en yeni versiyonlarda da ``mount`` elemanı muhafaza
+edilmiştir. Ancak bu eleman NULL adres içeriyorsa yapının ``init_fs_context`` elemanına başvurulmaktadır.)
+En yeni çekirdeklerde ``mount_bdev`` ve ``mount_nodev`` fonksiyonlarının işlevlerini ``get_tree_bdev``
+fonksiyonu almıştır. Mount sırasında ``file_system_type`` yapısının ``mount`` elemanı yerine alternatif
+``init_fs_context`` elemanının da kullanılmaya başlanması 2019 başlarında Linux 5.1 ile başlamıştır. Bu yeni
+``init_fs_context`` elemanına context oluşturan bir fonksiyon girilmektedir. Bu fonksiyon içerisinde de
+context işlemlerine yönelik fonksiyonlar set edilmektedir. Örneğin:
+
+.. code-block:: c
+
+   static const struct fs_context_operations myfs_context_ops = {
+       .get_tree = myfs_get_tree,
+   };
+
+   static int myfs_init_fs_context(struct fs_context *fc)
+   {
+       fc->ops = &myfs_context_ops;
+       return 0;
+   }
+
+   static struct file_system_type myfs_type = {
+       .owner            = THIS_MODULE,
+       .name             = "myfs",
+       .init_fs_context  = myfs_fs_init_context,
+       .kill_sb          = myfs_kill_super,
+   };
+
+   static int myfs_get_tree(struct fs_context *fc)
+   {
+       return get_tree_bdev(fc, myfs_fill_super);
+   }
+
+Burada mount işlemi sırasında artık ``myfs_fs_init_context`` fonksiyonundan hareketle ``myfs_context_ops``
+fonksiyonu çağrılacaktır. İşte bu fonksiyon içerisinde de ``get_tree_bdev`` fonksiyonu çağrılmıştır. Biz
+izleyen paragraflarda daha çok eski arayüz olan ``mount_bdev`` ve ``mount_nodev`` fonksiyonlarını temel
+alacağız.
+
+Süper Blok Listeleri
+____________________
+
+Çekirdek yaratılmış olan süper blok nesnelerini ``file_system_type`` yapısının ``fs_supers`` elemanındaki 
+bağlı listede tutmaktadır. Yani her dosya sistemi türü için o dosya sistemi türünden disk bölümlerinin mount edilmesi
+sonucunda elde edilen süper blok nesneleri o dosya sistemi türüne ilişkin ``file_system_type`` yapısının
+içerisinde tutulmaktadır:
+
+.. code-block:: c
+
+   struct file_system_type {
+       /* ... */
+
+       struct hlist_head   fs_supers;
+
+       /* ... */
+   };
+
+Bu bağlı listenin düğümlerini ``super_block`` yapısının ``s_list`` elemanı oluşturmaktadır:
+
+.. code-block:: c
+
+   struct super_block {
+       /* ... */
+
+       struct list_head    s_list;
+
+       /* ... */
+   };
+
+Ayrıca Linux çekirdeği tüm süper blok nesnelerini de ``fs/super.c`` dosyası içerisindeki ``super_blocks``
+isimli bağlı listede tutmaktadır:
+
+.. code-block:: c
+
+   static LIST_HEAD(super_blocks);
+
+Böylece çekirdek gerektiğinde hem belli bir dosya sistemine ilişkin süper blok nesnelerine hem de sistemdeki
+tüm süper blok nesnelerine bu bağlı listeler yoluyla erişebilmektedir.
 
 Mount İşleminin Özet Akışı
 ---------------------------
@@ -6569,12 +6626,9 @@ gerçekleştirildiğine ilişkin özet bir görünüm sunmaktadır:
    :width: 35%
 
    ``sys_mount`` çağrısından ``fill_super``'a uzanan tam çağrı zinciri
-
-Mount İşleminden Sonraki Operasyonlar
----------------------------------------
-
+   
 Biz yukarıdaki aşamalarda yalnızca bir dosya sisteminin mount edilebilmesi için gerekli olan minimal işlemleri
-açıkladık. Peki ya mount işleminden sonra mount edilen kök dizine geçilip burada dosya yaratılmak istense ya
-da dizin yaratılmak istense yeni gerçekleştirilen dosya sistemi bu işlemleri nasıl yapabilecektir? İşte bu
-tür işlemler hep çekirdeğin sistem programcısı tarafından yazılmış olan fonksiyonları çağrılarak
-yapılmaktadır. İzleyen paragraflarda bu mekanizma üzerinde temel açıklamaları yapacağız.
+açıkladık. Peki ya mount işleminden sonra mount edilen kök dizine geçilip burada dosya ya da dizi yaratılmak 
+istense yeni gerçekleştirilen dosya sistemi bu işlemleri nasıl yapabilecektir? İşte bu tür işlemler hep çekirdeğin 
+sistem programcısı tarafından yazılmış olan fonksiyonları çağrılarak yapılmaktadır. İzleyen bölümlerde bu mekanizma 
+üzerinde temel açıklamaları yapacağız.
