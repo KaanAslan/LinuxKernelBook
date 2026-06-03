@@ -6855,3 +6855,207 @@ zorunda değillerdir. Bazı fonksiyonlar için zaten çekirdekte bulunan hazır 
 Bazılarını boş (NULL adres) bırakabilirler. Bazı fonksiyonların NULL bırakılması durumunda çekirdek, ilgili
 generic fallback fonksiyonu varsa onu çağırır; yoksa ilgili sistem çağrısı ``ENOSYS`` ya da ``EOPNOTSUPP``
 ile başarısızlıkla döner; bir kısmında ise özellik sessizce devre dışı kalır.
+
+super_operations ve inode_operations Yapılarının İşletilmesi
+------------------------------------------------------------
+
+``super_block`` yapısı içerisindeki ``super_operations`` yapısında bulunan fonksiyonlar dosya sistemi ile
+ilgili işlemler yapılırken çağrılmaktadır. Örneğin ne zaman bir inode nesnesi tahsis edilecek olsa çekirdek
+bu işlem için dosya sistemine ilişkin ``super_block`` nesnesinin ``super_operations`` yapısı içerisindeki
+``alloc_inode`` fonksiyonunu çağırmaktadır. Örneğin Linux çekirdeğindeki ``fs/inode.c`` içerisinde bulunan
+çekirdeğin inode tahsisatını yaptığı ``alloc_inode`` fonksiyonu şöyle yazılmıştır:
+
+.. code-block:: c
+
+   struct inode *alloc_inode(struct super_block *sb)
+   {
+       const struct super_operations *ops = sb->s_op;
+       struct inode *inode;
+
+       if (ops->alloc_inode)
+           inode = ops->alloc_inode(sb);
+       else
+           inode = alloc_inode_sb(sb, inode_cachep, GFP_KERNEL);
+
+       if (!inode)
+           return NULL;
+
+       if (unlikely(inode_init_always(sb, inode))) {
+           if (ops->destroy_inode) {
+               ops->destroy_inode(inode);
+               if (!ops->free_inode)
+                   return NULL;
+           }
+           inode->free_inode = ops->free_inode;
+           i_callback(&inode->i_rcu);
+           return NULL;
+       }
+
+       return inode;
+   }
+
+Fonksiyondaki aşağıdaki kısma dikkat ediniz:
+
+.. code-block:: c
+
+   if (ops->alloc_inode)
+       inode = ops->alloc_inode(sb);
+   else
+       inode = alloc_inode_sb(sb, inode_cachep, GFP_KERNEL);
+
+Burada görüldüğü gibi önce ``super_operations`` içerisindeki ``alloc_inode`` fonksiyon göstericisinin NULL
+olup olmadığına bakılmış, eğer bu gösterici NULL değilse bu göstericinin gösterdiği fonksiyon çağrılmıştır.
+Bu gösterici NULL ise ``alloc_inode_sb`` isimli default bir fonksiyon çağrıldığını görüyorsunuz.
+
+Buradaki tasarımın nesne yönelimli programlama tekniğindeki çokbiçimliliğe (polymorphism) çok benzediğine
+dikkat ediniz. Örneğin çokbiçimli davranış için C++'ta tipik olarak taban sınıfta bir sanal fonksiyon
+bulundurulur. Bu fonksiyon türemiş sınıflarda override edilir. Eğer türemiş sınıflarda bu fonksiyon override
+edilmediyse taban sınıftaki fonksiyon çağrılır. İşte Linux çekirdeğinde de adeta böyle yapılmıştır.
+
+E�er Linux'un dosya sistemi C++'ta nesne yönelimli bir biçimde gerçekleştirilecek olsaydı ``super_block``,
+``inode``, ``dentry`` ve ``file`` yapıları birer sınıf haline getirilip bunlara ilişkin ``xxx_operations``
+fonksiyonları da bu sınıfların sanal fonksiyonları yapılırdı. Ancak daha önceden de belirttiğimiz gibi
+çekirdek kodlaması için C++ uygun bir dil olarak görülmemektedir.
+
+
+Sıfırdan Dosya Sistemi Oluşturma Adımları
+=========================================
+
+Şimdi sıfırdan bir dosya sistemi oluştururken sistem programcısının adım adım ne yapması gerektiğini ve
+çekirdeğin bu dosya sistemini nasıl işlettiğini açıklayalım:
+
+1. Sistem programcısı kendi dosya sistemi için ``file_system_type`` türünden bir yapı nesnesi oluşturur ve
+   ``register_filesystem`` fonksiyonuyla bu yapı nesnesinin ``file_systems`` isimli global bağlı listeye
+   eklenmesini sağlar. Sistem programcısı kendi oluşturduğu bu ``file_system_type`` nesnesinin ``mount`` ve
+   ``kill_sb`` elemanlarına kendi fonksiyonlarının adreslerini yerleştirmektedir.
+
+2. Dosya sistemi mount edildiğinde ``sys_mount`` sistem fonksiyonu dosya sistemine ilişkin
+   ``file_system_type`` nesnesini ``file_systems`` bağlı listesinden bularak o nesnenin içerisindeki
+   ``mount`` fonksiyonunu çağırmaktadır. Artık sistem programcısının ``mount`` fonksiyonu
+   çalıştırılacaktır.
+
+3. Sistem programcısının yazdığı ``mount`` fonksiyonu tipik olarak çekirdeğin içerisindeki yüksek seviyeli
+   ``mount_bdev`` fonksiyonunu çağırır. Bu çekirdek fonksiyonu ``super_block`` nesnesini yaratır, bunu
+   ilgili bağlı listelere ekler, ancak içini birkaç eleman dışında doldurmaz. ``super_block`` nesnesinin
+   içinin doldurulması ``mount_bdev`` fonksiyonuna geçirilen ``fill_super`` fonksiyonu tarafından
+   yapılmaktadır.
+
+4. Sistem programcısının yazdığı ``fill_super`` fonksiyonu kendi dosya sisteminden hareketle çeşitli
+   bilgileri elde ederek süper blok nesnesinin içini doldurur. Tabii sistem programcısının ``super_block``
+   nesnesinin içini doldurabilmesi için diskteki kendi dosya sistemine ilişkin metadata bilgilerini okuması
+   gerekir. Aslında sistem programcısı kendi dosya sistemine ilişkin metadata bilgilerine başka işlemlerde
+   de gereksinim duymaktadır. Bu nedenle sistem programcısı tipik olarak önce kendi dosya sisteminin
+   metadata bilgilerini kendine özgü bir yapı nesnesine yerleştirir. Sonra da bu yapı nesnesini de süper
+   blok nesnesine iliştirir. Bu iliştirme işlemi için ``super_block`` yapısının ``s_fs_info`` elemanı
+   kullanılmaktadır:
+
+   .. code-block:: c
+
+      struct super_block {
+          /* ... */
+
+          void    *s_fs_info;     /* Filesystem private info */
+
+          /* ... */
+      };
+
+   Böylece ``super_block`` yapısı hem her dosya sisteminde söz konusu olabilecek genel bilgileri hem de
+   sistem programcısının oluşturduğu dosya sistemine ilişkin özel bilgileri tutar hale gelmektedir.
+
+5. Sistem programcısı ``fill_super`` fonksiyonu içerisinde ``super_block`` nesnesinin içini doldururken
+   aynı zamanda kendi dosya sisteminin kök dizinine ilişkin inode nesnesini ve dentry nesnesini de
+   oluşturmak zorundadır. Sistem programcısının kendi dosya sistemine ilişkin dentry nesnesinin adresini
+   ``super_block`` yapısının ``s_root`` elemanına yerleştirmesi gerekmektedir. Artık bu noktada çekirdek
+   mount edilen dosya sisteminin kök dizinine ilişkin inode nesnesine ve dentry nesnesine erişebilir
+   duruma gelmiştir. ``inode`` ve ``dentry`` yapılarının içerisinde ``inode_operations`` ve
+   ``dentry_operations`` elemanlarının bulunduğunu ve burada belirtilen fonksiyonların inode ve dentry
+   işlemlerini yaptığını anımsayınız.
+
+6. Şimdi örneğin kullanıcının sistem programcısının oluşturduğu mount edilen dizine geçip orada bir dizin
+   yaratmak istediğini düşünelim. Bu işlem aslında ``sys_mkdir`` sistem fonksiyonuyla yapılmaktadır. İşte
+   bu sistem fonksiyonu çağrıldığında güncel çekirdeklerde bir dizi çağırma sonucunda çekirdekteki
+   ``vfs_mkdir`` fonksiyonu çağrılmaktadır. Bu fonksiyonun kodları aşağıdaki gibidir:
+
+   .. code-block:: c
+
+      struct dentry *vfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+                               struct dentry *dentry, umode_t mode)
+      {
+          int error;
+          unsigned max_links = dir->i_sb->s_max_links;
+          struct dentry *de;
+
+          error = may_create(idmap, dir, dentry);
+          if (error)
+              goto err;
+
+          error = -EPERM;
+          if (!dir->i_op->mkdir)
+              goto err;
+
+          mode = vfs_prepare_mode(idmap, dir, mode, S_IRWXUGO | S_ISVTX, 0);
+          error = security_inode_mkdir(dir, dentry, mode);
+          if (error)
+              goto err;
+
+          error = -EMLINK;
+          if (max_links && dir->i_nlink >= max_links)
+              goto err;
+
+          de = dir->i_op->mkdir(idmap, dir, dentry, mode);
+          error = PTR_ERR(de);
+          if (IS_ERR(de))
+              goto err;
+          if (de) {
+              dput(dentry);
+              dentry = de;
+          }
+          fsnotify_mkdir(dir, dentry);
+          return dentry;
+
+      err:
+          dput(dentry);
+          return ERR_PTR(error);
+      }
+      EXPORT_SYMBOL(vfs_mkdir);
+
+   Burada dizinin içinde yaratılacağı dizine ilişkin (yani üst dizine ilişkin) inode nesnesinin
+   ``inode_operations`` elemanındaki ``mkdir`` fonksiyonunun çağrıldığını görüyorsunuz:
+
+   .. code-block:: c
+
+      error = -EPERM;
+      if (!dir->i_op->mkdir)
+          goto err;
+
+      /* ... */
+
+      de = dir->i_op->mkdir(idmap, dir, dentry, mode);
+
+   Yani aslında dizinin yaratılma işlemi dosya sistemini gerçekleştiren sistem programcısı tarafından
+   yazılan ``inode_operations`` yapısındaki ``mkdir`` fonksiyonu tarafından gerçekleştirilmektedir.
+   ``inode_operations`` içerisindeki ``mkdir`` elemanında NULL adres varsa (yani bu fonksiyon
+   girilmemişse) fonksiyonun ``-EPERM`` errno değeri ile geri döndürüldüğüne dikkat ediniz. Ayrıca
+   ``inode_operations`` içerisindeki ``mkdir`` fonksiyonunun geri dönüş değerine dikkat ediniz. Bu
+   fonksiyon dizini yaratıp dizinin inode ve dentry nesnelerini oluşturup yaratılan dizinin dentry
+   nesnesiyle geri dönmelidir.
+
+O halde dosya sistemini oluşturan sistem programcısı ``inode_operations`` nesnesini de oluşturup kök inode
+nesnesinin ``i_op`` elemanına yerleştirmelidir. Tabii aslında her inode nesnesi için ayrı bir
+``inode_operations`` nesnesinin oluşturulmasına gerek yoktur. Dosya sistemini gerçekleştiren sistem
+programcısı bundan bir tane oluşturur. Tüm inode nesnelerinin ``i_op`` elemanı aslında aynı
+``inode_operations`` nesnesini gösterir durumda olur.
+
+Peki sistem programcısı tarafından gerçekleştirilen ve mount edilen dosya sisteminin kök dizininde bir dosya
+yaratılmak istense ve bu dosya üzerinde işlemler yapılmak istense arka planda neler olacaktır? Biz bir dosya
+açıldığında çekirdeğin neler yaptığını açıklamıştık. Çekirdek önce bir dosya betimleyicisi tahsis edip sonra
+bir dosya nesnesi yaratıp onun içerisini dolduruyordu. Peki dosya nesnesinin (yani ``struct file`` yapısının)
+``f_op`` elemanındaki ``file_operations`` fonksiyonları ne zaman devreye girmektedir? İşte çekirdek dosya
+işlemleri yapılırken bu ``file_operations`` yapısının içerisine yerleştirilen fonksiyonları uygun yerlerde
+çağırmaktadır. (Tabii yukarıda da belirttiğimiz gibi aslında bu yapının da tüm elemanları mutlak anlamda
+doldurulmak zorunda değildir.) Örneğin Linux'ta karakter aygıt sürücüleri ``file`` yapısının ``f_op``
+elemanını değiştirip dosya işlemleri sırasında kendi fonksiyonlarının çağrılmasını sağlamaktadır. Ancak
+dosya sistemleri gerçekleştirilirken ``file_operations`` nesnesi sistem programcısı tarafından ``i_fop``
+elemanına yerleştirilmekte ve çekirdek tarafından buradan alınarak ``file`` yapısının ``f_op`` elemanına
+yerleştirilmektedir. Yani ``file_operations`` yapısı içerisindeki fonksiyonları da yine dosya sistemini
+gerçekleştiren sistem programcısı tanımlamaktadır.
