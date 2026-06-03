@@ -1,7 +1,7 @@
 .. _dosya-sistemi-2:
 
 =========================
-Dosya Sistemi - 2. Bölüm
+Dosya Sistemi - II. Bölüm
 =========================
 
 Bu bölümde Linux çekirdeğinin dosya sistemine ilişkin bazı ayrıntıları "simplefs" isimli bir dosya sistemini 
@@ -149,8 +149,8 @@ Sistemdeki blok aygıtlarını *lsblk* komutu ile görüntülediğimizde bu ayg�
     sr0     11:0    1   2,8G  0 rom  /media/kaan/Linux Mint 22.1 Cinnamon 64-bit
 
 
-Diskin Formatlanması ve Mount Edilmesi
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Loop Aygıtına İlişkin Diskin Formatlanması ve Mount Edilmesi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Artık ``/dev/loop0`` dosyasını bir disk gibi kullanabiliriz. Bu diske yazma yaptığımızda bu
 işlemden yalnızca bu dosya etkilenecektir. Örneğin bu diskimizi ext2 dosya sistemiyle
