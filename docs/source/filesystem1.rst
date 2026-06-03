@@ -6626,9 +6626,84 @@ gerçekleştirildiğine ilişkin özet bir görünüm sunmaktadır:
    :width: 35%
 
    ``sys_mount`` çağrısından ``fill_super``'a uzanan tam çağrı zinciri
-   
+
 Biz yukarıdaki aşamalarda yalnızca bir dosya sisteminin mount edilebilmesi için gerekli olan minimal işlemleri
 açıkladık. Peki ya mount işleminden sonra mount edilen kök dizine geçilip burada dosya ya da dizi yaratılmak 
 istense yeni gerçekleştirilen dosya sistemi bu işlemleri nasıl yapabilecektir? İşte bu tür işlemler hep çekirdeğin 
 sistem programcısı tarafından yazılmış olan fonksiyonları çağrılarak yapılmaktadır. İzleyen bölümlerde bu mekanizma 
 üzerinde temel açıklamaları yapacağız.
+
+Linux Çekirdeğinde Sanal Dosya Sistemi ve Sanal Fonksiyon Mekanizması
+=====================================================================
+
+Linux'un dosya sistemine *sanal dosya sistemi (virtual file system)* denilmektedir. Bu isim dosya sistemine
+nesne yönelimli programlama tekniğindeki soyutlamayı ve sanal fonksiyonları çağrıştırdığı için verilmiştir.
+Bilindiği gibi nesne yönelimli programlama tekniğinde kodda değişebilecek olan öğeler belirlenir. Bu
+değişebilecek öğelere doğrudan değil arayüz oluşturan sanal fonksiyonlar yoluyla erişilir. İşte Linux'un
+sanal dosya sisteminde de dosya sistemi ile ilgili genel işlemler yapan kodlar çekirdek içerisinde
+bulunmaktadır. Çekirdek dosya sistemine göre değişebilecek işlemler söz konusu olduğunda bu işlemleri
+kendisi yapmaz; dosya sistemini gerçekleştirenler tarafından yazılmış olan fonksiyonları çağırarak onlara
+yaptırır. Tabii C Programlama Dili nesne yönelimli bir dil değildir. Bu nedenle C'de sanal fonksiyon
+çağırma mekanizmasının fonksiyon göstericileri ile manuel bir biçimde oluşturulması gerekmektedir. Bu
+durumda programcı kendi dosya sistemini yazarken kendi dosya sistemine ilişkin işlemleri yapan
+fonksiyonların adreslerini çekirdeğin belirlediği birtakım yapı nesnelerinin içerisine yerleştirir. Çekirdek
+de dosya sistemine bağlı işlemler sırasında bu fonksiyonları çağırır.
+
+Şimdi siz "mademki Linux'un dosya sistemi nesne yönelimli teknikle örtüşüyor o halde neden dosya sistemini
+C yerine C++ gibi nesne yönelimli bir dille yazmamışlar" diye merak edebilirsiniz. C++, C'den daha yüksek
+seviyeli bir dildir. Dolayısıyla C++ derleyicisi tarafından üretilen kodlar C derleyicisi tarafından üretilen
+kodlar kadar etkin değildir. İşte her ne kadar Linux'un dosya sistemi nesne yönelimli programlama tekniğini
+oldukça çağrıştırıyor olsa da hiçbir zaman gerçekleştiriminin C++'ta yapılması düşünülmemiştir. C++
+derleyicilerinin fonksiyon isimlerini değiştirmesi (name mangling), C++'ta farklı parametrik yapılara ilişkin
+aynı isimli fonksiyonların bulunabilmesi, exception mekanizması gibi pek çok özellik çekirdek kodlaması için
+bir handikap oluşturmaktadır.
+
+xxx_operations Yapıları
+------------------------
+
+Linux'un sanal dosya sistemindeki sanal fonksiyon sistemi çekirdeğin daha önce sözünü ettiğimiz dört yapısına
+da yansıtılmıştır. Çekirdeğin bu dört yapısında da ``xxx_operations`` türünden yapı elemanları bulunmaktadır.
+``xxx_operations`` yapıları fonksiyon göstericilerinden oluşmaktadır. Bu fonksiyon göstericilerine adresleri
+yerleştirilen fonksiyonlar çekirdek tarafından belirli noktalarda çağrılmaktadır. Aşağıda ``xxx_operations``
+elemanlarının bu yapılar içerisindeki görünümleri verilmektedir:
+
+.. code-block:: c
+
+   struct super_block {
+       /* ... */
+       const struct super_operations   *s_op;
+       /* ... */
+   };
+
+   struct inode {
+       /* ... */
+       const struct inode_operations   *i_op;
+       /* ... */
+   };
+
+   struct dentry {
+       /* ... */
+       const struct dentry_operations  *d_op;
+       /* ... */
+   };
+
+   struct file {
+       /* ... */
+       const struct file_operations    *f_op;
+       /* ... */
+   };
+
+Görüldüğü gibi süper blok nesneleri için ``super_operations``, dentry nesneleri için ``dentry_operations``,
+inode nesneleri için ``inode_operations`` ve dosya nesneleri için de ``file_operations`` yapıları
+bulunmaktadır. Buradaki ``xxx_operations`` yapıları yukarıda da belirttiğimiz gibi aslında fonksiyon
+göstericilerinden oluşmaktadır.
+
+Güncel çekirdeklerde ``super_operations`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct super_operations {
+       /* ... (yukarıda verilmiştir) ... */
+   };
+
+(Kod blokları önceki RST çıktısında tam olarak yer almaktadır.)
