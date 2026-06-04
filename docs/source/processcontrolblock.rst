@@ -331,7 +331,7 @@ task_struct Nesneleri Arasındaki Bağ İlişkileri
 duracağız. Çekirdeğin bir prosesin thread'lerine sonra da alt proseslerine nasıl eriştiğini açıklayacağız.
 
 
-Thread Listesi: ``thread_head`` / ``thread_node``
+Thread Listesi: thread_head ve thread_node
 ---------------------------------------------------
 
 Bir prosesin thread'lerine erişim için eskiden ``task_struct`` içerisindeki ``thread_group`` isimli
@@ -422,7 +422,7 @@ Linux çekirdeğinde terminoloji bağlamında "prosesin ana thread'i" yerine *th
 leader)* terimi tercih edilmektedir.
 
 
-``pid`` ve ``tgid`` Elemanları
+pid ve tgid Elemanları
 --------------------------------
 
 Bilindiği gibi UNIX/Linux sistemlerinde her prosesin sistem genelinde tek (unique) olan bir *proses id
@@ -491,7 +491,7 @@ Linux'ta thread'lere özgü pid değeri Linux'a özgü *gettid* fonksiyonu ile e
    *gettid* fonksiyonunun bir POSIX fonksiyonu olmadığına dikkat ediniz.
 
 
-``group_leader`` Göstericisi
+group_leader Göstericisi
 ------------------------------
 
 Aslında Linux çekirdeği thread'lere ilişkin ``task_struct`` nesnelerinde yalnızca prosesin ana thread'ine
@@ -550,7 +550,7 @@ bir ``task_struct`` nesnesini de (reparenting işlemi) gösteriyor durumda olabi
 ``tgid`` değerini geri döndürmektedir.
 
 
-Alt Proses Listesi: ``children`` ve ``sibling`` Elemanları
+Alt Proses Listesi: children ve sibling Elemanları
 ----------------------------------------------------------
 
 Şimdi de bir prosesin alt proseslerinin nasıl bağlı listelerde tutulduğu üzerinde duralım. Örneğin bir
@@ -608,7 +608,7 @@ Ayrıca Linux'ta alt proses listesi ana thread'in ``children`` kök düğümünd
 zorundadır. Alt prosesler yaratıldığında yalnızca ana thread'in ``children`` kök düğümü güncellenmektedir.
 
 
-Tüm Proseslerin Listesi: ``tasks``
+Tüm Proseslerin Listesi: tasks
 ------------------------------------
 
 Çekirdek ayrıca proseslerin ana thread'lerine ilişkin ``task_struct`` nesnelerini de ``task_struct``
