@@ -953,3 +953,376 @@ Formatlama programımızın tamamı ``mkfs.simplefs.c`` ismiyle aşağıda veril
  
         exit(EXIT_FAILURE);
     }
+
+simplefs Aygıt Sürücüsünün Gerçekleştirimi
+==========================================
+
+``simplefs`` dosya sistemini bir aygıt sürücü olarak yazacağız. Yazıma iskelet bir çekirdek modülü ile başlayabiliriz:
+
+.. code-block:: c
+
+   /* simplefs.c */
+
+   #include <linux/module.h>
+   #include <linux/kernel.h>
+   #include <linux/fs.h>
+
+   MODULE_LICENSE("GPL");
+   MODULE_AUTHOR("Kaan Aslan");
+   MODULE_DESCRIPTION("simplefs");
+
+   static int __init simplefs_module_init(void)
+   {
+       printk(KERN_INFO "simplefs module init\n");
+
+       return 0;
+   }
+
+   static void __exit simplefs_module_exit(void)
+   {
+       printk(KERN_INFO "simplefs module exit\n");
+   }
+
+   module_init(simplefs_module_init);
+   module_exit(simplefs_module_exit);
+
+Dosya sistemi aygıt sürücüleri için ilk yapılacak şey ``file_system_type`` türünden global bir nesne tenımlayıp onu
+çekirdek modülünün init fonksiyonunda ``register_filesystem`` fonksiyonu ile register ettirmektir:
+
+.. code-block:: c
+
+   static struct file_system_type simplefs_type = {
+       .owner = THIS_MODULE,
+       .name = "simplefs",
+       .mount = simplefs_mount,
+       .kill_sb = simplefs_kill_sb,
+       .fs_flags = FS_REQUIRES_DEV,
+   };
+
+   static int __init simplefs_module_init(void)
+   {
+       int result;
+
+       if ((result = register_filesystem(&simplefs_type)) != 0)
+           return result;
+
+       printk(KERN_INFO "simplefs module init\n");
+
+       return 0;
+   }
+
+Anımsayacağınız gibi kullanıcı dosya sistemimizi mount etmeye çalıştığında ``file_system_type`` yapısının ``mount``
+elemanına yerleştirilen fonksiyon çağrılmaktadır. Biz bu fonksiyon içerisinde çekirdeğin daha yüksek seviyeli
+``mount_bdev`` fonksiyonunu çağırarak mount işlemlerini bu fonksiyona yaptırabiliriz. Yine anımsayacağınız gibi en
+yeni çekirdeklerde artık ``mount_bdev`` fonksiyonu yerine ``get_tree_bdev`` fonksiyonu kullanılıyordu. Biz
+``simplefs`` dosya sistemimizde önce ``mount_bdev`` fonksiyonunu kullanacağız. Sonra bunu ``get_tree_bdev``
+fonksiyonunu kullanacak biçimde değiştireceğiz. ``simplefs`` dosya sistemimizdeki ``simplefs_mount`` fonksiyonu
+şöyle yazılmıştır:
+
+.. code-block:: c
+
+   static struct dentry *simplefs_mount(struct file_system_type *type, int flags, const char *dev, void *data)
+   {
+       return mount_bdev(type, flags, dev, data, simplefs_fill_super);
+   }
+
+Burada gerekli işlemlerin çoğu zaten ``mount_bdev`` fonksiyonu tarafından yapılmaktadır. Bizim ``mount_bdev``
+fonksiyonu tarafından oluşturulan süper blok nesnesini doldurmamız gerekir. ``mount_bdev`` bu doldurma işlemi için
+bizim ``simplefs_fill_super`` fonksiyonumuzu çağırmaktadır. Peki bu süper blok nesnesinin içini nasıl
+doldurmalıyız?
+
+.. code-block:: c
+
+   static int simplefs_fill_super(struct super_block *sb, void *data, int silent)
+   {
+       /* ... */
+
+       return 0;
+   }
+
+super_block Nesnesinin İçinin Doldurulması
+------------------------------------------
+
+Bizim ``super_block`` yapısı ile temsil edilen süper blok nesnesinin tüm elemanlarını doldurmamıza gerek yoktur.
+Ancak yapının aşağıdaki elemanlarını mutlaka doldurmamız gerekir:
+
+``s_magic``: Bu elemana bizim dosya sistemimize ilişkin kendi belirlediğimiz 4 byte'lık bir sihirli sayı atamamız gerekir.
+Dosya sistemimizdeki sihirli sayı şöyledir:
+
+.. code-block:: c
+
+   #define SIMPLEFS_MAGIC           0x53494D46
+   /* ... */
+
+   sb->s_magic = SIMPLEFS_MAGIC;
+
+``s_blocksize``: ``super_block`` yapısının ``s_blocksize`` ve ``s_blocksize_bits`` elemanlarına dosya sisteminde bir bloğun byte
+uzunluğu ve onun log2 değeri yazılmalıdır. Bu işlem için ``sb_set_blocksize`` fonksiyonundan faydalanılabilir.
+Örneğin:
+
+.. code-block:: c
+
+   sb_set_blocksize(sb, SIMPLEFS_BLOCKSIZE);
+
+Bu fonksiyon başarı durumunda bizim ikinci parametreye geçtiğimiz blok uzunluğuna, başarısızlık durumunda 0
+değerine geri dönmektedir. Ancak fonksiyon normal bir işleyişte başarısız olamayacağı için hata kontrolünün
+yapılmasına gerek yoktur.
+
+``s_maxbytes``: Bu elemana bir dosyada bulunabilecek maksimum byte sayısı yerleştirilmelidir. Bizim ``simplefs`` 
+dosya sistemimizde bir dosyada en fazla ``SIMPLEFS_BLOCKSIZE`` kadar byte tutulabilmektedir. Bu elemana şöyle değer atayabiliriz:
+
+.. code-block:: c
+
+   sb->s_maxbytes = SIMPLEFS_BLOCK_SIZE;
+
+``s_op``: ``super_block`` yapısının ``s_op`` elemanına çekirdek tarafından çeşitli durumlarda çağrılacak fonksiyonların
+adresleri yerleştirilmelidir. Biz çekirdeğin bu çok biçimli davranışından daha önce bahsetmiştir. Bu elemana
+``super_operations`` isimli bir yapı nesnesinin adresi yerleştirilmelidir. Anımsanacağı gibi bu
+``super_operations`` yapısı fonksiyon göstericilerinden oluşmaktadır. Ancak bu yapının da tüm elemanlarının
+doldurulması gerekmez. Bizim ``simplefs`` dosya sistemimizde bu yapının aşağıdaki elemanlarına yerleştirme
+yapacağız:
+
+.. code-block:: c
+
+   static const struct super_operations simplefs_super_ops = {
+       .alloc_inode = simplefs_alloc_inode,
+       .free_inode  = simplefs_free_inode,
+       .write_inode = simplefs_write_inode,
+       .evict_inode = simplefs_evict_inode,
+       .statfs      = simple_statfs,
+   };
+
+Bu elemanlara girilecek fonksiyonların parametrik yapısı aşağıdaki gibi olmalıdır:
+
+.. code-block:: c
+
+   static struct inode *simplefs_alloc_inode(struct super_block *sb);
+   static void simplefs_free_inode(struct inode *inode);
+   static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc);
+   static void simplefs_evict_inode(struct inode *inode);
+
+simplefs dosya sistemimiz için süper blok nesnesinin s_op elemanına yerleştirmeyi şöyle yapabiliriz:
+
+.. code-block:: c
+
+   sb->s_op = &simplefs_super_ops;
+
+Biz bu fonksiyonların ne zaman çağrılacağını ve bunların içerisinde ne yapılması gerektiğini izleyen paragraflarda
+açıklayacağız.
+
+``s_fs_info``: Çekirdek süper blok nesnelerini ``super_block`` isimli yapıyla temsil etmektedir. Ancak her dosya sisteminin
+kendine özgü bir süper blok formatı da vardır. İşte çekirdeğin ``super_block`` yapısından hareketle sistem
+programcısının kendi dosya sistemine ilişkin süper blok bilgilerine erişebilmesi gerekir. ``super_block``
+yapısının ``s_fs_info`` elemanı bunun için kullanılmaktadır. Bizim bu noktada dosya sistemimize ilişkin süper
+blok bilgilerini diskten okuyup bunu bir yapı nesnesi içerisinde depolamamız gerekir. Ancak aslında bizim yalnızca
+kendi dosya sistemimize ilişkin diskteki süper blok bilgilerine değil aynı zamanda onun yönetimine yönelik
+bilgileri de bulundurmamız gerekmektedir. Bunun için dosya sistemi tasarımcıları tipik olarak kendi dosya
+sistemlerinin süper blok yönetimine ilişkin bir yapı oluşturup diskteki süper blok bilgilerini bu yapı nesnesinin
+içerisinde saklamaktadır. ``super_block`` yapısının ``s_fs_info`` elemanına da bu nesnenin adresini
+yerleştirmektedir. Biz ``simplefs`` dosya sistemimizdeki süper blok yönetimi için aşağıdaki gibi bir yapı
+oluşturabiliriz:
+
+.. code-block:: c
+
+   struct simplefs_super_block {
+       struct simplefs_disk_super_block *sbd;
+       struct buffer_head *sb_bh;
+       struct buffer_head *inode_bitmap_bh;
+       struct buffer_head *data_bitmap_bh;
+       unsigned long *inode_bitmap;
+       unsigned long *data_bitmap;
+       spinlock_t lock;
+   };
+
+Burada yapının ``sbd`` elemanı bizim diskte tuttuğumuz süper blok bilgilerini göstermektedir. Biz zaten formatlama
+programında bu yapıyı aşağıdaki gibi oluşturmuştuk:
+
+.. code-block:: c
+
+   struct simplefs_disk_super_block {
+       __le32 magic;              /* 0x464D4953 ("SIMF") */
+       __le32 block_size;         /* 4096 */
+       __le32 inode_count;        /* Total inodes */
+       __le32 block_count;        /* Total blocks */
+       __le32 free_inodes;        /* Free inodes */
+       __le32 free_blocks;        /* Free blocks */
+       __le32 inode_table_block;  /* Start of the inode table (3) */
+       __le32 inode_table_size;   /* Size of the inode table */
+       __le32 data_block_start;   /* Start of data blocks */
+       __u8   padding[4060];      /* Padding to 4096 bytes */
+   };
+
+Buradaki ``super_block`` yapısının ``s_fs_info`` elemanı için oluşan durumu aşağıdaki şekil betimlemektedir:
+
+.. graphviz::
+
+   digraph simplefs_super_block_layout {
+       rankdir=LR;
+       node [shape=record, fontname="Courier New", fontsize=9,
+             style=filled, fillcolor="#f5f5f5"];
+       edge [fontsize=9, fontname="Helvetica"];
+
+       superblock [label="{super_block | ... | \<s_fs_info\> | ...}",
+                   fillcolor="#dde8f5"];
+       sfs_sb     [label="{simplefs_super_block | \<sbd\> | sb_bh | inode_bitmap_bh | ...}",
+                   fillcolor="#d5ead5"];
+       disk_sb    [label="{simplefs_disk_super_block | magic | block_size | inode_count | ...}",
+                   fillcolor="#fdebd0"];
+
+       superblock:s_fs_info -> sfs_sb:sbd  [label="  s_fs_info"];
+       sfs_sb:sbd            -> disk_sb    [label="  sbd"];
+   }
+
+Artık çekirdek bize ``super_block`` nesnesini verdiğinde biz kendi sistemimize ilişkin tüm süper blok bilgilerine
+erişiyor olacağız. ``simplefs_super_block`` yapısının ``sbd`` dışındaki diğer elemanlarını izleyen paragraflarda
+açıklayacağız.
+
+``s_root``: ``super_block`` yapısının bu elemanına bizim kök dizine ilişkin dentry nesne adresini yerleştirmemiz gerekir.
+Tabii dentry nesnesinin elde edilmesi için önce inode nesnesinin elde edilmesi gerekir. Bu işlemlerin nasıl
+yapılacağı izleyen paragraflarda açıklanmaktadır.
+
+Biz yukarıdaki bazı süreçlerle doldurulacak elemanlar dışında ``simplefs_fill_super`` fonksiyonumuzun ilk kısmını
+şöyle oluşturabiliriz:
+
+.. code-block:: c
+
+   static int simplefs_fill_super(struct super_block *sb, void *data, int silent)
+   {
+       sb->s_magic = SIMPLEFS_MAGIC;
+       sb_set_blocksize(sb, SIMPLEFS_BLOCK_SIZE);
+       sb->s_maxbytes = SIMPLEFS_BLOCK_SIZE;
+       sb->s_op = &simplefs_super_ops;
+       sb->s_flags |= SB_NOATIME;
+
+       /* ... */
+
+       return 0;
+   }
+
+``sb->s_flags |= SB_NOATIME`` işlemini dosya sisteminin basit tutulmasını sağlamak amacıyla uyguladık. Bu bayrak
+dosyaların erişim zamanlarının güncellenmesini engelleyecektir. İzleyen paragraflarda ``super_block`` yapısının
+diğer elemanlarının nasıl doldurulacağını açıklayacağız.
+
+Önce ``super_block`` yapısının ``s_fs_info`` elemanını doldurmaya çalışalım. Anımsanacağı gibi bu eleman bizim
+dosya sistemimizdeki süper blok işlemlerini yönetecek ``simplefs_super_block`` nesnesinin adresini tutmaktadır.
+Bizim bu nesneyi çekirdeğin heap sisteminde tahsis etmemiz gerekir. Biz çekirdeğin heap sistemini henüz
+incelemedik. Burada ``kzalloc`` isimli çekirdek fonksiyonuyla bu tahsisatı yapacağız. ``kzalloc`` fonksiyonu
+``kmalloc`` fonksiyonun tahsis edilen alanı sıfırlayan bir biçimidir. Tahsisatı şöyle yapabiliriz:
+
+.. code-block:: c
+
+   struct simplefs_super_block *sfs_sb;
+   /* ... */
+
+   if ((sfs_sb = kzalloc(sizeof(struct simplefs_super_block), GFP_KERNEL)) == NULL) {
+       printk(KERN_INFO "cannot allocate simplefs super block!..\n");
+       return -ENOMEM;
+   }
+
+Biz içi sıfırlarla doldurulmuş ``simplefs_super_block`` türünden bir nesneyi tahsis etmiş olduk. Bu nesnenin
+içini doldurmamız gerekir. Bu nesne bizim kendi dosya sistemimizin süper blok işlemleri için faydalanacağımız
+elemanlardan oluşmaktadır. Biz önce yapının ``sbd`` elemanını dolduralım. Bu eleman anımsayacağınız gibi bizim
+dosya sistemimizin diskteki süper blok bilgilerini tutmaktadır. O halde bizim bu noktada diskin süper bloğunu
+(yani 0 numaralı bloğunu) okumamız gerekir. Bu işlemi yapmanın klasik yolu çekirdeğin biraz daha yüksek
+seviyeli ``sb_bread`` fonksiyonunu kullanmaktır. Çekirdeğin ``sb_bread`` fonksiyonu süper blok içerisindeki
+blok aygıtı bilgilerinden ve blok uzunluğundan faydalanarak diskin belirttiğimiz numaralı bloğunu okumaktadır.
+``sb_bread`` fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+   struct buffer_head *sb_bread(struct super_block *sb, sector_t block);
+
+Fonksiyonun birinci parametresi ``super_block`` nesnesinin adresini, ikinci parametresi ise okunacak bloğun
+numarasını almaktadır. (Tabii bizim bu fonksiyonu çağırmadan önce ``super_block`` nesnesine blok büyüklüğünü
+yerleştirmemiz gerekir.) Fonksiyon okunan bloğu çekirdekte temsil eden ``buffer_head`` nesnesinin adresine geri
+dönmektedir. Biz ``buffer_head`` yapısını ve organizasyonunu bellek yönetimi kısmında göreceğiz. Linux'ta bu
+``buffer_head`` tasarımına yeni ve modern bir alternatif de eklenmiştir. Buna *bio* sistemi de denilmektedir.
+Ancak bu ``buffer_head`` sistemi çekirdekten atılabilecek bir tasarım değildir. Çünkü pek çok dosya sistemi
+halen bu ``buffer_head`` tasarımını kullanmaktadır. Güncel çekirdeklerde ``buffer_head`` yapısı
+``include/linux/buffer_head.h`` dosyasında şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct buffer_head {
+       unsigned long b_state;              /* buffer state bitmap (see above) */
+       struct buffer_head *b_this_page;    /* circular list of page's buffers */
+       union {
+           struct page  *b_page;           /* the page this bh is mapped to */
+           struct folio *b_folio;          /* the folio this bh is mapped to */
+       };
+       sector_t b_blocknr;                 /* start block number */
+       size_t   b_size;                    /* size of mapping */
+       char    *b_data;                    /* pointer to data within the page */
+
+       struct block_device *b_bdev;
+       bh_end_io_t         *b_end_io;      /* I/O completion */
+       void                *b_private;     /* reserved for b_end_io */
+       struct list_head     b_assoc_buffers;   /* associated with another mapping */
+       struct address_space *b_assoc_map;  /* mapping this buffer is associated with */
+       atomic_t    b_count;                /* users using this buffer_head */
+       spinlock_t  b_uptodate_lock;        /* Used by the first bh in a page, to
+                                            * serialise IO completion of other
+                                            * buffers in the page */
+   };
+
+Okunan bloğun bilgileri yapının ``b_data`` elemanından elde edilmektedir. Bizim bu aşamada bu ``buffer_head``
+tasarımını bilmemize gerek yoktur.
+
+``sb_bread`` fonksiyonu başarısızlık durumunda NULL adrese geri dönmektedir. Biz ``simplefs_fill_super``
+fonksiyonumuzda diskimizin süper bloğunu şöyle okuyabiliriz:
+
+.. code-block:: c
+
+   if ((sfs_sb->sb_bh = sb_bread(sb, 0)) == NULL) {
+       result = -EIO;
+       goto EXIT1;
+   }
+
+Görüldüğü gibi biz diskimizin süper bloğunu kendi süper bloğumuzu yönetmekte kullanacağımız
+``simplefs_super_block`` yapısının ``sb_bh`` elemanına yerleştirdik. Çünkü bu bloktan elde ettiğimiz disk süper
+blok bilgilerinin bulunduğu bellek alanının da yaşıyor olması gerekmektedir.
+
+.. code-block:: c
+
+   if ((sfs_sb->sb_bh = sb_bread(sb, 0)) == NULL) {
+       printk(KERN_INFO "cannot read simplefs disk super block!..\n");
+       result = -EIO;
+       goto EXIT1;
+   }
+
+Şimdi artık biz diskimizin süper bloğunu okuduk. Kendi disk süper blok bilgilerimizi ``simplefs_super_block``
+nesnesinin ``sbd`` elemanına yerleştirebiliriz:
+
+.. code-block:: c
+
+   struct simplefs_disk_super_block *sbd;
+   /* ... */
+
+   sbd = (struct simplefs_disk_super_block *) sfs_sb->sb_bh->b_data;
+   sfs_sb->sbd = sbd;
+
+Biz burada disk süper blok bilgilerine erişirken birden fazla ``->`` operatörü kullanmamak için ``sbd`` isminde
+bir gösterici kullandık. Aslında derleyiciler optimizasyon seçenekleri açıksa birden fazla ``->`` operatörünü
+zaten optimize etmektedir.
+
+Dosya Sisteminde Güncellenen Disk Bloklarının Aygıta Yazılması
+--------------------------------------------------------------
+
+Blok Aygıtlarında Yazma İşlemleri ve Kirli Tampon Yönetimi
+-----------------------------------------------------------
+
+Linux çekirdek kodlamalarında blok aygıtlarından okuma işlemleri doğrudan yapılıyor olmasına karşın yazma
+işlemleri doğrudan değil gecikmeli bir biçimde (yani asenkron biçimde) yapılmaktadır. Örneğin biz bir bloğu
+``sb_bread`` fonksiyonu ile blok aygıtından okumak istediğimizde bu fonksiyon bloğu önce sayfa belleğinde arar,
+eğer blok sayfa önbelleğinde varsa doğrudan oradan verir. Eğer blok sayfa önbelleğinde yoksa bu fonksiyon bloke
+oluşturarak senkron bir biçimde aygıttan okuma yapılmasını sağlamaktadır. Şimdi okuduğumuz bloğun üzerinde
+değişiklikler yaptıktan sonra onu yeniden diske yazmak isteyelim. İşte yazma işlemini doğrudan yapmayız.
+``mark_buffer_dirty`` isimli fonksiyonla onu *kirli* olarak işaretleriz. Kirli sayfaların diske yazılması bir
+çekirdek thread'i tarafından bir süre sonra yapılmaktadır. Dosya sistemini kodlarken ne zaman okuduğumuz bir
+blok üzerinde değişiklik yapsak onun yazımını sağlamak için ``mark_buffer_dirty`` fonksiyonu ile onun
+*kirlenmiş* olduğunu belirtmemiz gerekir. Benzer biçimde inode önbelleğindeki inode nesneleri üzerinde de
+değişiklikler yaptığımızda ``mark_inode_dirty`` fonksiyonu ile onun kirlenmiş olduğunu belirtmeliyiz. Kirli
+inode nesneleri çekirdek tarafından belli koşullar sağlandığında dosya sisteminin ``super_operations`` nesnesinde
+belirtilen ``write_inode`` fonksiyonu çağrılarak diske yazılmaktadır.
+
+

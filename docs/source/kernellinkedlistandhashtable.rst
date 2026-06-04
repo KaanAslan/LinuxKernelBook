@@ -866,7 +866,7 @@ varsayalım. Bu durumda örneğin 2566198712 TC kimlik numarasına sahip kişini
 hash tablosunun 712'nci indeksteki elemanında saklanacaktır. 72484926820 TC kimlik
 numarasına sahip kişinin bilgileri de dizinin 820'nci indeksteki elemanında
 saklanacaktır. Ancak farklı kişilerin TC kimlik numaraları hash fonksiyonuna sokulduğunda
-aynı indeks değerleri de elde edilebilecektir. Örneğin 6238517712 TC numarasına sahip
+aynı indeks değerleri de elde edilebilecektir. Örneğin 6238517712 TC kimli numarasına sahip
 kişi de dizinin 712'nci indeksteki elemanına yerleşmek isteyecektir. İşte hash tablosu
 yönteminde bu duruma *çakışma (collision)* denilmektedir. Hash tablosu yöntemi çakışma
 durumunda izlenecek stratejiye göre çeşitli alt kollara ayrılmaktadır.
