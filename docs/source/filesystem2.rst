@@ -192,7 +192,6 @@ isterseniz *chown* komutuyla bunu değiştirebilirsiniz:
 Eğer dizinin sahibini *root* olarak bırakırsanız bu dizinde girdi yaratmak için hep *sudo*
 komutunu kullanmak zorunda kalırsınız.
 
-
 Geri Alma İşlemleri
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -1308,9 +1307,6 @@ zaten optimize etmektedir.
 Dosya Sisteminde Güncellenen Disk Bloklarının Aygıta Yazılması
 --------------------------------------------------------------
 
-Blok Aygıtlarında Yazma İşlemleri ve Kirli Tampon Yönetimi
------------------------------------------------------------
-
 Linux çekirdek kodlamalarında blok aygıtlarından okuma işlemleri doğrudan yapılıyor olmasına karşın yazma
 işlemleri doğrudan değil gecikmeli bir biçimde (yani asenkron biçimde) yapılmaktadır. Örneğin biz bir bloğu
 ``sb_bread`` fonksiyonu ile blok aygıtından okumak istediğimizde bu fonksiyon bloğu önce sayfa belleğinde arar,
@@ -1326,3 +1322,39 @@ inode nesneleri çekirdek tarafından belli koşullar sağlandığında dosya si
 belirtilen ``write_inode`` fonksiyonu çağrılarak diske yazılmaktadır.
 
 
+Little-Endian/Big Endian Sorunu
+--------------------------------
+
+Eğer Linux çekirdeği için yazılan kodların hem *little-endian* hem de *big-endian* makinelerde sorunsuz
+çalışması isteniyorsa diskten okunan bilgilerin endian dönüştürmesine sokulması gerekir. Biz ``simplefs``
+dosya sistemimizde diskteki bilgilerin *little-endian* olduğunu varsaymıştık. Buradaki veri yapısı bir yapıya
+map edildiğinde orada bilgi *little-endian* biçiminde oluşacaktır. Eğer kodun çalışacağı makine *big-endian*
+ise sorun oluşacaktır. İşte bunun için Linux çekirdeğinde *endian* dönüştürmesi yapan yardımcı fonksiyonlar
+bulundurulmuştur. Bu fonksiyonların listesini aşağıda veriyoruz:
+
+.. code-block:: none
+
+   le16_to_cpu    be16_to_cpu
+   le32_to_cpu    be32_to_cpu
+   le64_to_cpu    be64_to_cpu
+
+Bu fonksiyonların (aslında birer makro olarak yazılmıştır) başındaki *le* öneki parametrenin *little-endian*
+olduğunu, *be* öneki ise *big-endian* olduğunu belirtmektedir. Örneğin ``le32_to_cpu`` fonksiyonu parametre
+olarak 32 bitlik işaretsiz *little-endian* bir değeri alır. Eğer o anda çalışılan CPU *little-endian* ise onu
+dönüştürmez, *big-endian* ise onu *big-endian* formata dönüştürür. Bu fonksiyonların parametresi gösterici
+olan biçimleri de vardır:
+
+.. code-block:: none
+
+   le16_to_cpup    be16_to_cpup
+   le32_to_cpup    be32_to_cpup
+   le64_to_cpup    be64_to_cpup
+
+Tabii yukarıdakilerin bir de ters biçimleri bulunmaktadır:
+
+.. code-block:: none
+
+   cpu_to_le16    cpu_to_be16    cpu_to_le16p    cpu_to_be16p
+   cpu_to_le32    cpu_to_be32    cpu_to_le32p    cpu_to_be32p
+   cpu_to_le64    cpu_to_be64    cpu_to_le64p    cpu_to_be64p
+   
