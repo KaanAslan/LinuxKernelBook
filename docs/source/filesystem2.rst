@@ -1191,7 +1191,8 @@ diğer elemanlarının nasıl doldurulacağını açıklayacağız.
 dosya sistemimizdeki süper blok işlemlerini yönetecek ``simplefs_super_block`` nesnesinin adresini tutmaktadır.
 Bizim bu nesneyi çekirdeğin heap sisteminde tahsis etmemiz gerekir. Biz çekirdeğin heap sistemini henüz
 incelemedik. Burada ``kzalloc`` isimli çekirdek fonksiyonuyla bu tahsisatı yapacağız. ``kzalloc`` fonksiyonu
-``kmalloc`` fonksiyonun tahsis edilen alanı sıfırlayan bir biçimidir. Tahsisatı şöyle yapabiliriz:
+``kmalloc`` fonksiyonun tahsis edilen alanı sıfırlayan bir biçimidir. ``kzalloc`` (ya da ``kmalloc``) ile tahsis edilmiş 
+alanlar ``kfree`` fonksiyonuyla serbest bırakılmaktadır. Tahsisatı şöyle yapabiliriz:
 
 .. code-block:: c
 
@@ -1252,8 +1253,22 @@ halen bu ``buffer_head`` tasarımını kullanmaktadır. Güncel çekirdeklerde `
 Okunan bloğun bilgileri yapının ``b_data`` elemanından elde edilmektedir. Bizim bu aşamada bu ``buffer_head``
 tasarımını bilmemize gerek yoktur.
 
-``sb_bread`` fonksiyonu başarısızlık durumunda NULL adrese geri dönmektedir. Biz ``simplefs_fill_super``
-fonksiyonumuzda diskimizin süper bloğunu şöyle okuyabiliriz:
+``sb_bread`` fonksiyonu başarısızlık durumunda NULL adrese geri dönmektedir. 
+
+``sb_bread`` fonksiyonuyla okunan blok ``brelse`` fonksiyonuyla geri bırakılmaktadır. Fonksiyonun parametrik
+yapısı şöyledir:
+
+.. code-block:: c
+
+   void brelse(struct buffer_head *bh);
+
+Pek çok çekirdek nesnesinde olduğu gibi ``buffer_head`` nesnelerinde de bir sayaç bulunmaktadır. ``sb_bread``
+bu sayacı artırmaktadır. ``brelse`` önce sayacı 1 azaltır, eğer sayaç 0'a düşerse ``buffer_head`` nesnesini
+*dilim önbelleğine (slab cache)* iade eder. ``buffer_head`` nesneleri ayrı bir dilim önbelleğinden tahsis
+edilmektedir. Dilimli tahsisat sistemi konusunu *Bellek Yönetimi* bölümünde ayrıntılı bir biçimde ele
+alacağız.
+
+Biz ``simplefs_fill_super`` fonksiyonumuzda diskimizin süper bloğunu şöyle okuyabiliriz:
 
 .. code-block:: c
 
@@ -1552,3 +1567,619 @@ amacıyla vermek istiyoruz:
 
        return result;
    }
+
+Kök Dizine İlişkin Inode Nesnesinin Oluşturulması
+-------------------------------------------------------------
+
+Artık ``simplefs_fill_super`` fonksiyonumuzda sıra kök dizine inode elemanını ve dentry nesnesini oluşturmaya
+gelmiştir. Bu aşamada durum biraz daha karmaşık hale gelecektir. Bizim diskteki bir inode elemanını okuyacak bir
+fonksiyon yazmamız gerekir. Çünkü kök dizinin değil ileride belli bir inode numarasına ilişkin inode elemanının
+da diskten okunması gerekecektir. Biz bu aşamada belli bir inode numarasına ilişkin inode elemanını diskten
+okuyan aşağıdaki parametrik yapıya sahip bir fonksiyon yazacağız:
+
+.. code-block:: c
+
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino)
+   {
+       /* ... */
+   }
+
+Fonksiyonun birinci parametresi çekirdeğin süper blok nesne adresini, ikinci parametresi ise inode numarasını
+almaktadır. Fonksiyon başarı durumunda diskten okunan inode nesnesinin adresine, başarısızlık durumunda ise
+başarısızlığı belirten geçersiz adrese geri dönmektedir. Linux çekirdeğinde adrese geri dönen fonksiyonlar
+istenirse aynı zamanda errno değerini de tutabilmektedir. Çok yüksek adreslerin bir bölümü aslında Linux
+çekirdeğinde geçerli bir adres belirtmemektedir. İşte bu biçimdeki Linux için geçersiz adresler aslında errno
+değerini barındırmaktadır. Bu işlemler için çekirdekte inline fonksiyon bulundurulmuştur: ``IS_ERR``,
+``PTR_ERR``, ``ERR_PTR`` makroları. ``IS_ERR`` fonksiyonu bir adres bilgisini alır. Onun Linux için geçerli
+bir adres olup olmadığına bakar. Eğer adres geçersizse onun içerisine depolanmış olan negatif errno değeri
+``PTR_ERR`` fonksiyonuyla elde edilmektedir. İçerisinde negatif errno değerini barındıran bir adres bilgisi de
+``ERR_PTR`` fonksiyonuyla oluşturulmaktadır. Linux çekirdeğindeki başarısızlık ve errno değerlerinin hangi
+biçimlerde bulunduğunu aşağıda maddeler halinde özetliyoruz:
+
+1. Bir çekirdek fonksiyonu tamsayı türlerine ilişkin bir değere geri dönüyorsa geri dönüş değerinin negatif
+   olması fonksiyonun başarısız olduğunu gösterir. Bu negatif değerin pozitiflisi errno değerini vermektedir.
+
+2. Bir çekirdek fonksiyonu bir adrese geri dönüyorsa fonksiyonun başarısı verilen adresin değerine bağlıdır.
+   Eğer verilen adres çok büyük bir adresse fonksiyon başarısız olmuştur. Bu kontrol ``IS_ERR`` inline
+   fonksiyonuyla yapılmaktadır.
+
+3. Adrese geri dönen çekirdek fonksiyonu eğer başarısızsa negatif errno değeri ``PTR_ERR`` inline fonksiyonuyla
+   elde edilir.
+
+4. Biz negatif bir errno değerini bir adres gibi geri döndüreceksek bunun için ``ERR_PTR`` inline fonksiyonunu
+   kullanmalıyız.
+
+Biz de çekirdek kodlaması yaparken çekirdekte uygulanan bu biçime (*convention*) uymalıyız.
+
+Biz ``simplefs_iget`` fonksiyonunun içini yazdığımızı varsayarsak ``simplefs_fill_super`` fonksiyonumuz
+içerisinde kök dizine ilişkin inode elemanını diskten şöyle okuyabiliriz:
+
+.. code-block:: c
+
+   #define SIMPLEFS_ROOT_INO    1
+   /* ... */
+   struct inode *root_inode;
+   /* ... */
+
+   root_inode = simplefs_iget(sb, SIMPLEFS_ROOT_INO);
+   if (IS_ERR(root_inode)) {
+       printk(KERN_INFO "cannot read root inode!..\n");
+       result = PTR_ERR(root_inode);
+       goto EXIT4;
+   }
+   /* ... */
+
+   EXIT4:
+       brelse(sfs_sb->data_bitmap_bh);
+   EXIT3:
+       brelse(sfs_sb->inode_bitmap_bh);
+   EXIT2:
+       brelse(sfs_sb->sb_bh);
+   EXIT1:
+       kfree(sfs_sb);
+
+Şimdi dosya sistemimiz için diskten bir inode elemanını okuyan ``simplefs_iget`` fonksiyonunun içini yazalım.
+Anımsayacağınız gibi inode nesneleri çekirdek tarafından bir önbellek içerisinde saklanıyordu. Bizim dosya
+sistemimize ilişkin inode elemanları da yine bu önbellek içerisinde saklanacaktır. Dolayısıyla biz bir inode
+nesnesini elde etmek istediğimizde önce inode önbelleğine bakıp eğer talep ettiğimiz inode elemanı zaten inode
+önbelleği içerisinde varsa hiç disk okuması yapmadan onu önbellekten alıp geri döndürmeliyiz. Eğer talep
+ettiğimiz inode nesnesi inode önbelleğinde yoksa bu durumda gerçek disk okuması yapmalıyız.
+
+Çekirdekte bir inode nesnesini inode önbelleğinden alan, yoksa onu tahsis edip adresini bize veren
+``iget_locked`` yüksek seviyeli bir fonksiyon bulunmaktadır. Eskiden bu fonksiyonun ismi *iget* biçimindeydi.
+Sonra ismi ``iget_locked`` olarak değiştirildi. ``iget_locked`` fonksiyonu ``fs/inode.c`` dosyasında aşağıdaki
+gibi tanımlanmıştır:
+
+.. code-block:: c
+
+   struct inode *iget_locked(struct super_block *sb, unsigned long ino)
+   {
+       struct hlist_head *head = inode_hashtable + hash(sb, ino);
+       struct inode *inode;
+   again:
+       inode = find_inode_fast(sb, head, ino, false);
+       if (inode) {
+           if (IS_ERR(inode))
+               return NULL;
+           wait_on_inode(inode);
+           if (unlikely(inode_unhashed(inode))) {
+               iput(inode);
+               goto again;
+           }
+           return inode;
+       }
+
+       inode = alloc_inode(sb);
+       if (inode) {
+           struct inode *old;
+
+           spin_lock(&inode_hash_lock);
+           /* We released the lock, so.. */
+           old = find_inode_fast(sb, head, ino, true);
+           if (!old) {
+               inode->i_ino = ino;
+               spin_lock(&inode->i_lock);
+               inode->i_state = I_NEW;
+               hlist_add_head_rcu(&inode->i_hash, head);
+               spin_unlock(&inode->i_lock);
+               spin_unlock(&inode_hash_lock);
+               inode_sb_list_add(inode);
+
+               /* Return the locked inode with I_NEW set, the
+                * caller is responsible for filling in the contents
+                */
+               return inode;
+           }
+
+           /*
+            * Uhhuh, somebody else created the same inode under
+            * us. Use the old inode instead of the one we just
+            * allocated.
+            */
+           spin_unlock(&inode_hash_lock);
+           destroy_inode(inode);
+           if (IS_ERR(old))
+               return NULL;
+           inode = old;
+           wait_on_inode(inode);
+           if (unlikely(inode_unhashed(inode))) {
+               iput(inode);
+               goto again;
+           }
+       }
+       return inode;
+   }
+   EXPORT_SYMBOL(iget_locked);
+
+Burada önce inode nesnesi inode önbelleğinde aranmış, eğer bulunamamışsa yeni bir inode nesnesi
+``alloc_inode`` fonksiyonuyla oluşturularak verilmiştir. Tabii oluşturulan bu inode nesnesi de aynı zamanda
+inode önbelleğine yerleştirilmiştir. Çekirdekte yeni bir inode nesnesinin tahsis edilmesi ``alloc_inode``
+fonksiyonu tarafından yapılmaktadır. Ancak bu fonksiyon da aslında tahsisatı çok biçimli olarak ``super_block``
+nesnesine yerleştirdiğimiz ``super_operations`` nesnesi içerisindeki ``alloc_inode`` fonksiyonunu çağırarak
+yapmaktadır. Yani sonuç olarak aslında ``iget_locked`` fonksiyonu inode nesnesini inode önbelleğinde bulmazsa
+bizim süper blok nesnesine yerleştirdiğimiz fonksiyonu çağırarak tahsisatı bize yaptırmaktadır. O halde bizim
+``super_operations`` nesnesine yerleştirdiğimiz ``alloc_inode`` fonksiyonunda kendi inode nesnemizi tahsis
+etmemiz gerekir. Çekirdekteki ``fs/inode.c`` dosyası içerisinde bulunan ``alloc_inode`` fonksiyonu aşağıdaki
+gibi tanımlanmıştır:
+
+.. code-block:: c
+
+   struct inode *alloc_inode(struct super_block *sb)
+   {
+       const struct super_operations *ops = sb->s_op;
+       struct inode *inode;
+
+       if (ops->alloc_inode)
+           inode = ops->alloc_inode(sb);
+       else
+           inode = alloc_inode_sb(sb, inode_cachep, GFP_KERNEL);
+
+       if (!inode)
+           return NULL;
+
+       if (unlikely(inode_init_always(sb, inode))) {
+           if (ops->destroy_inode) {
+               ops->destroy_inode(inode);
+               if (!ops->free_inode)
+                   return NULL;
+           }
+           inode->free_inode = ops->free_inode;
+           i_callback(&inode->i_rcu);
+           return NULL;
+       }
+
+       return inode;
+   }
+
+Burada önce ``super_operations`` nesnesi içerisindeki ``alloc_inode`` fonksiyon göstericisinin NULL olup
+olmadığına bakılmış, eğer bu elemana bir fonksiyon adresi yerleştirilmişse o fonksiyon çağrılmıştır:
+
+.. code-block:: c
+
+   if (ops->alloc_inode)
+       inode = ops->alloc_inode(sb);
+   else
+       inode = alloc_inode_sb(sb, inode_cachep, GFP_KERNEL);
+
+Eğer ``super_operations`` nesnesinin ``alloc_inode`` elemanı NULL ise bu durumda inode tahsisatı çekirdek
+içerisindeki ``alloc_inode_sb`` fonksiyonuna yaptırılmıştır. Ancak dosya sistemlerinde çoğu kez her dosya
+sisteminin kendi inode nesnesini kendisinin tahsis etmesi gerekmektedir. Bunun nedenini izleyen paragraflarda
+anlayacaksınız.
+
+O halde bizim ``simplefs_iget`` fonksiyonumuzda inode nesnesini şöyle elde edebiliriz:
+
+.. code-block:: c
+
+   struct inode *inode;
+   /* ... */
+
+   if ((inode = iget_locked(sb, ino)) == NULL)
+       return ERR_PTR(-ENOMEM);
+
+Tabii mademki ``iget_locked`` inode nesnesini inode önbelleğinde bulamazsa bizim süper bloğumuza ilişkin
+``alloc_inode`` fonksiyonunu çağırmaktadır, o halde bizim bu noktada artık ``alloc_inode`` fonksiyonumuzun
+içini yazmamız gerekir. Bizim süper bloğuna yerleştirdiğimiz ``alloc_inode`` fonksiyonu şöyleydi:
+
+.. code-block:: c
+
+   static struct inode *simplefs_alloc_inode(struct super_block *sb)
+   {
+       /* ... */
+   }
+
+Görüldüğü gibi fonksiyon tahsis edilen inode nesnesiyle geri dönmektedir. Ancak burada bazı ayrıntılar vardır.
+Aslında sistem programcısı bu tahsisat fonksiyonunda ``struct inode`` türünden bir nesne tahsis etmemektedir.
+Sistem programcısı bu fonksiyonda kendi dosya sistemine ilişkin inode nesnesini tahsis eder fakat onu sanki
+``struct inode`` nesnesiymiş gibi geri döndürür. Dosya sistemlerinin standart inode yapısından farklı inode
+temsilleri olabilir. Bu nedenle her dosya sistemi aslında kendine özgü bir inode yapısı oluşturmaktadır. Bu
+durumu nesne yönelimli programlama tekniğindeki taban sınıf-türemiş sınıf olgusuna benzetebiliriz. Bu
+bağlamda ``struct inode`` adeta bir taban sınıf gibidir. Sistem programcısının kendisinin oluşturduğu inode
+yapısı da adeta türemiş sınıf gibidir. Biz ``simplefs`` dosya sistemimiz için aşağıdaki gibi bir inode yapısı
+oluşturabiliriz:
+
+.. code-block:: c
+
+   struct simplefs_inode {
+       __u32 block_no;
+       struct inode vfs_inode;
+   };
+
+Görüldüğü gibi aslında bizim kendi inode yapımız çekirdeğin inode yapısını da tutmaktadır. Böylece sistem
+programcısı ``alloc_inode`` fonksiyonu içerisinde aslında ``struct inode`` türünden değil ``struct
+simplefs_inode`` türünden nesne tahsis eder, ancak nesnenin ``vfs_inode`` elemanının adresiyle geri döner.
+Böylece çekirdek ne zaman bize bizim bir inode nesnemizin adresini verse ``container_of`` makrosuyla biz kendi
+inode nesnemize erişebiliriz. Dosya sistemimize ilişkin ``simplefs_inode`` yapısı içerisinde standart inode
+nesnesinin yanı sıra aynı zamanda ilgili inode elemanının diskteki hangi blokta tutulduğu bilgisinin de
+bulunduğuna dikkat ediniz:
+
+.. code-block:: none
+
+   simplefs_inode
+   ┌────────────┐
+   │  block_no  │
+   ├────────────┤ ──────────▶ fonksiyonun döndürdüğü adres
+   │ vfs_inode  │
+   └────────────┘
+
+Pekiyi biz ``alloc_inode`` fonksiyonumuz içerisinde ``simplefs_inode`` nesnesini nasıl tahsis edeceğiz? İşte
+aslında bu konu ileride alacağımız *dilimli tahsisat sistemi (slab allocator)* denilen çekirdek tahsisat
+mekanizması ile ilgilidir. Çekirdek içerisinde dinamik tahsisatlar hızlı yapılsın diye hep aynı büyüklükte
+bloklardan oluşan ve ismine *dilim (slab)* denilen ayrık heap alanları oluşturulabilmektedir. Ayrıca Linux
+çekirdeği başlangıçta bazı sabit uzunluklu bloklar barındıran hazır dilimler de oluşturmaktadır. Çekirdeğin
+``kmalloc`` ve ``kzalloc`` gibi genel tahsisat fonksiyonları bu hazır dilimlerden tahsisat yapmaktadır. Biz
+``simplefs_inode`` nesnelerimizi ``kmalloc`` veya ``kzalloc`` gibi fonksiyonlarla tahsis edebiliriz. Ancak
+tam olarak ``simplefs_inode`` kadar uzunlukta bloklara sahip olan ayrı bir dilimli tahsisat nesnesi oluşturmak
+daha etkin bir yöntemdir. Biz dilimli tahsisat nesnelerinin nasıl oluşturulacağını ileride göreceğiz. Ancak
+burada bu işlemi yapan fonksiyon çağrısını vermekle yetineceğiz:
+
+.. code-block:: c
+
+   static struct kmem_cache *simplefs_inode_cachep;
+   /* ... */
+
+   simplefs_inode_cachep = kmem_cache_create("simplefs_inode_cache",
+           sizeof(struct simplefs_inode), 0, SLAB_HWCACHE_ALIGN, NULL);
+
+Fonksiyon başarı durumunda dilimli tahsisat sistemine ilişkin bilgilerin saklandığı ``kmem_cache`` türünden
+yapı nesnesinin adresine, başarısızlık durumunda NULL adrese geri dönmektedir. Başarısızlık durumunda modülün
+init fonksiyonunun ``-ENOMEM`` errno değeri ile geri döndürülmesi uygun olur.
+
+Biz yarattığımız bu dilimli tahsisat nesnesinden blok tahsisatını ``kmem_cache_alloc`` fonksiyonuyla yaparız.
+Örneğin:
+
+.. code-block:: c
+
+   struct simplefs_inode *inode_sfs;
+   /* ... */
+
+   inode_sfs = kmem_cache_alloc(simplefs_inode_cachep, GFP_KERNEL);
+
+Fonksiyon başarısızlık durumunda NULL adrese geri dönmektedir.
+
+``kmem_cache_alloc`` fonksiyonuyla tahsis edilen alan ``kmem_cache_free`` fonksiyonuyla serbest bırakılmaktadır:
+
+.. code-block:: c
+
+   kmem_cache_free(simplefs_inode_cachep, inode_sfs);
+
+``kmem_cache_create`` fonksiyonu ile yaratılmış olan dilimli tahsisat nesnesi ``kmem_cache_destroy``
+fonksiyonuyla yok edilmektedir:
+
+.. code-block:: c
+
+   kmem_cache_destroy(simplefs_inode_cachep);
+
+Yukarıda da belirttiğimiz gibi ``iget_locked`` çekirdek fonksiyonu eğer belirtilen numaralı inode nesnesi inode
+önbelleği içerisinde varsa doğrudan onu oradan alıp geri dönmektedir. Ancak belirtilen numaralı inode nesnesi
+inode önbelleğinde yoksa bu durumda bizim ``super_operations`` nesnesine yerleştirdiğimiz ``alloc_inode``
+fonksiyonu ile tahsisat yapılmaktadır. O halde bizim bu noktada dosya sistemimize ilişkin inode nesnesini tahsis
+edecek fonksiyonu yazmamız gerekir. Bu fonksiyonu şöyle yazabiliriz:
+
+.. code-block:: c
+
+   static struct inode *simplefs_alloc_inode(struct super_block *sb)
+   {
+       struct simplefs_inode *inode_sfs;
+
+       if ((inode_sfs = kmem_cache_alloc(simplefs_inode_cachep, GFP_KERNEL)) == NULL)
+           return NULL;
+       inode_init_once(&inode_sfs->vfs_inode);
+
+       return &inode_sfs->vfs_inode;
+   }
+
+inode nesnesi tahsis edildikten sonra onun içerisindeki elemanlara ``inode_init_once`` fonksiyonu ile ilk
+değerlerin verildiğine dikkat ediniz.
+
+Tabii bu inode tahsisatını serbest bırakan ``super_operations`` fonksiyonunun da bu noktada yazılması gerekir:
+
+.. code-block:: c
+
+   static void simplefs_free_inode(struct inode *inode)
+   {
+       struct simplefs_inode *inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+       kmem_cache_free(simplefs_inode_cachep, inode_sfs);
+   }
+
+``simplefs_inode`` yapımızın ``block_no`` elemanına henüz bir değer atamadık. Bu eleman inode elemanının
+bulunduğu disk bloğunun numarasını tutmaktadır. inode nesnesinin içi, inode elemanı diskten elde edilerek
+doldurulacaktır. ``simplefs_iget`` fonksiyonumuzun içi henüz şu durumdadır:
+
+.. code-block:: c
+
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino)
+   {
+       struct inode *inode;
+
+       if ((inode = iget_locked(sb, ino)) == NULL)
+           return ERR_PTR(-ENOMEM);
+
+       /* ... */
+
+       return NULL;
+   }
+
+Artık biz inode nesnesini tahsis etmiş olduk. Şimdi diskte ilgili inode elemanını bulup onun içerisindeki
+bilgilerden hareketle bu nesnenin içini doldurmamız gerekir. Bunu da bir fonksiyona yaptıralım. Bu işlemi
+yapan fonksiyonumuzun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+   static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
+               unsigned long ino, struct buffer_head **bhpp)
+   {
+       /* ... */
+   }
+
+Fonksiyonun birinci parametresi süper blok nesnesinin adresini, ikinci parametresi inode numarasını almaktadır.
+Fonksiyon diskteki inode elemanı ile geri dönmektedir. Ancak fonksiyonun geri döndürdüğü adresin fonksiyon
+çıkışında da yaşıyor olması gerekir. Bu adres okunan bloktaki bir yer olduğu için bloğun da referans sayacının
+artırılarak page cache içerisinde muhafaza edilmesi gerekmektedir. Bu nedenle okunan bloğun ``buffer_head``
+adresi ayrıca dışarıya iletilmiştir. Biz fonksiyonun son parametresine bir ``buffer_head`` göstericisinin
+adresini geçiririz. Fonksiyon da ``buffer_head`` nesnesinin adresini bu göstericiye yerleştirir.
+
+Bizim ``simplefs_get_inode_disk`` fonksiyonunda öncelikle elde etmek istediğimiz inode elemanının diskimizin
+hangi bloğunda ve o bloğun hangi offset'inde olduğunu belirlememiz gerekir. Bu belirlemeyi şöyle yapabiliriz:
+
+.. code-block:: c
+
+   #define SIMPLEFS_DISK_INODE_SIZE    sizeof(struct simplefs_disk_inode)
+
+   block_no     = ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+   block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
+
+Ancak burada bir noktaya dikkat ediniz. inode elemanlarının diskte bir blokta başlayıp diğer bloktan devam
+etmesi iyi bir tasarım değildir. Bunun engellenmesi için inode elemanlarının uzunluğunun blok uzunluğuna tam
+bölünmesi gerekir. Bizim ``simplefs`` dosya sistemimizde diskteki inode elemanlarımız 64 byte uzunluktadır. Bu
+değer de 4096'ya tam bölünebilmektedir. Ancak eğer blok uzunluğu inode elemanlarının diskteki uzunluğuna tam
+bölünemeseydi her bloğun sonunda kullanılmayan alan oluşurdu. Dolayısıyla yukarıdaki hesap da hatalı olurdu.
+Bu durumda (bizim tasarımızda geçerli değil) inode elemanının blok numarası ve blok offseti şöyle elde
+edilebilirdi:
+
+.. code-block:: c
+
+   #define SIMPLEFS_INODE_TABLE_LOCATION       3
+   #define SIMPLEFS_DISK_INODE_SIZE            sizeof(struct simplefs_disk_inode)
+   #define SIMPLEFS_DISK_INODE_PER_BLOCK       (SIMPLEFS_BLOCKSIZE / SIMPLEFS_DISK_INODE_SIZE)
+
+   block_no     = SIMPLEFS_INODE_TABLE_LOCATION + ino / SIMPLEFS_INODES_PER_BLOCK;
+   block_offset = (ino % SIMPLEFS_DISK_INODE_PER_BLOCK) * SIMPLEFS_DISK_INODE_SIZE;
+
+``ino`` numaralı inode elemanının diskimizin hangi bloğunda ve hangi offset'inde olduğunu belirledikten sonra
+artık bloğu ``sb_bread`` fonksiyonu ile okuyabiliriz:
+
+.. code-block:: c
+
+   if ((bh = sb_bread(sb, block_no)) == NULL)
+       return ERR_PTR(-EIO);
+
+Artık ``simplefs_get_inode_disk`` fonksiyonumuzu tamamlayabiliriz:
+
+.. code-block:: c
+
+   static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
+           unsigned long ino, struct buffer_head **bhpp)
+   {
+       int block_no, block_offset;
+       struct buffer_head *bh;
+       struct simplefs_disk_inode *disk_inode;
+
+       block_no     = SIMPLEFS_INODE_TABLE_LOCATION
+                      + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+       block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
+
+       if ((bh = sb_bread(sb, block_no)) == NULL)
+           return ERR_PTR(-EIO);
+
+       disk_inode = (struct simplefs_disk_inode *)(bh->b_data + block_offset);
+       *bhpp = bh;
+
+       return disk_inode;
+   }
+
+Artık diskten inode elemanını okumuş durumdayız. Şimdi bu bilgilerden hareketle ``simplefs_iget`` fonksiyonunda
+inode nesnesinin içini doldurmamız gerekir. Aşağıda ``simplefs_iget`` fonksiyonunun yeni durumunu veriyoruz:
+
+.. code-block:: c
+
+   #define SIMPLEFS_SB(sb)      ((struct simplefs_super_block *)(((sb)->s_fs_info)))
+   #define SIMPLEFS_DISK_SB(sb) (SIMPLEFS_SB(sb)->sbd)
+
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino)
+   {
+       struct inode *inode;
+       struct simplefs_disk_inode *disk_inode;
+       struct buffer_head *bh;
+       struct simplefs_disk_super_block *sfs_sbd;
+
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+       if (ino >= sfs_sbd->inode_count)
+           return ERR_PTR(-EINVAL);
+
+       if ((inode = iget_locked(sb, ino)) == NULL)
+           return ERR_PTR(-ENOMEM);
+
+       if (!(inode->i_state & I_NEW))
+           return inode;
+
+       disk_inode = simplefs_get_inode_disk(sb, ino, &bh);
+       if (IS_ERR(disk_inode)) {
+           iget_failed(inode);
+           return (struct inode *)disk_inode;
+       }
+
+       /* ... */
+
+       return inode;
+   }
+
+Burada önce ``super_block`` nesnesinden hareketle dosya sistemimize ilişkin ``simplefs_disk_super_block``
+nesnesine ``SIMPLEFS_DISK_SB`` makrosu ile erişilmiştir. Bizim dosya sistemimizde olabilecek en büyük inode
+değeri zaten bu yapının içerisindeki ``inode_count`` elemanında bulunuyordu. Böylece ``simplefs_iget``
+fonksiyonu içerisinde yanlışlıkla olmayan bir inode elemanı okunmak istenirse fonksiyon hemen başarısızlıkla
+geri dönmektedir:
+
+.. code-block:: c
+
+   sfs_sbd = SIMPLEFS_DISK_SB(sb);
+   if (ino >= sfs_sbd->inode_count)
+       return ERR_PTR(-EINVAL);
+
+Anımsayacağınız gibi ``iget_locked`` fonksiyonu eğer inode nesnesi inode önbelleğinde varsa onu alıyor, yoksa
+tahsis edip bize veriyordu. İşte bizim inode nesnesinin yeni tahsis edilmiş olup olmadığını anlamamız gerekir.
+Çekirdekteki kodlar eğer inode elemanı yeni tahsis edilmişse inode yapısının ``i_state`` elemanında ``I_NEW``
+bayrağını set etmektedir. Biz de fonksiyonda bu bayrağı kontrol ettik:
+
+.. code-block:: c
+
+   if (!(inode->i_state & I_NEW))
+       return inode;
+
+Artık akış ancak yeni tahsis edilmiş bir inode nesnesi söz konusuysa aşağıya geçecektir. Fonksiyonumuzda
+bundan sonra diskten inode elemanı okunmuştur:
+
+.. code-block:: c
+
+   disk_inode = simplefs_get_inode_disk(sb, ino, &bh);
+   if (IS_ERR(disk_inode)) {
+       iget_failed(inode);
+       return (struct inode *)disk_inode;
+   }
+
+Artık tahsis edilen inode nesnesinin elemanları diskten alınan inode bilgileri ile doldurulmalıdır. Tabii biz
+tahsis ettiğimiz inode nesnesinin tüm elemanlarını doldurmak zorunda değiliz. Yalnızca dosya sistemimize
+yönelik bazı elemanların doldurulması yeterli olacaktır. Doldurma işlemini şöyle yapabiliriz:
+
+.. code-block:: c
+
+   inode->i_mode = le32_to_cpu(disk_inode->mode);
+   i_uid_write(inode, le32_to_cpu(disk_inode->uid));
+   i_gid_write(inode, le32_to_cpu(disk_inode->gid));
+   set_nlink(inode, le32_to_cpu(disk_inode->nlink));
+   inode->i_blocks = le32_to_cpu(disk_inode->blocks);
+   inode->i_size   = le32_to_cpu(disk_inode->size);
+   inode_set_atime(inode, le32_to_cpu(disk_inode->atime), 0);
+   inode_set_mtime(inode, le32_to_cpu(disk_inode->mtime), 0);
+   inode_set_ctime(inode, le32_to_cpu(disk_inode->ctime), 0);
+
+inode nesnesinin elemanları doldurulurken bazı sarma çekirdek fonksiyonlarının da kullanıldığına dikkat ediniz.
+``i_uid_write`` ve ``i_gid_write`` fonksiyonları dosyanın kullanıcı id'si ve grup id'si değerlerini inode
+nesnesi içerisine yerleştirmektedir. Burada bu işlem için neden fonksiyon çağrıldığını merak edebilirsiniz.
+Daha önce de belirttiğimiz gibi Linux çekirdeklerine belli bir süreden sonra çeşitli alt sistemler için
+*isim alanları (name spaces)* eklenmiştir. Belli bir kullanıcı id'si ve grup id'si o isim alanına ilişkin
+kullanıcı id'si ve grup id'sine dönüştürülmektedir. Linux çekirdeği farklı isim alanlarında aynı id'ler
+bulunabilmesine izin veriyor olsa da aslında kendi içerisinde bu id'leri ayırmaktadır. Bu fonksiyonlar isim
+alanlarındaki id'leri çekirdeğin kullandığı id'lere dönüştürmektedir. Aslında varsayılan isim alanında
+bulunuluyorsa bu çekirdekler aynı id değerlerini inode nesnesinin içerisine yerleştirmektedir. Örneğimizde
+dosyanın hard link sayacı da ``set_nlink`` fonksiyonuyla set edilmiştir. Çünkü hard link sayacının atomik bir
+biçimde birkaç durum gözetilerek yerleştirilmesi gerekmektedir.
+
+Linux çekirdeklerinde dosyanın tarih zaman bilgilerinin tutulma biçimi versiyonlarla üç kez değiştirilmiştir.
+Eskiden yalnızca 01/01/1970'ten geçen saniye sayısı tutuluyordu. Sonra ``timespec`` yapısı kullanılmaya
+başlandı. Bu yapıyı kullanıcı modu uygulamalarından da anımsayacaksınız. Bu ``timespec`` yapısı hem
+01/01/1970'ten geçen saniye sayısını hem de bu saniyeden sonraki nano saniye sayısını tutuyordu. Nihayet yeni
+çekirdeklerde artık tarih ve zaman bilgisi inode nesnesinde iki ayrı yapı elemanıyla tutulmaktadır. Çekirdekteki
+bu değişimlerden etkilenmek istenmiyorsa tarih zaman bilgisi doğrudan değil çekirdeğin içerisindeki
+``inode_set_atime``, ``inode_set_mtime``, ``inode_set_ctime`` fonksiyonlarıyla set edilmelidir. Bu fonksiyonlar
+uzunca bir süredir çekirdeklerde bulunmaktadır ve set işlemini çekirdeğin o versiyonundaki formata göre
+yapmaktadır.
+
+inode nesnesinin doldurulurken inode nesnesinin belirttiği dosyanın bilgilerinin hangi data block içerisinde
+olduğu da saklanmalıdır. Çünkü biz ileride inode nesnesinden hareketle dosyaya ilişkin bilgilere ulaşmak
+isteyeceğiz. Bu bilgi zaten diskteki inode elemanında bulunuyordu. O halde bu bilginin inode nesnesine
+yerleştirilmesi şöyle yapılabilir:
+
+.. code-block:: c
+
+   struct simplefs_inode *inode_sfs;
+   /* ... */
+
+   inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+   inode_sfs->block_no = disk_inode->block_no;
+
+inode nesne adresinin bizim ``simplefs_inode`` yapımızın içerisindeki ``vfs_inode`` isimli elemanın adresi
+olduğunu anımsayınız. Biz ``container_of`` makrosuyla yukarı çıkarak asıl nesnemizin adresini elde etmekteyiz.
+
+``simplefs_iget`` fonksiyonundan çıkarken nesne sayacını artırdığımız iki nesneyi de geri bırakmamız gerekir:
+
+.. code-block:: c
+
+   brelse(bh);
+   unlock_new_inode(inode);
+
+Artık ``simplefs_iget`` fonksiyonunda inode nesnesimizin içini de doldurmuş olduk. Fonksiyonun son hali
+şöyledir:
+
+.. code-block:: c
+
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino)
+   {
+       struct inode *inode;
+       struct simplefs_disk_inode *disk_inode;
+       struct buffer_head *bh;
+       struct simplefs_disk_super_block *sfs_sbd;
+       struct simplefs_inode *inode_sfs;
+
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+       if (ino >= sfs_sbd->inode_count)
+           return ERR_PTR(-EINVAL);
+
+       if ((inode = iget_locked(sb, ino)) == NULL)
+           return ERR_PTR(-ENOMEM);
+
+       if (!(inode->i_state & I_NEW))
+           return inode;
+
+       disk_inode = simplefs_get_inode_disk(sb, ino, &bh);
+       if (IS_ERR(disk_inode)) {
+           iget_failed(inode);
+           return (struct inode *)disk_inode;
+       }
+
+       inode->i_mode = le32_to_cpu(disk_inode->mode);
+       i_uid_write(inode, le32_to_cpu(disk_inode->uid));
+       i_gid_write(inode, le32_to_cpu(disk_inode->gid));
+       set_nlink(inode, le32_to_cpu(disk_inode->nlink));
+       inode->i_blocks = le32_to_cpu(disk_inode->blocks);
+       inode->i_size   = le32_to_cpu(disk_inode->size);
+       inode_set_atime(inode, le32_to_cpu(disk_inode->atime), 0);
+       inode_set_mtime(inode, le32_to_cpu(disk_inode->mtime), 0);
+       inode_set_ctime(inode, le32_to_cpu(disk_inode->ctime), 0);
+
+       inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+       inode_sfs->block_no = disk_inode->block_no;
+
+       /* ... */
+
+       brelse(bh);
+       unlock_new_inode(inode);
+
+       return inode;
+   }
+
+Şimdi bizim son olarak inode nesnesine ilişkin ``inode_operations`` ve ``file_operations`` adreslerini
+oluşturmamız gerekmektedir. Çekirdek, izleyen paragraflarda da ayrıntılandıracağımız gibi inode kavramına
+ilişkin işlemler yapılırken ``inode_operations`` fonksiyonlarını, dosyaların bilgileri üzerinde işlemler
+yapılırken ``file_operations`` fonksiyonlarını çağırmaktadır.
+
