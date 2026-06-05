@@ -4,8 +4,8 @@
 Dosya Sistemi - II. Bölüm
 =========================
 
-Bu bölümde Linux çekirdeğinin dosya sistemine ilişkin bazı ayrıntıları "simplefs" isimli bir dosya sistemini 
-gerçekleşitrerek açıklayacağız. *simplefs* dosya sistemi **Linux Kernel - İşletim Sistemlerinin Tasatımı ve Gerçekleştirilmesi**
+Bu bölümde Linux çekirdeğinin dosya sistemine ilişkin bazı ayrıntıları ``simplefs`` isimli bir dosya sistemini 
+gerçekleşitrerek açıklayacağız. ``simplefs`` dosya sistemi **Linux Kernel - İşletim Sistemlerinin Tasatımı ve Gerçekleştirilmesi**
 kursuna sınıf içerisinde tasarlanmış oldukça basit bir dosya sistemidir. Bu dosya sistemini bugün yoğun biçimde kullandığımız
 *ext2* gibi *ext4* gibi dosya sistemlerinin basit bir biçimi gibi düşünebilirsiniz. 
 
@@ -297,7 +297,7 @@ simplefs Dosya Sisteminin Disk Organizasyonu
    :alt: simplefs disk organizasyonu
    :width: 50%
 
-   simplefs dosya sisteminin disk organizasyonu
+   ``simplefs`` dosya sisteminin disk organizasyonu
 
 *simplefs* dosya sistemimizin ilk bloğu (yani ilk 4096 byte'ı) süper bloktur. Burada dosya
 sistemimize ilişkin önemli parametrik bilgiler tutulmaktadır. UNIX/Linux sistemlerinde her dosyanın
@@ -953,8 +953,8 @@ Formatlama programımızın tamamı ``mkfs.simplefs.c`` ismiyle aşağıda veril
         exit(EXIT_FAILURE);
     }
 
-simplefs Aygıt Sürücüsünün Gerçekleştirimi
-==========================================
+simplefs Dosya Sistemi Aygıt Sürücüsünün Gerçekleştirimi
+========================================================
 
 ``simplefs`` dosya sistemini bir aygıt sürücü olarak yazacağız. Yazıma iskelet bir çekirdek modülü ile başlayabiliriz:
 
@@ -1153,24 +1153,9 @@ programında bu yapıyı aşağıdaki gibi oluşturmuştuk:
 
 Buradaki ``super_block`` yapısının ``s_fs_info`` elemanı için oluşan durumu aşağıdaki şekil betimlemektedir:
 
-.. graphviz::
-
-   digraph simplefs_super_block_layout {
-       rankdir=LR;
-       node [shape=record, fontname="Courier New", fontsize=9,
-             style=filled, fillcolor="#f5f5f5"];
-       edge [fontsize=9, fontname="Helvetica"];
-
-       superblock [label="{super_block | ... | \<s_fs_info\> | ...}",
-                   fillcolor="#dde8f5"];
-       sfs_sb     [label="{simplefs_super_block | \<sbd\> | sb_bh | inode_bitmap_bh | ...}",
-                   fillcolor="#d5ead5"];
-       disk_sb    [label="{simplefs_disk_super_block | magic | block_size | inode_count | ...}",
-                   fillcolor="#fdebd0"];
-
-       superblock:s_fs_info -> sfs_sb:sbd  [label="  s_fs_info"];
-       sfs_sb:sbd            -> disk_sb    [label="  sbd"];
-   }
+.. image:: _static/superblock-fsinfo.png
+   :alt: super_block → simplefs_super_block → simplefs_disk_super_block gösterici zinciri
+   :align: center
 
 Artık çekirdek bize ``super_block`` nesnesini verdiğinde biz kendi sistemimize ilişkin tüm süper blok bilgilerine
 erişiyor olacağız. ``simplefs_super_block`` yapısının ``sbd`` dışındaki diğer elemanlarını izleyen paragraflarda
@@ -1309,18 +1294,72 @@ Dosya Sisteminde Güncellenen Disk Bloklarının Aygıta Yazılması
 
 Linux çekirdek kodlamalarında blok aygıtlarından okuma işlemleri doğrudan yapılıyor olmasına karşın yazma
 işlemleri doğrudan değil gecikmeli bir biçimde (yani asenkron biçimde) yapılmaktadır. Örneğin biz bir bloğu
-``sb_bread`` fonksiyonu ile blok aygıtından okumak istediğimizde bu fonksiyon bloğu önce sayfa belleğinde arar,
-eğer blok sayfa önbelleğinde varsa doğrudan oradan verir. Eğer blok sayfa önbelleğinde yoksa bu fonksiyon bloke
-oluşturarak senkron bir biçimde aygıttan okuma yapılmasını sağlamaktadır. Şimdi okuduğumuz bloğun üzerinde
-değişiklikler yaptıktan sonra onu yeniden diske yazmak isteyelim. İşte yazma işlemini doğrudan yapmayız.
-``mark_buffer_dirty`` isimli fonksiyonla onu *kirli* olarak işaretleriz. Kirli sayfaların diske yazılması bir
-çekirdek thread'i tarafından bir süre sonra yapılmaktadır. Dosya sistemini kodlarken ne zaman okuduğumuz bir
-blok üzerinde değişiklik yapsak onun yazımını sağlamak için ``mark_buffer_dirty`` fonksiyonu ile onun
-*kirlenmiş* olduğunu belirtmemiz gerekir. Benzer biçimde inode önbelleğindeki inode nesneleri üzerinde de
-değişiklikler yaptığımızda ``mark_inode_dirty`` fonksiyonu ile onun kirlenmiş olduğunu belirtmeliyiz. Kirli
-inode nesneleri çekirdek tarafından belli koşullar sağlandığında dosya sisteminin ``super_operations`` nesnesinde
-belirtilen ``write_inode`` fonksiyonu çağrılarak diske yazılmaktadır.
+``sb_bread`` fonksiyonu ile blok aygıtından okumak istediğimizde bu fonksiyon bloğu önce sayfa belleğinde
+arar, eğer blok sayfa önbelleğinde varsa doğrudan oradan verir. Eğer blok sayfa önbelleğinde yoksa bu
+fonksiyon bloke oluşturarak senkron bir biçimde aygıttan okuma yapılmasını sağlamaktadır.
 
+Şimdi okuduğumuz bloğun üzerinde değişiklikler yaptıktan sonra onu yeniden diske yazmak isteyelim. İşte
+yazma işlemini doğrudan yapmayız. ``mark_buffer_dirty`` isimli fonksiyonla onu *kirli* olarak işaretleriz.
+Kirli sayfaların diske yazılması ``bdi_writeback`` isimli bir thread tarafından bir süre sonra yapılmaktadır.
+Dosya sistemini kodlarken ne zaman okuduğumuz bir blok üzerinde değişiklik yapsak onun yazımını sağlamak için
+``mark_buffer_dirty`` fonksiyonu ile onun kirlenmiş olduğunu belirtmemiz gerekir.
+``mark_buffer_dirty`` fonksiyonunun çağrı zinciri şöyledir:
+
+.. code-block:: none
+
+   mark_buffer_dirty(bh)
+   └─ __set_buffer_dirty(bh)
+       ├─ set_buffer_dirty(bh)                 ← BH_Dirty flag'i set et
+       └─ __set_page_dirty()
+               └─ __set_page_dirty_nobuffers() veya
+               __set_page_dirty_buffers()
+                   └─ mapping->host → mark_inode_dirty_pages()
+                       └─ I_DIRTY_PAGES flag → __mark_inode_dirty()
+
+Blok kirli olarak işaretlendikten sonra çekirdeğin ``bdi_writeback`` thread'i onu aşağıdaki çağrı
+zinciriyle flush etmektedir:
+
+.. code-block:: none
+
+   wb_writeback()
+   └─ writeback_sb_inodes()
+       └─ __writeback_single_inode()
+               └─ do_writepages()                      ← buraya gelir
+                   └─ mapping->a_ops->writepages()
+                       └─ (örn.) ext4_writepages()
+                           └─ mpage_writepages() / iomap_writepages()
+                                   └─ submit_bio()     ← block layer'a ilet
+
+En sonunda ilgili bloğun yazım için blok aygıt sürücüsüne iletildiğini görüyorsunuz.
+
+Benzer biçimde inode önbelleğindeki inode nesneleri üzerinde de değişiklikler yaptığımızda
+``mark_inode_dirty`` fonksiyonu ile onun kirlenmiş olduğunu belirtmeliyiz. ``mark_inode_dirty``
+fonksiyonunun çağrı zinciri şöyledir:
+
+.. code-block:: none
+
+   mark_inode_dirty()
+   └─ __mark_inode_dirty()
+       ├─ inode_io_list_move_locked()   ← b_dirty listesine ekle
+       └─ wb_wakeup()                   ← writeback thread'i uyandır
+
+Kirli inode nesneleri de yine çekirdeğin ``bdi_writeback`` thread'i tarafından dosya sisteminin
+``super_operations`` nesnesinde belirtilen ``write_inode`` fonksiyonu çağrılarak diske yazılmaktadır.
+Buradaki akışı şöyle açıklayabiliriz:
+
+.. code-block:: none
+
+   wb_workfn()                                  ← kworker thread
+    └─ wb_do_writeback()
+         └─ wb_writeback()
+              ├─ writeback_sb_inodes()
+              │    └─ __writeback_single_inode()
+              │         ├─ do_writepages()      ← sayfa verisi
+              │         └─ write_inode()        ← inode metadata
+              └─ inode_io_list_del()            ← listeden çıkar
+
+Biz sayfa önbelleği ve tampon (buffer) yönetimi konularını kitabımızın "Bellek Yönetimi" bölümünde ayrıntılarıyla 
+açıklayacağız.
 
 Little-Endian/Big Endian Sorunu
 --------------------------------
@@ -1328,7 +1367,7 @@ Little-Endian/Big Endian Sorunu
 Eğer Linux çekirdeği için yazılan kodların hem *little-endian* hem de *big-endian* makinelerde sorunsuz
 çalışması isteniyorsa diskten okunan bilgilerin endian dönüştürmesine sokulması gerekir. Biz ``simplefs``
 dosya sistemimizde diskteki bilgilerin *little-endian* olduğunu varsaymıştık. Buradaki veri yapısı bir yapıya
-map edildiğinde orada bilgi *little-endian* biçiminde oluşacaktır. Eğer kodun çalışacağı makine *big-endian*
+aktarıldığında orada bilgi *little-endian* biçiminde oluşacaktır. Eğer kodun çalışacağı makine *big-endian*
 ise sorun oluşacaktır. İşte bunun için Linux çekirdeğinde *endian* dönüştürmesi yapan yardımcı fonksiyonlar
 bulundurulmuştur. Bu fonksiyonların listesini aşağıda veriyoruz:
 
@@ -1357,4 +1396,159 @@ Tabii yukarıdakilerin bir de ters biçimleri bulunmaktadır:
    cpu_to_le16    cpu_to_be16    cpu_to_le16p    cpu_to_be16p
    cpu_to_le32    cpu_to_be32    cpu_to_le32p    cpu_to_be32p
    cpu_to_le64    cpu_to_be64    cpu_to_le64p    cpu_to_be64p
-   
+
+simplefs Süper Bloğunun ve Bitmap Bloklarının Diskten Okunması
+--------------------------------------------------------------
+
+Diskimizdeki süper bloğu okuduktan sonra ilk yapacağımız şey sihirli sayı karşılaştırmasıdır. Sihirli sayı
+karşılaştırması ile diskimizin ``simplefs`` dosya sistemiyle formatlanıp formatlanmadığını kesin olarak
+anlayamayabiliriz. Ancak olasılığı azaltırız. Örneğin:
+
+.. code-block:: c
+
+   if (le32_to_cpu(sbd->magic) != SIMPLEFS_MAGIC) {
+       printk(KERN_INFO "invalid magic number for simplefs: %08X\n", sbd->magic);
+       result = -EINVAL;
+       goto EXIT2;
+   }
+
+Sihirli sayı tesadüfen de (olasılık oldukça az) doğrulanabilir. Olasılığı azaltmak için dosya sistemine
+ilişkin başka değerler de kontrol edilebilir. Örneğin bizim dosya sistemimizde blok büyüklükleri sabit
+4096 byte'tır. Bu karşılaştırmayı da yapabiliriz. Örneğin bizim dosya sistemimizde inode tablosunun blok
+numarası her zaman 3'tür. Bu karşılaştırmayı da yapabiliriz:
+
+.. code-block:: c
+
+   if (le32_to_cpu(sbd->block_size) != SIMPLEFS_BLOCK_SIZE) {
+       printk(KERN_INFO "invalid block size for simplefs: %08X\n", sbd->block_size);
+       result = -EINVAL;
+       goto EXIT2;
+   }
+   if (le32_to_cpu(sbd->inode_table_block) != 3) {
+       printk(KERN_INFO "invalid inode table for simplefs: %08X\n", sbd->inode_table_block);
+       result = -EINVAL;
+       goto EXIT2;
+   }
+
+Şimdi sıra *inode bitmap* ve *data bitmap* bloklarının okunarak ``simplefs_super_block`` yapısının
+içerisinde saklanmasına gelmiştir. ``simplefs_super_block`` yapısını anımsatmak istiyoruz:
+
+.. code-block:: c
+
+   struct simplefs_super_block {
+       struct simplefs_disk_super_block *sbd;
+       struct buffer_head *sb_bh;
+       struct buffer_head *inode_bitmap_bh;
+       struct buffer_head *data_bitmap_bh;
+       unsigned long *inode_bitmap;
+       unsigned long *data_bitmap;
+       spinlock_t lock;
+   };
+
+Bizim önce *inode bitmap*'i diskten okuyup onun ``buffer_head`` adresini yapının ``inode_bitmap_bh``
+elemanına, sonra da onun bilgilerin bulunduğu yerin adresini de yapının ``inode_bitmap`` elemanına
+yerleştirmemiz gerekir. Aynı şeyi tabii *data bitmap* için de yapmalıyız. *Data bitmap*'i diskten okuyup
+onun ``buffer_head`` adresini yapının ``data_bitmap_bh`` elemanına, onun bilgilerinin bulunduğu yerin
+adresini de yapının ``data_bitmap`` elemanına yerleştirmemiz gerekir. Bu işlemleri şöyle yapabiliriz:
+
+.. code-block:: c
+
+   #define SIMPLEFS_INODE_BITMAP_LOCATION    1
+   #define SIMPLEFS_DATA_BITMAP_LOCATION     2
+   /* ... */
+
+   if ((sfs_sb->inode_bitmap_bh = sb_bread(sb, SIMPLEFS_INODE_BITMAP_LOCATION)) == NULL) {
+       printk(KERN_INFO "cannot read simplefs inode bitmap!..\n");
+       result = -EIO;
+       goto EXIT2;
+   }
+   sfs_sb->inode_bitmap = (unsigned long *) sfs_sb->inode_bitmap_bh->b_data;
+
+   if ((sfs_sb->data_bitmap_bh = sb_bread(sb, SIMPLEFS_DATA_BITMAP_LOCATION)) == NULL) {
+       printk(KERN_INFO "cannot read simplefs data bitmap!..\n");
+       result = -EINVAL;
+       goto EXIT3;
+   }
+   sfs_sb->data_bitmap = (unsigned long *) sfs_sb->data_bitmap_bh->b_data;
+
+Burada ``simplefs_super_block`` yapısının ``inode_bitmap`` ve ``data_bitmap`` elemanlarının neden ``char *``
+değil de ``unsigned long *`` türünden olduğunu merak edebilirsiniz. Linux çekirdeğindeki bitmap'ler üzerinde
+işlem yapan yardımcı çekirdek fonksiyonları genel olarak bitmap adreslerini ``unsigned long`` olarak
+almaktadır. İzleyen paragraflarda Linux çekirdeğindeki bitmap'ler üzerinde işlem yapan fonksiyonları gözden
+geçireceğiz.
+
+Yukarıdaki işlemlerden sonra ``simplefs_fill_super`` fonksiyonumuzda geldiğimiz yere kadarki kısmı özetleme
+amacıyla vermek istiyoruz:
+
+.. code-block:: c
+
+   static int simplefs_fill_super(struct super_block *sb, void *data, int silent)
+   {
+       struct simplefs_super_block *sfs_sb;
+       struct simplefs_disk_super_block *sbd;
+       struct inode *root_inode;
+       int result;
+
+       sb->s_magic = SIMPLEFS_MAGIC;
+       sb_set_blocksize(sb, SIMPLEFS_BLOCK_SIZE);
+       sb->s_maxbytes = SIMPLEFS_BLOCK_SIZE;
+       sb->s_op = &simplefs_super_ops;
+       sb->s_flags |= SB_NOATIME;
+
+       if ((sfs_sb = kzalloc(sizeof(struct simplefs_super_block), GFP_KERNEL)) == NULL) {
+           printk(KERN_INFO "cannot allocate simplefs super block!..\n");
+           return -ENOMEM;
+       }
+       sb->s_fs_info = sfs_sb;
+       spin_lock_init(&sfs_sb->lock);
+
+       if ((sfs_sb->sb_bh = sb_bread(sb, 0)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs disk super block!..\n");
+           result = -EIO;
+           goto EXIT1;
+       }
+
+       sbd = (struct simplefs_disk_super_block *) sfs_sb->sb_bh->b_data;
+       sfs_sb->sbd = sbd;
+
+       if (le32_to_cpu(sbd->magic) != SIMPLEFS_MAGIC) {
+           printk(KERN_INFO "invalid magic number for simplefs: %08X\n", sbd->magic);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+       if (le32_to_cpu(sbd->block_size) != SIMPLEFS_BLOCK_SIZE) {
+           printk(KERN_INFO "invalid block size for simplefs: %08X\n", sbd->block_size);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+       if (le32_to_cpu(sbd->inode_table_block) != 3) {
+           printk(KERN_INFO "invalid inode table for simplefs: %08X\n", sbd->inode_table_block);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+
+       if ((sfs_sb->inode_bitmap_bh = sb_bread(sb, SIMPLEFS_INODE_BITMAP_LOCATION)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs inode bitmap!..\n");
+           result = -EIO;
+           goto EXIT2;
+       }
+       sfs_sb->inode_bitmap = (unsigned long *) sfs_sb->inode_bitmap_bh->b_data;
+
+       if ((sfs_sb->data_bitmap_bh = sb_bread(sb, SIMPLEFS_DATA_BITMAP_LOCATION)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs data bitmap!..\n");
+           result = -EIO;
+           goto EXIT3;
+       }
+       sfs_sb->data_bitmap = (unsigned long *) sfs_sb->data_bitmap_bh->b_data;
+
+       /* ... */
+
+   EXIT3:
+       brelse(sfs_sb->inode_bitmap_bh);
+   EXIT2:
+       brelse(sfs_sb->sb_bh);
+   EXIT1:
+       kfree(sfs_sb);
+
+       return result;
+   }
