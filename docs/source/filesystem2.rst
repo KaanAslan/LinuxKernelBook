@@ -2751,10 +2751,6 @@ Tüm mount noktalarını *mount* komutunun argümansız kullanımıyla da elde e
 
    $ mount
 
-Komut aşağıdakine benzer bir çıktı verecektir:
-
-.. code-block:: none
-
    ....
    binfmt_misc on /proc/sys/fs/binfmt_misc type binfmt_misc (rw,nosuid,nodev,noexec,relatime)
    tmpfs on /run/user/1000 type tmpfs (rw,nosuid,nodev,relatime,size=808388k,nr_inodes=202097,mode=700,uid=1000,gid=1000,inode64)
@@ -3180,8 +3176,6 @@ Dolayısıyla mount ettiğimiz dosya sistemi için *ls* komutunu uygularsak hata
 
    $ ls simplefs-root
 
-.. code-block:: none
-
    ls: 'simplefs-root' dizini açılamıyor: Böyle bir aygıt ya da adres yok
 
 Ancak dosya sistemimiz için ``lookup`` fonksiyonunu yazdık. Bu ``lookup`` fonksiyonu yol ifadeleri
@@ -3195,8 +3189,6 @@ fonksiyonumuz tarafından bulunacaktır. *ls* komutu da üst dizinde listeleme y
 .. code-block:: bash
 
    $ ls simplefs-root/..
-
-.. code-block:: none
 
    load      mkfs.simplefs    modules.order   simplefs.c    simplefs.ko   simplefs.mod.c  simplefs.o     unload
    Makefile  mkfs.simplefs.c  Module.symvers  simplefs.dat  simplefs.mod  simplefs.mod.o  simplefs-root
