@@ -2603,3 +2603,128 @@ Bu durumda geldiğimiz noktaya kadar ``simplefs_fill_super`` fonksiyonunun kodu 
 
        return result;
    }
+
+Unmount İşlemi Sırasında Boşaltımların Yapılması
+------------------------------------------------
+
+Biz artık mount yapabilir bir duruma geldik. Anımsayacağınız gibi unmount işlemi sırasında ``file_system_type`` 
+nesnesindeki ``kill_sb`` fonksiyonu çağrılyordu. Biz henüz bu fonksiyonun da içini yazmadık. Eğer bu fonksiyonun içi
+yazılmazsa unmount işlemi sırasında bazı geri alımlar yapılamamış olur. Her ne kadar bu durum çekirdeğin
+çökmesine neden olmayacak olsa da *bellek sızıntısının (memory leak)* oluşmasına yol açacaktır. ``kill_sb``
+fonksiyonunda bizim ``simplefs_fill_super`` fonksiyonunda yaptığımız işlemleri geri almamız gerekir.
+``simplefs_kill_sb`` fonksiyonunda geri alımları şöyle yapabiliriz:
+
+.. code-block:: c
+
+   static void simplefs_kill_sb(struct super_block *sb)
+   {
+       struct simplefs_super_block *sfs_sb = sb->s_fs_info;
+
+       kill_block_super(sb);
+
+       if (sfs_sb) {
+           if (sfs_sb->data_bitmap_bh)
+               brelse(sfs_sb->data_bitmap_bh);
+           if (sfs_sb->inode_bitmap_bh)
+               brelse(sfs_sb->inode_bitmap_bh);
+           if (sfs_sb->sb_bh)
+               brelse(sfs_sb->sb_bh);
+           kfree(sfs_sb);
+       }
+
+       printk(KERN_INFO "unmount super block...\n");
+   }
+
+simplefs Dosya Sisteminin Test Amacıyla Mount Edilmesi
+------------------------------------------------------
+
+Biz henüz dosya sistemimizin gerçekleştirimini bitirmedik. Ancak bu aşamada artık çekirdek modülümüzü
+derleyip onu *insmod* komutuyla yükleyip basit bir test uygulayabiliriz. Çünkü bu tür projelerde test
+aşamasına ne kadar erken geçilirse o kadar iyidir. Derlemeyi oluşturduğumuz make dosyasını kullanarak
+şöyle yapabiliriz:
+
+.. code-block:: bash
+
+   $ make file=simplefs
+
+Elde ettiğimiz ``simplefs.ko`` dosyasını şöyle yükleyebiliriz:
+
+.. code-block:: bash
+
+   $ sudo insmod simplefs.ko
+
+Biz modülümüzü yüklediğimizde modülümüzün init fonksiyonu çağrılacaktır. Anımsayacağınız gibi init
+fonksiyonu içerisinde dosya sistemini kaydettirmiştik. Kaydettirilen dosya sistemleri ``/proc/filesystems`` 
+dosyası yoluyla görüntülenebilmektedir.
+
+.. code-block:: bash
+
+   $ cat /proc/filesystems
+
+.. code-block:: none
+
+   nodev   sysfs
+   nodev   tmpfs
+   nodev   bdev
+   nodev   proc
+   nodev   cgroup
+   nodev   cgroup2
+   nodev   cpuset
+   nodev   devtmpfs
+   nodev   configfs
+   nodev   debugfs
+   nodev   tracefs
+   nodev   securityfs
+   nodev   sockfs
+   nodev   bpf
+   nodev   pipefs
+   nodev   ramfs
+   nodev   hugetlbfs
+   nodev   devpts
+           ext3
+           ext2
+           ext4
+           squashfs
+           vfat
+   nodev   ecryptfs
+           fuseblk
+   nodev   fuse
+   nodev   fusectl
+   nodev   efivarfs
+   nodev   mqueue
+   nodev   pstore
+           btrfs
+   nodev   autofs
+   nodev   binfmt_misc
+           iso9660
+           simplefs
+
+Burada listenin sonunda *simplefs* dosya sistemimizin de bulunduğunu görüyorsunuz. Bu listede başında
+``nodev`` bulunan dosya sistemleri *disk tabanlı olmayan*, diğerleri ise *disk tabanlı olan* dosya
+sistemlerini belirtmektedir. Başka bir deyişle ``nodev`` içeren dosya sistemleri bir blok aygıtı
+kullanmamakta, ``nodev`` içermeyen dosya sistemleri bir blok aygıtı kullanmaktadır.
+
+Peki bizim dosya sistemimiz için yazdığımız kodlar ne zaman devreye girecektir? İşte yukarıda da
+belirttiğimiz gibi aslında her şey mount işlemiyle devreye sokulmaktadır. O halde bizim test için mount
+işlemi de yapmamız gerekir. mount işlemi için önce mount noktası olabilecek bir dizin yaratmalıyız.
+Örneğin:
+
+.. code-block:: bash
+
+   $ mkdir simplefs-root
+
+mount işlemi yapılırken bizim dosya sistemimiz henüz otomatik tespit edilmeye elverişli değildir. Bu
+nedenle mount komutunda *"-t simplefs"* komut satırı argümanını da bulundurmalıyız. Tabii önce loop
+aygıtını ayarlamayı da unutmayınız. mount işlemi için yapılacak işlemleri şöyle listeleyebiliriz:
+
+.. code-block:: bash
+
+   $ sudo losetup /dev/loop0 simplefs.dat
+   $ sudo insmod simplefs.ko
+   $ sudo mount -t simplefs /dev/loop0 simplefs-root
+
+Artık mount işlemini yaptık. Ancak mount dizinine geçtiğimizde *ls* komutunu kullanamayız. Çünkü *ls*
+komutu dosya sistemimize ilişkin henüz yazmadığımız ``file_operations`` yapısındaki ``iterate_shared`` ya
+da ``iterate`` fonksiyonlarının çağrılmasına yol açacaktır. Ancak biz dosya sistemimiz için ``lookup``
+fonksiyonunu yazmıştık. Bu fonksiyon sayesinde yol ifadeleri bizim dizinimizde çözülürken sorun
+oluşmayacaktır.
