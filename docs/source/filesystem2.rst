@@ -1061,14 +1061,14 @@ uzunluğu ve onun log2 değeri yazılmalıdır. Bu işlem için ``sb_set_blocksi
 
 .. code-block:: c
 
-   sb_set_blocksize(sb, SIMPLEFS_BLOCKSIZE);
+   sb_set_blocksize(sb, SIMPLEFS_BLOCK_SIZE);
 
 Bu fonksiyon başarı durumunda bizim ikinci parametreye geçtiğimiz blok uzunluğuna, başarısızlık durumunda 0
 değerine geri dönmektedir. Ancak fonksiyon normal bir işleyişte başarısız olamayacağı için hata kontrolünün
 yapılmasına gerek yoktur.
 
 ``s_maxbytes``: Bu elemana bir dosyada bulunabilecek maksimum byte sayısı yerleştirilmelidir. Bizim ``simplefs`` 
-dosya sistemimizde bir dosyada en fazla ``SIMPLEFS_BLOCKSIZE`` kadar byte tutulabilmektedir. Bu elemana şöyle değer atayabiliriz:
+dosya sistemimizde bir dosyada en fazla ``SIMPLEFS_BLOCK_SIZE`` kadar byte tutulabilmektedir. Bu elemana şöyle değer atayabiliriz:
 
 .. code-block:: c
 
@@ -1961,7 +1961,7 @@ edilebilirdi:
 
    #define SIMPLEFS_INODE_TABLE_LOCATION       3
    #define SIMPLEFS_DISK_INODE_SIZE            sizeof(struct simplefs_disk_inode)
-   #define SIMPLEFS_DISK_INODE_PER_BLOCK       (SIMPLEFS_BLOCKSIZE / SIMPLEFS_DISK_INODE_SIZE)
+   #define SIMPLEFS_DISK_INODE_PER_BLOCK       (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
 
    block_no     = SIMPLEFS_INODE_TABLE_LOCATION + ino / SIMPLEFS_INODES_PER_BLOCK;
    block_offset = (ino % SIMPLEFS_DISK_INODE_PER_BLOCK) * SIMPLEFS_DISK_INODE_SIZE;
@@ -2635,8 +2635,8 @@ fonksiyonunda bizim ``simplefs_fill_super`` fonksiyonunda yaptığımız işleml
        printk(KERN_INFO "unmount super block...\n");
    }
 
-simplefs Dosya Sisteminin Test Amacıyla Mount Edilmesi
-------------------------------------------------------
+simplefs Dosya Sisteminin Test Edilmesi
+----------------------------------------
 
 Biz henüz dosya sistemimizin gerçekleştirimini bitirmedik. Ancak bu aşamada artık çekirdek modülümüzü
 derleyip onu *insmod* komutuyla yükleyip basit bir test uygulayabiliriz. Çünkü bu tür projelerde test
@@ -2728,3 +2728,480 @@ komutu dosya sistemimize ilişkin henüz yazmadığımız ``file_operations`` ya
 da ``iterate`` fonksiyonlarının çağrılmasına yol açacaktır. Ancak biz dosya sistemimiz için ``lookup``
 fonksiyonunu yazmıştık. Bu fonksiyon sayesinde yol ifadeleri bizim dizinimizde çözülürken sorun
 oluşmayacaktır.
+
+*lsblk* komutunda artık dosya sistemimizin mount edildiğini görebileceğiz:
+
+.. code-block:: bash
+
+   $ lsblk
+
+.. code-block:: none
+
+   NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+   loop0    7:0    0    10M  0 loop /home/kaan/Study/LinuxKernel/FileSystem/Simplefs/simplefs-root
+   sda      8:0    0   120G  0 disk
+   ├─sda1   8:1    0     1M  0 part
+   ├─sda2   8:2    0   513M  0 part /boot/efi
+   └─sda3   8:3    0 119,5G  0 part /
+   sr0     11:0    1   2,8G  0 rom  /media/kaan/Linux Mint 22.1 Cinnamon 64-bit
+
+Tüm mount noktalarını *mount* komutunun argümansız kullanımıyla da elde edebilirdik:
+
+.. code-block:: bash
+
+   $ mount
+
+Komut aşağıdakine benzer bir çıktı verecektir:
+
+.. code-block:: none
+
+   ....
+   binfmt_misc on /proc/sys/fs/binfmt_misc type binfmt_misc (rw,nosuid,nodev,noexec,relatime)
+   tmpfs on /run/user/1000 type tmpfs (rw,nosuid,nodev,relatime,size=808388k,nr_inodes=202097,mode=700,uid=1000,gid=1000,inode64)
+   gvfsd-fuse on /run/user/1000/gvfs type fuse.gvfsd-fuse (rw,nosuid,nodev,relatime,user_id=1000,group_id=1000)
+   /dev/loop0 on /home/kaan/Study/LinuxKernel/FileSystem/Simplefs/simplefs-root type simplefs (rw,relatime)
+
+Bu bilgi de aslında ``/proc/mounts`` dosyasından elde edilmektedir.
+
+Aşağıda şu ana kadar geldiğimiz noktaya kadarki ``simplefs`` dosya sistemi aygıt sürücümüzün kodlarını bir
+bütün olarak veriyoruz.
+
+``simplefs.c``
+
+.. code-block:: c
+
+   #include <linux/module.h>
+   #include <linux/kernel.h>
+   #include <linux/fs.h>
+   #include <linux/buffer_head.h>
+
+   MODULE_LICENSE("GPL");
+   MODULE_AUTHOR("Kaan Aslan");
+   MODULE_DESCRIPTION("simplefs");
+
+   #define SIMPLEFS_BLOCK_SIZE              4096
+   #define SIMPLEFS_MAGIC                   0x53494D46
+   #define SIMPLEFS_INODE_BITMAP_LOCATION   1
+   #define SIMPLEFS_DATA_BITMAP_LOCATION    2
+   #define SIMPLEFS_INODE_TABLE_LOCATION    3
+   #define SIMPLEFS_ROOT_INO                1
+   #define SIMPLEFS_FILENAME_MAXLEN         32
+
+   struct simplefs_disk_super_block {
+       __le32 magic;              /* 0x464D4953 ("SIMF") */
+       __le32 block_size;         /* 4096 */
+       __le32 inode_count;        /* Total inodes */
+       __le32 block_count;        /* Total blocks */
+       __le32 free_inodes;        /* Free inodes */
+       __le32 free_blocks;        /* Free blocks */
+       __le32 inode_table_block;  /* Start of the inode table (3) */
+       __le32 inode_table_size;   /* Size of the inode table */
+       __le32 data_block_start;   /* Start of data blocks */
+       __u8   padding[4060];      /* Padding to 4096 bytes */
+   };
+
+   struct simplefs_super_block {
+       struct simplefs_disk_super_block *sbd;
+       struct buffer_head *sb_bh;
+       struct buffer_head *inode_bitmap_bh;
+       struct buffer_head *data_bitmap_bh;
+       unsigned long *inode_bitmap;
+       unsigned long *data_bitmap;
+       spinlock_t lock;
+   };
+
+   struct simplefs_inode {
+       __u32 block_no;
+       struct inode vfs_inode;
+   };
+
+   struct simplefs_disk_inode {
+       __le32 mode;        /* File type + permissions */
+       __le32 uid;         /* Owner user ID */
+       __le32 gid;         /* Owner group ID */
+       __le32 size;        /* File size in bytes */
+       __le32 nlink;       /* Hard link count */
+       __le32 blocks;      /* Block count (0 or 1) */
+       __le32 block_no;    /* Data block number */
+       __le32 ctime;       /* Creation time */
+       __le32 mtime;       /* Modification time */
+       __le32 atime;       /* Access time */
+       __u8   padding[24]; /* Padding to 64 bytes */
+   };
+
+   struct simplefs_disk_dentry {
+       __le32 inode;                           /* Inode number */
+       char name[SIMPLEFS_FILENAME_MAXLEN];    /* File name */
+   };
+
+   #define SIMPLEFS_DISK_DENTRY_SIZE  sizeof(struct simplefs_disk_dentry)
+   #define SIMPLEFS_MAX_DENTRIES      (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_DENTRY_SIZE)
+
+   #define SIMPLEFS_SB(sb)       ((struct simplefs_super_block *)(((sb)->s_fs_info)))
+   #define SIMPLEFS_DISK_SB(sb)  (SIMPLEFS_SB(sb)->sbd)
+
+   #define SIMPLEFS_DISK_INODE_SIZE       sizeof(struct simplefs_disk_inode)
+   #define SIMPLEFS_DISK_INODE_PER_BLOCK  (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
+
+   static struct dentry *simplefs_mount(struct file_system_type *type, int flags,
+                                        const char *dev, void *data);
+   static int simplefs_fill_super(struct super_block *sb, void *data, int silent);
+   static void simplefs_kill_sb(struct super_block *sb);
+   static struct inode *simplefs_alloc_inode(struct super_block *sb);
+   static void simplefs_free_inode(struct inode *inode);
+   static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc);
+   static void simplefs_evict_inode(struct inode *inode);
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino);
+   static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
+           unsigned long ino, struct buffer_head **bhp);
+   static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry,
+                                         unsigned int flags);
+
+   static struct file_system_type simplefs_type = {
+       .owner    = THIS_MODULE,
+       .name     = "simplefs",
+       .mount    = simplefs_mount,
+       .kill_sb  = simplefs_kill_sb,
+       .fs_flags = FS_REQUIRES_DEV,
+   };
+
+   static const struct super_operations simplefs_super_ops = {
+       .alloc_inode = simplefs_alloc_inode,
+       .free_inode  = simplefs_free_inode,
+       .write_inode = simplefs_write_inode,
+       .evict_inode = simplefs_evict_inode,
+       .statfs      = simple_statfs,
+   };
+
+   static const struct inode_operations simplefs_dir_inode_ops = {
+       .lookup = simplefs_lookup,
+   };
+
+   static const struct inode_operations simplefs_file_inode_ops = {
+       NULL
+   };
+
+   static struct kmem_cache *simplefs_inode_cachep;
+
+   static int __init simplefs_module_init(void)
+   {
+       int result;
+
+       simplefs_inode_cachep = kmem_cache_create("simplefs_inode_cache",
+               sizeof(struct simplefs_inode), 0, SLAB_HWCACHE_ALIGN, NULL);
+       if (simplefs_inode_cachep == NULL) {
+           printk(KERN_ERR "cannot allocate slab cache\n");
+           return -ENOMEM;
+       }
+
+       if ((result = register_filesystem(&simplefs_type)) != 0) {
+           printk(KERN_ERR "cannot register file system\n");
+           goto EXIT;
+       }
+
+       printk(KERN_INFO "simplefs module init\n");
+
+       return 0;
+   EXIT:
+       kmem_cache_destroy(simplefs_inode_cachep);
+
+       return result;
+   }
+
+   static void __exit simplefs_module_exit(void)
+   {
+       unregister_filesystem(&simplefs_type);
+       kmem_cache_destroy(simplefs_inode_cachep);
+
+       printk(KERN_INFO "simplefs module exit\n");
+   }
+
+   static struct dentry *simplefs_mount(struct file_system_type *type, int flags,
+                                        const char *dev, void *data)
+   {
+       return mount_bdev(type, flags, dev, data, simplefs_fill_super);
+   }
+
+   static int simplefs_fill_super(struct super_block *sb, void *data, int silent)
+   {
+       struct simplefs_super_block *sfs_sb;
+       struct simplefs_disk_super_block *sbd;
+       struct inode *root_inode;
+       int result;
+
+       sb->s_magic = SIMPLEFS_MAGIC;
+       sb_set_blocksize(sb, SIMPLEFS_BLOCK_SIZE);
+       sb->s_maxbytes = SIMPLEFS_BLOCK_SIZE;
+       sb->s_op = &simplefs_super_ops;
+       sb->s_flags |= SB_NOATIME;
+
+       if ((sfs_sb = kzalloc(sizeof(struct simplefs_super_block), GFP_KERNEL)) == NULL) {
+           printk(KERN_INFO "cannot allocate simplefs super block!..\n");
+           return -ENOMEM;
+       }
+       sb->s_fs_info = sfs_sb;
+       spin_lock_init(&sfs_sb->lock);
+
+       if ((sfs_sb->sb_bh = sb_bread(sb, 0)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs disk super block!..\n");
+           result = -EIO;
+           goto EXIT1;
+       }
+
+       sbd = (struct simplefs_disk_super_block *) sfs_sb->sb_bh->b_data;
+       sfs_sb->sbd = sbd;
+
+       if (le32_to_cpu(sbd->magic) != SIMPLEFS_MAGIC) {
+           printk(KERN_INFO "invalid magic number for simplefs: %08X\n", sbd->magic);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+       if (le32_to_cpu(sbd->block_size) != SIMPLEFS_BLOCK_SIZE) {
+           printk(KERN_INFO "invalid block size for simplefs: %08X\n", sbd->block_size);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+       if (le32_to_cpu(sbd->inode_table_block) != 3) {
+           printk(KERN_INFO "invalid inode table for simplefs: %08X\n", sbd->inode_table_block);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+
+       if ((sfs_sb->inode_bitmap_bh = sb_bread(sb, SIMPLEFS_INODE_BITMAP_LOCATION)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs inode bitmap!..\n");
+           result = -EIO;
+           goto EXIT2;
+       }
+       sfs_sb->inode_bitmap = (unsigned long *) sfs_sb->inode_bitmap_bh->b_data;
+
+       if ((sfs_sb->data_bitmap_bh = sb_bread(sb, SIMPLEFS_DATA_BITMAP_LOCATION)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs data bitmap!..\n");
+           result = -EIO;
+           goto EXIT3;
+       }
+       sfs_sb->data_bitmap = (unsigned long *) sfs_sb->data_bitmap_bh->b_data;
+
+       root_inode = simplefs_iget(sb, SIMPLEFS_ROOT_INO);
+       if (IS_ERR(root_inode)) {
+           printk(KERN_INFO "cannot read root inode!..\n");
+           result = PTR_ERR(root_inode);
+           goto EXIT4;
+       }
+
+       if ((sb->s_root = d_make_root(root_inode)) == NULL) {
+           result = -ENOMEM;
+           goto EXIT4;
+       }
+
+       return 0;
+
+   EXIT4:
+       brelse(sfs_sb->data_bitmap_bh);
+   EXIT3:
+       brelse(sfs_sb->inode_bitmap_bh);
+   EXIT2:
+       brelse(sfs_sb->sb_bh);
+   EXIT1:
+       kfree(sfs_sb);
+
+       return result;
+   }
+
+   static void simplefs_kill_sb(struct super_block *sb)
+   {
+       struct simplefs_super_block *sfs_sb = sb->s_fs_info;
+
+       kill_block_super(sb);
+
+       if (sfs_sb) {
+           if (sfs_sb->data_bitmap_bh)
+               brelse(sfs_sb->data_bitmap_bh);
+           if (sfs_sb->inode_bitmap_bh)
+               brelse(sfs_sb->inode_bitmap_bh);
+           if (sfs_sb->sb_bh)
+               brelse(sfs_sb->sb_bh);
+           kfree(sfs_sb);
+       }
+
+       printk(KERN_INFO "unmount super block...\n");
+   }
+
+   static struct inode *simplefs_alloc_inode(struct super_block *sb)
+   {
+       struct simplefs_inode *inode_sfs;
+
+       if ((inode_sfs = kmem_cache_alloc(simplefs_inode_cachep, GFP_KERNEL)) == NULL)
+           return NULL;
+       inode_init_once(&inode_sfs->vfs_inode);
+
+       return &inode_sfs->vfs_inode;
+   }
+
+   static void simplefs_free_inode(struct inode *inode)
+   {
+       struct simplefs_inode *inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+       kmem_cache_free(simplefs_inode_cachep, inode_sfs);
+   }
+
+   static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc)
+   {
+       return 0;
+   }
+
+   static void simplefs_evict_inode(struct inode *inode)
+   {
+       /* ... */
+   }
+
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino)
+   {
+       struct inode *inode;
+       struct simplefs_disk_inode *disk_inode;
+       struct buffer_head *bh;
+       struct simplefs_disk_super_block *sfs_sbd;
+       struct simplefs_inode *inode_sfs;
+
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+       if (ino >= sfs_sbd->inode_count)
+           return ERR_PTR(-EINVAL);
+
+       if ((inode = iget_locked(sb, ino)) == NULL)
+           return ERR_PTR(-ENOMEM);
+
+       if (!(inode->i_state & I_NEW))
+           return inode;
+
+       disk_inode = simplefs_get_inode_disk(sb, ino, &bh);
+       if (IS_ERR(disk_inode)) {
+           iget_failed(inode);
+           return (struct inode *)disk_inode;
+       }
+
+       inode->i_mode = le32_to_cpu(disk_inode->mode);
+       i_uid_write(inode, le32_to_cpu(disk_inode->uid));
+       i_gid_write(inode, le32_to_cpu(disk_inode->gid));
+       set_nlink(inode, le32_to_cpu(disk_inode->nlink));
+       inode->i_blocks = le32_to_cpu(disk_inode->blocks);
+       inode->i_size   = le32_to_cpu(disk_inode->size);
+       inode_set_atime(inode, le32_to_cpu(disk_inode->atime), 0);
+       inode_set_mtime(inode, le32_to_cpu(disk_inode->mtime), 0);
+       inode_set_ctime(inode, le32_to_cpu(disk_inode->ctime), 0);
+
+       inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+       inode_sfs->block_no = disk_inode->block_no;
+
+       if (S_ISDIR(inode->i_mode)) {
+           inode->i_op = &simplefs_dir_inode_ops;
+           /* ... */
+       }
+       else {
+           inode->i_op = &simplefs_file_inode_ops;
+           /* ... */
+       }
+       brelse(bh);
+       unlock_new_inode(inode);
+
+       return inode;
+   }
+
+   static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
+           unsigned long ino, struct buffer_head **bhpp)
+   {
+       int block_no, block_offset;
+       struct buffer_head *bh;
+       struct simplefs_disk_inode *disk_inode;
+
+       block_no     = SIMPLEFS_INODE_TABLE_LOCATION
+                      + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+       block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
+
+       if ((bh = sb_bread(sb, block_no)) == NULL)
+           return ERR_PTR(-EIO);
+
+       disk_inode = (struct simplefs_disk_inode *)(bh->b_data + block_offset);
+       *bhpp = bh;
+
+       return disk_inode;
+   }
+
+   static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+   {
+       struct super_block *sb = dir->i_sb;
+       struct simplefs_inode *inode_sfs = container_of(dir, struct simplefs_inode, vfs_inode);
+       struct buffer_head *bh;
+       struct simplefs_disk_dentry *de;
+       struct inode *inode = NULL;
+       int i;
+
+       if (dentry->d_name.len > SIMPLEFS_FILENAME_MAXLEN - 1)
+           return ERR_PTR(-ENAMETOOLONG);
+
+       if ((bh = sb_bread(sb, inode_sfs->block_no)) == NULL)
+           return ERR_PTR(-EIO);
+
+       de = (struct simplefs_disk_dentry *)bh->b_data;
+       for (i = 0; i < SIMPLEFS_MAX_DENTRIES; ++i) {
+           if (de[i].inode == 0)            /* deleted entry */
+               continue;
+           if (strcmp(de[i].name, dentry->d_name.name) == 0) {
+               inode = simplefs_iget(sb, le32_to_cpu(de[i].inode));
+               if (IS_ERR(inode)) {
+                   brelse(bh);
+                   return (struct dentry *)inode;
+               }
+               break;
+           }
+       }
+
+       brelse(bh);
+
+       return d_splice_alias(inode, dentry);
+   }
+
+   module_init(simplefs_module_init);
+   module_exit(simplefs_module_exit);
+
+``Makefile``
+
+.. code-block:: makefile
+
+   obj-m += ${file}.o
+
+   all:
+   	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+   clean:
+   	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+Biz henüz dosya sistemimizde *ls* gibi komutların çalışmasını sağlayacak fonksiyonları yazmadık.
+Dolayısıyla mount ettiğimiz dosya sistemi için *ls* komutunu uygularsak hata ortaya çıkacaktır:
+
+.. code-block:: bash
+
+   $ ls simplefs-root
+
+.. code-block:: none
+
+   ls: 'simplefs-root' dizini açılamıyor: Böyle bir aygıt ya da adres yok
+
+Ancak dosya sistemimiz için ``lookup`` fonksiyonunu yazdık. Bu ``lookup`` fonksiyonu yol ifadeleri
+çözülürken dizin içerisindeki dosya aramaları sırasında kullanılmaktadır. Yani biz bu haliyle dosya
+sistemimize ilişkin bir giriş için yol ifadesi belirtebiliriz. Henüz dosya sistemimizin kökünde yalnızca
+iki dosya bulunduğunu anımsayınız. Bunlar ``"."`` ve ``".."`` dosyalarıdır. Biz test amacıyla ``".."``
+dizini için *ls* komutunu kullanabiliriz. ``".."`` dizin girişi bizim dosya sistemimizde ``lookup``
+fonksiyonumuz tarafından bulunacaktır. *ls* komutu da üst dizinde listeleme yapacağı için aşağıdaki komut
+çalışacaktır:
+
+.. code-block:: bash
+
+   $ ls simplefs-root/..
+
+.. code-block:: none
+
+   load      mkfs.simplefs    modules.order   simplefs.c    simplefs.ko   simplefs.mod.c  simplefs.o     unload
+   Makefile  mkfs.simplefs.c  Module.symvers  simplefs.dat  simplefs.mod  simplefs.mod.o  simplefs-root
+
+Burada ``lookup`` fonksiyonumuzun ``".."`` dizin girişini bulup verebildiğini görüyoruz.
+
+Kodumuzda şimdilik bir senkronizasyon gerekmemiştir. Ancak dosya sistemimiz için eksik olan fonksiyonları
+yazarken bazı yerlerde senkronizasyon uygulamamız gerekecektir.
