@@ -3194,3 +3194,1404 @@ Burada ``lookup`` fonksiyonumuzun ``".."`` dizin girişini bulup verebildiğini 
 
 Kodumuzda şimdilik bir senkronizasyon gerekmemiştir. Ancak dosya sistemimiz için eksik olan fonksiyonları
 yazarken bazı yerlerde senkronizasyon uygulamamız gerekecektir.
+
+Dizin Girişlerinin Elde Edilmesi
+---------------------------------------
+
+Şimdi de dosya sistemimize dizin listesinin elde edilebilmesi için gereken fonksiyonları yerleştirelim.
+Anımsanacağı gibi *ls* programı dizini ``opendir`` POSIX fonksiyonuyla açıp ``readdir`` POSIX fonksiyonuyla
+dizin girişlerini sırasıyla okumakta ve sonunda da dizini ``closedir`` POSIX fonksiyonuyla kapatmaktadır.
+Güncel Linux çekirdeklerinde ``readdir`` POSIX fonksiyonu ``sys_getdents64`` isimli sistem fonksiyonunu
+çağırmaktadır. ``sys_getdents64`` fonksiyonu talep edilen miktardaki dizin girişini kullanıcı alanındaki
+tampona kopyalamaktadır. İşte ``sys_getdents64`` fonksiyonu bu işlemlerin yapılmasını belli bir noktada
+``file_operations`` yapısının ``iterate`` ya da ``iterate_shared`` fonksiyonunu çağırarak dosya sistemine
+havale etmektedir. Yeni çekirdeklerdeki bu çağırma silsilesi şöyledir:
+
+.. code-block:: none
+
+   SYSCALL_DEFINE3(getdents64, ...)            [fs/readdir.c]
+   │
+   └─→ iterate_dir(file, ctx)                  [fs/readdir.c]
+           │
+           ├─→ down_read(&inode->i_rwsem)      [Okuma kilidi]
+           │
+           ├─→ file->f_op->iterate_shared(file, ctx)  [Dosya sistemi callback]
+           │       │
+           │       └─→ ext4_readdir()                 [fs/ext4/dir.c]
+           │       └─→ simplefs_readdir()             [Sizin implementasyonunuz]
+           │
+           └─→ up_read(&inode->i_rwsem)        [Kilidi serbest bırak]
+
+``sys_getdents64`` fonksiyonunun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+   long sys_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent,
+                       unsigned int count);
+
+Fonksiyonun birinci parametresi dizine ilişkin dosya betimleyicisini, ikinci parametresi dizin girişlerinin
+yerleştirileceği tamponun adresini ve üçüncü parametresi de bu tamponun uzunluğunu belirtmektedir. ``readdir``
+POSIX fonksiyonu ``sys_getdents64`` sistem fonksiyonunu çağırarak bir grup dizin girişini tamponlamakta ve
+bu tampondaki girişleri vermektedir.
+
+Yukarıda da belirttiğimiz gibi sistemin düzgün çalışması için bizim de dizine ilişkin inode nesnesinin
+``i_fop`` elemanına yerleştirdiğimiz ``file_operations`` nesnesinde ``iterate`` ya da ``iterate_shared``
+fonksiyonlarını girmiş olmamız gerekir. Bu işlemi ``simplefs_iget`` fonksiyonu içerisinde aşağıdaki gibi
+yapabiliriz:
+
+.. code-block:: c
+
+   static const struct file_operations simplefs_dir_inode_fops = {
+       .owner          = THIS_MODULE,
+       .iterate_shared = simplefs_iterate_shared
+   };
+
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino)
+   {
+       /* ... */
+
+       if (S_ISDIR(inode->i_mode)) {
+           inode->i_op  = &simplefs_dir_inode_ops;
+           inode->i_fop = &simplefs_dir_inode_fops;   /* BU SATIRI YENİ EKLEDİK */
+           /* ... */
+       }
+       else {
+           inode->i_op = &simplefs_file_inode_ops;
+           /* ... */
+       }
+
+       /* ... */
+   }
+
+``file_operations`` yapısının ``iterate`` fonksiyonu dizin girişi dolaşılırken güncelleme yapıldığı
+durumda, ``iterate_shared`` fonksiyonu ise güncelleme yapılmadığı durumda kullanılmaktadır. Biz dosya
+sistemimizde ``iterate_shared`` fonksiyonunu kullanacağız. ``file_operations`` yapısının ``iterate_shared``
+elemanına gireceğimiz fonksiyonun parametrik yapısı şöyle olmalıdır:
+
+.. code-block:: c
+
+   static int simplefs_iterate_shared(struct file *file, struct dir_context *ctx)
+   {
+       /* ... */
+   }
+
+Fonksiyonun birinci parametresi dosya nesnesinin adresini belirtmektedir. Biz bu parametreden hareketle
+dizine ilişkin inode nesnesine erişebiliriz. Fonksiyonun ikinci parametresi ``dir_context`` isimli bir yapı
+türünden nesnenin adresini belirtmektedir. Bu parametrenin gösterdiği nesne çekirdek tarafından tahsis
+edilmiş durumdadır. ``dir_context`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct dir_context {
+       filldir_t actor;
+       loff_t pos;
+   };
+
+Yapının ``actor`` elemanını biz doğrudan kullanmayacağız. ``pos`` elemanı kaçıncı dizin girişinin elde
+edilmek istendiğini belirtmektedir. Örneğin bu fonksiyon çağrıldığında eğer ``pos == 0`` ise bizim
+``"."`` girişini, ``pos == 1`` ise ``".."`` girişini vermemiz gerekir. Fonksiyon başarı durumunda 0
+değerine, başarısızlık durumunda negatif errno değerine geri döndürülmelidir.
+
+Bizim ``simplefs_iterate_shared`` fonksiyonunda önce ``file`` nesnesinden hareketle dizine ilişkin inode
+nesnesine ve oradan da kendi dosya sistemimize ilişkin inode bilgilerine erişmemiz gerekir. Anımsanacağı
+gibi ``file`` yapısının ``f_inode`` elemanı dosya nesnesine ilişkin inode nesnesinin adresini tutmaktadır.
+Çekirdek içerisinde ``include/linux/fs.h`` dosyası içerisinde bu elemana dönen ``file_inode`` isimli bir
+inline fonksiyon da bulundurulmuştur:
+
+.. code-block:: c
+
+   static inline struct inode *file_inode(const struct file *f)
+   {
+       return f->f_inode;
+   }
+
+İleride birtakım değişikliklerin olabileceği fikriyle elemana doğrudan erişmek yerine bu fonksiyonla
+erişmeyi tercih edebilirsiniz:
+
+.. code-block:: c
+
+   struct inode *inode;
+   struct simplefs_inode *inode_sfs;
+
+   inode = file_inode(file);
+   inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+Fonksiyonda güvenlik amacıyla bazı kontrolleri de yapabiliriz. Örneğin:
+
+.. code-block:: c
+
+   if (ctx->pos >= SIMPLEFS_MAX_DENTRIES)
+       return 0;
+
+   if (inode_sfs->block_no == 0) {
+       printk(KERN_INFO "unallocated disk block for directory!..\n");
+       return 0;
+   }
+
+Biz artık bu fonksiyonda dizin girişlerini ``ctx->pos`` indeksinden başlayarak tek tek dolaşmalıyız. Daha
+önce ``lookup`` fonksiyonunda kendi dosya sistemimiz için dizin girişlerini dolaşan bir döngü
+oluşturmuştuk. Oradaki döngüye benzer bir döngü ile işlemlerimizi yapabiliriz. Dizin girişlerini dolaşırken
+bizim ``dir_context`` yapısındaki ``pos`` elemanını her yinelemede artırmamız gerekir. Kullanıcı modundaki
+``readdir`` fonksiyonu ``sys_getdents64`` sistem fonksiyonunu çağırdığını söylemiştik. Bu sistem fonksiyonu
+çağrılırken fonksiyona bir tamponun adresi ve uzunluğu parametre olarak geçirilmektedir. Böylece bir dizin
+girişi bile okunacak olsa aslında birden fazla giriş okunup tamponlanmaktadır. ``sys_getdents64`` sistem
+fonksiyonu neticede bizim dosya sistemimizdeki ``iterate_shared`` fonksiyonunu çağıracaktır.
+``iterate_shared`` fonksiyonu içerisinde sistem programcısının her dizin girişini ``dir_emit`` isimli bir
+fonksiyonla kullanıcı moduna iletmesi gerekmektedir. Kullanıcı modundaki tampon dolduğunda bizim
+``iterate_shared`` fonksiyonumuzu sonlandırmamız gerekir. Tamponun dolduğu ``dir_emit`` fonksiyonunun geri
+dönüş değeriyle anlaşılmaktadır. ``dir_emit`` fonksiyonu mevcut çekirdeklerde şöyle yazılmıştır:
+
+.. code-block:: c
+
+   static inline bool dir_emit(struct dir_context *ctx, const char *name, int namelen, 
+                               u64 ino, unsigned type)
+   {
+       return ctx->actor(ctx, name, namelen, ctx->pos, ino, type);
+   }
+
+Fonksiyonun birinci parametresi ``dir_context`` nesnesinin adresini, ikinci parametresi dizin girişinin
+dosya ismini (ismin sonunda null karakterin bulunması zorunlu değildir), üçüncü parametresi dosya isminin
+uzunluğunu, dördüncü parametresi inode numarasını ve beşinci parametresi de bulunan girişin dosya türünü
+belirtmektedir. Fonksiyon başarı durumunda sıfır dışı herhangi bir değere, başarısızlık durumunda 0
+değerine geri dönmektedir. ``dir_emit`` fonksiyonu herhangi bir errno koduna geri dönmemektedir.
+
+``dir_emit`` fonksiyonunun son parametresi iletilen dizin girişinin türünü belirtmektedir. Önemli tür
+belirten sembolik sabitler şunlardır:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - DT Değeri
+     - Anlamı
+   * - ``DT_DIR``
+     - Directory (Dizin)
+   * - ``DT_REG``
+     - Regular File (Normal dosya)
+   * - ``DT_LNK``
+     - Symbolic Link
+   * - ``DT_CHR``
+     - Character Device
+   * - ``DT_BLK``
+     - Block Device
+   * - ``DT_FIFO``
+     - FIFO / Named Pipe
+   * - ``DT_SOCK``
+     - Socket
+   * - ``DT_UNKNOWN``
+     - Type Unknown
+
+Biz örneğimizde bu parametre için ``DT_UNKNOWN`` değerini argüman olarak geçtik. Bu durumda dosyanın türü
+daha ileri aşamalarda tespit edilmektedir.
+
+``simplefs`` dosya sistemimizin ``iterate_shared`` fonksiyonunda bizim dizin girişlerini dolaşarak onları
+``dir_emit`` fonksiyonu ile kullanıcı alanına iletmemiz gerekir. Bu işlemi şöyle yapabiliriz:
+
+.. code-block:: c
+
+   for (i = ctx->pos; i < SIMPLEFS_MAX_DENTRIES; ++i) {
+       if (de[i].inode == 0) {
+           ctx->pos = i + 1;
+           continue;
+       }
+       ino = le32_to_cpu(de[i].inode);
+
+       if (!dir_emit(ctx, de[i].name, strlen(de[i].name), ino, DT_UNKNOWN)) {
+           brelse(bh);
+           return 0;
+       }
+
+       ctx->pos = i + 1;
+   }
+
+Burada bir döngü içerisinde dizin için ayrılan bloktaki tüm dizin girişleri gözden geçirilmiştir. Bir
+dosya silindiğinde biz onun dizin girişindeki inode numarasını 0 yapacağız. Dolayısıyla döngüde inode
+numarası 0 olan dizin girişleri atlanmıştır. ``dir_emit`` fonksiyonunun ``getdents64`` sistem fonksiyonun
+oluşturduğu tamponu doldurduğunu belirtmiştik. İşte kullanıcı alanındaki bu tampon dolduğunda ``dir_emit``
+fonksiyonu 0 değeri ile geri dönmektedir. Biz de yukarıdaki döngüde ``dir_emit`` fonksiyonu 0 ile geri
+döndüğünde işlemimizi sonlandırdık. Örneğimizdeki ``iterate_shared`` fonksiyonun bütünsel hali şöyledir:
+
+.. code-block:: c
+
+   static int simplefs_iterate_shared(struct file *file, struct dir_context *ctx)
+   {
+       struct inode *inode;
+       struct simplefs_inode *inode_sfs;
+       struct buffer_head *bh;
+       struct simplefs_disk_dentry *de;
+       unsigned long ino;
+       int i;
+
+       inode     = file_inode(file);
+       inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+       if (ctx->pos >= SIMPLEFS_MAX_DENTRIES)
+           return 0;
+
+       if (inode_sfs->block_no == 0) {
+           printk(KERN_INFO "unallocated disk block for directory!..\n");
+           return 0;
+       }
+
+       if ((bh = sb_bread(inode->i_sb, inode_sfs->block_no)) == NULL) {
+           printk(KERN_INFO "cannot read directory block from disk!..\n");
+           return -EIO;
+       }
+       de = (struct simplefs_disk_dentry *)bh->b_data;
+
+       for (i = ctx->pos; i < SIMPLEFS_MAX_DENTRIES; ++i) {
+           if (de[i].inode == 0) {
+               ctx->pos = i + 1;
+               continue;
+           }
+           ino = le32_to_cpu(de[i].inode);
+
+           if (!dir_emit(ctx, de[i].name, strlen(de[i].name), ino, DT_UNKNOWN)) {
+               brelse(bh);
+               return 0;
+           }
+
+           ctx->pos = i + 1;
+       }
+       brelse(bh);
+
+       return 0;
+   }
+
+Aşağıda geldiğimiz yere kadarki ``simplefs`` dosya sistemine ilişkin çekirdek kodlarını bütünsel olarak
+veriyoruz.
+
+``simplefs.c``
+
+.. code-block:: c
+
+   #include <linux/module.h>
+   #include <linux/kernel.h>
+   #include <linux/fs.h>
+   #include <linux/buffer_head.h>
+
+   MODULE_LICENSE("GPL");
+   MODULE_AUTHOR("Kaan Aslan");
+   MODULE_DESCRIPTION("simplefs");
+
+   #define SIMPLEFS_BLOCK_SIZE              4096
+   #define SIMPLEFS_MAGIC                   0x53494D46
+   #define SIMPLEFS_INODE_BITMAP_LOCATION   1
+   #define SIMPLEFS_DATA_BITMAP_LOCATION    2
+   #define SIMPLEFS_INODE_TABLE_LOCATION    3
+   #define SIMPLEFS_ROOT_INO                1
+   #define SIMPLEFS_FILENAME_MAXLEN         32
+
+   struct simplefs_disk_super_block {
+       __le32 magic;              /* 0x464D4953 ("SIMF") */
+       __le32 block_size;         /* 4096 */
+       __le32 inode_count;        /* Total inodes */
+       __le32 block_count;        /* Total blocks */
+       __le32 free_inodes;        /* Free inodes */
+       __le32 free_blocks;        /* Free blocks */
+       __le32 inode_table_block;  /* Start of the inode table (3) */
+       __le32 inode_table_size;   /* Size of the inode table */
+       __le32 data_block_start;   /* Start of data blocks */
+       __u8   padding[4060];      /* Padding to 4096 bytes */
+   };
+
+   struct simplefs_super_block {
+       struct simplefs_disk_super_block *sbd;
+       struct buffer_head *sb_bh;
+       struct buffer_head *inode_bitmap_bh;
+       struct buffer_head *data_bitmap_bh;
+       unsigned long *inode_bitmap;
+       unsigned long *data_bitmap;
+       spinlock_t lock;
+   };
+
+   struct simplefs_inode {
+       __u32 block_no;
+       struct inode vfs_inode;
+   };
+
+   struct simplefs_disk_inode {
+       __le32 mode;        /* File type + permissions */
+       __le32 uid;         /* Owner user ID */
+       __le32 gid;         /* Owner group ID */
+       __le32 size;        /* File size in bytes */
+       __le32 nlink;       /* Hard link count */
+       __le32 blocks;      /* Block count (0 or 1) */
+       __le32 block_no;    /* Data block number */
+       __le32 ctime;       /* Creation time */
+       __le32 mtime;       /* Modification time */
+       __le32 atime;       /* Access time */
+       __u8   padding[24]; /* Padding to 64 bytes */
+   };
+
+   struct simplefs_disk_dentry {
+       __le32 inode;                           /* inode number */
+       char name[SIMPLEFS_FILENAME_MAXLEN];    /* File name */
+   };
+
+   #define SIMPLEFS_DISK_DENTRY_SIZE  sizeof(struct simplefs_disk_dentry)
+   #define SIMPLEFS_MAX_DENTRIES      (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_DENTRY_SIZE)
+
+   #define SIMPLEFS_SB(sb)       ((struct simplefs_super_block *)(((sb)->s_fs_info)))
+   #define SIMPLEFS_DISK_SB(sb)  (SIMPLEFS_SB(sb)->sbd)
+
+   #define SIMPLEFS_DISK_INODE_SIZE       sizeof(struct simplefs_disk_inode)
+   #define SIMPLEFS_DISK_INODE_PER_BLOCK  (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
+
+   static struct dentry *simplefs_mount(struct file_system_type *type, int flags,
+                                        const char *dev, void *data);
+   static int simplefs_fill_super(struct super_block *sb, void *data, int silent);
+   static void simplefs_kill_sb(struct super_block *sb);
+   static struct inode *simplefs_alloc_inode(struct super_block *sb);
+   static void simplefs_free_inode(struct inode *inode);
+   static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc);
+   static void simplefs_evict_inode(struct inode *inode);
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino);
+   static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
+           unsigned long ino, struct buffer_head **bhp);
+   static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags);
+   static int simplefs_iterate_shared(struct file *file, struct dir_context *ctx);
+
+   static struct file_system_type simplefs_type = {
+       .owner    = THIS_MODULE,
+       .name     = "simplefs",
+       .mount    = simplefs_mount,
+       .kill_sb  = simplefs_kill_sb,
+       .fs_flags = FS_REQUIRES_DEV,
+   };
+
+   static const struct super_operations simplefs_super_ops = {
+       .alloc_inode = simplefs_alloc_inode,
+       .free_inode  = simplefs_free_inode,
+       .write_inode = simplefs_write_inode,
+       .evict_inode = simplefs_evict_inode,
+       .statfs      = simple_statfs,
+   };
+
+   static const struct inode_operations simplefs_dir_inode_ops = {
+       .lookup = simplefs_lookup,
+   };
+
+   static const struct inode_operations simplefs_file_inode_ops = {
+       NULL
+   };
+
+   static const struct file_operations simplefs_dir_inode_fops = {
+       .owner          = THIS_MODULE,
+       .iterate_shared = simplefs_iterate_shared,
+   };
+
+   static struct kmem_cache *simplefs_inode_cachep;
+
+   static int __init simplefs_module_init(void)
+   {
+       int result;
+
+       simplefs_inode_cachep = kmem_cache_create("simplefs_inode_cache",
+               sizeof(struct simplefs_inode), 0, SLAB_HWCACHE_ALIGN, NULL);
+       if (simplefs_inode_cachep == NULL) {
+           printk(KERN_ERR "cannot allocate slab cache\n");
+           return -ENOMEM;
+       }
+
+       if ((result = register_filesystem(&simplefs_type)) != 0) {
+           printk(KERN_ERR "cannot register file system\n");
+           goto EXIT;
+       }
+
+       printk(KERN_INFO "simplefs module init\n");
+
+       return 0;
+   EXIT:
+       kmem_cache_destroy(simplefs_inode_cachep);
+
+       return result;
+   }
+
+   static void __exit simplefs_module_exit(void)
+   {
+       unregister_filesystem(&simplefs_type);
+       kmem_cache_destroy(simplefs_inode_cachep);
+
+       printk(KERN_INFO "simplefs module exit\n");
+   }
+
+   static struct dentry *simplefs_mount(struct file_system_type *type, int flags, const char *dev, void *data)
+   {
+       return mount_bdev(type, flags, dev, data, simplefs_fill_super);
+   }
+
+   static int simplefs_fill_super(struct super_block *sb, void *data, int silent)
+   {
+       struct simplefs_super_block *sfs_sb;
+       struct simplefs_disk_super_block *sbd;
+       struct inode *root_inode;
+       int result;
+
+       sb->s_magic = SIMPLEFS_MAGIC;
+       sb_set_blocksize(sb, SIMPLEFS_BLOCK_SIZE);
+       sb->s_maxbytes = SIMPLEFS_BLOCK_SIZE;
+       sb->s_op = &simplefs_super_ops;
+       sb->s_flags |= SB_NOATIME;
+
+       if ((sfs_sb = kzalloc(sizeof(struct simplefs_super_block), GFP_KERNEL)) == NULL) {
+           printk(KERN_INFO "cannot allocate simplefs super block!..\n");
+           return -ENOMEM;
+       }
+       sb->s_fs_info = sfs_sb;
+       spin_lock_init(&sfs_sb->lock);
+
+       if ((sfs_sb->sb_bh = sb_bread(sb, 0)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs disk super block!..\n");
+           result = -EIO;
+           goto EXIT1;
+       }
+
+       sbd = (struct simplefs_disk_super_block *) sfs_sb->sb_bh->b_data;
+       sfs_sb->sbd = sbd;
+
+       if (le32_to_cpu(sbd->magic) != SIMPLEFS_MAGIC) {
+           printk(KERN_INFO "invalid magic number for simplefs: %08X\n", sbd->magic);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+       if (le32_to_cpu(sbd->block_size) != SIMPLEFS_BLOCK_SIZE) {
+           printk(KERN_INFO "invalid block size for simplefs: %08X\n", sbd->block_size);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+       if (le32_to_cpu(sbd->inode_table_block) != 3) {
+           printk(KERN_INFO "invalid inode table for simplefs: %08X\n", sbd->inode_table_block);
+           result = -EINVAL;
+           goto EXIT2;
+       }
+
+       if ((sfs_sb->inode_bitmap_bh = sb_bread(sb, SIMPLEFS_INODE_BITMAP_LOCATION)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs inode bitmap!..\n");
+           result = -EIO;
+           goto EXIT2;
+       }
+       sfs_sb->inode_bitmap = (unsigned long *) sfs_sb->inode_bitmap_bh->b_data;
+
+       if ((sfs_sb->data_bitmap_bh = sb_bread(sb, SIMPLEFS_DATA_BITMAP_LOCATION)) == NULL) {
+           printk(KERN_INFO "cannot read simplefs data bitmap!..\n");
+           result = -EIO;
+           goto EXIT3;
+       }
+       sfs_sb->data_bitmap = (unsigned long *) sfs_sb->data_bitmap_bh->b_data;
+
+       root_inode = simplefs_iget(sb, SIMPLEFS_ROOT_INO);
+       if (IS_ERR(root_inode)) {
+           printk(KERN_INFO "cannot read root inode!..\n");
+           result = PTR_ERR(root_inode);
+           goto EXIT4;
+       }
+
+       if ((sb->s_root = d_make_root(root_inode)) == NULL) {
+           result = -ENOMEM;
+           goto EXIT4;
+       }
+
+       return 0;
+
+   EXIT4:
+       brelse(sfs_sb->data_bitmap_bh);
+   EXIT3:
+       brelse(sfs_sb->inode_bitmap_bh);
+   EXIT2:
+       brelse(sfs_sb->sb_bh);
+   EXIT1:
+       kfree(sfs_sb);
+
+       return result;
+   }
+
+   static void simplefs_kill_sb(struct super_block *sb)
+   {
+       struct simplefs_super_block *sfs_sb = sb->s_fs_info;
+
+       kill_block_super(sb);
+
+       if (sfs_sb) {
+           if (sfs_sb->data_bitmap_bh)
+               brelse(sfs_sb->data_bitmap_bh);
+           if (sfs_sb->inode_bitmap_bh)
+               brelse(sfs_sb->inode_bitmap_bh);
+           if (sfs_sb->sb_bh)
+               brelse(sfs_sb->sb_bh);
+           kfree(sfs_sb);
+       }
+
+       printk(KERN_INFO "unmount super block...\n");
+   }
+
+   static struct inode *simplefs_alloc_inode(struct super_block *sb)
+   {
+       struct simplefs_inode *inode_sfs;
+
+       if ((inode_sfs = kmem_cache_alloc(simplefs_inode_cachep, GFP_KERNEL)) == NULL)
+           return NULL;
+       inode_init_once(&inode_sfs->vfs_inode);
+
+       return &inode_sfs->vfs_inode;
+   }
+
+   static void simplefs_free_inode(struct inode *inode)
+   {
+       struct simplefs_inode *inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+       kmem_cache_free(simplefs_inode_cachep, inode_sfs);
+   }
+
+   static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc)
+   {
+       return 0;
+   }
+
+   static void simplefs_evict_inode(struct inode *inode)
+   {
+       truncate_inode_pages_final(&inode->i_data);
+       clear_inode(inode);
+   }
+
+   static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino)
+   {
+       struct inode *inode;
+       struct simplefs_disk_inode *disk_inode;
+       struct buffer_head *bh;
+       struct simplefs_disk_super_block *sfs_sbd;
+       struct simplefs_inode *inode_sfs;
+
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+       if (ino >= sfs_sbd->inode_count)
+           return ERR_PTR(-EINVAL);
+
+       if ((inode = iget_locked(sb, ino)) == NULL)
+           return ERR_PTR(-ENOMEM);
+
+       if (!(inode->i_state & I_NEW))
+           return inode;
+
+       disk_inode = simplefs_get_inode_disk(sb, ino, &bh);
+       if (IS_ERR(disk_inode)) {
+           iget_failed(inode);
+           return (struct inode *)disk_inode;
+       }
+
+       inode->i_mode = le32_to_cpu(disk_inode->mode);
+       i_uid_write(inode, le32_to_cpu(disk_inode->uid));
+       i_gid_write(inode, le32_to_cpu(disk_inode->gid));
+       inode->i_size   = le32_to_cpu(disk_inode->size);
+       set_nlink(inode, le32_to_cpu(disk_inode->nlink));
+       inode->i_blocks = le32_to_cpu(disk_inode->blocks);
+       inode_set_atime(inode, le32_to_cpu(disk_inode->atime), 0);
+       inode_set_mtime(inode, le32_to_cpu(disk_inode->mtime), 0);
+       inode_set_ctime(inode, le32_to_cpu(disk_inode->ctime), 0);
+
+       inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+       inode_sfs->block_no = disk_inode->block_no;
+
+       if (S_ISDIR(inode->i_mode)) {
+           inode->i_op  = &simplefs_dir_inode_ops;
+           inode->i_fop = &simplefs_dir_inode_fops;
+           /* ... */
+       }
+       else {
+           inode->i_op = &simplefs_file_inode_ops;
+           /* ... */
+       }
+       brelse(bh);
+       unlock_new_inode(inode);
+
+       return inode;
+   }
+
+   static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
+           unsigned long ino, struct buffer_head **bhpp)
+   {
+       int block_no, block_offset;
+       struct buffer_head *bh;
+       struct simplefs_disk_inode *disk_inode;
+
+       block_no     = SIMPLEFS_INODE_TABLE_LOCATION
+                      + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+       block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
+
+       if ((bh = sb_bread(sb, block_no)) == NULL)
+           return ERR_PTR(-EIO);
+
+       disk_inode = (struct simplefs_disk_inode *)(bh->b_data + block_offset);
+       *bhpp = bh;
+
+       return disk_inode;
+   }
+
+   static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+   {
+       struct super_block *sb = dir->i_sb;
+       struct simplefs_inode *inode_sfs = container_of(dir, struct simplefs_inode, vfs_inode);
+       struct buffer_head *bh;
+       struct simplefs_disk_dentry *de;
+       struct inode *inode = NULL;
+       int i;
+
+       if (dentry->d_name.len > SIMPLEFS_FILENAME_MAXLEN - 1)
+           return ERR_PTR(-ENAMETOOLONG);
+
+       if ((bh = sb_bread(sb, inode_sfs->block_no)) == NULL)
+           return ERR_PTR(-EIO);
+
+       de = (struct simplefs_disk_dentry *)bh->b_data;
+       for (i = 0; i < SIMPLEFS_MAX_DENTRIES; ++i) {
+           if (de[i].inode == 0)            /* deleted entry */
+               continue;
+           if (strcmp(de[i].name, dentry->d_name.name) == 0) {
+               inode = simplefs_iget(sb, le32_to_cpu(de[i].inode));
+               if (IS_ERR(inode)) {
+                   brelse(bh);
+                   return (struct dentry *)inode;
+               }
+               break;
+           }
+       }
+
+       brelse(bh);
+
+       return d_splice_alias(inode, dentry);
+   }
+
+   static int simplefs_iterate_shared(struct file *file, struct dir_context *ctx)
+   {
+       struct inode *inode;
+       struct simplefs_inode *inode_sfs;
+       struct buffer_head *bh;
+       struct simplefs_disk_dentry *de;
+       unsigned long ino;
+       int i;
+
+       inode     = file_inode(file);
+       inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+       if (ctx->pos >= SIMPLEFS_MAX_DENTRIES)
+           return 0;
+
+       if (inode_sfs->block_no == 0) {
+           printk(KERN_INFO "unallocated disk block for directory!..\n");
+           return 0;
+       }
+
+       if ((bh = sb_bread(inode->i_sb, inode_sfs->block_no)) == NULL) {
+           printk(KERN_INFO "cannot read directory block from disk!..\n");
+           return -EIO;
+       }
+       de = (struct simplefs_disk_dentry *)bh->b_data;
+
+       for (i = ctx->pos; i < SIMPLEFS_MAX_DENTRIES; ++i) {
+           if (de[i].inode == 0) {
+               ctx->pos = i + 1;
+               continue;
+           }
+           ino = le32_to_cpu(de[i].inode);
+
+           if (!dir_emit(ctx, de[i].name, strlen(de[i].name), ino, DT_UNKNOWN)) {
+               brelse(bh);
+               return 0;
+           }
+
+           ctx->pos = i + 1;
+       }
+       brelse(bh);
+
+       return 0;
+   }
+
+   module_init(simplefs_module_init);
+   module_exit(simplefs_module_exit);
+
+``Makefile``
+
+.. code-block:: makefile
+
+   obj-m += ${file}.o
+
+   all:
+   	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+   clean:
+   	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+Artık dosya sistemimizi mount edip *ls* gibi komutlarla dizin içeriğini elde edebiliyoruz. Şimdi dosya
+sistemimiz için gereken diğer önemli callback fonksiyonları yazalım.
+
+simplefs Dosya Sistemi İçin Diğer inode_operations Fonksiyonlarının Yazımı
+--------------------------------------------------------------------------
+
+Bir dizinin içerisinde bir dizin yaratılırken çekirdek tarafından üst dizin inode nesnesine ilişkin
+``inode_operations`` yapısındaki ``mkdir`` elemanına girilmiş olan fonksiyon çağrılmaktadır. Biz de bu
+fonksiyonu gerçekleştirerek bir dizin yaratımını mümkün hale getirelim. Bunun için öncelikle
+``inode_operations`` yapımızın ``mkdir`` elemanına çağrılmasını istediğimiz fonksiyonun adresini
+yerleştirelim:
+
+.. code-block:: c
+
+   static const struct inode_operations simplefs_dir_inode_ops = {
+       .lookup = simplefs_lookup,
+       .mkdir  = simplefs_mkdir,
+   };
+
+Yapının ``mkdir`` elemanına girilecek fonksiyonun parametrik yapısı şöyle olmalıdır:
+
+.. code-block:: c
+
+   static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+                             struct dentry *dentry, umode_t mode)
+   {
+       /* ... */
+   }
+
+Çekirdek bu fonksiyonu çağırırken fonksiyonun birinci parametresine ``mnt_idmap`` isimli bir yapı
+nesnesinin adresini geçirmektedir. Bu nesne isim alanına ilişkin bilgileri içermektedir. ``simplefs``
+dosya sisteminde biz bu bilgilerden faydalanmayacağız. Çekirdek fonksiyonun ikinci parametresine dizinin
+yaratılacağı üst dizinin inode nesnesinin adresini yerleştirmektedir. Bir dizinde bazı işlemler
+yapıldığında üst dizinin meta data bilgilerinde de değişikliklerin yapılması gerekmektedir. Çekirdek
+fonksiyonun üçüncü parametresine yaratılmak istenen dizine ilişkin dentry nesnesinin adresini
+geçirmektedir. Çekirdek dizin yaratılmak istendiğinde onun için bir dentry nesnesi yaratıp onu dentry
+önbelleğine yerleştirmekte ve o nesnenin adresini de fonksiyonumuza geçirmektedir. Dolayısıyla biz
+yaratılmak istenen dizinin ismini bu dentry nesnesinin içerisinden almalıyız. Çekirdek nihayet
+fonksiyonun son parametresine de yaratılmak istenen dizinin erişim haklarını yerleştirmektedir.
+
+``simplefs`` gibi dosya sistemlerinde ``mkdir`` fonksiyonlarında tipik olarak şu işlemler yapılmalıdır:
+
+1. Dosya sistemine ilişkin yeni bir inode nesnesi tahsis edilip içi doldurulmalıdır.
+2. Dosya sisteminde yeni bir dizin yaratılacağına göre o dizin için diskte bloklar (örneğimizde tek bir
+   blok) tahsis edilmelidir.
+3. Her yaratılan dizinin içerisinde ``"."`` ve ``".."`` dizin girişleri bulunmak zorundadır.
+   Dolayısıyla dizin için tahsis edilen bloğun içerisinde bu dizin girişlerinin de yaratılması
+   gerekmektedir.
+
+``simplefs_mkdir`` fonksiyonumuzda yeni bir inode nesnesinin yaratılmasıyla işe başlayabiliriz. Tabii bu
+yaratımı bir fonksiyona yaptırmak iyi bir tekniktir:
+
+.. code-block:: c
+
+   static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+                             struct dentry *dentry, umode_t mode)
+   {
+       struct inode *inode;
+       /* ... */
+
+       inode = simplefs_new_inode(dir, mode | S_IFDIR);
+       if (IS_ERR(inode))
+           return PTR_ERR(inode);
+
+       /* ... */
+   }
+
+Buradaki ``simplefs_new_inode`` fonksiyonu yeni bir inode nesnesi yaratmaktadır. Biz aynı zamanda bu
+fonksiyonu dizin içerisinde dosya yaratırken de kullanacağız. Şimdi bu fonksiyonun içini yazalım.
+``simplefs_new_inode`` fonksiyonu dosya sistemimiz için yeni bir inode nesnesini yaratıp onun adresiyle
+geri dönmektedir. Geri dönüş değeri olan adres errno hata kodunu da barındırmaktadır. Fonksiyonumuzun
+parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+   static struct inode *simplefs_new_inode(struct inode *dir, umode_t mode)
+   {
+       /* ... */
+   }
+
+Fonksiyonun birinci parametresiyle dizin ya da dosya yaratılacak olan üst dizinin inode nesnesinin adresini
+almaktadır. İkinci parametre ise dizin ya da dosyanın erişim haklarını belirtmektedir. Bizim bu fonksiyon
+içerisinde ilk yapacağımız şey dizin ya da dosya için yeni bir inode numarası oluşturmaktır. Anımsanacağı
+gibi her mount edilen dosya sistemindeki dosyaların inode numaraları o dosya sistemi içerisinde tek olmak
+zorundadır. Biz bu inode numarasının elde edilmesini de bir fonksiyona yaptıracağız:
+
+.. code-block:: c
+
+   static struct inode *simplefs_new_inode(struct inode *dir, umode_t mode)
+   {
+       int ino;
+       /* ... */
+
+       ino = simplefs_alloc_inode_num(sb);
+       if (ino < 0)
+           return ERR_PTR(ino);
+
+       /* ... */
+   }
+
+Görüldüğü gibi burada inode numarasının tahsis edilmesini ``simplefs_alloc_inode_num`` isimli bir
+fonksiyona yaptırıyoruz. Peki yeni bir inode numarası nasıl elde edilmelidir? İşte ``simplefs`` dosya
+sistemimizde tıpkı ``ext2`` ve ``ext4`` sistemlerinde olduğu gibi boş inode elemanlarının tespit edilmesi
+için bitlerden oluşan inode bitmap kullanılmaktadır. O halde bizim yapacağımız şey bu bitmap'i diskten
+okuyup oradaki ilk boş olan inode elemanına ilişkin numarayı (yani bu bitmap'teki ilk 0 bitinin indeksini)
+elde etmemiz gerekir. ``simplefs_alloc_inode_num`` fonksiyonunu şöyle yazabiliriz:
+
+.. code-block:: c
+
+   static int simplefs_alloc_inode_num(struct super_block *sb)
+   {
+       struct simplefs_super_block *sfs_sb;
+       struct simplefs_disk_super_block *sfs_sbd;
+       int ino;
+
+       sfs_sb  = SIMPLEFS_SB(sb);
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+
+       spin_lock(&sfs_sb->lock);
+
+       if (sfs_sbd->free_inodes == 0) {
+           spin_unlock(&sfs_sb->lock);
+           return -ENOSPC;
+       }
+
+       ino = find_first_zero_bit(sfs_sb->inode_bitmap, sfs_sbd->inode_count);
+       if (ino >= sfs_sbd->inode_count) {
+           spin_unlock(&sfs_sb->lock);
+           return -ENOSPC;
+       }
+
+       set_bit(ino, sfs_sb->inode_bitmap);
+       sfs_sbd->free_inodes--;
+       mark_buffer_dirty(sfs_sb->inode_bitmap_bh);
+       mark_buffer_dirty(sfs_sb->sb_bh);
+
+       spin_unlock(&sfs_sb->lock);
+
+       return ino;
+   }
+
+Fonksiyon içerisinde bitmap üzerinde arama yapmadan önce boşta (free) bir inode elemanının kalıp kalmadığı
+kontrol edilmiştir. Anımsayacağınız gibi biz dosya sistemimizin süper bloğu içerisinde zaten boştaki inode
+elemanlarının sayısını tutuyorduk:
+
+.. code-block:: c
+
+   if (sfs_sbd->free_inodes == 0) {
+       spin_unlock(&sfs_sb->lock);
+       return -ENOSPC;
+   }
+
+Bu işlemden sonra fonksiyon içerisinde inode bitmap'te ``find_first_zero_bit`` fonksiyonuyla ilk 0 olan
+bitin indeksi elde edilmiştir. Bitmap üzerinde işlem yapan hazır çekirdek fonksiyonları bulunmaktadır. Bu
+fonksiyonlar bir döngü içerisinde işlemcilerin bit düzeyinde işlemler yapan makine komutları kullanılarak
+yazılmıştır. Aşağıda bitmap üzerinde işlemler yapan çekirdek fonksiyonlarının listesi verilmiştir:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Fonksiyon Adı
+     - Açıklama
+   * - ``set_bit()``
+     - Belirtilen biti 1 olarak ayarlar (atomik)
+   * - ``clear_bit()``
+     - Belirtilen biti 0 olarak ayarlar (atomik)
+   * - ``change_bit()``
+     - Belirtilen bitin değerini tersine çevirir (atomik)
+   * - ``test_and_set_bit()``
+     - Biti test eder, 1 yapar ve eski değeri döndürür (atomik)
+   * - ``test_and_clear_bit()``
+     - Biti test eder, 0 yapar ve eski değeri döndürür (atomik)
+   * - ``test_and_change_bit()``
+     - Biti test eder, tersine çevirir ve eski değeri döndürür
+   * - ``test_bit()``
+     - Belirtilen bitin değerini test eder
+   * - ``__set_bit()``
+     - ``set_bit()`` fonksiyonunun atomik olmayan versiyonu
+   * - ``__clear_bit()``
+     - ``clear_bit()`` fonksiyonunun atomik olmayan versiyonu
+   * - ``__change_bit()``
+     - ``change_bit()`` fonksiyonunun atomik olmayan versiyonu
+   * - ``__test_and_set_bit()``
+     - ``test_and_set_bit()`` atomik olmayan versiyonu
+   * - ``__test_and_clear_bit()``
+     - ``test_and_clear_bit()`` atomik olmayan versiyonu
+   * - ``__test_and_change_bit()``
+     - ``test_and_change_bit()`` atomik olmayan versiyonu
+   * - ``find_first_bit()``
+     - Bitmap'te 1 olan ilk biti bulur
+   * - ``find_first_zero_bit()``
+     - Bitmap'te 0 olan ilk biti bulur
+   * - ``find_next_bit()``
+     - Belirtilen pozisyondan sonraki 1 olan biti bulur
+   * - ``find_next_zero_bit()``
+     - Belirtilen pozisyondan sonraki 0 olan biti bulur
+   * - ``find_last_bit()``
+     - Bitmap'te 1 olan son biti bulur
+   * - ``for_each_set_bit()``
+     - Bitmap'teki tüm 1 bitler üzerinde döngü yapar (makro)
+   * - ``for_each_clear_bit()``
+     - Bitmap'teki tüm 0 bitler üzerinde döngü yapar (makro)
+   * - ``bitmap_zero()``
+     - Bitmap'in tüm bitlerini 0 yapar
+   * - ``bitmap_fill()``
+     - Bitmap'in tüm bitlerini 1 yapar
+   * - ``bitmap_copy()``
+     - Bir bitmap'i diğerine kopyalar
+   * - ``bitmap_and()``
+     - İki bitmap arasında AND işlemi yapar
+   * - ``bitmap_or()``
+     - İki bitmap arasında OR işlemi yapar
+   * - ``bitmap_xor()``
+     - İki bitmap arasında XOR işlemi yapar
+   * - ``bitmap_andnot()``
+     - İki bitmap arasında AND-NOT işlemi yapar
+   * - ``bitmap_complement()``
+     - Bitmap'in tümleyenini alır (NOT işlemi)
+   * - ``bitmap_equal()``
+     - İki bitmap'in eşit olup olmadığını kontrol eder
+   * - ``bitmap_intersects()``
+     - İki bitmap'in kesişip kesişmediğini kontrol eder
+   * - ``bitmap_subset()``
+     - Bir bitmap'in diğerinin alt kümesi olup olmadığını kontrol eder
+   * - ``bitmap_empty()``
+     - Bitmap'in tüm bitlerinin 0 olup olmadığını kontrol eder
+   * - ``bitmap_full()``
+     - Bitmap'in tüm bitlerinin 1 olup olmadığını kontrol eder
+   * - ``bitmap_weight()``
+     - Bitmap'teki 1 olan bitlerin sayısını döndürür
+   * - ``bitmap_shift_right()``
+     - Bitmap'i sağa kaydırır
+   * - ``bitmap_shift_left()``
+     - Bitmap'i sola kaydırır
+   * - ``bitmap_parse()``
+     - String'den bitmap oluşturur
+   * - ``bitmap_print_to_pagebuf()``
+     - Bitmap'i string formatında yazdırır
+   * - ``BITMAP_FIRST_WORD_MASK()``
+     - İlk kelime için maske oluşturur (makro)
+   * - ``BITMAP_LAST_WORD_MASK()``
+     - Son kelime için maske oluşturur (makro)
+
+Biz ``simplefs_alloc_inode_num`` fonksiyonumuzda ``find_first_zero_bit`` fonksiyonunu kullandık. Bu
+fonksiyon belli bir adresten itibaren belli bir bit uzunluğuna kadar olan bitler arasında ilk 0 olan bitin
+indeksini vermektedir. Fonksiyonun kullanımına dikkat ediniz:
+
+.. code-block:: c
+
+   ino = find_first_zero_bit(sfs_sb->inode_bitmap, sfs_sbd->inode_count);
+   if (ino >= sfs_sbd->inode_count) {
+       spin_unlock(&sfs_sb->lock);
+       return -ENOSPC;
+   }
+
+Bizim ``simplefs`` dosya sistemimizde inode elemanlarının sayısı formatlamaya bağlı olarak değişebiliyordu.
+Bu sayıyı biz kendi süper blok yapımızın içerisindeki ``inode_count`` elemanında saklamıştık.
+``find_first_zero_bit`` fonksiyonu başarısızlık durumunda ikinci parametreye girilen bit sayısına geri
+dönmektedir.
+
+``simplefs_alloc_inode_num`` fonksiyonumuzda ``find_first_zero_bit`` fonksiyonu ile ilk 0 olan bitin
+indeksini bulduktan sonra o biti 1'ledik:
+
+.. code-block:: c
+
+   set_bit(ino, sfs_sb->inode_bitmap);
+   sfs_sbd->free_inodes--;
+
+Daha önceden de belirttiğimiz gibi bir bloğu ``sb_bread`` fonksiyonuyla belleğe okuyup onun üzerinde
+değişiklikler yaptıktan sonra o bloğun diske geri yazılmasını biz yapmayız. Biz yalnızca o bloğun
+içeriğinin değiştirildiğini yani o bloğun *dirty* hale geldiğini belirtiriz. Bloğun diske yazılması
+çekirdeğin bir thread'i tarafından otomatik yapılmaktadır. ``buffer_head`` nesnesini kirli hale getirmek
+için ``mark_buffer_dirty`` fonksiyonu kullanılmaktadır:
+
+.. code-block:: c
+
+   mark_buffer_dirty(sfs_sb->inode_bitmap_bh);
+   mark_buffer_dirty(sfs_sb->sb_bh);
+
+Şimdi yeniden ``simplefs_new_inode`` fonksiyonuna dönelim. Artık biz boş bir inode numarasını elde etmiş
+durumdayız. Bundan sonra yeni bir inode nesnesinin ``new_inode`` isimli çekirdek fonksiyonuyla tahsis
+edilmesi gerekmektedir:
+
+.. code-block:: c
+
+   if ((inode = new_inode(sb)) == NULL) {
+       simplefs_free_inode_num(sb, ino);
+       return ERR_PTR(-ENOMEM);
+   }
+
+Anımsanacağı gibi bu ``new_inode`` fonksiyonu dosya sistemimize ilişkin ``super_operations`` yapısı
+içerisindeki ``alloc_inode`` elemanına girdiğimiz fonksiyonun çağrılmasını da sağlıyordu. Biz de bu
+elemana ``simplefs_alloc_inode`` isimli fonksiyonumuzu yerleştirmiştik.
+``simplefs_new_inode`` fonksiyonunu bütünsel olarak aşağıda veriyoruz:
+
+.. code-block:: c
+
+   static struct inode *simplefs_new_inode(struct inode *dir, umode_t mode)
+   {
+       struct super_block *sb = dir->i_sb;
+       struct inode *inode;
+       int ino;
+
+       ino = simplefs_alloc_inode_num(sb);
+       if (ino < 0)
+           return ERR_PTR(ino);
+
+       if ((inode = new_inode(sb)) == NULL) {
+           simplefs_free_inode_num(sb, ino);
+           return ERR_PTR(-ENOMEM);
+       }
+
+       inode_init_owner(&nop_mnt_idmap, inode, dir, mode);
+       inode->i_ino = ino;
+       simple_inode_init_ts(inode);
+
+       insert_inode_hash(inode);
+       mark_inode_dirty(inode);
+
+       printk(KERN_INFO "simplefs: Created new inode %lu\n", inode->i_ino);
+       return inode;
+   }
+
+Burada bir noktaya dikkat ediniz. ``simplefs_alloc_inode_num`` fonksiyonu başarılı olduktan sonra
+``new_inode`` fonksiyonu başarısız olursa bizim inode bitmap üzerindeki işlemleri geri almamız gerekir.
+Yukarıdaki fonksiyonda bu geri alımı ``simplefs_free_inode_num`` fonksiyonu yapmaktadır. Bu fonksiyon da
+şöyle yazılabilir:
+
+.. code-block:: c
+
+   static void simplefs_free_inode_num(struct super_block *sb, int ino)
+   {
+       struct simplefs_super_block *sfs_sb;
+       struct simplefs_disk_super_block *sfs_sbd;
+
+       sfs_sb  = SIMPLEFS_SB(sb);
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+
+       if (ino < 0 || ino >= sfs_sbd->inode_count) {
+           printk(KERN_INFO "simplefs: Invalid inode number %d\n", ino);
+           return;
+       }
+
+       spin_lock(&sfs_sb->lock);
+       clear_bit(ino, sfs_sb->inode_bitmap);
+       sfs_sbd->free_inodes++;
+       mark_buffer_dirty(sfs_sb->inode_bitmap_bh);
+       mark_buffer_dirty(sfs_sb->sb_bh);
+       spin_unlock(&sfs_sb->lock);
+
+       printk(KERN_INFO "simplefs: Freed inode %d (free: %u)\n", ino, sfs_sbd->free_inodes);
+   }
+
+Burada görüldüğü gibi fonksiyon bitmap üzerinde yapılan işlemleri geri almaktadır.
+
+``simplefs_new_inode`` fonksiyonunu yazdığımıza göre artık ``mkdir`` fonksiyonu üzerinde ilerleyebiliriz.
+inode elemanı tahsis edildikten sonra ilgili dizin ya da dosya için diskin *data blok alanında* da
+tahsisatın yapılması gerekir. Bizim ``simplefs`` dosya sistemimizde her dizin ya da dosyanın tek bir
+bloktan oluştuğunu anımsayınız. ``simplefs`` dosya sistemimizde tıpkı ``ext2`` ve ``ext4`` sistemlerinde
+olduğu gibi boş data bloklarını da bir bitmap içerisinde tutmuştuk. ``simplefs_mkdir`` fonksiyonumuzda
+boş bir data bloğunun numarası ``simplefs_alloc_data_block`` fonksiyonuyla elde edilmektedir:
+
+.. code-block:: c
+
+   if ((block = simplefs_alloc_data_block(dir->i_sb)) < 0) {
+       result = block;
+       goto EXIT;
+   }
+
+Bu fonksiyon şöyle yazılmıştır:
+
+.. code-block:: c
+
+   static int simplefs_alloc_data_block(struct super_block *sb)
+   {
+       struct simplefs_super_block *sfs_sb;
+       struct simplefs_disk_super_block *sfs_sbd;
+       int bit;
+       uint32_t max_data_blocks;
+
+       sfs_sb  = SIMPLEFS_SB(sb);
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+       max_data_blocks = sfs_sbd->block_count - sfs_sbd->data_block_start;
+
+       spin_lock(&sfs_sb->lock);
+
+       if (sfs_sbd->free_blocks == 0) {
+           spin_unlock(&sfs_sb->lock);
+           printk(KERN_ERR "simplefs: No free data blocks\n");
+           return -ENOSPC;
+       }
+
+       bit = find_first_zero_bit(sfs_sb->data_bitmap, max_data_blocks);
+       if (bit >= max_data_blocks) {
+           spin_unlock(&sfs_sb->lock);
+           printk(KERN_ERR "simplefs: No free data block found in bitmap\n");
+           return -ENOSPC;
+       }
+
+       set_bit(bit, sfs_sb->data_bitmap);
+       sfs_sbd->free_blocks--;
+       mark_buffer_dirty(sfs_sb->data_bitmap_bh);
+       mark_buffer_dirty(sfs_sb->sb_bh);
+
+       spin_unlock(&sfs_sb->lock);
+
+       printk(KERN_INFO "simplefs: Allocated data block %d (free: %u)\n",
+               sfs_sbd->data_block_start + bit, sfs_sbd->free_blocks);
+
+       return sfs_sbd->data_block_start + bit;
+   }
+
+Fonksiyonda önce boş blok sayısı kontrol edilmiş, eğer data bloğunda boş blok kalmamışsa hemen fonksiyon
+başarısızlıkla geri döndürülmüştür:
+
+.. code-block:: c
+
+   if (sfs_sbd->free_blocks == 0) {
+       spin_unlock(&sfs_sb->lock);
+       printk(KERN_ERR "simplefs: No free data blocks\n");
+       return -ENOSPC;
+   }
+
+Bundan sonra data bitmap içerisinde ilk 0 olan bitin indeksi elde edilmiştir:
+
+.. code-block:: c
+
+   bit = find_first_zero_bit(sfs_sb->data_bitmap, max_data_blocks);
+   if (bit >= max_data_blocks) {
+       spin_unlock(&sfs_sb->lock);
+       printk(KERN_ERR "simplefs: No free data block found in bitmap\n");
+       return -ENOSPC;
+   }
+
+Bundan sonra da inode bitmap'te yaptığımız gibi ilgili bit 1'lenerek ``buffer_head`` blokları kirli hale
+getirilmiştir. Kirlenmiş blokların diske yazılması çekirdeğin başka bir thread'i tarafından yapılmaktadır:
+
+.. code-block:: c
+
+   set_bit(bit, sfs_sb->data_bitmap);
+   sfs_sbd->free_blocks--;
+   mark_buffer_dirty(sfs_sb->data_bitmap_bh);
+   mark_buffer_dirty(sfs_sb->sb_bh);
+
+Bir data blok tahsis edildikten sonra diğer işlemlerde bir sorun çıkarsa bu tahsisat işlemini de geri almak
+gerekir. Bu işlemi de ``simplefs_free_data_block`` isimli bir fonksiyona yaptırabiliriz:
+
+.. code-block:: c
+
+   static void simplefs_free_data_block(struct super_block *sb, int block)
+   {
+       struct simplefs_super_block *sfs_sb;
+       struct simplefs_disk_super_block *sfs_sbd;
+       int bit;
+
+       sfs_sb  = SIMPLEFS_SB(sb);
+       sfs_sbd = SIMPLEFS_DISK_SB(sb);
+
+       if (block < sfs_sbd->data_block_start || block >= sfs_sbd->block_count) {
+           printk(KERN_INFO "simplefs: Invalid block number %d\n", block);
+           return;
+       }
+       bit = block - sfs_sbd->data_block_start;
+       spin_lock(&sfs_sb->lock);
+       clear_bit(bit, sfs_sb->data_bitmap);
+       sfs_sbd->free_blocks++;
+       mark_buffer_dirty(sfs_sb->data_bitmap_bh);
+       mark_buffer_dirty(sfs_sb->sb_bh);
+       spin_unlock(&sfs_sb->lock);
+   }
+
+Burada önce fonksiyonun ikinci parametresi yoluyla girilen bloğun geçerli bir data block olup olmadığına
+bakılmıştır:
+
+.. code-block:: c
+
+   if (block < sfs_sbd->data_block_start || block >= sfs_sbd->block_count) {
+       printk(KERN_INFO "simplefs: Invalid block number %d\n", block);
+       return;
+   }
+
+Daha sonra blok numarasına ilişkin bit pozisyonu elde edilerek o bit 0'lanmıştır:
+
+.. code-block:: c
+
+   bit = block - sfs_sbd->data_block_start;
+   spin_lock(&sfs_sb->lock);
+   clear_bit(bit, sfs_sb->data_bitmap);
+   sfs_sbd->free_blocks++;
+   mark_buffer_dirty(sfs_sb->data_bitmap_bh);
+   mark_buffer_dirty(sfs_sb->sb_bh);
+   spin_unlock(&sfs_sb->lock);
+
+Yukarıda ``mkdir`` fonksiyonumuzda boş bir data bloğunu tahsis ettik. Artık dizine ilişkin bir data bloğu
+tahsis ettiğimize göre ``simplefs_inode`` nesnemizde bu data bloğunun numarasını yerleştirebiliriz:
+
+.. code-block:: c
+
+   inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+   inode_sfs->block_no = block;
+   inode->i_blocks = 1;
+   inode->i_size   = SIMPLEFS_BLOCK_SIZE;
+
+Tahsis ettiğimiz inode nesnesinin ``i_op`` ve ``i_fop`` elemanlarını da doldurmamız gerekir:
+
+.. code-block:: c
+
+   inode->i_op  = &simplefs_dir_inode_ops;
+   inode->i_fop = &simplefs_dir_inode_fops;
+
+Artık bizim dizin için tahsis ettiğimiz data blok içerisinde ``"."`` ve ``".."`` dizin girişlerini
+oluşturmamız gerekir. Bu işlemleri şöyle yapabiliriz:
+
+.. code-block:: c
+
+   if ((bh = sb_bread(dir->i_sb, block)) == NULL) {
+       result = -EIO;
+       goto EXIT2;
+   }
+   entry = (struct simplefs_disk_dentry *)bh->b_data;
+
+   entry[0].inode = cpu_to_le32(inode->i_ino);
+   strcpy(entry[0].name, ".");
+
+   entry[1].inode = cpu_to_le32(dir->i_ino);
+   strcpy(entry[1].name, "..");
+
+   set_nlink(inode, 2);
+   mark_buffer_dirty(bh);
+   brelse(bh);
+
+Burada önce dizine ilişkin data blok ``sb_bread`` fonksiyonuyla okunmuş daha sonra bu bloğa ``"."`` ve
+``".."`` dizin girişleri eklenmiştir. Yeni yaratılan dizinin hard link sayacının 2 olması gerekir.
+``set_nlink`` çekirdek fonksiyonu inode nesnesinin ``i_nlink`` elemanına güvenli biçimde atama yapmaktadır.
+
+Biz bu noktaya kadar yeni bir inode elemanını oluşturduk, yaratacağımız dizin için bir data bloğu tahsis
+edip onun içerisine ``"."`` ve ``".."`` dizin girişlerini ekledik. Ancak henüz yaratmakta olduğumuz dizini
+üst dizine bir giriş olarak eklemedik. Yaratmakta olduğumuz dizinin üst dizinin dizin girişine eklenmesini
+``simplefs_add_entry`` isimli bir fonksiyona yaptırabiliriz:
+
+.. code-block:: c
+
+   static int simplefs_add_entry(struct inode *dir, struct dentry *dentry, struct inode *inode)
+   {
+       struct super_block *sb;
+       struct simplefs_inode *inode_dir_sfs;
+       struct buffer_head *bh;
+       struct simplefs_disk_dentry *entry;
+       int i, result;
+
+       sb = dir->i_sb;
+       inode_dir_sfs = container_of(dir, struct simplefs_inode, vfs_inode);
+
+       if (strlen(dentry->d_name.name) >= SIMPLEFS_FILENAME_MAXLEN - 1)
+           return -ENAMETOOLONG;
+
+       if ((bh = sb_bread(sb, inode_dir_sfs->block_no)) == NULL)
+           return -EIO;
+
+       result = -ENOSPC;
+       entry = (struct simplefs_disk_dentry *)bh->b_data;
+       for (i = 0; i < SIMPLEFS_MAX_DENTRIES; ++i) {
+           if (entry[i].inode == 0) {
+               entry[i].inode = cpu_to_le32(inode->i_ino);
+               strncpy(entry[i].name, dentry->d_name.name, SIMPLEFS_FILENAME_MAXLEN);
+               entry[i].name[SIMPLEFS_FILENAME_MAXLEN - 1] = '\0';
+               mark_buffer_dirty(bh);
+               dir->i_size = SIMPLEFS_BLOCK_SIZE;
+               simple_inode_init_ts(dir);
+               mark_inode_dirty(dir);
+               result = 0;
+               break;
+           }
+       }
+
+       brelse(bh);
+
+       return result;
+   }
+
+Fonksiyonda önce üst dizinin inode nesnesinden hareketle ``simplefs`` dosya sistemine ilişkin inode bilgileri
+elde edilmiştir. Daha sonra oluşturulmak istenen dizin isminin uzunluğu kontrol edilmiş ve üst dizine
+ilişkin blok okunmuştur. Artık bu dizin girişleri gözden geçirilerek ilk boş dizin girişine yaratılacak
+giriş eklenmiştir. Buradaki ``simple_inode_init_ts`` çekirdek fonksiyonu o andaki zamanı alarak inode
+nesnesinin ``i_atime``, ``i_ctime`` ve ``i_mtime`` zamanlarını güncellemektedir.
+
+Yaratacağımız dizin girişini üst dizine ekledikten sonra ``simplefs_mkdir`` fonksiyonunda üst dizinin hard
+link sayacını artırıp değişiklik yaptığımız inode nesnesini kirli hale getirmemiz gerekir. Tabii aynı
+zamanda oluşturduğumuz inode nesnesiyle bize verilen dentry nesnesini de ilişkilendirmeliyiz. Bu işlemleri
+şöyle yapabiliriz:
+
+.. code-block:: c
+
+   inode_inc_link_count(dir);
+   mark_inode_dirty(inode);
+   d_instantiate(dentry, inode);
+
+``simplefs_mkdir`` fonksiyonu içerisinde başarısız işlemlerde EXIT etiketlerine goto yapmıştık. İşte
+başarısız çıkışlarda yapılan işlemler bu goto etiketlerinde geri alınmaktadır:
+
+.. code-block:: c
+
+       /* ... */
+       return 0;
+   EXIT2:
+       simplefs_free_data_block(dir->i_sb, block);
+   EXIT1:
+       set_nlink(inode, 0);
+       iput(inode);
+       return result;
+
+Aşağıda ``simplefs_mkdir`` fonksiyonunun kodlarını bütünsel olarak veriyoruz:
+
+.. code-block:: c
+
+   static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+                             struct dentry *dentry, umode_t mode)
+   {
+       struct inode *inode;
+       struct buffer_head *bh;
+       struct simplefs_disk_dentry *entry;
+       struct simplefs_inode *inode_sfs;
+       int block;
+       int result;
+
+       inode = simplefs_new_inode(dir, mode | S_IFDIR);
+       if (IS_ERR(inode))
+           return PTR_ERR(inode);
+
+       if ((block = simplefs_alloc_data_block(dir->i_sb)) < 0) {
+           result = block;
+           goto EXIT1;
+       }
+
+       inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+       inode_sfs->block_no = block;
+       inode->i_blocks = 1;
+       inode->i_size   = SIMPLEFS_BLOCK_SIZE;
+
+       inode->i_op  = &simplefs_dir_inode_ops;
+       inode->i_fop = &simplefs_dir_inode_fops;
+
+       if ((bh = sb_bread(dir->i_sb, block)) == NULL) {
+           result = -EIO;
+           goto EXIT2;
+       }
+       entry = (struct simplefs_disk_dentry *)bh->b_data;
+
+       entry[0].inode = cpu_to_le32(inode->i_ino);
+       strcpy(entry[0].name, ".");
+
+       entry[1].inode = cpu_to_le32(dir->i_ino);
+       strcpy(entry[1].name, "..");
+
+       set_nlink(inode, 2);
+       mark_buffer_dirty(bh);
+       brelse(bh);
+
+       if ((result = simplefs_add_entry(dir, dentry, inode)) != 0)
+           goto EXIT2;
+
+       inode_inc_link_count(dir);
+       mark_inode_dirty(inode);
+       d_instantiate(dentry, inode);
+
+       return 0;
+
+   EXIT2:
+       simplefs_free_data_block(dir->i_sb, block);
+   EXIT1:
+       set_nlink(inode, 0);
+       iput(inode);
+
+       return result;
+   }
