@@ -73,9 +73,6 @@ dosyanın bir disk gibi kullanılmasını sağlayan ismine *loop* denilen aygıt
 aygıtları sayesinde bir dosyayı disk gibi kullanarak denemelerimizi kolay bir biçimde yapabileceğiz. O halde önce bu *loop* aygıt
 sürücüsünün nasıl kullanıldığını açıklayalım.
 
-Loop Aygıt Dosyaları
-~~~~~~~~~~~~~~~~~~~~
-
 *loop* aygıt sürücülerine ilişkin aygıt dosyaları Linux'ta ``/dev`` dizininin altında
 bulunmaktadır:
 

@@ -245,7 +245,6 @@ aşağıdaki gibi bir yapıyı göstermektedir:
 ``task_struct`` nesnelerinin ``fs`` ve ``files`` göstericileri aynı ``fs_struct`` ve ``files_struct``
 nesnelerini gösteriyor olacaktır.
 
-
 current Makrosu 
 ===================
 Thread'lerin de tıpkı prosesler gibi ``task_struct`` nesnelerine sahip olduğunu belirtmiştik. Peki
@@ -279,7 +278,6 @@ Görüldüğü gibi artık biz *current* değişkenini kullandığımızda aslı
 bir bölümde ele alınacaktır.
 
 Biz kursumuzda *current* için "current göstericisi" ya da "current makrosu" terimlerini kullanacağız.
-
 
 fork ve pthread_create Çağrı Zincirleri
 ================================================
@@ -516,7 +514,7 @@ deyişle *hortlak (zombie)* olarak tutmaktadır). Yani bu ``group_leader`` göst
 bir ``task_struct`` nesnesini gösteriyor durumda olmaktadır.
 
 
-``real_parent`` ve ``parent`` Göstericileri
+real_parent ve parent Göstericileri
 --------------------------------------------
 
 Şimdi de Linux çekirdeğinde prosesler arasındaki altlık-üstlük ilişkisinin nasıl sağlandığı üzerinde
@@ -2464,7 +2462,7 @@ versiyonlarda bu zincirler için ``task_struct`` içerisinde iki link elemanı b
 Çekirdeğin 2.4 versiyonunda da algoritmada ve yukarıdaki fonksiyonda bir değişiklik yapılmamıştır.
 Yani yine bir hash tablosu eşliğinde arama yapılmaktadır.
 
-2.6 Versiyonu: ``pid`` Nesnesi ve Bağlı Listeler
+2.6 Versiyonu: pid Nesnesi ve Bağlı Listeler
 ------------------------------------------------
 
 Çekirdeğin 2.6'lı versiyonlarında artık her farklı pid değeri için o pid değerine ilişkin bir
