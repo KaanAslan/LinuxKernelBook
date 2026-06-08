@@ -112,7 +112,6 @@ eşliğinde içi 0'larla dolu 10 MB civarında bir dosya şöyle oluşturulabili
 
 Bu komutla elimizde içi sıfırlarla dolu 10 MB'lık bir dosya elde etmiş olacağız.
 
-
 Loop Aygıtlarını Yapılandırma
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -222,7 +221,6 @@ Tabii burada oluşturduğumuz ``mydisk.dat`` dosyası kalmaya devam etmektedir. 
 *losetup* ile blok aygıtı gibi kullanabiliriz ve işlemlerimize kaldığımız yerden devam
 edebiliriz.
 
-
 Loop Aygıtlarının Kullanım Akışı
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -270,6 +268,40 @@ Aşağıdaki şema, loop aygıtının tipik kullanım akışını özetlemektedi
     │     sudo umount ext2-test                                   │
     │     sudo losetup -d /dev/loop0                              │
     └─────────────────────────────────────────────────────────────┘
+
+Little-Endian/Big Endian Sorunu
+--------------------------------
+
+Eğer Linux çekirdeği için yazılan kodların hem *little-endian* hem de *big-endian* makinelerde sorunsuz
+çalışması isteniyorsa diskten okunan bilgilerin endian dönüştürmesine sokulması gerekir. İşte bunun için Linux 
+çekirdeğinde *endian* dönüştürmesi yapan yardımcı fonksiyonlar bulundurulmuştur. Bu fonksiyonların listesini 
+aşağıda veriyoruz:
+
+.. code-block:: none
+
+   le16_to_cpu    be16_to_cpu
+   le32_to_cpu    be32_to_cpu
+   le64_to_cpu    be64_to_cpu
+
+Bu fonksiyonların (aslında birer makro olarak yazılmıştır) başındaki *le* öneki parametrenin *little-endian*
+olduğunu, *be* öneki ise *big-endian* olduğunu belirtmektedir. Örneğin ``le32_to_cpu`` fonksiyonu parametre
+olarak 32 bitlik işaretsiz *little-endian* bir değeri alır. Eğer o anda çalışılan CPU *little-endian* ise onu
+dönüştürmez, *big-endian* ise onu *big-endian* formata dönüştürür. Bu fonksiyonların parametresi gösterici
+olan biçimleri de vardır:
+
+.. code-block:: none
+
+   le16_to_cpup    be16_to_cpup
+   le32_to_cpup    be32_to_cpup
+   le64_to_cpup    be64_to_cpup
+
+Tabii yukarıdakilerin bir de ters biçimleri bulunmaktadır:
+
+.. code-block:: none
+
+   cpu_to_le16    cpu_to_be16    cpu_to_le16p    cpu_to_be16p
+   cpu_to_le32    cpu_to_be32    cpu_to_le32p    cpu_to_be32p
+   cpu_to_le64    cpu_to_be64    cpu_to_le64p    cpu_to_be64p
 
 simplefs Dosya Sisteminin Tasarımı
 ==================================
@@ -955,9 +987,9 @@ simplefs Dosya Sistemi Aygıt Sürücüsünün Gerçekleştirimi
 
 ``simplefs`` dosya sistemini bir aygıt sürücü olarak yazacağız. Yazıma iskelet bir çekirdek modülü ile başlayabiliriz:
 
-.. code-block:: c
+``simplefs.c``
 
-   /* simplefs.c */
+.. code-block:: c
 
    #include <linux/module.h>
    #include <linux/kernel.h>
@@ -1109,10 +1141,10 @@ açıklayacağız.
 ``s_fs_info``: Çekirdek süper blok nesnelerini ``super_block`` isimli yapıyla temsil etmektedir. Ancak her dosya sisteminin
 kendine özgü bir süper blok formatı da vardır. İşte çekirdeğin ``super_block`` yapısından hareketle sistem
 programcısının kendi dosya sistemine ilişkin süper blok bilgilerine erişebilmesi gerekir. ``super_block``
-yapısının ``s_fs_info`` elemanı bunun için kullanılmaktadır. Bizim bu noktada dosya sistemimize ilişkin süper
-blok bilgilerini diskten okuyup bunu bir yapı nesnesi içerisinde depolamamız gerekir. Ancak aslında bizim yalnızca
-kendi dosya sistemimize ilişkin diskteki süper blok bilgilerine değil aynı zamanda onun yönetimine yönelik
-bilgileri de bulundurmamız gerekmektedir. Bunun için dosya sistemi tasarımcıları tipik olarak kendi dosya
+yapısının ``s_fs_info`` elemanı bunun için kullanılmaktadır. Biz bu noktada dosya sistemimize ilişkin süper
+blok bilgilerini diskten okuyup bunu bir yapı nesnesi içerisinde saklamalıyız. Ancak aslında bizim yalnızca
+kendi dosya sistemimize ilişkin diskteki süper blok bilgilerini değil aynı zamanda onun yönetimine yönelik
+bilgileri de saklamamız gerekir. Bunun için dosya sistemi tasarımcıları tipik olarak kendi dosya
 sistemlerinin süper blok yönetimine ilişkin bir yapı oluşturup diskteki süper blok bilgilerini bu yapı nesnesinin
 içerisinde saklamaktadır. ``super_block`` yapısının ``s_fs_info`` elemanına da bu nesnenin adresini
 yerleştirmektedir. Biz ``simplefs`` dosya sistemimizdeki süper blok yönetimi için aşağıdaki gibi bir yapı
@@ -1150,17 +1182,14 @@ programında bu yapıyı aşağıdaki gibi oluşturmuştuk:
 
 Buradaki ``super_block`` yapısının ``s_fs_info`` elemanı için oluşan durumu aşağıdaki şekil betimlemektedir:
 
-.. image:: _static/superblock-fsinfo.png
+.. image:: _static/superblock-fsinfo.svg
    :alt: super_block → simplefs_super_block → simplefs_disk_super_block gösterici zinciri
    :align: center
+   :width: 80%
 
 Artık çekirdek bize ``super_block`` nesnesini verdiğinde biz kendi sistemimize ilişkin tüm süper blok bilgilerine
 erişiyor olacağız. ``simplefs_super_block`` yapısının ``sbd`` dışındaki diğer elemanlarını izleyen paragraflarda
 açıklayacağız.
-
-``s_root``: ``super_block`` yapısının bu elemanına bizim kök dizine ilişkin dentry nesne adresini yerleştirmemiz gerekir.
-Tabii dentry nesnesinin elde edilmesi için önce inode nesnesinin elde edilmesi gerekir. Bu işlemlerin nasıl
-yapılacağı izleyen paragraflarda açıklanmaktadır.
 
 Biz yukarıdaki bazı süreçlerle doldurulacak elemanlar dışında ``simplefs_fill_super`` fonksiyonumuzun ilk kısmını
 şöyle oluşturabiliriz:
@@ -1182,11 +1211,14 @@ Biz yukarıdaki bazı süreçlerle doldurulacak elemanlar dışında ``simplefs_
 
 ``sb->s_flags |= SB_NOATIME`` işlemini dosya sisteminin basit tutulmasını sağlamak amacıyla uyguladık. Bu bayrak
 dosyaların erişim zamanlarının güncellenmesini engelleyecektir. İzleyen paragraflarda ``super_block`` yapısının
-diğer elemanlarının nasıl doldurulacağını açıklayacağız.
+``s_fs_info`` elemanın ve diğer önemlş elemanlarının nasıl doldurulacağını farklı başlıklar altında açıklayacağız.
 
-Önce ``super_block`` yapısının ``s_fs_info`` elemanını doldurmaya çalışalım. Anımsanacağı gibi bu eleman bizim
-dosya sistemimizdeki süper blok işlemlerini yönetecek ``simplefs_super_block`` nesnesinin adresini tutmaktadır.
-Bizim bu nesneyi çekirdeğin heap sisteminde tahsis etmemiz gerekir. Biz çekirdeğin heap sistemini henüz
+Süper Bloğun Diskten Okunması ve sb_bread Fonksiyonu
+----------------------------------------------------
+
+Anımsanacağı gibi ``s_fs_info`` bu eleman bizim dosya sistemimizdeki süper blok işlemlerini 
+yönetecek ``simplefs_super_block`` nesnesinin adresini tutmaktadır.
+Bizim öncelikle bu nesneyi çekirdeğin heap sisteminde tahsis etmemiz gerekir. Biz çekirdeğin heap sistemini henüz
 incelemedik. Burada ``kzalloc`` isimli çekirdek fonksiyonuyla bu tahsisatı yapacağız. ``kzalloc`` fonksiyonu
 ``kmalloc`` fonksiyonun tahsis edilen alanı sıfırlayan bir biçimidir. ``kzalloc`` (ya da ``kmalloc``) ile tahsis edilmiş 
 alanlar ``kfree`` fonksiyonuyla serbest bırakılmaktadır. Tahsisatı şöyle yapabiliriz:
@@ -1219,7 +1251,8 @@ numarasını almaktadır. (Tabii bizim bu fonksiyonu çağırmadan önce ``super
 yerleştirmemiz gerekir.) Fonksiyon okunan bloğu çekirdekte temsil eden ``buffer_head`` nesnesinin adresine geri
 dönmektedir. Biz ``buffer_head`` yapısını ve organizasyonunu bellek yönetimi kısmında göreceğiz. Linux'ta bu
 ``buffer_head`` tasarımına yeni ve modern bir alternatif de eklenmiştir. Buna *bio* sistemi de denilmektedir.
-Ancak bu ``buffer_head`` sistemi çekirdekten atılabilecek bir tasarım değildir. Çünkü pek çok dosya sistemi
+Ancak diskin metadata alanları ile ilgili okuma yazma işlemleri için buffer_head daha uygun bir sistemdir.
+``buffer_head`` sistemi  çekirdekten atılabilecek bir tasarım değildir. Çünkü pek çok dosya sistemi
 halen bu ``buffer_head`` tasarımını kullanmaktadır. Güncel çekirdeklerde ``buffer_head`` yapısı
 ``include/linux/buffer_head.h`` dosyasında şöyle bildirilmiştir:
 
@@ -1372,42 +1405,6 @@ Buradaki akışı şöyle açıklayabiliriz:
 
 Biz sayfa önbelleği ve tampon (buffer) yönetimi konularını kitabımızın "Bellek Yönetimi" bölümünde ayrıntılarıyla 
 açıklayacağız.
-
-Little-Endian/Big Endian Sorunu
---------------------------------
-
-Eğer Linux çekirdeği için yazılan kodların hem *little-endian* hem de *big-endian* makinelerde sorunsuz
-çalışması isteniyorsa diskten okunan bilgilerin endian dönüştürmesine sokulması gerekir. Biz ``simplefs``
-dosya sistemimizde diskteki bilgilerin *little-endian* olduğunu varsaymıştık. Buradaki veri yapısı bir yapıya
-aktarıldığında orada bilgi *little-endian* biçiminde oluşacaktır. Eğer kodun çalışacağı makine *big-endian*
-ise sorun oluşacaktır. İşte bunun için Linux çekirdeğinde *endian* dönüştürmesi yapan yardımcı fonksiyonlar
-bulundurulmuştur. Bu fonksiyonların listesini aşağıda veriyoruz:
-
-.. code-block:: none
-
-   le16_to_cpu    be16_to_cpu
-   le32_to_cpu    be32_to_cpu
-   le64_to_cpu    be64_to_cpu
-
-Bu fonksiyonların (aslında birer makro olarak yazılmıştır) başındaki *le* öneki parametrenin *little-endian*
-olduğunu, *be* öneki ise *big-endian* olduğunu belirtmektedir. Örneğin ``le32_to_cpu`` fonksiyonu parametre
-olarak 32 bitlik işaretsiz *little-endian* bir değeri alır. Eğer o anda çalışılan CPU *little-endian* ise onu
-dönüştürmez, *big-endian* ise onu *big-endian* formata dönüştürür. Bu fonksiyonların parametresi gösterici
-olan biçimleri de vardır:
-
-.. code-block:: none
-
-   le16_to_cpup    be16_to_cpup
-   le32_to_cpup    be32_to_cpup
-   le64_to_cpup    be64_to_cpup
-
-Tabii yukarıdakilerin bir de ters biçimleri bulunmaktadır:
-
-.. code-block:: none
-
-   cpu_to_le16    cpu_to_be16    cpu_to_le16p    cpu_to_be16p
-   cpu_to_le32    cpu_to_be32    cpu_to_le32p    cpu_to_be32p
-   cpu_to_le64    cpu_to_be64    cpu_to_le64p    cpu_to_be64p
 
 simplefs Süper Bloğunun ve Bitmap Bloklarının Diskten Okunması
 --------------------------------------------------------------
@@ -1566,7 +1563,7 @@ amacıyla vermek istiyoruz:
    }
 
 Kök Dizine İlişkin Inode Nesnesinin Oluşturulması
--------------------------------------------------------------
+--------------------------------------------------
 
 Artık ``simplefs_fill_super`` fonksiyonumuzda sıra kök dizine inode elemanını ve dentry nesnesini oluşturmaya
 gelmiştir. Bu aşamada durum biraz daha karmaşık hale gelecektir. Bizim diskteki bir inode elemanını okuyacak bir
@@ -4595,3 +4592,108 @@ Aşağıda ``simplefs_mkdir`` fonksiyonunun kodlarını bütünsel olarak veriyo
 
        return result;
    }
+
+Inode Nesneleriinin Diske Aktarılması
+-------------------------------------
+
+Biz yukarıda inode nesnesini bellekte oluşturduk. Çekirdek inode nesnesini diske yazacağı zaman
+``super_operations`` yapısının ``write_inode`` fonksiyonunu çağırmaktadır. Bizim de yarattığımız inode
+nesnesinin diskte kalıcılığını sağlayabilmek için bu fonksiyonu yazmamız gerekir. Biz bu fonksiyonun içini boş
+bırakmıştık:
+
+.. code-block:: c
+
+   static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc)
+   {
+       /* ... */
+
+       return 0;
+   }
+
+Bu fonksiyon çağrıldığında çekirdek fonksiyonun birinci parametresine diske yazılacak inode nesnesinin
+adresini, ikinci parametresine ise geri yazıma ilişkin bilgilerin bulunduğu ``writeback_control`` isimli
+yapı nesnesinin adresini geçirmektedir. Biz bu fonksiyonun içerisinde inode nesnesinin bulunduğu disk
+bloğunu elde etmemiz, o bloğu okuyup güncellemeleri yapmamız ve güncellediğimiz bloğu da kirli hale
+getirmemiz gerekir. Bu işlemleri şöyle yapabiliriz:
+
+.. code-block:: c
+
+   static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc)
+   {
+       struct simplefs_inode *inode_sfs;
+       struct simplefs_disk_inode *disk_inode;
+       struct buffer_head *bh;
+
+       inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+       disk_inode = simplefs_get_inode_disk(inode->i_sb, inode->i_ino, &bh);
+
+       if (IS_ERR(disk_inode))
+           return PTR_ERR(disk_inode);
+
+       disk_inode->mode = cpu_to_le32(inode->i_mode);
+       disk_inode->uid = cpu_to_le32(i_uid_read(inode));
+       disk_inode->gid = cpu_to_le32(i_gid_read(inode));
+       disk_inode->size = cpu_to_le32(inode->i_size);
+       disk_inode->nlink = cpu_to_le32(inode->i_nlink);
+       disk_inode->blocks = cpu_to_le32(inode->i_blocks);
+       disk_inode->block_no = cpu_to_le32(inode_sfs->block_no);
+
+       disk_inode->atime = cpu_to_le32(inode_get_atime(inode).tv_sec);
+       disk_inode->mtime = cpu_to_le32(inode_get_mtime(inode).tv_sec);
+       disk_inode->ctime = cpu_to_le32(inode_get_ctime(inode).tv_sec);
+
+       mark_buffer_dirty(bh);
+       if (wbc->sync_mode == WB_SYNC_ALL)
+           sync_dirty_buffer(bh);
+       brelse(bh);
+
+       printk(KERN_INFO "simplefs: Wrote inode %lu to disk\n", inode->i_ino);
+
+       return 0;
+   }
+
+Fonksiyonda önce inode nesnesinden hareketle ``simplefs_inode`` nesnesi elde edilmiştir:
+
+.. code-block:: c
+
+   inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+Fonksiyonda daha sonra diskteki inode nesnesi okunup onun bellekteki adresi elde edildi. Bu işlem için
+daha önce kullanmış olduğumuz ``simplefs_get_inode_disk`` fonksiyonunu kullandık. Anımsanacağı gibi burada
+önce ``ino`` numaralı inode elemanının diskin hangi bloğunda ve hangi offset'inde olduğu tespit edilmekte,
+sonra o blok okunup ilgili offset'teki bilgiler ``simplefs_disk_inode`` nesne adresi biçiminde geri
+döndürülmektedir.
+
+``simplefs_write_inode`` fonksiyonunda daha sonra diskteki inode elemanını temsil eden yapının içi
+dolduruldu:
+
+.. code-block:: c
+
+   disk_inode->mode = cpu_to_le32(inode->i_mode);
+   disk_inode->uid = cpu_to_le32(i_uid_read(inode));
+   disk_inode->gid = cpu_to_le32(i_gid_read(inode));
+   disk_inode->size = cpu_to_le32(inode->i_size);
+   disk_inode->nlink = cpu_to_le32(inode->i_nlink);
+   disk_inode->blocks = cpu_to_le32(inode->i_blocks);
+   disk_inode->block_no = cpu_to_le32(inode_sfs->block_no);
+
+   disk_inode->atime = cpu_to_le32(inode_get_atime(inode).tv_sec);
+   disk_inode->mtime = cpu_to_le32(inode_get_mtime(inode).tv_sec);
+   disk_inode->ctime = cpu_to_le32(inode_get_ctime(inode).tv_sec);
+
+Bu noktada henüz yapılan güncellemeler diske aktarılmamıştır. Daha önce de belirttiğimiz gibi blokların
+diske yazılması işlemlerini genellikle sistem programcısı yapmaz. Sistem programcısı yalnızca bellekteki
+``buffer_head`` bloğunu *kirli (dirty)* hale getirir. Gerçek yazma işlemi zaten çekirdeğin bir thread'i
+tarafından yapılmaktadır:
+
+.. code-block:: c
+
+   mark_buffer_dirty(bh);
+   if (wbc->sync_mode == WB_SYNC_ALL)
+       sync_dirty_buffer(bh);
+   brelse(bh);
+
+Burada ayrıca ``wbc->sync_mode`` kontrolü de yapılmıştır. Bu konuyu bellek yönetiminde ele alacağız.
+
+Aşağıda geldiğimiz noktaya kadarki ``simplefs`` dosya sisteminin kodları verilmiştir:
+
