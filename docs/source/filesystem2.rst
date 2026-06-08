@@ -4929,8 +4929,6 @@ sisteminin tam kaynak kodu verilmiştir.
 
 .. code-block:: c
 
-    /* simplefs.c */
-
     #include <linux/module.h>
     #include <linux/kernel.h>
     #include <linux/fs.h>
