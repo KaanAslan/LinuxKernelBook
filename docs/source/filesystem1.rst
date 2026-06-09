@@ -4,10 +4,12 @@
 Dosya Sistemi - I. Bölüm
 =========================
 
-Bu bölümde dikkatimizi dosya sistemine illişkin çekirdek veri yapıları üzerine yönelteceğiz. Bilindiği gibi 
-UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilmektedir. Biz bu birinci bölümde belli bir derinliğe 
-kadar çekirdeğin dosya işlemleri için oluşturduğu organizasyon üzerinde duracağız. Daha sonra ikinci bölümde
-dosya sistemine ilişkin aşağı seviyeli ayrıntıları ele alacağız.
+UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilmektedir. Bu bölümde dikkatimizi dosya sistemine 
+illişkin çekirdek veri yapıları üzerine yönelteceğiz. Dosya sistemi kitabımızda üç bölüm 
+halinde ele alacağız. Birinci bölümde belli bir derinliğe kadar çekirdeğin dosya işlemleri için oluşturduğu 
+organizasyon üzerinde duracağız. Bu bölümü izleyen ikinci bölümde basit bir dosya sisteminin gerçekleştirimi eşliğinde 
+dosya sisteminin diğer önemli özelliklerini açıklayacağız. Dosya sistemine ilişkin diğer ayrıntıları ise başka konuları gördükten sonra 
+üçüncü bölümde ele alacağız.
 
 Giriş
 =====
@@ -29,7 +31,7 @@ Disk Aktarımına İlişkin Temel Bilgiler
 
 Biz kursumuzda "disk" terimini ikinci bellekleri belirten genel bir terim olarak kullanacağız. 
 Bir süre önceye kadar disk olarak ağırlıklı biçimde *hard disk* dnilen elektromekanik birimler 
-kullanılıyordu. Ancak bir süredir artık disk olarak yarı iletken teknolojiler kullanılarak oluşturulmuş 
+kullanılıyordu. Ancak bir süredir   artık disk olarak yarı iletken teknolojiler kullanılarak oluşturulmuş 
 *SSD (Solid State Disk)* denilen diskler kullanılmaktadır. Bugün ağırlıklı olarak kullandığımız SSD disklerin 
 herhangi bir mekanik parçası yoktur. SSD'ler *NAND Flash* denilen bellek teknolojisini kullanmaktadır. 
 SSD'ler hard disklere göre oldukça hızlıdır. Ancak onların en önemli handikapları belli bir yazma ömrünün 
