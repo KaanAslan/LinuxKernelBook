@@ -6923,8 +6923,8 @@ hali bir bütün olarak verilmiştir.
     sudo rmmod simplefs
     sudo losetup -d /dev/loop0
 
-Dosyadan Okuma Yazma Yapılması
-------------------------------
+Okuma Yazma İşlemleri
+---------------------
 
 Şimdi de dosya sistemimize "dosyaya yazma ve dosyadan okuma" desteğini verelim. Bunun için
 dosyaya ilişkin ``file_operations`` nesnesinin ``read`` ve ``write`` fonksiyonlarının yazılması
@@ -7276,13 +7276,13 @@ simplefs dosya sisteminin inode bilgilerine erişilmektedir:
     inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
 
 Dosyalarlarla İlgili Okuma ve Yazma İşlemlerinde Eski ve Yeni Arayüzler
------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Biz *simplefs* dosya sistemimizde dosyanın ilgili yerlerden okuma yaparken ``sb_bread`` fonksiyonunu kullandık. Bu klasik eski stil 
 ``buffer_head`` arayüzü ile okuma işlemidir. Ancak çekirdeğe daha sonraları *iomap* arayüzü ile tamponları (``buffer_head`` nesnelerini) elimine ederek
 okuma yazma olanağı da eklenmiştir. Biz bu *iomap* arayüzünü ileride üçüncü bölümde ele alacağız.
 
-simplefs_llseek Fonksiyonunun Yazılması
+Dosya Göstericisinin Komumlandırılması
 ---------------------------------------
 
 simplefs dosya sistemimiz temel olarak bitmek üzeredir. Son olarak biz dosya göstericisinin
@@ -7298,9 +7298,9 @@ içerisine yerleştirmemiz gerekir:
 .. code-block:: c
 
     static const struct file_operations simplefs_file_inode_fops = {
-        .owner  = THIS_MODULE,
-        .read   = simplefs_read,
-        .write  = simplefs_write,
+        .owner = THIS_MODULE,
+        .read = simplefs_read,
+        .write = simplefs_write,
         .llseek = simplefs_llseek,
     };
 
@@ -7360,14 +7360,14 @@ nesnesinin ``llseek`` elemanına bu fonksiyonun adresi girilebilir:
 .. code-block:: c
 
     static const struct file_operations simplefs_file_inode_fops = {
-        .owner  = THIS_MODULE,
-        .read   = simplefs_read,
-        .write  = simplefs_write,
+        .owner = THIS_MODULE,
+        .read = simplefs_read,
+        .write = simplefs_write,
         .llseek = generic_file_llseek,
     };
 
-simplefs_file_inode_ops Nesnesinin Güncellenmesi
-================================================
+inode_operations Nesnesi
+------------------------
 
 simplefs gerçekleştirimimizde dosyalara ilişkin inode elemanlarının ``i_op`` elemanına
 yerleştirdiğimiz ``inode_operations`` nesnesinin içi boş bırakılmıştır:
