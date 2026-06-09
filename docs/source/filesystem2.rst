@@ -2824,14 +2824,14 @@ bütün olarak veriyoruz.
        char name[SIMPLEFS_FILENAME_MAXLEN];    /* File name */
    };
 
-   #define SIMPLEFS_DISK_DENTRY_SIZE  sizeof(struct simplefs_disk_dentry)
-   #define SIMPLEFS_MAX_DENTRIES      (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_DENTRY_SIZE)
+   #define SIMPLEFS_DISK_DENTRY_SIZE    sizeof(struct simplefs_disk_dentry)
+   #define SIMPLEFS_MAX_DENTRIES        (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_DENTRY_SIZE)
 
-   #define SIMPLEFS_SB(sb)       ((struct simplefs_super_block *)(((sb)->s_fs_info)))
-   #define SIMPLEFS_DISK_SB(sb)  (SIMPLEFS_SB(sb)->sbd)
+   #define SIMPLEFS_SB(sb)              ((struct simplefs_super_block *)(((sb)->s_fs_info)))
+   #define SIMPLEFS_DISK_SB(sb)         (SIMPLEFS_SB(sb)->sbd)
 
-   #define SIMPLEFS_DISK_INODE_SIZE       sizeof(struct simplefs_disk_inode)
-   #define SIMPLEFS_DISK_INODE_PER_BLOCK  (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
+   #define SIMPLEFS_DISK_INODE_SIZE         sizeof(struct simplefs_disk_inode)
+   #define SIMPLEFS_DISK_INODE_PER_BLOCK    (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
 
    static struct dentry *simplefs_mount(struct file_system_type *type, int flags,
                                         const char *dev, void *data);
@@ -3535,8 +3535,7 @@ veriyoruz.
    #define SIMPLEFS_DISK_INODE_SIZE       sizeof(struct simplefs_disk_inode)
    #define SIMPLEFS_DISK_INODE_PER_BLOCK  (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
 
-   static struct dentry *simplefs_mount(struct file_system_type *type, int flags,
-                                        const char *dev, void *data);
+   static struct dentry *simplefs_mount(struct file_system_type *type, int flags, const char *dev, void *data);
    static int simplefs_fill_super(struct super_block *sb, void *data, int silent);
    static void simplefs_kill_sb(struct super_block *sb);
    static struct inode *simplefs_alloc_inode(struct super_block *sb);
@@ -3584,8 +3583,7 @@ veriyoruz.
    {
        int result;
 
-       simplefs_inode_cachep = kmem_cache_create("simplefs_inode_cache",
-               sizeof(struct simplefs_inode), 0, SLAB_HWCACHE_ALIGN, NULL);
+       simplefs_inode_cachep = kmem_cache_create("simplefs_inode_cache", sizeof(struct simplefs_inode), 0, SLAB_HWCACHE_ALIGN, NULL);
        if (simplefs_inode_cachep == NULL) {
            printk(KERN_ERR "cannot allocate slab cache\n");
            return -ENOMEM;
@@ -3810,8 +3808,7 @@ veriyoruz.
        struct buffer_head *bh;
        struct simplefs_disk_inode *disk_inode;
 
-       block_no     = SIMPLEFS_INODE_TABLE_LOCATION
-                      + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+       block_no = SIMPLEFS_INODE_TABLE_LOCATION  ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
        block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
 
        if ((bh = sb_bread(sb, block_no)) == NULL)
@@ -3866,7 +3863,7 @@ veriyoruz.
        unsigned long ino;
        int i;
 
-       inode     = file_inode(file);
+       inode = file_inode(file);
        inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
 
        if (ctx->pos >= SIMPLEFS_MAX_DENTRIES)
@@ -3939,8 +3936,7 @@ Yapının ``mkdir`` elemanına girilecek fonksiyonun parametrik yapısı şöyle
 
 .. code-block:: c
 
-   static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
-                             struct dentry *dentry, umode_t mode)
+   static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir, struct dentry *dentry, umode_t mode)
    {
        /* ... */
    }
@@ -4919,12 +4915,6 @@ Aşağıda geldiğimiz noktaya kadarki ``simplefs`` dosya sisteminin kodları ve
 test ederken komut satırında "mkdir" komutuyla dizin yaratıp onu "rmdir" komutuyla silmeye çalışabilirsiniz. 
 İç içe dizinler yaratarak da test işlemini yapmalısınız.
 
-simplefs Modülünün Tam Kaynak Kodu (rmdir Destekli)
-===================================================
-
-Bu bölümde ``rmdir`` ve güncellenmiş ``evict_inode`` desteğiyle birlikte simplefs dosya
-sisteminin tam kaynak kodu verilmiştir.
-
 ``simplefs.c``
 
 .. code-block:: c
@@ -5003,8 +4993,7 @@ sisteminin tam kaynak kodu verilmiştir.
     #define SIMPLEFS_DISK_INODE_SIZE      sizeof(struct simplefs_disk_inode)
     #define SIMPLEFS_DISK_INODE_PER_BLOCK (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
 
-    static struct dentry *simplefs_mount(struct file_system_type *type, int flags,
-            const char *dev, void *data);
+    static struct dentry *simplefs_mount(struct file_system_type *type, int flags, const char *dev, void *data);
     static int simplefs_fill_super(struct super_block *sb, void *data, int silent);
     static void simplefs_kill_sb(struct super_block *sb);
     static struct inode *simplefs_alloc_inode(struct super_block *sb);
@@ -5012,20 +5001,17 @@ sisteminin tam kaynak kodu verilmiştir.
     static int simplefs_write_inode(struct inode *inode, struct writeback_control *wbc);
     static void simplefs_evict_inode(struct inode *inode);
     static struct inode *simplefs_iget(struct super_block *sb, unsigned long ino);
-    static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
+    static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb, 
             unsigned long ino, struct buffer_head **bhp);
-    static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry,
-            unsigned int flags);
+    static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags);
     static int simplefs_iterate_shared(struct file *file, struct dir_context *ctx);
-    static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
-            struct dentry *dentry, umode_t mode);
+    static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir, struct dentry *dentry, umode_t mode);
     static int simplefs_alloc_inode_num(struct super_block *sb);
     static struct inode *simplefs_new_inode(struct inode *dir, umode_t mode);
     static void simplefs_free_inode_num(struct super_block *sb, int ino);
     static int simplefs_alloc_data_block(struct super_block *sb);
     static void simplefs_free_data_block(struct super_block *sb, int block);
-    static int simplefs_add_entry(struct inode *dir, struct dentry *dentry,
-            struct inode *inode);
+    static int simplefs_add_entry(struct inode *dir, struct dentry *dentry, struct inode *inode);
     static int simplefs_rmdir(struct inode *dir, struct dentry *dentry);
     static int simplefs_remove_entry(struct inode *dir, struct dentry *dentry);
 
@@ -5349,12 +5335,10 @@ sisteminin tam kaynak kodu verilmiştir.
         return disk_inode;
     }
 
-    static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry,
-            unsigned int flags)
+    static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry,  unsigned int flags)
     {
         struct super_block *sb = dir->i_sb;
-        struct simplefs_inode *inode_sfs =
-                container_of(dir, struct simplefs_inode, vfs_inode);
+        struct simplefs_inode *inode_sfs = container_of(dir, struct simplefs_inode, vfs_inode);
         struct buffer_head *bh;
         struct simplefs_disk_dentry *de;
         struct inode *inode = NULL;
@@ -5430,8 +5414,7 @@ sisteminin tam kaynak kodu verilmiştir.
         return 0;
     }
 
-    static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
-            struct dentry *dentry, umode_t mode)
+    static int simplefs_mkdir(struct mnt_idmap *idmap, struct inode *dir, struct dentry *dentry, umode_t mode)
     {
         struct inode *inode;
         struct buffer_head *bh;
