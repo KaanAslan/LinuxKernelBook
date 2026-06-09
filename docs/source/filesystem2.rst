@@ -6922,3 +6922,475 @@ hali bir bütün olarak verilmiştir.
     sudo umount simplefs-root
     sudo rmmod simplefs
     sudo losetup -d /dev/loop0
+
+Dosyadan Okuma Yazma Yapılması
+------------------------------
+
+Şimdi de dosya sistemimize "dosyaya yazma ve dosyadan okuma" desteğini verelim. Bunun için
+dosyaya ilişkin ``file_operations`` nesnesinin ``read`` ve ``write`` fonksiyonlarının yazılması
+gerekir:
+
+.. code-block:: c
+
+    static const struct file_operations simplefs_file_inode_fops = {
+        .owner = THIS_MODULE,
+        .read  = simplefs_read,
+        .write = simplefs_write,
+    };
+
+Aslında biz Linux aygıt sürücülerini anlattığımız kurslarımızda bu fonksiyonları defalarca
+yazmıştık. ``read`` ve ``write`` fonksiyonlarının parametrik yapıları şöyle olmalıdır:
+
+.. code-block:: c
+
+    static ssize_t simplefs_write(struct file *filp, const char *buf,
+            size_t size, loff_t *off)
+    {
+        /* ... */
+    }
+
+    static ssize_t simplefs_read(struct file *filp, char *buf,
+            size_t size, loff_t *off)
+    {
+        /* ... */
+    }
+
+Çekirdek fonksiyonların birinci parametrelerine transferin yapılacağı dosyaya ilişkin dosya
+nesnesinin adresini geçirmektedir. Bu nesneden hareketle dosyaya ilişkin inode ve dentry
+nesnelerine erişilebileceğini anımsayınız. Çekirdek fonksiyonların ikinci parametrelerine
+(``buf``) transfer adresini geçirmektedir. Buradaki adresler kullanıcı modundaki ``read`` ve
+``write`` çağrılarını yapan programcının sağladığı tamponların adresleridir. Sistem
+programcısının okuma işleminde dosyadan okunanları bu tampona yerleştirmesi, yazma işleminde
+de bu tampondakileri dosyaya yazması gerekir. Fonksiyonların üçüncü parametreleri (``size``)
+okunacak ya da yazılacak byte miktarını belirtmektedir. Çekirdek dosya göstericisinin konumunu
+fonksiyonların son parametresi yoluyla fonksiyonlara vermektedir. Şimdi siz "zaten dosya
+nesnesinin (file yapısının) içerisinde dosya göstericisinin konumu var, neden yeniden bu konum
+fonksiyona geçiriliyor" diye merak edebilirsiniz. İşte çekirdek aslında dosya göstericisinin
+konumunu önce bir yerel nesneye yazıp bu fonksiyonu çağırdıktan sonra dosya nesnesine
+aktarmaktadır. Son parametre de aslında o yerel nesnenin adresidir. Sistem programcısının
+dosya göstericisinin konumunu ``file`` nesnesinden değil ``*off`` ifadesiyle bu nesneden alması,
+onun yeni konumunu da ``*off`` ifadesiyle güncellemesi gerekmektedir. ``read`` ve ``write``
+fonksiyonları başarı durumunda okunan ya da yazılan byte sayısına, başarısızlık durumunda ise
+negatif hata koduna geri dönmelidir.
+
+Çekirdek modunda kullanıcı modundaki adrese erişirken sistem programcısının dikkatli olması
+gerekir. Çünkü kullanıcı modundan geçirilen adres geçersiz bir adres olabilir, çekirdekteki
+bir adres olabilir. Doğrudan bu adreslere erişmek tüm sistemin çökmesine yol açabilmektedir.
+İşte bunun için Linux çekirdeklerinde kullanıcı modu ile çekirdek modu arasında transfer yapan
+özel çekirdek fonksiyonları bulundurulmuştur. Biz bu fonksiyonları bellek yönetimi kısmında ele
+alacağız. Ancak burada iki genel fonksiyondan bahsetmek istiyoruz: ``copy_from_user`` ve
+``copy_to_user`` fonksiyonları. Bu fonksiyonlar hem kullanıcı modundaki adreslerin geçerli olup
+olmadığını kontrol etmekte hem de transferi yapmaktadır. Bu fonksiyonların parametrik yapıları
+şöyledir:
+
+.. code-block:: c
+
+    #include <linux/uaccess.h>
+
+    unsigned long copy_to_user(void *to, const void *from, unsigned len);
+    unsigned long copy_from_user(void *to, const void *from, unsigned len);
+
+Fonksiyonların birinci parametreleri kopyalamanın yapılacağı hedef adresi belirtmektedir. Yani
+``copy_to_user`` için birinci parametre kullanıcı alanındaki adres, ``copy_from_user`` için
+birinci parametre çekirdek alanındaki adrestir. İkinci parametre kaynak adresi belirtmektedir.
+Bu kaynak adres ``copy_to_user`` için çekirdek alanındaki adresi, ``copy_from_user`` için ise
+kullanıcı alanındaki adresi belirtir. Son parametre aktarılacak byte sayısını belirtmektedir.
+Fonksiyonlar başarı durumunda 0 değerine, başarısızlık durumunda aktarılamayan byte sayısına
+geri dönerler. Çekirdek mod programcılarının bu fonksiyonlar başarısız olursa kendi
+fonksiyonlarını ``-EFAULT`` (Bad address) ile geri döndürmesi uygun olur. (Örneğin ``sys_read``
+ve ``sys_write`` fonksiyonlarına biz geçersiz bir user mode adresi verirsek bu sistem
+fonksiyonları da ``-EFAULT`` değeri ile geri dönmektedir. Bu hata kodunun yazısal karşılığı
+``Bad address`` biçimindedir.) Örneğin kontrol şöyle yapılabilir:
+
+.. code-block:: c
+
+    if (copy_to_user(...) != 0)
+        return -EFAULT;
+
+``write`` fonksiyonunda şunların yapılması gerekir:
+
+1. Fonksiyonda önce dosya göstericisinin konumu kontrol edilmelidir. Eğer dosya göstericisinin
+   konumu uygun değilse ``write`` fonksiyonu hata koduyla döndürülebilir:
+
+   .. code-block:: c
+
+       if (*off >= SIMPLEFS_BLOCK_SIZE)
+           return -EFBIG;
+
+   Burada yapılan kontrole dikkat ediniz. Dosya göstericisinin konumunun dosya sisteminin izin
+   verdiği maksimum uzunluğunu geçip geçmediğine bakılmıştır. Biz henüz göstericiyi
+   konumlandırmadık. Dosya göstericisi konumlandırılırken yazma sırasında dosya uzunluğunun
+   ötesine konumlandırma yapılmasına izin verilebilir. Anımsanacağı gibi ext2 ve ext4 dosya
+   sistemleri bu tür durumlarda *dosya delikleri (file holes)* oluşturmaktadır.
+
+2. Eğer dosya yaratıldıktan sonra onun üzerinde daha hiç işlem yapılmamışsa dosya için blok
+   tahsisatı yapılmalıdır. ``write`` işleminde dosya göstericisi kontrol edildikten sonra dosya
+   için henüz bir blok tahsisatı yapılmamışsa o blok tahsisatı yapılmıştır:
+
+   .. code-block:: c
+
+       if (inode_sfs->block_no == 0) {
+           if ((block = simplefs_alloc_data_block(inode->i_sb)) < 0)
+               return block;
+           printk(KERN_INFO "New block allocated for file: %d\n", block);
+           inode_sfs->block_no = block;
+           inode->i_blocks = 1;
+       }
+
+   Burada inode yapısının ``i_blocks`` elemanına da dosyanın kapladığı blok sayısını belirten
+   1 değeri yerleştirilmiştir. Bu bizim için zorunlu değildir. Ancak ``stat``, ``fstat`` gibi
+   fonksiyonlar bu bilgiyi de bize verebilmektedir.
+
+3. Dosyaya yazılacak yere ilişkin data bloğunun tespit edilmesi ve o bloğun ``sb_bread``
+   fonksiyonuyla okunması gerekir. Tabii belki de o blok zaten sayfa ön belleğindedir ve
+   oradan verilecektir. simplefs dosya sistemimizde zaten her dosya en fazla bir blok
+   uzunluğunda olabilmektedir. O halde bizim için bu işlem oldukça basittir:
+
+   .. code-block:: c
+
+       if ((bh = sb_bread(inode->i_sb, inode_sfs->block_no)) == NULL) {
+           simplefs_free_data_block(inode->i_sb, block);
+           return -EIO;
+       }
+
+4. Efektif yazma uzunluğu hesaplanmalıdır. Yani örneğin dosya göstericisi dosyanın maksimum
+   uzunluğuna doğru bir yerlerdeyse biz en fazla dosya göstericisinin gösterdiği yerden
+   itibaren bu uzunluk kadar bilgiyi dosyaya yazabiliriz:
+
+   .. code-block:: c
+
+       esize = min_t(size_t, SIMPLEFS_BLOCK_SIZE - *off, size);
+
+5. ``copy_from_user`` ya da diğer kopyalama fonksiyonlarıyla kullanıcı alanındaki bilgi
+   çekirdek alanındaki bloğun uygun yerine kopyalanmalıdır:
+
+   .. code-block:: c
+
+       if (copy_from_user(bh->b_data + *off, buf, esize) != 0) {
+           brelse(bh);
+           simplefs_free_data_block(inode->i_sb, block);
+           return -EFAULT;
+       }
+
+6. Dosya göstericisinin konumu yazılan miktar kadar ilerletilmelidir:
+
+   .. code-block:: c
+
+       *off += esize;
+       if (*off > inode->i_size)
+           inode->i_size = *off;
+
+   ``inode`` yapısının ``i_size`` elemanı dosyanın o anki uzunluğunu belirtmektedir.
+   Görüldüğü gibi dosya göstericisi bu uzunluğu aşmışsa bu uzunluk güncellenmiştir.
+
+7. Yazma işleminden sonra dosyanın ``mtime`` ve ``ctime`` zamanlarının güncellenmesi ve
+   inode elemanı ile yazmanın yapıldığı ``buffer_head`` nesnesinin kirli hale getirilmesi
+   gerekir:
+
+   .. code-block:: c
+
+       now = current_time(inode);
+       inode_set_mtime(inode, now.tv_sec, now.tv_nsec);
+       inode_set_ctime(inode, now.tv_sec, now.tv_nsec);
+
+       mark_buffer_dirty(bh);
+       mark_inode_dirty(inode);
+       brelse(bh);
+
+8. Fonksiyon yazılan byte sayısı ile geri döndürülmelidir.
+
+``simplefs_write`` fonksiyonunun kodları bütünsel olarak aşağıda verilmiştir:
+
+.. code-block:: c
+
+    static ssize_t simplefs_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        struct inode *inode;
+        struct simplefs_inode *inode_sfs;
+        int block;
+        struct buffer_head *bh;
+        size_t esize;
+        struct timespec64 now;
+
+        inode = file_inode(filp);
+        inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+        printk(KERN_INFO "write stats...\n");
+
+        if (*off >= SIMPLEFS_BLOCK_SIZE)
+            return -EFBIG;
+
+        if (inode_sfs->block_no == 0) {
+            if ((block = simplefs_alloc_data_block(inode->i_sb)) < 0)
+                return block;
+            printk(KERN_INFO "New block allocated for file: %d\n", block);
+            inode_sfs->block_no = block;
+            inode->i_blocks = 1;
+        }
+        if ((bh = sb_bread(inode->i_sb, inode_sfs->block_no)) == NULL) {
+            simplefs_free_data_block(inode->i_sb, block);
+            return -EIO;
+        }
+        esize = min_t(size_t, SIMPLEFS_BLOCK_SIZE - *off, size);
+        if (copy_from_user(bh->b_data + *off, buf, esize) != 0) {
+            brelse(bh);
+            simplefs_free_data_block(inode->i_sb, block);
+            return -EFAULT;
+        }
+
+        *off += esize;
+        if (*off > inode->i_size)
+            inode->i_size = *off;
+
+        now = current_time(inode);
+        inode_set_mtime(inode, now.tv_sec, now.tv_nsec);
+        inode_set_ctime(inode, now.tv_sec, now.tv_nsec);
+
+        mark_buffer_dirty(bh);
+        mark_inode_dirty(inode);
+        brelse(bh);
+
+        return esize;
+    }
+
+Fonksiyonda dosya nesnesinden hareketle inode nesnesinin, inode nesnesinden hareketle de
+simplefs dosya sistemine özgü inode bilgilerinin elde edildiğine dikkat ediniz:
+
+.. code-block:: c
+
+    inode = file_inode(filp);
+    inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+simplefs dosya sistemine ilişkin ``read`` fonksiyonunda şunların yapılması gerekmektedir:
+
+1. Fonksiyonda önce dosya göstericisinin konumu kontrol edilmelidir. Eğer dosya göstericisinin
+   konumu uygun değilse ``read`` fonksiyonu 0 ile döndürülebilir:
+
+   .. code-block:: c
+
+       if (*off >= inode->i_size)
+           return 0;
+
+2. Eğer dosya yaratıldıktan sonra onun üzerinde daha hiç işlem yapılmamışsa dosya için blok
+   tahsis edilmemiştir. Bu kontrol yapılmalı ve fonksiyon 0 ile geri döndürülmelidir. Başka
+   bir deyişle dosya 0 byte uzunluğundaysa fonksiyon hemen 0 ile geri döndürülmelidir:
+
+   .. code-block:: c
+
+       if (inode_sfs->block_no == 0)
+           return 0;
+
+3. Dosyadan okuma yapılacak yerin tespit edilmesi ve o bloğun ``sb_bread`` fonksiyonuyla
+   okunması gerekir. Tabii belki de o blok zaten sayfa ön belleğindedir ve oradan
+   verilecektir. simplefs dosya sistemimizde zaten her dosya en fazla bir blok uzunluğunda
+   olabilmektedir:
+
+   .. code-block:: c
+
+       if ((bh = sb_bread(inode->i_sb, inode_sfs->block_no)) == NULL)
+           return -EIO;
+
+4. Efektif okuma uzunluğu hesaplanmalıdır. Yani örneğin dosya göstericisi dosyanın sonlarına
+   doğru bir yerdeyse biz en fazla dosya göstericisinin gösterdiği yerden itibaren dosya
+   sonuna kadar okuma yapabiliriz:
+
+   .. code-block:: c
+
+       esize = min_t(size_t, inode->i_size - *off, size);
+
+5. ``copy_to_user`` ya da diğer kopyalama fonksiyonlarıyla çekirdek alanındaki bilgi kullanıcı
+   alanına transfer edilmelidir:
+
+   .. code-block:: c
+
+       if (copy_to_user(buf, bh->b_data + *off, esize) != 0) {
+           brelse(bh);
+           return -EFAULT;
+       }
+
+6. Dosya göstericisinin konumu okunan miktar kadar ilerletilmelidir:
+
+   .. code-block:: c
+
+       *off += esize;
+
+7. Okuma işleminden sonra dosyanın son erişim zamanının güncellenmesi ve inode elemanının
+   kirli hale getirilmesi gerekir:
+
+   .. code-block:: c
+
+       now = current_time(inode);
+       inode_set_atime(inode, now.tv_sec, now.tv_nsec);
+
+       mark_inode_dirty(inode);
+       brelse(bh);
+
+8. Fonksiyon okunan byte sayısı ile geri döndürülmelidir.
+
+simplefs dosya sistemimiz için ``read`` fonksiyonu bir bütün olarak aşağıda verilmiştir:
+
+.. code-block:: c
+
+    static ssize_t simplefs_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        struct inode *inode;
+        struct simplefs_inode *inode_sfs;
+        struct buffer_head *bh;
+        struct timespec64 now;
+        size_t esize;
+
+        inode = file_inode(filp);
+        inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+        if (*off >= inode->i_size)
+            return 0;
+
+        if (inode_sfs->block_no == 0)
+            return 0;
+
+        if ((bh = sb_bread(inode->i_sb, inode_sfs->block_no)) == NULL)
+            return -EIO;
+
+        esize = min_t(size_t, inode->i_size - *off, size);
+        if (copy_to_user(buf, bh->b_data + *off, esize) != 0) {
+            brelse(bh);
+            return -EFAULT;
+        }
+        *off += esize;
+
+        now = current_time(inode);
+        inode_set_atime(inode, now.tv_sec, now.tv_nsec);
+
+        mark_inode_dirty(inode);
+        brelse(bh);
+
+        return esize;
+    }
+
+Burada da önce dosya nesnesinden hareketle inode nesnesine, inode nesnesinden hareketle de
+simplefs dosya sisteminin inode bilgilerine erişilmektedir:
+
+.. code-block:: c
+
+    inode = file_inode(filp);
+    inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
+
+Dosyalarlarla İlgili Okuma ve Yazma İşlemlerinde Eski ve Yeni Arayüzler
+-----------------------------------------------------------------------
+
+Biz *simplefs* dosya sistemimizde dosyanın ilgili yerlerden okuma yaparken ``sb_bread`` fonksiyonunu kullandık. Bu klasik eski stil 
+``buffer_head`` arayüzü ile okuma işlemidir. Ancak çekirdeğe daha sonraları *iomap* arayüzü ile tamponları (``buffer_head`` nesnelerini) elimine ederek
+okuma yazma olanağı da eklenmiştir. Biz bu *iomap* arayüzünü ileride üçüncü bölümde ele alacağız.
+
+simplefs_llseek Fonksiyonunun Yazılması
+---------------------------------------
+
+simplefs dosya sistemimiz temel olarak bitmek üzeredir. Son olarak biz dosya göstericisinin
+konumlandırılması işlemini de gerçekleştireceğiz. Bilindiği gibi dosya göstericisinin
+konumlandırılması kullanıcı modunda ``lseek`` POSIX fonksiyonuyla yapılmaktadır. ``lseek``
+POSIX fonksiyonu çekirdekteki ``sys_lseek`` sistem fonksiyonunu doğrudan çağırır. Bu fonksiyon
+da bazı işlemlerden sonra dosyaya ilişkin inode nesnesinin ``i_fops`` elemanında belirtilen
+``file_operations`` nesnesinin ``llseek`` elemanına yerleştirilmiş olan fonksiyonu
+çağırmaktadır. (C'deki ``fseek`` fonksiyonun da aslında ``lseek`` POSIX fonksiyonunu çağırdığını
+anımsayınız.) Bizim de önce çağrılacak fonksiyonu dosyaya ilişkin ``file_operations`` nesnesinin
+içerisine yerleştirmemiz gerekir:
+
+.. code-block:: c
+
+    static const struct file_operations simplefs_file_inode_fops = {
+        .owner  = THIS_MODULE,
+        .read   = simplefs_read,
+        .write  = simplefs_write,
+        .llseek = simplefs_llseek,
+    };
+
+``file_operations`` yapısının ``llseek`` fonksiyonunun parametrik yapısı şöyle olmalıdır:
+
+.. code-block:: c
+
+    static loff_t simplefs_llseek(struct file *filp, loff_t off, int whence)
+    {
+        /* ... */
+    }
+
+Burada yapılması gereken şey konumlandırma orijinini (``whence`` parametresini) dikkate alarak
+dosya nesnesinin (yani ``file`` yapısının) ``f_pos`` elemanını güncellemek ve fonksiyonu yeni
+``offset`` ile geri döndürmektir.
+
+Fonksiyonu şöyle yazabiliriz:
+
+.. code-block:: c
+
+    static loff_t simplefs_llseek(struct file *filp, loff_t off, int whence)
+    {
+        struct inode *inode;
+        loff_t new_pos;
+
+        inode = file_inode(filp);
+
+        switch (whence) {
+            case 0:
+                new_pos = off;
+                break;
+            case 1:
+                new_pos = filp->f_pos + off;
+                break;
+            case 2:
+                new_pos = inode->i_size + off;
+                break;
+            default:
+                return -EINVAL;
+        }
+        if (new_pos < 0 || new_pos > inode->i_size)
+            return -EINVAL;
+        filp->f_pos = new_pos;
+
+        return new_pos;
+    }
+
+Fonksiyonda görüldüğü gibi önce konumlandırma orijini ``switch`` içerisine sokulmuş, sonra
+yeni dosya ``offset``'i hesaplanmış ve bu ``offset`` geçerliyse ``file`` yapısının ``f_pos``
+elemanına yerleştirme yapılmıştır.
+
+Çekirdek içerisinde yukarıdaki gibi temel konumlandırma işlemini yapan yüksek seviyeli
+``generic_file_llseek`` isimli bir çekirdek fonksiyonu zaten bulunmaktadır. Yani eğer
+yukarıdakine benzer temel bir konumlandırma yapılmak isteniyorsa doğrudan ``file_operations``
+nesnesinin ``llseek`` elemanına bu fonksiyonun adresi girilebilir:
+
+.. code-block:: c
+
+    static const struct file_operations simplefs_file_inode_fops = {
+        .owner  = THIS_MODULE,
+        .read   = simplefs_read,
+        .write  = simplefs_write,
+        .llseek = generic_file_llseek,
+    };
+
+simplefs_file_inode_ops Nesnesinin Güncellenmesi
+================================================
+
+simplefs gerçekleştirimimizde dosyalara ilişkin inode elemanlarının ``i_op`` elemanına
+yerleştirdiğimiz ``inode_operations`` nesnesinin içi boş bırakılmıştır:
+
+.. code-block:: c
+
+    static const struct inode_operations simplefs_file_inode_ops = {
+        NULL
+    };
+
+simplefs dosya sistemimizin temel gerçekleştirimi için bizim bu yapının içini doldurmamıza
+şimdilik gerek yoktur. Ancak birtakım özelliklerin sağlanması için bu durum dosya sisteminin
+tasarımı geliştirildikçe gerekebilecektir. Örneğin yapının ``getattr`` ve ``setattr`` elemanları
+``chmod``, ``stat`` gibi fonksiyonlar tarafından "eğer set edilmişse" kullanılmaktadır. Bizim
+simplefs dosya sistemimizde aslında bu ``getattr`` ve ``setattr`` fonksiyonları olmasa da yine
+``chmod``, ``stat`` gibi fonksiyonlar çalışacaktır. Ayrıca çekirdek içerisinde bu fonksiyonların
+basit bir gerçekleştirimi de ``simple_getattr`` ve ``simple_setattr`` ismiyle bulunmaktadır.
+İsterseniz bu yapı nesnesinin içerisine zaten çekirdek içerisinde bulunan bu fonksiyonların
+adreslerini yerleştirebilirsiniz:
+
+.. code-block:: c
+
+    static const struct inode_operations simplefs_file_inode_ops = {
+        .setattr = simple_setattr,
+        .getattr = simple_getattr,
+    };
