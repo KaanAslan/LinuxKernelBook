@@ -6531,7 +6531,7 @@ yapısının aşağıdaki elemanlarını doldurmalıdır:
 
      struct dentry *d_make_root(struct inode *root_inode);
 
-Biz "simplefs" dosya esisteminin gerçekleştirilmesi konusunda da ``mount_nodev`` ve ``mount_bdev`` fonksiyonları 
+Biz *simplefs* dosya esisteminin gerçekleştirilmesi konusunda da ``mount_nodev`` ve ``mount_bdev`` fonksiyonları 
 üzerinde duracağız. 
 
 Yeni Çekirdeklerdeki Yüksek Seviyeli Mekanizma: init_fs_context
