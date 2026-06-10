@@ -8123,8 +8123,7 @@ adreslerini yerleştirebilirsiniz:
         spin_unlock(&sfs_sb->lock);
     }
 
-    static int simplefs_add_entry(struct inode *dir, struct dentry *dentry,
-            struct inode *inode)
+    static int simplefs_add_entry(struct inode *dir, struct dentry *dentry, struct inode *inode)
     {
         struct super_block *sb;
         struct simplefs_inode *inode_dir_sfs;
@@ -8190,8 +8189,7 @@ adreslerini yerleştirebilirsiniz:
             return -ENOTEMPTY;
 
         if (simplefs_remove_entry(dir, dentry) != 0)
-            printk(KERN_ERR "cannot delete directory entry dentry %s\n",
-                    dentry->d_name.name);
+            printk(KERN_ERR "cannot delete directory entry dentry %s\n", dentry->d_name.name);
         inode_dec_link_count(dir);
         inode_dec_link_count(inode);
         inode_dec_link_count(inode);
