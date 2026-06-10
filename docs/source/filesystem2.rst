@@ -8539,3 +8539,1253 @@ adreslerini yerleştirebilirsiniz:
 
         return 0;
     }
+    
+Dosya Sistemi İle İlgili Önemli Çekirdek Fonksiyonları
+------------------------------------------------------
+
+Burada son olarak yukarıdaki simplefs dosya sistemimizin gerçekleştiriminde kullanılan çekirdeğe ait olan yüksek 
+seviyeli fonksiyonların bir listesini yapıp işlevlerini özetlemek istiyoruz.
+
+.. admonition:: register_filesystem
+
+    .. code-block:: c
+
+        int register_filesystem(struct file_system_type *fs)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/filesystems.c``
+
+    Yeni bir dosya sistemi türünü çekirdeğe kaydeder. Kayıttan sonra dosya sistemi
+    ``/proc/filesystems`` içinde görünür ve mount edilebilir duruma gelir.
+
+    **Parametreler:**
+
+    - ``fs`` — Kaydedilecek dosya sistemi türünü betimleyen ``file_system_type`` nesnesi
+
+    **Geri Dönüş:** ``0`` (başarılı) veya negatif errno değeri
+    (örn. aynı isimde dosya sistemi zaten kayıtlıysa ``-EBUSY``)
+
+.. admonition:: unregister_filesystem
+
+    .. code-block:: c
+
+        int unregister_filesystem(struct file_system_type *fs)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/filesystems.c``
+
+    Kayıtlı dosya sistemi türünü çekirdekten kaldırır. Tipik olarak modülün
+    ``exit`` fonksiyonunda çağrılır.
+
+    **Parametreler:**
+
+    - ``fs`` — Kaydı kaldırılacak ``file_system_type`` nesnesi
+
+    **Geri Dönüş:** ``0`` (başarılı) veya negatif errno değeri
+    (kayıt bulunamazsa ``-EINVAL``)
+
+.. admonition:: mount_bdev
+
+    .. code-block:: c
+
+        struct dentry *mount_bdev(struct file_system_type *fs_type,
+                                  int flags,
+                                  const char *dev_name,
+                                  void *data,
+                                  int (*fill_super)(struct super_block *, void *, int))
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/super.c``
+
+    Blok aygıt tabanlı dosya sistemini bağlar (mount). Aygıtı açar,
+    ``super_block`` nesnesini oluşturur ve doldurulması için ``fill_super``
+    callback'ini çağırır.
+
+    **Parametreler:**
+
+    - ``fs_type`` — Dosya sistemi türü nesnesi
+    - ``flags`` — Mount bayrakları
+    - ``dev_name`` — Blok aygıtın yolu (örn. ``/dev/sdb1``)
+    - ``data`` — Mount seçenekleri
+    - ``fill_super`` — Super block'u dolduracak callback fonksiyonu
+
+    **Geri Dönüş:** Kök dentry göstericisi veya hata durumunda ``ERR_PTR`` değeri
+
+    **Not:** Eski (legacy) mount API'sine aittir; modern çekirdeklerde ``fs_context``
+    tabanlı ``get_tree_bdev()`` tercih edilmektedir.
+
+.. admonition:: kill_block_super
+
+    .. code-block:: c
+
+        void kill_block_super(struct super_block *sb)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/super.c``
+
+    Blok aygıt tabanlı super block'u sonlandırır; bağlı kaynakları ve blok aygıtı
+    serbest bırakır. ``file_system_type``'ın ``kill_sb`` callback'i olarak kullanılır.
+
+    **Parametreler:**
+
+    - ``sb`` — Sonlandırılacak super block nesnesi
+
+.. admonition:: sb_bread
+
+    .. code-block:: c
+
+        struct buffer_head *sb_bread(struct super_block *sb, sector_t block)
+
+    **Başlık Dosyası:** ``<linux/buffer_head.h>``
+
+    **Kaynak Dosya:** ``include/linux/buffer_head.h`` (inline; ``__bread()`` üzerinden
+    ``fs/buffer.c`` içindeki gerçekleştirimi çağırır)
+
+    Belirtilen super block'a ilişkin dosya sistemindeki bir bloğu (gerekirse diskten)
+    okur ve ``buffer_head`` nesnesi olarak döndürür.
+
+    .. code-block:: none
+
+        ┌─────────────┐
+        │ super_block │
+        └──────┬──────┘
+               │ sb_bread()
+               ↓
+        ┌─────────────┐
+        │ buffer_head │  ← Blok verisi bellekte
+        └─────────────┘
+
+    **Parametreler:**
+
+    - ``sb`` — Super block nesnesi
+    - ``block`` — Okunacak blok numarası
+
+    **Geri Dönüş:** ``buffer_head`` nesnesinin adresi, başarısızlık durumunda ``NULL``
+
+    **Not:** İş bittiğinde ``buffer_head`` referansı ``brelse()`` ile bırakılmalıdır.
+
+.. admonition:: sb_set_blocksize
+
+    .. code-block:: c
+
+        int sb_set_blocksize(struct super_block *sb, int size)
+
+    **Başlık Dosyası:** ``<linux/buffer_head.h>``
+
+    **Kaynak Dosya:** ``block/bdev.c`` (eski çekirdeklerde ``fs/block_dev.c``)
+
+    ``super_block`` nesnesinin ``s_blocksize`` ve ``s_blocksize_bits`` elemanlarını
+    set eder; blok aygıtın mantıksal blok boyutunu da buna göre ayarlar.
+
+    **Parametreler:**
+
+    - ``sb`` — Super block nesnesi
+    - ``size`` — Blok boyutu (byte cinsinden, 2'nin kuvveti olmalıdır)
+
+    **Geri Dönüş:** Ayarlanan blok boyutu, başarısızlık durumunda ``0``
+
+.. admonition:: memset
+
+    .. code-block:: c
+
+        void *memset(void *s, int c, size_t n)
+
+    **Başlık Dosyası:** ``<linux/string.h>``
+
+    **Kaynak Dosya:** ``lib/string.c`` veya mimariye özgü gerçekleştirim
+
+    Bellek bölgesini belirtilen değerle doldurur.
+
+    **Parametreler:**
+
+    - ``s`` — Hedef bellek adresi
+    - ``c`` — Doldurulacak değer (byte)
+    - ``n`` — Byte sayısı
+
+    **Geri Dönüş:** ``s`` adresi
+
+.. admonition:: strcmp
+
+    .. code-block:: c
+
+        int strcmp(const char *cs, const char *ct)
+
+    **Başlık Dosyası:** ``<linux/string.h>``
+
+    **Kaynak Dosya:** ``lib/string.c``
+
+    İki dizeyi karşılaştırır.
+
+    **Parametreler:**
+
+    - ``cs`` — Birinci dize
+    - ``ct`` — İkinci dize
+
+    **Geri Dönüş:** ``0`` (eşit), ``<0`` (cs < ct), ``>0`` (cs > ct)
+
+.. admonition:: strlen
+
+    .. code-block:: c
+
+        size_t strlen(const char *s)
+
+    **Başlık Dosyası:** ``<linux/string.h>``
+
+    **Kaynak Dosya:** ``lib/string.c``
+
+    Null karakter hariç dize uzunluğunu hesaplar.
+
+    **Parametreler:**
+
+    - ``s`` — Uzunluğu hesaplanacak dize
+
+    **Geri Dönüş:** Dizenin karakter sayısı
+
+.. admonition:: strcpy
+
+    .. code-block:: c
+
+        char *strcpy(char *dest, const char *src)
+
+    **Başlık Dosyası:** ``<linux/string.h>``
+
+    **Kaynak Dosya:** ``lib/string.c``
+
+    Kaynak dizeyi (null karakter dahil) hedef tampona kopyalar. Taşma denetimi
+    yapmaz (güvensiz).
+
+    **Parametreler:**
+
+    - ``dest`` — Hedef buffer
+    - ``src`` — Kaynak string
+
+    **Geri Dönüş:** ``dest`` adresi
+
+.. admonition:: strncpy
+
+    .. code-block:: c
+
+        char *strncpy(char *dest, const char *src, size_t n)
+
+    **Başlık Dosyası:** ``<linux/string.h>``
+
+    **Kaynak Dosya:** ``lib/string.c``
+
+    String'i belirtilen maksimum uzunlukta kopyalar.
+
+    **Parametreler:**
+
+    - ``dest`` — Hedef buffer
+    - ``src`` — Kaynak string
+    - ``n`` — Maksimum kopyalanacak karakter sayısı
+
+    **Geri Dönüş:** ``dest`` adresi
+
+    **Not:** ``src`` dizesi ``n`` karakterden kısa ise kalan kısım sıfır ile
+    doldurulur; ``n`` karakterden uzun ise hedefe null karakter yazılmaz.
+
+.. admonition:: kmem_cache_create
+
+    .. code-block:: c
+
+        struct kmem_cache *kmem_cache_create(const char *name,
+                                             unsigned int size,
+                                             unsigned int align,
+                                             slab_flags_t flags,
+                                             void (*ctor)(void *))
+
+    **Başlık Dosyası:** ``<linux/slab.h>``
+
+    **Kaynak Dosya:** ``mm/slab_common.c``
+
+    Belirli bir nesne türü için dilimli tahsisat sistemi (slab cache) oluşturur.
+
+    **Parametreler:**
+
+    - ``name`` — Cache adı (``/proc/slabinfo`` içinde görünür)
+    - ``size`` — Nesne boyutu
+    - ``align`` — Hizalama (alignment) değeri
+    - ``flags`` — SLAB bayrakları (örn. ``SLAB_HWCACHE_ALIGN``)
+    - ``ctor`` — Constructor fonksiyonu (gereksizse ``NULL``)
+
+    **Geri Dönüş:** ``struct kmem_cache`` göstericisi, başarısızlık durumunda ``NULL``
+
+.. admonition:: kmem_cache_destroy
+
+    .. code-block:: c
+
+        void kmem_cache_destroy(struct kmem_cache *s)
+
+    **Başlık Dosyası:** ``<linux/slab.h>``
+
+    **Kaynak Dosya:** ``mm/slab_common.c``
+
+    Dilimli tahsisat sistemini (slab cache) yok eder. Çağrı öncesinde cache
+    içindeki tüm nesnelerin serbest bırakılmış olması gerekir.
+
+    **Parametreler:**
+
+    - ``s`` — Yok edilecek cache nesnesi
+
+.. admonition:: kmem_cache_alloc
+
+    .. code-block:: c
+
+        void *kmem_cache_alloc(struct kmem_cache *cachep, gfp_t flags)
+
+    **Başlık Dosyası:** ``<linux/slab.h>``
+
+    **Kaynak Dosya:** ``mm/slub.c`` (eski çekirdeklerde ``mm/slab.c``;
+    SLAB allocator 6.8 ile kaldırılmıştır)
+
+    Slab cache'den bir nesne tahsis eder.
+
+    **Parametreler:**
+
+    - ``cachep`` — Nesnenin tahsis edileceği cache
+    - ``flags`` — Tahsisat bayrakları (örn. ``GFP_KERNEL``)
+
+    **Geri Dönüş:** Tahsis edilen nesnenin adresi, başarısızlık durumunda ``NULL``
+
+.. admonition:: kmem_cache_free
+
+    .. code-block:: c
+
+        void kmem_cache_free(struct kmem_cache *cachep, void *objp)
+
+    **Başlık Dosyası:** ``<linux/slab.h>``
+
+    **Kaynak Dosya:** ``mm/slub.c`` (eski çekirdeklerde ``mm/slab.c``)
+
+    Slab cache'den tahsis edilmiş nesneyi cache'e geri verir.
+
+    **Parametreler:**
+
+    - ``cachep`` — Nesnenin ait olduğu cache
+    - ``objp`` — Serbest bırakılacak nesnenin adresi
+
+.. admonition:: kzalloc
+
+    .. code-block:: c
+
+        void *kzalloc(size_t size, gfp_t flags)
+
+    **Başlık Dosyası:** ``<linux/slab.h>``
+
+    **Kaynak Dosya:** ``include/linux/slab.h`` (inline; ``kmalloc``'u ``__GFP_ZERO``
+    bayrağı ile çağırır)
+
+    Çekirdek belleğinde belirtilen boyutta sıfırlanmış alan tahsis eder.
+
+    **Parametreler:**
+
+    - ``size`` — Tahsis edilecek byte miktarı
+    - ``flags`` — Bellek tahsis bayrakları (örn. ``GFP_KERNEL``)
+
+    **Geri Dönüş:** Tahsis edilen bellek adresi, başarısızlık durumunda ``NULL``
+
+    **Not:** ``kmalloc()`` + ``memset()`` kombinasyonunun optimize edilmiş versiyonudur.
+
+.. admonition:: kfree
+
+    .. code-block:: c
+
+        void kfree(const void *objp)
+
+    **Başlık Dosyası:** ``<linux/slab.h>``
+
+    **Kaynak Dosya:** ``mm/slub.c`` (eski çekirdeklerde ``mm/slab.c``)
+
+    ``kmalloc()``/``kzalloc()`` ile tahsis edilmiş belleği serbest bırakır.
+
+    **Parametreler:**
+
+    - ``objp`` — Serbest bırakılacak bellek adresi (``NULL`` geçilirse işlem yapılmaz)
+
+.. admonition:: inode_init_once
+
+    .. code-block:: c
+
+        void inode_init_once(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Bir inode nesnesini bir kez başlatır. Tipik olarak slab cache'in constructor
+    (``ctor``) fonksiyonu içinden çağrılır.
+
+    **Parametreler:**
+
+    - ``inode`` — Başlatılacak inode nesnesi
+
+.. admonition:: iget_locked
+
+    .. code-block:: c
+
+        struct inode *iget_locked(struct super_block *sb, unsigned long ino)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Inode nesnesini inode önbelleğinden (icache) alır; bulunamazsa yeni bir inode
+    oluşturup ``I_NEW`` bayrağı ile kilitli olarak geri döndürür.
+
+    **Parametreler:**
+
+    - ``sb`` — Dosya sisteminin super block nesnesi
+    - ``ino`` — Inode numarası
+
+    **Geri Dönüş:** ``struct inode`` göstericisi, başarısızlık durumunda ``NULL``
+
+    **Not:** ``I_NEW`` bayrağı set edilmişse dosya sistemi inode'u doldurduktan
+    sonra ``unlock_new_inode()`` çağırmalıdır.
+
+.. admonition:: iget_failed
+
+    .. code-block:: c
+
+        void iget_failed(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/bad_inode.c``
+
+    Başarısız inode yükleme durumunda inode'u bad inode olarak işaretler,
+    kilidini açar ve serbest bırakır.
+
+    **Parametreler:**
+
+    - ``inode`` — Yüklenemeyen inode nesnesi
+
+.. admonition:: unlock_new_inode
+
+    .. code-block:: c
+
+        void unlock_new_inode(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Yeni oluşturulan inode nesnesinin ``I_NEW`` kilidini açar ve inode'u
+    kullanıma hazır duruma getirir.
+
+    **Parametreler:**
+
+    - ``inode`` — Kilidi açılacak inode nesnesi
+
+.. admonition:: new_inode
+
+    .. code-block:: c
+
+        struct inode *new_inode(struct super_block *sb)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Yeni bir inode nesnesi oluşturur (inode numarası henüz atanmamıştır).
+    Tahsisat, super block'un ``alloc_inode`` callback'i üzerinden yapılır.
+
+    **Parametreler:**
+
+    - ``sb`` — Dosya sisteminin super block nesnesi
+
+    **Geri Dönüş:** ``struct inode`` göstericisi, başarısızlık durumunda ``NULL``
+
+.. admonition:: insert_inode_hash
+
+    .. code-block:: c
+
+        void insert_inode_hash(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline; ``__insert_inode_hash()``
+    fonksiyonunu çağırır, ``fs/inode.c``)
+
+    Inode nesnesini inode önbelleğinin hash tablosuna ekler. Hash anahtarı
+    olarak ``inode->i_ino`` kullanılır.
+
+    **Parametreler:**
+
+    - ``inode`` — Hash tablosuna eklenecek inode nesnesi
+
+.. admonition:: mark_inode_dirty
+
+    .. code-block:: c
+
+        void mark_inode_dirty(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline; ``__mark_inode_dirty(inode, I_DIRTY)``
+    fonksiyonunu çağırır, ``fs/fs-writeback.c``)
+
+    Inode nesnesini kirli (dirty) olarak işaretler; writeback alt sistemine
+    inode'un diske yazılması gerektiğini bildirir.
+
+    **Parametreler:**
+
+    - ``inode`` — Kirli olarak işaretlenecek inode nesnesi
+
+.. admonition:: clear_inode
+
+    .. code-block:: c
+
+        void clear_inode(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Inode nesnesini temizler ve ``I_CLEAR`` durumuna geçirir; ancak belleğini
+    serbest bırakmaz. Tipik olarak ``evict_inode`` callback'i içinden çağrılır.
+
+    **Parametreler:**
+
+    - ``inode`` — Temizlenecek inode nesnesi
+
+.. admonition:: iput
+
+    .. code-block:: c
+
+        void iput(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Inode referans sayacını (``i_count``) bir azaltır; sayaç sıfıra ulaşırsa
+    inode eviction sürecini başlatır.
+
+    **Parametreler:**
+
+    - ``inode`` — Referansı bırakılacak inode nesnesi (``NULL`` geçilirse işlem yapılmaz)
+
+.. admonition:: truncate_inode_pages_final
+
+    .. code-block:: c
+
+        void truncate_inode_pages_final(struct address_space *mapping)
+
+    **Başlık Dosyası:** ``<linux/mm.h>``
+
+    **Kaynak Dosya:** ``mm/truncate.c``
+
+    Inode'a ait tüm sayfa önbelleğini (page cache) kalıcı olarak boşaltır.
+    Inode eviction sırasında, ``evict_inode`` callback'i içinde çağrılır.
+
+    **Parametreler:**
+
+    - ``mapping`` — Inode'un ``address_space`` nesnesi (``inode->i_mapping``)
+
+.. admonition:: inode_init_owner
+
+    .. code-block:: c
+
+        void inode_init_owner(struct mnt_idmap *idmap,
+                              struct inode *inode,
+                              const struct inode *dir,
+                              umode_t mode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Yeni oluşturulan inode için sahiplik (uid/gid) ve erişim izinlerini başlatır.
+    Üst dizinde setgid biti varsa grup kimliği dizinden devralınır.
+
+    **Parametreler:**
+
+    - ``idmap`` — Mount'a ilişkin idmap nesnesi
+    - ``inode`` — Başlatılacak inode nesnesi
+    - ``dir`` — Üst dizinin inode nesnesi
+    - ``mode`` — Dosya türü ve erişim izinleri
+
+.. admonition:: set_nlink
+
+    .. code-block:: c
+
+        void set_nlink(struct inode *inode, unsigned int nlink)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Inode nesnesinin hard link sayacına (``i_nlink``) belirtilen değeri yerleştirir.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+    - ``nlink`` — Yerleştirilecek hard link sayısı
+
+.. admonition:: inode_inc_link_count
+
+    .. code-block:: c
+
+        void inode_inc_link_count(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline; ``inc_nlink()`` +
+    ``mark_inode_dirty()`` çağrılarını yapar)
+
+    Inode'un hard link sayacını 1 artırır ve inode'u kirli olarak işaretler.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+
+.. admonition:: inode_dec_link_count
+
+    .. code-block:: c
+
+        void inode_dec_link_count(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline; ``drop_nlink()`` +
+    ``mark_inode_dirty()`` çağrılarını yapar)
+
+    Inode'un hard link sayacını 1 azaltır ve inode'u kirli olarak işaretler.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+
+.. admonition:: simple_inode_init_ts
+
+    .. code-block:: c
+
+        struct timespec64 simple_inode_init_ts(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/libfs.c``
+
+    Inode'un zaman damgalarına (atime, mtime, ctime) o andaki geçerli zamanı
+    yerleştirir.
+
+    **Parametreler:**
+
+    - ``inode`` — Zaman damgaları başlatılacak inode nesnesi
+
+    **Geri Dönüş:** Yerleştirilen geçerli zaman (``struct timespec64``)
+
+.. admonition:: current_time
+
+    .. code-block:: c
+
+        struct timespec64 current_time(struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/inode.c``
+
+    Inode için geçerli zamanı, dosya sisteminin zaman damgası çözünürlüğüne
+    (``s_time_gran``) yuvarlayarak döndürür.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+
+    **Geri Dönüş:** Geçerli zaman (``struct timespec64``)
+
+.. admonition:: inode_set_atime / inode_get_atime
+
+    .. code-block:: c
+
+        struct timespec64 inode_set_atime(struct inode *inode, time64_t sec, long nsec)
+        struct timespec64 inode_get_atime(const struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline fonksiyonlar)
+
+    Inode'un erişim zamanını (access time) ayarlar/okur.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+    - ``sec`` — Saniye bileşeni (yalnızca set)
+    - ``nsec`` — Nanosaniye bileşeni (yalnızca set)
+
+    **Geri Dönüş:** Erişim zamanı (``struct timespec64``)
+
+.. admonition:: inode_set_mtime / inode_get_mtime
+
+    .. code-block:: c
+
+        struct timespec64 inode_set_mtime(struct inode *inode, time64_t sec, long nsec)
+        struct timespec64 inode_get_mtime(const struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline fonksiyonlar)
+
+    Inode'un son güncelleme zamanını (modification time) ayarlar/okur.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+    - ``sec`` — Saniye bileşeni (yalnızca set)
+    - ``nsec`` — Nanosaniye bileşeni (yalnızca set)
+
+    **Geri Dönüş:** Son güncelleme zamanı (``struct timespec64``)
+
+.. admonition:: inode_set_ctime / inode_get_ctime
+
+    .. code-block:: c
+
+        struct timespec64 inode_set_ctime(struct inode *inode, time64_t sec, long nsec)
+        struct timespec64 inode_get_ctime(const struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline fonksiyonlar)
+
+    Inode'un durum değişiklik zamanını (change time) ayarlar/okur.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+    - ``sec`` — Saniye bileşeni (yalnızca set)
+    - ``nsec`` — Nanosaniye bileşeni (yalnızca set)
+
+    **Geri Dönüş:** Durum değişiklik zamanı (``struct timespec64``)
+
+    **Not:** O andaki geçerli zamanı yerleştirmek için ``inode_set_ctime_current()``
+    fonksiyonu da kullanılabilir.
+
+.. admonition:: i_uid_write / i_uid_read
+
+    .. code-block:: c
+
+        void  i_uid_write(struct inode *inode, uid_t uid)
+        uid_t i_uid_read(const struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline fonksiyonlar)
+
+    Inode'un kullanıcı kimliğini (uid) yazar/okur. User namespace dönüşümlerini
+    (``kuid_t`` ↔ ``uid_t``) içeride yapar.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+    - ``uid`` — Yazılacak kullanıcı kimliği (yalnızca write)
+
+    **Geri Dönüş:** ``i_uid_read()`` kullanıcı kimliğini döndürür
+
+.. admonition:: i_gid_write / i_gid_read
+
+    .. code-block:: c
+
+        void  i_gid_write(struct inode *inode, gid_t gid)
+        gid_t i_gid_read(const struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline fonksiyonlar)
+
+    Inode'un grup kimliğini (gid) yazar/okur. User namespace dönüşümlerini
+    (``kgid_t`` ↔ ``gid_t``) içeride yapar.
+
+    **Parametreler:**
+
+    - ``inode`` — Hedef inode nesnesi
+    - ``gid`` — Yazılacak grup kimliği (yalnızca write)
+
+    **Geri Dönüş:** ``i_gid_read()`` grup kimliğini döndürür
+
+.. admonition:: d_make_root
+
+    .. code-block:: c
+
+        struct dentry *d_make_root(struct inode *root_inode)
+
+    **Başlık Dosyası:** ``<linux/dcache.h>``
+
+    **Kaynak Dosya:** ``fs/dcache.c``
+
+    Kök inode için kök dentry oluşturur. Tipik olarak ``fill_super`` içinde
+    ``sb->s_root`` alanını doldurmak için kullanılır.
+
+    **Parametreler:**
+
+    - ``root_inode`` — Dosya sisteminin kök inode nesnesi
+
+    **Geri Dönüş:** ``struct dentry`` göstericisi, başarısızlık durumunda ``NULL``
+
+    **Not:** Başarısızlık durumunda ``root_inode`` üzerindeki referansı kendisi
+    bırakır (``iput`` çağırır).
+
+.. admonition:: d_splice_alias
+
+    .. code-block:: c
+
+        struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
+
+    **Başlık Dosyası:** ``<linux/dcache.h>``
+
+    **Kaynak Dosya:** ``fs/dcache.c``
+
+    Inode nesnesini dentry ile ilişkilendirir; inode'a bağlı uygun bir dentry
+    zaten varsa onu döndürür. Tipik olarak ``lookup`` callback'inde kullanılır.
+
+    **Parametreler:**
+
+    - ``inode`` — İlişkilendirilecek inode nesnesi (negatif dentry için ``NULL`` olabilir)
+    - ``dentry`` — İlişkilendirilecek dentry nesnesi
+
+    **Geri Dönüş:** Kullanılması gereken dentry (``NULL`` ise verilen dentry
+    kullanılır) veya ``ERR_PTR`` hata değeri
+
+    **Not:** Inode üzerindeki referansı tüketir; hata durumunda dahi ayrıca
+    ``iput`` çağrılmamalıdır.
+
+.. admonition:: d_instantiate
+
+    .. code-block:: c
+
+        void d_instantiate(struct dentry *entry, struct inode *inode)
+
+    **Başlık Dosyası:** ``<linux/dcache.h>``
+
+    **Kaynak Dosya:** ``fs/dcache.c``
+
+    Bir dentry'yi bir inode ile ilişkilendirir. Tipik olarak ``create``, ``mkdir``
+    gibi callback'lerde yeni oluşturulan inode için kullanılır.
+
+    **Parametreler:**
+
+    - ``entry`` — İlişkilendirilecek dentry nesnesi
+    - ``inode`` — İlişkilendirilecek inode nesnesi
+
+.. admonition:: d_inode
+
+    .. code-block:: c
+
+        struct inode *d_inode(const struct dentry *dentry)
+
+    **Başlık Dosyası:** ``<linux/dcache.h>``
+
+    **Kaynak Dosya:** ``include/linux/dcache.h`` (inline fonksiyon)
+
+    Dentry'nin ilişkili olduğu inode nesnesini (``d_inode`` alanı) verir.
+
+    **Parametreler:**
+
+    - ``dentry`` — Hedef dentry nesnesi
+
+    **Geri Dönüş:** ``struct inode`` göstericisi (negatif dentry için ``NULL``)
+
+.. admonition:: dir_emit
+
+    .. code-block:: c
+
+        bool dir_emit(struct dir_context *ctx,
+                      const char *name,
+                      int namelen,
+                      u64 ino,
+                      unsigned type)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline; ``ctx->actor`` callback'ini çağırır)
+
+    ``readdir`` (``iterate_shared``) işlemi sırasında bir dizin girdisini
+    kullanıcı alanındaki tampona aktarır.
+
+    **Parametreler:**
+
+    - ``ctx`` — Dizin okuma bağlamı (``dir_context``)
+    - ``name`` — Girdi adı
+    - ``namelen`` — Girdi adının uzunluğu
+    - ``ino`` — Girdinin inode numarası
+    - ``type`` — Girdi türü (``DT_REG``, ``DT_DIR`` vb.)
+
+    **Geri Dönüş:** ``true`` (devam edilebilir), ``false`` (tampon doldu, durulmalı)
+
+.. admonition:: file_inode
+
+    .. code-block:: c
+
+        struct inode *file_inode(const struct file *f)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``include/linux/fs.h`` (inline fonksiyon)
+
+    Açık dosya nesnesinden (``struct file``) ilişkili inode nesnesini verir.
+
+    **Parametreler:**
+
+    - ``f`` — Hedef file nesnesi
+
+    **Geri Dönüş:** ``struct inode`` göstericisi
+
+.. admonition:: mark_buffer_dirty
+
+    .. code-block:: c
+
+        void mark_buffer_dirty(struct buffer_head *bh)
+
+    **Başlık Dosyası:** ``<linux/buffer_head.h>``
+
+    **Kaynak Dosya:** ``fs/buffer.c``
+
+    Buffer'ı kirli (dirty) olarak işaretler; writeback alt sistemine bloğun
+    diske yazılması gerektiğini bildirir.
+
+    **Parametreler:**
+
+    - ``bh`` — Kirli olarak işaretlenecek buffer head nesnesi
+
+.. admonition:: sync_dirty_buffer
+
+    .. code-block:: c
+
+        int sync_dirty_buffer(struct buffer_head *bh)
+
+    **Başlık Dosyası:** ``<linux/buffer_head.h>``
+
+    **Kaynak Dosya:** ``fs/buffer.c``
+
+    Kirli buffer'ı hemen ve senkron biçimde diske yazar; yazma tamamlanana
+    kadar bloke olur.
+
+    **Parametreler:**
+
+    - ``bh`` — Diske yazılacak buffer head nesnesi
+
+    **Geri Dönüş:** ``0`` (başarılı) veya negatif errno değeri
+
+.. admonition:: brelse
+
+    .. code-block:: c
+
+        void brelse(struct buffer_head *bh)
+
+    **Başlık Dosyası:** ``<linux/buffer_head.h>``
+
+    **Kaynak Dosya:** ``include/linux/buffer_head.h`` (inline; ``__brelse()``
+    fonksiyonunu çağırır, ``fs/buffer.c``)
+
+    Buffer head referans sayacını 1 azaltır.
+
+    **Parametreler:**
+
+    - ``bh`` — Referansı bırakılacak buffer head nesnesi (``NULL`` geçilirse işlem yapılmaz)
+
+.. admonition:: find_first_zero_bit
+
+    .. code-block:: c
+
+        unsigned long find_first_zero_bit(const unsigned long *addr, unsigned long size)
+
+    **Başlık Dosyası:** ``<linux/find.h>`` (``<linux/bitmap.h>`` üzerinden
+    dolaylı olarak da erişilir)
+
+    **Kaynak Dosya:** ``lib/find_bit.c``
+
+    Bitmap içinde değeri 0 olan ilk bitin indeksini bulur.
+
+    **Parametreler:**
+
+    - ``addr`` — Bitmap'in başlangıç adresi
+    - ``size`` — Bitmap'teki toplam bit sayısı
+
+    **Geri Dönüş:** İlk sıfır bitin indeksi; sıfır bit yoksa ``size`` değeri
+
+.. admonition:: set_bit
+
+    .. code-block:: c
+
+        void set_bit(long nr, volatile unsigned long *addr)
+
+    **Başlık Dosyası:** ``<linux/bitops.h>`` (mimariye özgü tanımlar ``<asm/bitops.h>`` içindedir)
+
+    **Kaynak Dosya:** Mimari bağımlı (örn. ``arch/x86/include/asm/bitops.h``)
+
+    Belirtilen bit indeksindeki biti atomik olarak 1 yapar.
+
+    **Parametreler:**
+
+    - ``nr`` — Bit numarası
+    - ``addr`` — Bitmap'in başlangıç adresi
+
+.. admonition:: clear_bit
+
+    .. code-block:: c
+
+        void clear_bit(long nr, volatile unsigned long *addr)
+
+    **Başlık Dosyası:** ``<linux/bitops.h>`` (mimariye özgü tanımlar ``<asm/bitops.h>`` içindedir)
+
+    **Kaynak Dosya:** Mimari bağımlı (örn. ``arch/x86/include/asm/bitops.h``)
+
+    Belirtilen bit indeksindeki biti atomik olarak 0 yapar.
+
+    **Parametreler:**
+
+    - ``nr`` — Bit numarası
+    - ``addr`` — Bitmap'in başlangıç adresi
+
+.. admonition:: spin_lock_init
+
+    .. code-block:: c
+
+        spin_lock_init(spinlock_t *lock)
+
+    **Başlık Dosyası:** ``<linux/spinlock.h>``
+
+    **Kaynak Dosya:** ``include/linux/spinlock.h`` (makro)
+
+    Spinlock'u kilitsiz (unlocked) duruma başlatır.
+
+    **Parametreler:**
+
+    - ``lock`` — Başlatılacak spinlock nesnesi
+
+.. admonition:: spin_lock / spin_unlock
+
+    .. code-block:: c
+
+        void spin_lock(spinlock_t *lock)
+        void spin_unlock(spinlock_t *lock)
+
+    **Başlık Dosyası:** ``<linux/spinlock.h>``
+
+    **Kaynak Dosya:** ``include/linux/spinlock.h`` (inline sarmalayıcılar;
+    out-of-line versiyonlar ``kernel/locking/spinlock.c`` içindedir)
+
+    Spinlock'u kilitler/açar. Kilit alınamazsa meşgul bekleme (busy waiting) yapılır.
+
+    **Parametreler:**
+
+    - ``lock`` — Hedef spinlock nesnesi
+
+.. admonition:: copy_to_user
+
+    .. code-block:: c
+
+        unsigned long copy_to_user(void __user *to, const void *from, unsigned long n)
+
+    **Başlık Dosyası:** ``<linux/uaccess.h>``
+
+    **Kaynak Dosya:** ``include/linux/uaccess.h`` (inline sarmalayıcı;
+    asıl kopyalama mimari bağımlıdır, örn. ``arch/x86/lib/usercopy_64.c``)
+
+    Çekirdek alanından kullanıcı alanına veri kopyalar.
+
+    **Parametreler:**
+
+    - ``to`` — Kullanıcı alanındaki hedef adres
+    - ``from`` — Çekirdek alanındaki kaynak adres
+    - ``n`` — Kopyalanacak byte sayısı
+
+    **Geri Dönüş:** Kopyalanamayan byte sayısı (``0`` = tamamı kopyalandı)
+
+.. admonition:: copy_from_user
+
+    .. code-block:: c
+
+        unsigned long copy_from_user(void *to, const void __user *from, unsigned long n)
+
+    **Başlık Dosyası:** ``<linux/uaccess.h>``
+
+    **Kaynak Dosya:** ``include/linux/uaccess.h`` (inline sarmalayıcı;
+    asıl kopyalama mimari bağımlıdır, örn. ``arch/x86/lib/usercopy_64.c``)
+
+    Kullanıcı alanından çekirdek alanına veri kopyalar.
+
+    **Parametreler:**
+
+    - ``to`` — Çekirdek alanındaki hedef adres
+    - ``from`` — Kullanıcı alanındaki kaynak adres
+    - ``n`` — Kopyalanacak byte sayısı
+
+    **Geri Dönüş:** Kopyalanamayan byte sayısı (``0`` = tamamı kopyalandı)
+
+.. admonition:: container_of
+
+    .. code-block:: c
+
+        container_of(ptr, type, member)
+
+    **Başlık Dosyası:** ``<linux/container_of.h>`` (5.16 öncesi çekirdeklerde ``<linux/kernel.h>``)
+
+    **Kaynak Dosya:** Compile-time makrosu
+
+    Bir yapının üyesinin adresinden, üyenin içinde bulunduğu yapının başlangıç
+    adresini hesaplar.
+
+    **Parametreler:**
+
+    - ``ptr`` — Üyenin adresi
+    - ``type`` — Kapsayan yapının türü
+    - ``member`` — Üyenin yapı içindeki adı
+
+    **Geri Dönüş:** Kapsayan yapının başlangıç adresi
+
+.. admonition:: IS_ERR / PTR_ERR
+
+    .. code-block:: c
+
+        bool IS_ERR(const void *ptr)
+        long PTR_ERR(const void *ptr)
+
+    **Başlık Dosyası:** ``<linux/err.h>``
+
+    **Kaynak Dosya:** ``include/linux/err.h`` (inline fonksiyonlar)
+
+    ``IS_ERR`` göstericinin errno değeri kodlanmış bir hata göstericisi olup
+    olmadığını kontrol eder; ``PTR_ERR`` bu göstericiden errno değerini çıkarır.
+
+    **Parametreler:**
+
+    - ``ptr`` — Kontrol edilecek/çözülecek gösterici
+
+    **Geri Dönüş:** ``IS_ERR``: ``true``/``false``; ``PTR_ERR``: negatif errno değeri
+
+.. admonition:: ERR_PTR
+
+    .. code-block:: c
+
+        void *ERR_PTR(long error)
+
+    **Başlık Dosyası:** ``<linux/err.h>``
+
+    **Kaynak Dosya:** ``include/linux/err.h`` (inline fonksiyon)
+
+    Negatif errno değerini gösterici biçiminde kodlar.
+
+    **Parametreler:**
+
+    - ``error`` — Kodlanacak negatif errno değeri
+
+    **Geri Dönüş:** Hata değerini taşıyan gösterici
+
+.. admonition:: le32_to_cpu / cpu_to_le32
+
+    .. code-block:: c
+
+        __u32  le32_to_cpu(__le32 x)
+        __le32 cpu_to_le32(__u32 x)
+
+    **Başlık Dosyası:** ``<linux/byteorder/generic.h>`` (``<asm/byteorder.h>``
+    üzerinden erişilir)
+
+    **Kaynak Dosya:** Mimari bağımlı makrolar/inline fonksiyonlar
+
+    Little-endian ↔ CPU endian dönüşümü yapar. Little-endian mimarilerde
+    no-op'tur, big-endian mimarilerde byte swap yapar.
+
+    **Parametreler:**
+
+    - ``x`` — Dönüştürülecek 32 bit değer
+
+    **Geri Dönüş:** Dönüştürülmüş 32 bit değer
+
+.. admonition:: min_t
+
+    .. code-block:: c
+
+        min_t(type, x, y)
+
+    **Başlık Dosyası:** ``<linux/minmax.h>``
+
+    **Kaynak Dosya:** Compile-time makrosu
+
+    İki değeri belirtilen türe dönüştürerek karşılaştırır ve küçük olanı verir
+    (tür güvenli minimum).
+
+    **Parametreler:**
+
+    - ``type`` — Karşılaştırma türü
+    - ``x``, ``y`` — Karşılaştırılacak değerler
+
+    **Geri Dönüş:** Küçük olan değer (``type`` türünde)
+
+.. admonition:: simple_setattr
+
+    .. code-block:: c
+
+        int simple_setattr(struct mnt_idmap *idmap,
+                           struct dentry *dentry,
+                           struct iattr *iattr)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/libfs.c``
+
+    Kalıcı depolaması olmayan ya da basit dosya sistemleri için inode
+    özniteliklerini ayarlayan hazır ``setattr`` implementasyonudur.
+
+    **Parametreler:**
+
+    - ``idmap`` — Mount'a ilişkin idmap nesnesi
+    - ``dentry`` — Hedef dentry nesnesi
+    - ``iattr`` — Ayarlanacak öznitelikler
+
+    **Geri Dönüş:** ``0`` (başarılı) veya negatif errno değeri
+
+.. admonition:: simple_getattr
+
+    .. code-block:: c
+
+        int simple_getattr(struct mnt_idmap *idmap,
+                           const struct path *path,
+                           struct kstat *stat,
+                           u32 request_mask,
+                           unsigned int query_flags)
+
+    **Başlık Dosyası:** ``<linux/fs.h>``
+
+    **Kaynak Dosya:** ``fs/libfs.c``
+
+    Basit dosya sistemleri için inode özniteliklerini okuyan hazır ``getattr``
+    implementasyonudur.
+
+    **Parametreler:**
+
+    - ``idmap`` — Mount'a ilişkin idmap nesnesi
+    - ``path`` — Hedef dosyanın path nesnesi
+    - ``stat`` — Özniteliklerin yazılacağı ``kstat`` nesnesi
+    - ``request_mask`` — İstenen öznitelik maskesi
+    - ``query_flags`` — Sorgu bayrakları
+
+    **Geri Dönüş:** ``0`` (başarılı) veya negatif errno değeri
+
+.. admonition:: printk
+
+    .. code-block:: c
+
+        int printk(const char *fmt, ...)
+
+    **Başlık Dosyası:** ``<linux/printk.h>``
+
+    **Kaynak Dosya:** ``kernel/printk/printk.c``
+
+    Çekirdek günlüğüne (kernel log buffer) biçimlendirilmiş mesaj yazdırır.
+
+    **Parametreler:**
+
+    - ``fmt`` — Log seviyesi öneki ile birlikte format dizesi
+      (örn. ``KERN_INFO "mesaj %d\n"``)
+    - ``...`` — Format argümanları
+
+    **Geri Dönüş:** Yazılan karakter sayısı
+
+    **Not:** Sık kullanılan log seviyeleri: ``KERN_INFO`` (bilgi),
+    ``KERN_WARNING`` (uyarı), ``KERN_ERR`` (hata). Modern çekirdeklerde
+    ``pr_info()``, ``pr_warn()``, ``pr_err()`` makroları tercih edilir.

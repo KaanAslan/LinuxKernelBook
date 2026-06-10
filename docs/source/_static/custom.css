@@ -43,3 +43,6 @@
     overflow-wrap: break-word !important;
 }
 
+.admonition-title::before {
+    content: none !important;
+}
