@@ -6,12 +6,12 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
 .. rst-class:: lead
 
-   Bu kitap **Kaan ASLAN** ve **Sebahat ERSOY** tarafından *C ve Sistem Programcıları Derneğindeki* **Kaan ASLAN** tarafından  verilen 
+   Bu kitap **Kaan ASLAN** ve **Sebahat ERSOY** tarafından *C ve Sistem Programcıları Derneğindeki* **Kaan ASLAN** tarafından verilen 
    **Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi** kursundaki kurs notları temel alınarak oluşturulmuştur. 
    
    Kitaptaki içerik belli bir kaynak referans alınarak oluşturulmamıştır ve içeriğin oluşturulmasında yapay zeka araçlarından 
    faydalanılmamıştır. Bu bakımdan içerik tamamen özgündür. Kitap ile benzer içeriklere sahip kaynaklar *Kaynaklar* bölümünde 
-   listelenmiştir.
+   listelenmiştir. **Understanding the Linux Kernel (D. P. Bovet ve M. Cesati)** literatürün en önemli kaynağı durumundadır.
 
    Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. Dokümanın kurs formatındaki saf metin haline 
    aşağıdaki bağlantıdan erişebilirsiniz:
