@@ -903,8 +903,8 @@ Dizinlerin açıklamaları aşağıda verilmiştir.
 ``virt``
     Burada çekirdeğin sanallaştırmaya hizmet eden kodları bulundurulmaktadır.
 
-İşletim Sistemlerinin Sistemlerinin Boot Edilmesi
-=================================================
+İşletim Sistemlerinin Boot Süreci
+=================================
 
 İşletim sisteminin otomatik olarak yüklenerek çalışır hale getirilmesi sürecine *boot* işlemi denilmektedir. 
 (*Boot* terimi İngilizce *askeri bottan (çizmeden)* gelmektedir.) Biz bilgisayar sistemine güç verdiğimizde bir 

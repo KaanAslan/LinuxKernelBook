@@ -8540,8 +8540,8 @@ adreslerini yerleştirebilirsiniz:
         return 0;
     }
     
-Dosya Sistemi İle İlgili Önemli Çekirdek Fonksiyonları
-------------------------------------------------------
+simplefs Dosya Sisteminin Gerçekleştirilmesinde Kullanılan Çekirdek Fonkiyonları
+--------------------------------------------------------------------------------
 
 Burada son olarak yukarıdaki simplefs dosya sistemimizin gerçekleştiriminde kullanılan çekirdeğe ait olan yüksek 
 seviyeli fonksiyonların bir listesini yapıp işlevlerini özetlemek istiyoruz.

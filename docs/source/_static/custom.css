@@ -46,3 +46,9 @@
 .admonition-title::before {
     content: none !important;
 }
+
+div.admonition.white-note {
+    background-color: #ffffff;
+}
+
+
