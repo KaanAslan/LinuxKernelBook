@@ -22,51 +22,19 @@ diziler" gibidir.
 Bağlı listelerin her elemanına *düğüm (node)* denilmektedir. Bağlı listelerde her düğüm sonraki
 düğümün yerini tuttuğuna göre ilk elemanın yeri biliniyorsa liste elemanlarının hepsine erişilebilmektedir:
 
-.. graphviz::
-
-   digraph single_linked {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.2"];
-       node  [shape=box, style="rounded,filled", fillcolor="#DDEEFF",
-              fontname="monospace", fontsize=12, width=1.0, height=0.5];
-       edge  [color="#4477AA", arrowsize=0.9, penwidth=1.5];
-
-       head [label="head", fillcolor="#AACCFF", fontname="monospace bold"];
-       n1   [label="node"];
-       n2   [label="node"];
-       n3   [label="node"];
-       n4   [label="node"];
-       nil  [label="NULL", shape=plaintext, fontname="monospace", fontcolor="#888888"];
-
-       head -> n1 -> n2 -> n3 -> n4 -> nil;
-   }
+.. figure:: _static/single-linked.png
+   :align: center
+   :alt: Tek bağlı listeler
+   :width: 70%
 
 Her düğümün yalnızca sonraki düğümün değil aynı zamanda önceki düğümün yerini de tuttuğu bağlı
 listelere *çift bağlı listeler (doubly linked lists)* denilmektedir. Çift bağlı listelerde belli bir
 düğümün adresini biliyorsak yalnızca ileriye doğru değil, geriye doğru da gidebiliriz:
 
-.. graphviz::
-
-   digraph double_linked {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.2"];
-       node  [shape=box, style="rounded,filled", fillcolor="#DDEEFF",
-              fontname="monospace", fontsize=12, width=1.0, height=0.5];
-       edge  [color="#4477AA", arrowsize=0.9, penwidth=1.5];
-
-       head [label="head", fillcolor="#AACCFF", fontname="monospace bold"];
-       n1   [label="node"];
-       n2   [label="node"];
-       n3   [label="node"];
-       n4   [label="node"];
-       nil  [label="NULL", shape=plaintext, fontname="monospace", fontcolor="#888888"];
-
-       head -> n1   [dir=both];
-       n1   -> n2   [dir=both];
-       n2   -> n3   [dir=both];
-       n3   -> n4   [dir=both];
-       n4   -> nil  [dir=forward];
-   }
+.. figure:: _static/single-linked.png
+   :align: center
+   :alt: Çift bağlı listeler
+   :width: 70%
 
 Çift bağlı listelere ilişkin bir düğümün bellekte daha fazla yer kaplayacağına dikkat ediniz. Çift bağlı
 listelerin tek bağlı listelere göre en önemli özelliği "adresi bilinen bir düğümün" silinebilmesidir.
@@ -75,7 +43,6 @@ sık gereksinim duyulmaktadır.
 
 Eğer bir bağlı listede son eleman da ilk elemanı gösteriyorsa bu tür bağlı listelere *döngüsel bağlı
 listeler (circular linked lists)* denilmektedir.
-
 
 Bağlı Listelere Neden Gereksinim Duyulmaktadır?
 ===============================================
@@ -138,38 +105,10 @@ Linux çekirdeğindeki bağlı listelerde düğümler ``list_head`` isimli bir y
 
 Aslında belli yapılar değil, bu ``list_head`` yapıları bağlı liste içerisinde birbirine bağlanmaktadır:
 
-.. graphviz::
-
-   digraph kernel_list {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=record, style="rounded,filled", fontname="monospace", fontsize=11,
-              height=0.6];
-       edge  [color="#336699", arrowsize=0.85, penwidth=1.5];
-
-       root [label="{list_head\n(kök) | {<p>prev | <n>next}}",
-             fillcolor="#AACCFF"];
-       n1   [label="{list_head | {<p>prev | <n>next}}", fillcolor="#DDEEFF"];
-       n2   [label="{list_head | {<p>prev | <n>next}}", fillcolor="#DDEEFF"];
-       n3   [label="{list_head | {<p>prev | <n>next}}", fillcolor="#DDEEFF"];
-       n4   [label="{list_head | {<p>prev | <n>next}}", fillcolor="#DDEEFF"];
-
-       /* next bağlantıları: soldan sağa */
-       root:n -> n1:n   [dir=forward, color="#336699"];
-       n1:n   -> n2:n   [dir=forward, color="#336699"];
-       n2:n   -> n3:n   [dir=forward, color="#336699"];
-       n3:n   -> n4:n   [dir=forward, color="#336699"];
-       n4:n   -> root:n [dir=forward, color="#336699",
-                         constraint=false, style=dashed];
-
-       /* prev bağlantıları: sağdan sola */
-       n1:p   -> root:p [dir=forward, color="#AA4444"];
-       n2:p   -> n1:p   [dir=forward, color="#AA4444"];
-       n3:p   -> n2:p   [dir=forward, color="#AA4444"];
-       n4:p   -> n3:p   [dir=forward, color="#AA4444"];
-       root:p -> n4:p   [dir=forward, color="#AA4444",
-                         constraint=false, style=dashed];
-   }
+.. figure:: _static/kernel-list.png
+   :align: center
+   :alt: Çekirdekteki bağlı listeler
+   :width: 80%
 
 Tabii eğer bu ``list_head`` yapıları başka bir yapının (buna asıl yapı diyelim) içerisindeyse bu durumda
 aslında bir ``list_head`` yapısının adresi asıl yapının bir elemanının adresi haline gelmektedir. Biz C'de
@@ -1278,9 +1217,9 @@ dikkate almaktadır:
 
 .. code-block:: c
 
-   #define hlist_entry_safe(ptr, type, member)                   \
-   ({ typeof(ptr) ____ptr = (ptr);                               \
-        ____ptr ? hlist_entry(____ptr, type, member) : NULL;     \
+   #define hlist_entry_safe(ptr, type, member)                      \
+   ({ typeof(ptr) ____ptr = (ptr);                                  \
+        ____ptr ? hlist_entry(____ptr, type, member) : NULL;        \
    })
 
 ``list.h`` dosyası içerisinde hash tablolarına ilişkin başka yararlı fonksiyonlar da vardır.
@@ -1422,9 +1361,9 @@ adrese ``free`` uygulamanın bir soruna yol açmayacağını anımsayınız. Aş
    #define hlist_entry(ptr, type, member)               \
        container_of(ptr, type, member)
 
-   #define hlist_entry_safe(ptr, type, member)          \
-       ({ typeof(ptr) ____ptr = (ptr);                   \
-          ____ptr ? hlist_entry(____ptr, type, member) : NULL; \
+   #define hlist_entry_safe(ptr, type, member)                      \
+       ({ typeof(ptr) ____ptr = (ptr);                              \
+          ____ptr ? hlist_entry(____ptr, type, member) : NULL;      \
        })
 
    #define hlist_for_each(pos, head) \

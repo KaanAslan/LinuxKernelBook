@@ -652,7 +652,6 @@ tabloda verilmiştir.
 
 Linux monolithic bir çekirdek yapısına sahiptir. Büyük ölçüde POSIX uyumu bulunmaktadır.
 
-
 Linux Dağıtımları
 ==================
 
@@ -723,7 +722,6 @@ ticari bir versiyonu da vardır. ZYpp, YaST ve RPM paket yöneticilerini kullanm
 
 **Slackware:** En eski Linux dağıtımıdır. 1993 yılında oluşturulmuştur. Sürdürümü yavaş
 olmakla birlikte hala devam etmektedir.
-
 
 POSIX Standartları
 ===================
@@ -960,7 +958,6 @@ kodunun işletim sistemini yüklemesi genel olarak mümkün değildir. Bunun tem
 O halde tek çıkar yol ROM'daki programın diskteki bir önyükleyiciyi yüklemesi ve işletim sisteminin yüklenmesinin
 bu program tarafından yapılmasıdır.
 
-
 Önyükleyici (Bootloader) Programlar
 --------------------------------------
 
@@ -1000,30 +997,15 @@ yazılmıştır. Özetle ROM'da bulunan bu aşağı seviyeli kodlar ilgili donan
 programcıları tarafından yazılmaktadır. Belli bir süredir bu tür BIOS alanlarında EEPROM teknolojisi kullanıldığı
 için BIOS güncellemeleri de yapılabilmektedir.
 
-
 Genel Boot Akışı
 -----------------
 
 İşletim sisteminin yüklenmesi pek çok donanım ve platformda aşağıdaki aşamalardan geçilerek yapılmaktadır:
 
-.. graphviz::
-
-   digraph genel_boot {
-       rankdir=TB;
-       graph [bgcolor="transparent", pad="0.3"];
-       node [shape=box, style="rounded,filled", fillcolor="#ddeeff",
-             fontname="DejaVu Sans", fontsize=11, margin="0.25,0.12", width=3.2];
-       edge [arrowhead=vee, arrowsize=0.9, color="#336699", penwidth=1.5];
-
-       A [label="Mikroişlemci reset edilir"];
-       B [label="ROM'daki reset vektöründe\nbulunan kodlar çalışır"];
-       C [label="ROM'daki kodlar diskteki önceden\nbelirlenmiş bloğu RAM'e yükler\nve çalıştırır"];
-       D [label="RAM'e yüklenen küçük program\nönyükleyiciyi RAM'e yükler"];
-       E [label="Önyükleyici işletim sistemini yükler\nve başlangıç kodlarını çalıştırır"];
-
-       A -> B -> C -> D -> E;
-   }
-
+.. figure:: _static/general-boot.png
+   :align: center
+   :alt: Genel boot süreci
+   :width: 30%
 
 Boot Aşamaları Terminolojisi
 ------------------------------
@@ -1044,7 +1026,6 @@ Bugün pek çok masaüstü Linux dağıtımında GRUB isimli önyükleyici progr
 Linux çekirdek imajını belleğe yükleyerek çalıştırmaktadır. Linux'un çekirdek parametreleri de bu önyükleyici
 tarafından kullanıcıdan alınıp Linux'a verilmektedir. Biz kursumuzda çekirdek derlemesi yaparken ve sistemi
 çekirdekle boot ederken önyükleyicinin GRUB olduğunu varsayacağız.
-
 
 PC Sistemlerinde Boot Süreci (Klasik BIOS)
 -------------------------------------------
@@ -1081,27 +1062,11 @@ yoluyla kullanıcıya da sorulabilmektedir.
 UEFI BIOS öncesindeki eski BIOS sistemini kullanan (*legacy BIOS*) PC sistemlerindeki boot sürecini aşağıdaki
 gibi özetleyebiliriz:
 
-.. graphviz::
-
-   digraph pc_legacy_boot {
-       rankdir=TB;
-       graph [bgcolor="transparent", pad="0.3"];
-       node [shape=box, style="rounded,filled", fillcolor="#ddeeff",
-             fontname="DejaVu Sans", fontsize=11, margin="0.25,0.12", width=3.6];
-       edge [arrowhead=vee, arrowsize=0.9, color="#336699", penwidth=1.5];
-
-       A [label="PC'ye güç verilir\nMikroişlemci reset edilir"];
-       B [label="EEPROM'daki BIOS kodları\ntemel hazırlık işlemlerini yapar"];
-       C [label="BIOS, diskin ilk sektörünü (MBR)\nRAM'e yükler ve akışı devreder"];
-       D [label="MBR'deki program\nönyükleyiciyi RAM'e yükler"];
-       E [label="Önyükleyici, seçilen disk bölümünün\nboot sektörünü RAM'e yükler"];
-       F [label="Boot sektör\nişletim sistemini yükler"];
-       G [label="Akış işletim sistemi\nkodlarına devredilir",
-          fillcolor="#c8e6c9"];
-
-       A -> B -> C -> D -> E -> F -> G;
-   }
-
+.. figure:: _static/pc-legacy-boot.png
+   :align: center
+   :alt: PC legacy boot
+   :width: 30%
+   
 Kursumuzda UEFI BIOS sistemlerinin işlevi ve temel çalışma mekanizması başka bir bölümde ele alınacaktır.
 
 Yukarıda da belirttiğimiz gibi bugünkü Linux yüklü olan Intel x86 tabanlı PC sistemlerinde genellikle önyükleyici

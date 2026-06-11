@@ -287,35 +287,10 @@ yeni bir thread de *pthread_create* fonksiyonu ile yaratılmaktadır. Yukarıda 
 aslında bu iki çağrı da belirli bir noktadan sonra çekirdek içerisindeki aynı fonksiyonları
 çağırmaktadır:
 
-.. graphviz::
-
-   digraph fork_chain {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=11,
-              height=0.5, width=1.8];
-       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
-
-       subgraph cluster_fork {
-           label="fork() çağrı zinciri";
-           style="rounded,filled"; fillcolor="#EEF5FF"; fontname="sans-serif"; fontsize=11;
-           f1 [label="fork()\n(kullanıcı modu)",  fillcolor="#AACCFF"];
-           f2 [label="sys_fork()\n(çekirdek modu)", fillcolor="#DDEEFF"];
-           f3 [label="kernel_clone()\n(çekirdek)",  fillcolor="#DDEEFF"];
-           f4 [label="...", shape=plaintext, fillcolor="transparent"];
-           f1 -> f2 -> f3 -> f4;
-       }
-
-       subgraph cluster_pthread {
-           label="pthread_create() çağrı zinciri";
-           style="rounded,filled"; fillcolor="#FFF5EE"; fontname="sans-serif"; fontsize=11;
-           p1 [label="pthread_create()\n(kullanıcı modu)",  fillcolor="#FFDDAA"];
-           p2 [label="sys_clone()\n(çekirdek modu)",        fillcolor="#FFEEDD"];
-           p3 [label="kernel_clone()\n(çekirdek)",          fillcolor="#FFEEDD"];
-           p4 [label="...", shape=plaintext, fillcolor="transparent"];
-           p1 -> p2 -> p3 -> p4;
-       }
-   }
+.. figure:: _static/fork-chain.png
+   :align: center
+   :alt: fork ve pthread fonksiyonları
+   :width: 70%
 
 O halde aslında çekirdek gözüyle bakıldığında bir thread başka bir thread tarafından yaratılmaktadır.
 Yani bu yaratımda iki thread söz konusudur: Yaratan thread ve yaratılan thread. Yaratan thread'e ilişkin
@@ -360,33 +335,10 @@ Aşağıdaki diyagram bu bağlı listenin yapısını göstermektedir. Mavi renk
 ``signal_struct`` içerisindedir; turuncu renkteki ``thread_node`` düğümleri ise her bir thread'e ait
 ``task_struct`` içerisindedir:
 
-.. graphviz::
-
-   digraph thread_list {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=record, style="rounded,filled", fontname="monospace", fontsize=11, height=0.6];
-       edge  [arrowsize=0.85, penwidth=1.5];
-
-       root [label="{signal_struct | thread_head | {<p>prev | <n>next}}",
-             fillcolor="#AACCFF"];
-       t1   [label="{task_struct (ana) | thread_node | {<p>prev | <n>next}}",
-             fillcolor="#FFDDAA"];
-       t2   [label="{task_struct (t2) | thread_node | {<p>prev | <n>next}}",
-             fillcolor="#FFE8CC"];
-       t3   [label="{task_struct (t3) | thread_node | {<p>prev | <n>next}}",
-             fillcolor="#FFE8CC"];
-
-       root:n -> t1:n  [color="#336699", dir=forward];
-       t1:n   -> t2:n  [color="#336699", dir=forward];
-       t2:n   -> t3:n  [color="#336699", dir=forward];
-       t3:n   -> root:n [color="#336699", dir=forward, style=dashed, constraint=false];
-
-       t1:p   -> root:p [color="#AA4444", dir=forward];
-       t2:p   -> t1:p   [color="#AA4444", dir=forward];
-       t3:p   -> t2:p   [color="#AA4444", dir=forward];
-       root:p -> t3:p   [color="#AA4444", dir=forward, style=dashed, constraint=false];
-   }
+.. figure:: _static/thread-list.png
+   :align: center
+   :alt: Thread listeleri
+   :width: 90%
 
 ``thread_node`` bağlı listesi çekirdeğe ilk eklendiğinde bir süre eski ``thread_group`` listesi de
 muhafaza edilmişti. Sonra tamamen eski ``thread_group`` listesi ``task_struct`` içerisinden kaldırıldı.
@@ -454,21 +406,10 @@ O halde bazı ayrıntıları da göz ardı edersek *getpid* POSIX fonksiyonunun 
 fonksiyonu prosesin proses id değerini doğrudan *current* göstericisinin gösterdiği ``task_struct``
 nesnesinin içerisindeki ``tgid`` değerinden alarak vermektedir:
 
-.. graphviz::
-
-   digraph getpid_chain {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.2"];
-       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=11,
-              height=0.5, width=2.2];
-       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
-
-       g1 [label="getpid()\n(kullanıcı modu)",      fillcolor="#AACCFF"];
-       g2 [label="sys_getpid()\n(çekirdek modu)",   fillcolor="#DDEEFF"];
-       g3 [label="current->tgid\n(task_struct)",    fillcolor="#D4E8D4"];
-
-       g1 -> g2 -> g3;
-   }
+.. figure:: _static/getpid-chain.png
+   :align: center
+   :alt: getpid çağrı zinciri
+   :width: 65%
 
 Şimdi aklınıza "neden her thread'te ayrıca ana thread'in pid değeri tgid ismiyle tutuluyor?" sorusu
 gelebilir. Bunun iki nedeni vardır: Birincisi prosesin ana thread'i sonlanabilir, bu durumda ana thread'e
@@ -569,33 +510,10 @@ tutulmaktadır:
 Aşağıdaki diyagram bu ilişkiyi görsel olarak ortaya koymaktadır. Üst prosesin ``children`` düğümü (kök)
 mavi, alt proseslerin ``sibling`` düğümleri turuncu renkte gösterilmiştir:
 
-.. graphviz::
-
-   digraph children_list {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=record, style="rounded,filled", fontname="monospace", fontsize=11, height=0.65];
-       edge  [arrowsize=0.85, penwidth=1.5];
-
-       parent [label="{üst proses\ntask_struct | children (kök) | {<p>prev | <n>next}}",
-               fillcolor="#AACCFF"];
-       c1 [label="{alt proses 1\ntask_struct | sibling | {<p>prev | <n>next}}",
-           fillcolor="#FFDDAA"];
-       c2 [label="{alt proses 2\ntask_struct | sibling | {<p>prev | <n>next}}",
-           fillcolor="#FFE8CC"];
-       c3 [label="{alt proses 3\ntask_struct | sibling | {<p>prev | <n>next}}",
-           fillcolor="#FFE8CC"];
-
-       parent:n -> c1:n  [color="#336699", dir=forward];
-       c1:n     -> c2:n  [color="#336699", dir=forward];
-       c2:n     -> c3:n  [color="#336699", dir=forward];
-       c3:n     -> parent:n [color="#336699", dir=forward, style=dashed, constraint=false];
-
-       c1:p     -> parent:p [color="#AA4444", dir=forward];
-       c2:p     -> c1:p     [color="#AA4444", dir=forward];
-       c3:p     -> c2:p     [color="#AA4444", dir=forward];
-       parent:p -> c3:p     [color="#AA4444", dir=forward, style=dashed, constraint=false];
-   }
+.. figure:: _static/children-list.png
+   :align: center
+   :alt: Alt proses listesi
+   :width: 90%
 
 ``sibling`` bağları her zaman prosesin ana thread'ine ilişkin (grup liderine ilişkin) ``task_struct``
 nesnelerini göstermektedir. Bir thread akışında yeni bir thread yaratıldığı zaman yaratılan thread bu
@@ -640,34 +558,10 @@ nesnelerini dolaşmak için bir kök düğüm olarak kullanılmaktadır.
 Aşağıdaki diyagram ``tasks`` bağlı listesini göstermektedir. Kök düğüm ``init_task`` (PID=0) koyu mavi,
 proseslerin ana thread ``task_struct`` nesneleri açık mavi renktedir:
 
-.. graphviz::
-
-   digraph tasks_list {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=record, style="rounded,filled", fontname="monospace", fontsize=11, height=0.65];
-       edge  [arrowsize=0.85, penwidth=1.5];
-
-       init [label="{init_task\n(PID=0) | tasks (kök) | {<p>prev | <n>next}}",
-             fillcolor="#6699CC", fontcolor="white"];
-       p1   [label="{proses 1\ntask_struct | tasks | {<p>prev | <n>next}}",
-             fillcolor="#AACCFF"];
-       p2   [label="{proses 2\ntask_struct | tasks | {<p>prev | <n>next}}",
-             fillcolor="#DDEEFF"];
-       p3   [label="{proses N\ntask_struct | tasks | {<p>prev | <n>next}}",
-             fillcolor="#DDEEFF"];
-
-       init:n -> p1:n  [color="#336699", dir=forward];
-       p1:n   -> p2:n  [color="#336699", dir=forward];
-       p2:n   -> p3:n  [color="#336699", dir=forward];
-       p3:n   -> init:n [color="#336699", dir=forward, style=dashed, constraint=false];
-
-       p1:p   -> init:p [color="#AA4444", dir=forward];
-       p2:p   -> p1:p   [color="#AA4444", dir=forward];
-       p3:p   -> p2:p   [color="#AA4444", dir=forward];
-       init:p -> p3:p   [color="#AA4444", dir=forward, style=dashed, constraint=false];
-   }
-
+.. figure:: _static/tasks-list.png
+   :align: center
+   :alt: open ve openat sistem fonksiyonları
+   :width: 90%
 
 Özet: task_struct İlişkileri
 ----------------------------------
@@ -877,45 +771,10 @@ referans etmektedir. Kullanıcı modundaki programcı aygıt dosyası üzerinde 
 aslında programın akışı çekirdek moduna geçerek aygıt sürücü içerisindeki ilgili fonksiyonlar
 çalıştırılmaktadır:
 
-.. graphviz::
-
-   digraph device_ops {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [fontname="monospace", fontsize=11, height=0.45, style="rounded,filled"];
-       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
-
-       subgraph cluster_user {
-           label="Kullanıcı Modu POSIX Çağrısı";
-           style="rounded,filled"; fillcolor="#EEF5FF"; fontname="sans-serif"; fontsize=11;
-           node [fillcolor="#AACCFF"];
-           u_open  [label="open()"];
-           u_close [label="close()"];
-           u_read  [label="read()"];
-           u_write [label="write()"];
-           u_lseek [label="lseek()"];
-           u_ioctl [label="ioctl()"];
-       }
-
-       subgraph cluster_drv {
-           label="Aygıt Sürücü Fonksiyonu";
-           style="rounded,filled"; fillcolor="#FFF5EE"; fontname="sans-serif"; fontsize=11;
-           node [fillcolor="#FFDDAA"];
-           d_open  [label="driver_open()"];
-           d_close [label="driver_release()"];
-           d_read  [label="driver_read()"];
-           d_write [label="driver_write()"];
-           d_lseek [label="driver_lseek()"];
-           d_ioctl [label="driver_ioctl()"];
-       }
-
-       u_open  -> d_open;
-       u_close -> d_close;
-       u_read  -> d_read;
-       u_write -> d_write;
-       u_lseek -> d_lseek;
-       u_ioctl -> d_ioctl;
-   }
+.. figure:: _static/device-ops.png
+   :align: center
+   :alt: open ve openat sistem fonksiyonları
+   :width: 50%
 
 Linux sistemlerinde aygıt sürücüler (ve dolayısıyla aygıt dosyaları) iki kısma ayrılmaktadır:
 
@@ -2473,24 +2332,10 @@ düğümlerini tutmaktadır. Bu versiyonlarda bir pid değerine ilişkin ``task_
 için çekirdek önce hash tablosundan o pid değerine ilişkin ``pid`` nesnesini elde etmekte, sonra o
 ``pid`` nesnesinin içerisindeki bağlı listelerde arama yapmaktadır:
 
-.. graphviz::
-
-   digraph pid_lookup_26 {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=11,
-              height=0.5, width=2.0];
-       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
-
-       pid_val  [label="pid değeri",        fillcolor="#AACCFF"];
-       hash_tbl [label="Hash Tablosu\n(pid_hash[])", fillcolor="#DDEEFF"];
-       pid_obj  [label="struct pid\nnesnesi", fillcolor="#FFDDAA"];
-       task_str [label="task_struct\nnesnesi", fillcolor="#D4E8D4"];
-
-       pid_val  -> hash_tbl [label="hash_func(pid)"];
-       hash_tbl -> pid_obj  [label="zincir arama"];
-       pid_obj  -> task_str [label="tasks[] listesi"];
-   }
+.. figure:: _static/pid-lookup-26.png
+   :align: center
+   :alt: pid araması
+   :width: 90%
 
 2.6'lı versiyonlardaki ``pid`` yapısı şöyleydi:
 
@@ -2554,37 +2399,10 @@ Peki pid değerini saklamak için neden birden fazla bağlı liste kullanılmakt
 çekirdeklerle birlikte bu tarz aramalarda hız kazancı sağlamak için tasarım değiştirilmiştir.
 Aşağıdaki diyagram her listenin hangi ``task_struct`` nesnelerini tuttuğunu göstermektedir:
 
-.. graphviz::
-
-   digraph pid_tasks {
-       rankdir=TB;
-       graph [bgcolor="transparent", pad="0.4"];
-       node  [fontname="sans-serif", fontsize=11];
-       edge  [color="#336699", arrowsize=0.85, penwidth=1.5];
-
-       pid_node [label="struct pid\n(tasks[PIDTYPE_MAX])",
-                 shape=record, style="rounded,filled", fillcolor="#FFDDAA",
-                 fontname="monospace",
-                 label="{struct pid | tasks[0]\nPIDTYPE_PID | tasks[1]\nPIDTYPE_TGID | tasks[2]\nPIDTYPE_PGID | tasks[3]\nPIDTYPE_SID}"];
-
-       pid_node [shape=record,
-                 label="{struct pid | <t0>tasks[0]\nPIDTYPE_PID | <t1>tasks[1]\nPIDTYPE_TGID | <t2>tasks[2]\nPIDTYPE_PGID | <t3>tasks[3]\nPIDTYPE_SID}",
-                 style="rounded,filled", fillcolor="#FFDDAA", fontname="monospace", fontsize=10];
-
-       desc0 [label="Tek task_struct\n(belli bir thread)",
-              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
-       desc1 [label="Aynı prosesin\ntüm thread'leri",
-              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
-       desc2 [label="Aynı proses grubundaki\ntüm proseslerin ana thread'leri",
-              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
-       desc3 [label="Aynı oturumdaki\ntüm proseslerin ana thread'leri",
-              shape=box, style="rounded,filled", fillcolor="#D4E8D4", fontname="sans-serif", fontsize=10];
-
-       pid_node:t0 -> desc0;
-       pid_node:t1 -> desc1;
-       pid_node:t2 -> desc2;
-       pid_node:t3 -> desc3;
-   }
+.. figure:: _static/pid-tasks.png
+   :align: center
+   :alt: pid tasks
+   :width: 70%
 
 Bu bağlı listeleri daha ayrıntılı açıklayalım:
 
@@ -2614,34 +2432,10 @@ daha hızlı yapılabilmektedir.
 Aşağıda 2.6 versiyonlarında pid değerinden ``task_struct`` nesnesine ulaşım çağrı zinciri
 görülmektedir:
 
-.. graphviz::
-
-   digraph find_task_chain {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=10,
-              height=0.5, width=2.2];
-       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
-
-       f1 [label="find_task_by_vpid()", fillcolor="#AACCFF"];
-       f2 [label="find_task_by_pid_ns()", fillcolor="#DDEEFF"];
-       f3 [label="find_pid_ns()", fillcolor="#DDEEFF"];
-       f4 [label="pid_task()", fillcolor="#DDEEFF"];
-       f5 [label="task_struct *", fillcolor="#D4E8D4"];
-
-       f1 -> f2 -> f3 -> f4 -> f5;
-
-       note1 [label="prosesin pid\nisim alanında arama", shape=note,
-              style="filled", fillcolor="#FFFACD", fontsize=9, fontname="sans-serif"];
-       note2 [label="hash tablosundan\npid nesnesi", shape=note,
-              style="filled", fillcolor="#FFFACD", fontsize=9, fontname="sans-serif"];
-       note3 [label="pid nesnesindeki\nbağlı listeden", shape=note,
-              style="filled", fillcolor="#FFFACD", fontsize=9, fontname="sans-serif"];
-
-       f1 -> note1 [style=dashed, color="#999999", arrowhead=none];
-       f3 -> note2 [style=dashed, color="#999999", arrowhead=none];
-       f4 -> note3 [style=dashed, color="#999999", arrowhead=none];
-   }
+.. figure:: _static/find-task-chain.png
+   :align: center
+   :alt: task_struct access
+   :width: 90%
 
 Hash tablosunda pid nesnesini arayan *find_pid_ns* fonksiyonu, ``upid`` yapı nesnelerini dolaşmakta
 ve hem pid değerine hem de pid isim alanına birlikte bakmaktadır:
@@ -2719,72 +2513,10 @@ girilir. Her kademede bir bit daha anahtara eklenir.
 Ağacın her adımında yüksek anlamlı bitten başlayarak solda 0, sağda 1 dallanması yapılmaktadır.
 Aşağıdaki diyagram bu sekiz anahtarın ağaca yerleşimi sonucunu göstermektedir:
 
-.. graphviz::
-
-   digraph radix_tree {
-       graph [bgcolor="transparent", pad="0.3", ranksep=0.5, nodesep=0.35];
-       node  [shape=circle, style="filled", fillcolor="#DDEEFF",
-              fontname="monospace", fontsize=10, width=0.55, fixedsize=true];
-       edge  [fontname="monospace", fontsize=9, arrowsize=0.7, penwidth=1.2];
-
-       root [label="Kök", shape=box, style="rounded,filled",
-             fillcolor="#AACCFF", fontname="sans-serif", width=1.0, fixedsize=false];
-
-       /* Seviye 1 */
-       L0  [label="0"];
-       L1  [label="1"];
-
-       /* Seviye 2 */
-       L00 [label="0"];
-       L01 [label="1"];
-       L10 [label="0"];
-       L11 [label="1"];
-
-       /* Seviye 3 */
-       L000 [label="0"];
-       L001 [label="1"];
-       L010 [label="0"];
-       L011 [label="1"];
-       L100 [label="0"];
-       L101 [label="1"];
-       L110 [label="0"];
-
-       /* Seviye 4 - yapraklar */
-       node [shape=box, style="rounded,filled", fillcolor="#D4E8D4", width=0.7, fixedsize=true];
-       V0000 [label="0000"];
-       V0010 [label="0010"];
-       V0101 [label="0101"];
-       V0111 [label="0111"];
-       V1000 [label="1000"];
-       V1010 [label="1010"];
-       V1011 [label="1011"];
-       V1100 [label="1100"];
-
-       root -> L0  [label="0"];
-       root -> L1  [label="1"];
-
-       L0 -> L00  [label="0"];
-       L0 -> L01  [label="1"];
-       L1 -> L10  [label="0"];
-       L1 -> L11  [label="1"];
-
-       L00 -> L000 [label="0"];
-       L00 -> L001 [label="1"];
-       L01 -> L010 [label="0"];
-       L01 -> L011 [label="1"];
-       L10 -> L100 [label="0"];
-       L10 -> L101 [label="1"];
-       L11 -> L110 [label="0"];
-
-       L000 -> V0000 [label="0"];
-       L001 -> V0010 [label="0"];
-       L010 -> V0101 [label="1"];
-       L011 -> V0111 [label="1"];
-       L100 -> V1000 [label="0"];
-       L101 -> V1010 [label="0"];
-       L101 -> V1011 [label="1"];
-       L110 -> V1100 [label="0"];
-   }
+.. figure:: _static/radix-tree.png
+   :align: center
+   :alt: radix tree
+   :width: 65%
 
 Peki bu ağaçta arama nasıl yapılır? İşte arama için kökten girilir. Her bit pozisyonu için bir aşağıya
 inilir. Örneğin ``0000`` değerini arayacak olalım: ilk bit 0 olduğu için kökten sola ineriz, ikinci bit
@@ -2800,71 +2532,10 @@ tutulmasına da gerek yoktur. Zaten her kademede bir bit ilerlendiğine göre ar
 sonlandırılabilir. Aşağıdaki ağaçta bit-bit dallanma yapılmış ve yalnızca yapraklarda değerler
 tutulmuştur:
 
-.. graphviz::
-
-   digraph radix_leaves {
-       graph [bgcolor="transparent", pad="0.3", ranksep=0.5, nodesep=0.3];
-       node  [shape=circle, style="filled", fillcolor="#DDEEFF",
-              fontname="monospace", fontsize=10, width=0.45, fixedsize=true];
-       edge  [fontname="monospace", fontsize=9, arrowsize=0.7, penwidth=1.2,
-              color="#555555"];
-
-       root [label="Kök", shape=box, style="rounded,filled", fillcolor="#AACCFF",
-             fontname="sans-serif", width=0.9, fixedsize=false];
-
-       /* Derinlik 1 */
-       d1_0 [label="0"];
-       d1_1 [label="1"];
-
-       /* Derinlik 2 */
-       d2_00 [label="0"];
-       d2_01 [label="1"];
-       d2_10 [label="0"];
-       d2_11 [label="1"];
-
-       /* Derinlik 3 */
-       d3_000 [label="0"];
-       d3_001 [label="1"];
-       d3_010 [label="0"];
-       d3_011 [label="1"];
-       d3_100 [label="0"];
-       d3_101 [label="1"];
-       d3_110 [label="0"];
-
-       /* Yapraklar */
-       node [shape=box, style="rounded,filled", fillcolor="#D4E8D4",
-             fontname="monospace", fontsize=9, width=0.72, fixedsize=true];
-       leaf_0000 [label="0000\nson"];
-       leaf_0010 [label="0010\nson"];
-       leaf_0101 [label="0101\nson"];
-       leaf_0111 [label="0111\nson"];
-       leaf_1000 [label="1000\nson"];
-       leaf_1010 [label="1010\nson"];
-       leaf_1011 [label="1011\nson"];
-       leaf_1100 [label="1100\nson"];
-
-       root  -> d1_0  [label="0"];
-       root  -> d1_1  [label="1"];
-       d1_0  -> d2_00 [label="0"];
-       d1_0  -> d2_01 [label="1"];
-       d1_1  -> d2_10 [label="0"];
-       d1_1  -> d2_11 [label="1"];
-       d2_00 -> d3_000 [label="0"];
-       d2_00 -> d3_001 [label="1"];
-       d2_01 -> d3_010 [label="0"];
-       d2_01 -> d3_011 [label="1"];
-       d2_10 -> d3_100 [label="0"];
-       d2_10 -> d3_101 [label="1"];
-       d2_11 -> d3_110 [label="0"];
-       d3_000 -> leaf_0000 [label="0"];
-       d3_001 -> leaf_0010 [label="0"];
-       d3_010 -> leaf_0101 [label="1"];
-       d3_011 -> leaf_0111 [label="1"];
-       d3_100 -> leaf_1000 [label="0"];
-       d3_101 -> leaf_1010 [label="0"];
-       d3_101 -> leaf_1011 [label="1"];
-       d3_110 -> leaf_1100 [label="0"];
-   }
+.. figure:: _static/radix-leaves.png
+   :align: center
+   :alt: radix leaves
+   :width: 65%
 
 Görüldüğü gibi bu tasarımda hiç anahtar saklanmadan yaprak görülene kadar ilerlenirse ya ilgili anahtar
 bulunmuş olur ya da bulunmamış olur. Peki her düğümde anahtarı tutmakla yalnızca yapraklarda değeri
@@ -2903,41 +2574,10 @@ durumda ağaç da 2\ :sup:`n`-li ağaç olacaktır.
 6 bit → 2\ :sup:`6` = 64 farklı dallanmaya yol açacaktır. Bu durumda ağacımızın her düğümünde 64
 gösterici bulunacaktır ve yapraklara varabilmek için en fazla 6 kademe ilerlenecektir:
 
-.. graphviz::
-
-   digraph xarray_64way {
-       rankdir=TB;
-       graph [bgcolor="transparent", pad="0.3", ranksep=0.6];
-       node  [fontname="sans-serif", fontsize=10];
-       edge  [arrowsize=0.8, penwidth=1.2, color="#336699"];
-
-       root [label="Kök\n(64 gösterici)", shape=box, style="rounded,filled",
-             fillcolor="#AACCFF", fontname="monospace"];
-
-       g0  [label="0x00…0x3F\n64 gösterici", shape=box, style="rounded,filled",
-            fillcolor="#DDEEFF"];
-       g1  [label="0x40…0x7F\n64 gösterici", shape=box, style="rounded,filled",
-            fillcolor="#DDEEFF"];
-       g2  [label="...", shape=plaintext];
-       g63 [label="0xC0…0xFF\n64 gösterici", shape=box, style="rounded,filled",
-            fillcolor="#DDEEFF"];
-
-       leaf1 [label="struct pid *", shape=box, style="rounded,filled", fillcolor="#D4E8D4"];
-       leaf2 [label="struct pid *", shape=box, style="rounded,filled", fillcolor="#D4E8D4"];
-
-       root -> g0  [label="bit[5:0]=0"];
-       root -> g1  [label="bit[5:0]=1"];
-       root -> g2  [style=invis];
-       root -> g63 [label="bit[5:0]=63"];
-
-       g0  -> leaf1 [label="bit[11:6]=x"];
-       g1  -> leaf2 [label="bit[11:6]=y"];
-
-       note [label="En fazla 6 kademe\n(32-bit PID için)\nortalama 2–3 seviye",
-             shape=note, style="filled", fillcolor="#FFFACD",
-             fontname="sans-serif", fontsize=9];
-       root -> note [style=dashed, color="#999999", arrowhead=none];
-   }
+.. figure:: _static/xarray64way.png
+   :align: center
+   :alt: xarray
+   :width: 65%
 
 Güncel sürümlerde Linux'un pid araması için kullandığı XArray ağacı bu örnekteki gibi altışar bitlidir.
 
@@ -3038,31 +2678,10 @@ Bu fonksiyon belli bir pid değerine ilişkin pid nesnesini çağrıyı yapan pr
 alanı içerisindeki XArray ağacında aramaktadır. Aşağıdaki diyagram güncel çekirdekteki çağrı zincirini
 göstermektedir:
 
-.. graphviz::
-
-   digraph modern_pid_chain {
-       rankdir=LR;
-       graph [bgcolor="transparent", pad="0.3"];
-       node  [shape=box, style="rounded,filled", fontname="monospace", fontsize=10,
-              height=0.5, width=2.4];
-       edge  [color="#336699", arrowsize=0.9, penwidth=1.5];
-
-       fv  [label="find_vpid(nr)", fillcolor="#AACCFF"];
-       fpn [label="find_pid_ns(nr, ns)", fillcolor="#DDEEFF"];
-       idr [label="idr_find(&ns->idr, nr)", fillcolor="#DDEEFF"];
-       xa  [label="xa_load(...)", fillcolor="#DDEEFF"];
-       res [label="struct pid *", fillcolor="#D4E8D4"];
-
-       fv  -> fpn [label="task_active_pid_ns()"];
-       fpn -> idr;
-       idr -> xa  [label="XArray ağacı"];
-       xa  -> res;
-
-       sub1 [label="task_active_pid_ns\n──────────────\nns_of_pid(task_pid(tsk))\n= tsk->thread_pid->numbers\n    [pid->level].ns",
-             shape=note, style="filled", fillcolor="#FFFACD",
-             fontname="monospace", fontsize=8];
-       fv -> sub1 [style=dashed, color="#999999", arrowhead=none];
-   }
+.. figure:: _static/modern-pid-chain.png
+   :align: center
+   :alt: Modern pid chain
+   :width: 100%
 
 Prosesin içinde bulunduğu pid isim alanının bilgisine ulaşım çağrı zinciri şöyledir:
 
@@ -3137,31 +2756,10 @@ bunları kullanan yüksek seviyeli *IDR* fonksiyonları da bulunmaktadır. Çeki
 genellikle bu yüksek seviyeli ``idr_`` önekli fonksiyonların kullanıldığı görülmektedir. Aşağıdaki
 diyagram üç katman arasındaki ilişkiyi göstermektedir:
  
-.. graphviz::
-
-   digraph xarray_layers {
-       rankdir=TB;
-       graph [bgcolor="transparent", pad="0.4", ranksep=0.5];
-       node  [shape=box, style="rounded,filled", fontname="sans-serif", fontsize=11,
-              width=5.5, height=0.5];
-       edge  [color="#336699", arrowsize=0.9, penwidth=2.0];
-
-       app [label=<Çekirdek Kodları ve Aygıt Sürücüler<BR/>(sürücüler, alt sistemler — idr_* çağrıları yapan)>,
-            fillcolor="#AACCFF"];
-
-       idr [label=<IDR Katmanı  (idr_*)<BR/>Basit integer→pointer eşlemeleri için sarma fonksiyonları<BR/>idr_alloc() → xa_alloc()   |   idr_find() → xa_load()<BR/>idr_remove() → xa_erase()  |   idr_replace() → xa_store()<BR/>idr_for_each() → xa_for_each()>,
-            fillcolor="#DDEEFF"];
-
-       xar [label=<XArray Katmanı  (xa_*)<BR/>Gerçek veri yapısı: radix ağaç tabanlı, concurrency-aware, lock/RCU destekli<BR/>xa_alloc · xa_load · xa_store · xa_erase · xa_find · xa_for_each>,
-            fillcolor="#FFE8CC"];
-
-       imp [label=<Çekirdek Alt Veri Yapısı / Radix Tree<BR/>(XArray'in düşük seviye radix gerçekleştirimi)>,
-            fillcolor="#D4E8D4"];
-
-       app -> idr [label="idr_* çağrısı"];
-       idr -> xar [label="xa_* çağrısı"];
-       xar -> imp [label="dahili radix işlemleri"];
-   }
+.. figure:: _static/xarray-layers.png
+   :align: center
+   :alt: open ve openat sistem fonksiyonları
+   :width: 55%
 
 Boş pid değerinin elde edilmesi de aynı XArray altyapısı üzerinden yapılmaktadır:
 
