@@ -9919,14 +9919,14 @@ Yapının bellek düzeni ve her alanın byte ofseti aşağıdaki gibidir:
 .. figure:: _static/ext2-dentry-layout.png
    :alt: ext2_dir_entry_2 bellek düzeni
    :align: center
-   :width: 60%
+   :width: 70%
 
 Birden fazla dizin girişi peşi sıra şu şekilde gelmektedir:
 
 .. figure:: _static/directory-block.png
    :alt: Dizin bloğu içeriği
    :align: center
-   :width: 40%
+   :width: 50%
 
 Bu dosya sistemlerinde bir dizin girişi silinirse simplefs dosya sisteminde olduğu
 gibi dizin girişinin inode numarası 0 yapılmaktadır. Silinmiş bir dizin girişine
