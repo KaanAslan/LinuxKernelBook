@@ -38,6 +38,7 @@ kullanabildiği varsayılmaktadır.
    processcontrolblock
    filesystem1
    filesystem2
+   kernelsync
    bibliography
 
    

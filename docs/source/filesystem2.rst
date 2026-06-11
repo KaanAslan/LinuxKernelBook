@@ -8536,7 +8536,6 @@ adreslerini yerleştirebilirsiniz:
             putchar(ch);
 
         fclose(f);
-
         return 0;
     }
     
@@ -9789,3 +9788,228 @@ seviyeli fonksiyonların bir listesini yapıp işlevlerini özetlemek istiyoruz.
     **Not:** Sık kullanılan log seviyeleri: ``KERN_INFO`` (bilgi),
     ``KERN_WARNING`` (uyarı), ``KERN_ERR`` (hata). Modern çekirdeklerde
     ``pr_info()``, ``pr_warn()``, ``pr_err()`` makroları tercih edilir.
+
+simplefs Dosya Sisteminin İyileştirilmesi
+=========================================
+
+Burada simplefs dosya sisteminin biraz daha geliştirilmesi için yapılabilecek
+çalışmalar ele alınmaktadır.
+
+Çok Bloklu Dosya Desteği
+-------------------------
+
+Dosya sistemindeki dosya ve dizinlerin tek bloktan oluşması zorunluluğu
+kaldırılabilir. Diskteki inode elemanımız şöyleydi:
+
+.. code-block:: c
+
+    struct simplefs_disk_inode {
+        __le32 mode;            /* File type + permissions */
+        __le32 uid;             /* Owner user ID */
+        __le32 gid;             /* Owner group ID */
+        __le32 size;            /* File size in bytes */
+        __le32 nlink;           /* Hard link count */
+        __le32 blocks;          /* Block count (0 or 1) */
+        __le32 block_no;        /* Data block number */
+        __le32 ctime;           /* Creation time */
+        __le32 mtime;           /* Modification time */
+        __le32 atime;           /* Access time */
+        __u8   padding[24];     /* Padding to 64 bytes */
+    };
+
+Burada dosya ya da dizinin içeriğinin yapının ``block_no`` elemanında tutulduğuna
+dikkat ediniz. Bu eleman yalnızca tek bir bloğu tutmaktadır. Biz diskteki inode
+elemanından bu bilgiyi alıp bellekteki inode nesnemize aktarıyorduk:
+
+.. code-block:: c
+
+    struct simplefs_inode {
+        __u32 block_no;
+        struct inode vfs_inode;
+    };
+
+Buradaki ``block_no`` elemanını bir dizi haline getirsek sorun pratikte çözülür.
+Ancak bu durumda söz konusu dizi kaç elemanlı olacaktır? Dizi çok büyük tutulursa
+diskteki inode elemanları çok yer kaplar hale gelecektir. İşte burada ext2, ext3
+ve ext4 dosya sistemlerindeki teknik izlenebilir. Bu dosya sistemlerinde bu dizi
+15 elemanlıdır. Bu 15 elemanın ilk 12 elemanı doğrudan blok numaralarını tutar;
+yani dosyanın verilerinin bulunduğu blok numaralarını tutmaktadır.
+
+Bu dosya sistemlerinde dizinin 13'üncü elemanına *first indirect block* denilmektedir.
+Bu elemanda bir blok numarası tutulur; ancak o numaralı bloğun içerisinde dosyanın
+diğer parçalarına ait blok numaraları bulunmaktadır. Bu da yetmeyebilir: dizinin
+14'üncü elemanına *double indirect block* denilmektedir. Bu elemanda bir bloğun
+numarası tutulur; o bloğa gidildiğinde oradaki blok numaraları da veri bloğu
+numaraları değil, blok numaralarının tutulduğu blokların numaralarını içermektedir.
+Eğer bu da yetmezse dizinin 15'inci elemanı kullanılmaktadır. *Triple indirect block*
+denilen bu elemanda üçlü bir gösterici mekanizması kullanılmıştır.
+
+.. figure:: _static/indirect-blocks.png
+   :alt: İndirect block mekanizması
+   :align: center
+
+Şimdi bir bloğun 1K (1024 byte) uzunlukta olduğunu varsayalım. Bu durumda 12K'ya
+kadar olan dosyaların blok numaraları doğrudan dizinin ilk 12 elemanında tutulacaktır.
+Bir blok 1024 byte olduğuna göre içerisinde 1024 ÷ 4 = 256 adet 32 bitlik blok
+numarası bulunabilir. Bu durumda:
+
+- *First indirect block* 256 bloğu daha tutabilmektedir.
+- *Second indirect block* 256 × 256 = 65 536 bloğu tutabilmektedir.
+- *Triple indirect block* 256 × 256 × 256 = 16 777 216 bloğu tutabilmektedir.
+
+Bu durumda bir blok 1K ise bir dosyanın maksimum blok sayısı
+12 + 65 536 + 16 777 216 = 16 842 764 olmaktadır. Bu değeri 1K ile çarparsak
+yaklaşık 17 GB elde edilir. Bir blok 4K olursa bu değer dört ile çarpılmalıdır.
+Görüldüğü gibi bu sistemlerde bir dosyanın teorik maksimum uzunluğu oldukça yüksektir.
+
+inode Bitmap ve Data Bitmap Boyutlarının Ayarlanması
+-----------------------------------------------------
+
+simplefs dosya sistemimizde inode bitmap ve data bitmap 1 blok alınmıştır. Bu
+durumda dosya sisteminde en fazla 4096 inode elemanı ve dosya bulunabilir. Disk
+formatlanırken diskin büyüklüğüne bakılarak bu bitmap'lerin blok sayıları
+ayarlanabilir; kaç bloktan oluşturduğu bilgisi de süper blokta saklanabilir. ext2,
+ext3, ext4 dosya sistemlerinde bu bitmap'lerin blok uzunlukları değişebilmektedir.
+
+Değişken Uzunluklu Dizin Girişleri
+-----------------------------------
+
+simplefs dosya sistemimizde dosya isimleri en fazla 31 karakter olabilmektedir.
+Diskteki dentry elemanlarının formatı şöyleydi:
+
+.. code-block:: c
+
+    #define SIMPLEFS_FILENAME_MAXLEN    32
+
+    struct simplefs_disk_dentry {
+        __le32 inode;                           /* Inode number */
+        char name[SIMPLEFS_FILENAME_MAXLEN];    /* File name */
+    };
+
+Dosya ismi uzunluğu örneğin 256'ya çıkartıldığında *kısa dosya isimleri için*
+gereksiz yere büyük bir alan ayrılmış olacaktır. Bu da dizin girişlerinin çok yer
+kaplamasına yol açacaktır. İşte ext2, ext3, ext4 dosya sistemlerinde dizin girişleri
+eşit uzunlukta değildir; her dizin girişinin uzunluğu farklı olabilmektedir. Bu
+dosya sistemlerindeki dizin girişi formatı şöyledir:
+
+.. code-block:: c
+
+    struct ext2_dir_entry_2 {
+        __le32  inode;      /* Inode numarası (4 byte) */
+        __le16  rec_len;    /* Bu kayıt giriş uzunluğu (2 byte) */
+        __u8    name_len;   /* Dosya adı uzunluğu (1 byte) */
+        __u8    file_type;  /* Dosya tipi (1 byte) */
+        char    name[];     /* Dosya adı (değişken uzunluk, NULL sonlandırılmamış) */
+    };
+
+Yapının alanları şu bilgileri tutar:
+
+- ``inode`` — Dizin girişine ilişkin dosya bilgilerinin bulunduğu inode numarası
+  (simplefs dosya sistemimizde de bu eleman vardır)
+- ``rec_len`` — Dizin girişinin padding dahil olmak üzere baştan itibaren toplam
+  uzunluğu
+- ``name_len`` — Dosya isminin uzunluğu
+- ``file_type`` — Dosyanın türü; böylece bir dosyanın dizin olup olmadığı gibi
+  bir kontrol hiç inode elemanına gidilmeden dizin girişinden anlaşılabilmektedir
+- ``name`` — Değişken uzunlukta dosya ismi; dosya isminden sonra 4'ün katlarına
+  tamamlama için padding bırakılmaktadır
+
+Yapının bellek düzeni ve her alanın byte ofseti aşağıdaki gibidir:
+
+.. figure:: _static/ext2-dentry-layout.png
+   :alt: ext2_dir_entry_2 bellek düzeni
+   :align: center
+   :width: 60%
+
+Birden fazla dizin girişi peşi sıra şu şekilde gelmektedir:
+
+.. figure:: _static/directory-block.png
+   :alt: Dizin bloğu içeriği
+   :align: center
+   :width: 40%
+
+Bu dosya sistemlerinde bir dizin girişi silinirse simplefs dosya sisteminde olduğu
+gibi dizin girişinin inode numarası 0 yapılmaktadır. Silinmiş bir dizin girişine
+artık o isimden daha kısa isimli bir dosya yerleştirilebilmektedir. Silinen giriş
+uzunsa ve kalan kısım minimum uzunluk olan 12'den büyükse, kalan uzunluk da boş
+giriş olarak bölünmektedir.
+
+**Silme öncesi:**
+
+.. code-block:: text
+
+    ┌──────────────────────────────────────────────────┐
+    │ inode: 1234  │ rec_len: 20  │ name_len: 11       │
+    │ file_type: 1 │ name: "deleted.txt"    │ padding  │
+    └──────────────────────────────────────────────────┘
+
+**Silme sonrası:**
+
+.. code-block:: text
+
+    ┌──────────────────────────────────────────────────┐
+    │ inode: 0     │ rec_len: 20  │ name_len: 11       │
+    │ file_type: 1 │ name: "deleted.txt"    │ padding  │
+    └──────────────────────────────────────────────────┘
+    ↑
+    Sıfırlanır (silinmiş işareti) — rec_len korunur, alan tekrar kullanılabilir
+
+.. admonition:: Minimum rec_len Hesabı
+   :class: tip
+
+   .. code-block:: c
+
+       rec_len = ((8 + name_len + 3) & ~3)
+
+   - ``8``: Sabit alanların toplam boyutu (``inode`` + ``rec_len`` + ``name_len`` +
+     ``file_type``)
+   - ``name_len``: Dosya adı uzunluğu
+   - ``+ 3`` ve ``& ~3``: Sonucu yukarı yuvarlayarak 4'ün katına getirir (son 2 biti
+     sıfırlar)
+
+``file_type`` alanında kullanılan dosya türü değerleri:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 30 28
+
+   * - Değer
+     - Sabit Adı
+     - Açıklama
+   * - 0
+     - ``EXT2_FT_UNKNOWN``
+     - Bilinmeyen
+   * - 1
+     - ``EXT2_FT_REG_FILE``
+     - Normal dosya
+   * - 2
+     - ``EXT2_FT_DIR``
+     - Dizin
+   * - 3
+     - ``EXT2_FT_CHRDEV``
+     - Karakter aygıt
+   * - 4
+     - ``EXT2_FT_BLKDEV``
+     - Blok aygıt
+   * - 5
+     - ``EXT2_FT_FIFO``
+     - FIFO (named pipe)
+   * - 6
+     - ``EXT2_FT_SOCK``
+     - Soket
+   * - 7
+     - ``EXT2_FT_SYMLINK``
+     - Sembolik link
+
+.. note::
+
+   - Her giriş 4 byte hizalı olmalıdır.
+   - ``name`` alanı NULL karakter ile sonlandırılmaz; uzunluk ``name_len``
+     ile belirlenir.
+   - Son giriş blok sonuna kadar uzar (büyük ``rec_len``).
+   - Silinmiş dosyalar ``inode = 0`` ile işaretlenir.
+   - Maksimum dosya adı uzunluğu 255 karakterdir.
+   - Minimum ``rec_len`` değeri 12 byte'tır (1 karakterlik isim için).
+   - ``rec_len`` her zaman 4'ün katı olmalıdır.
+
+

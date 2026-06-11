@@ -6919,7 +6919,29 @@ E�er Linux'un dosya sistemi C++'ta nesne yönelimli bir biçimde gerçekleşti
 fonksiyonları da bu sınıfların sanal fonksiyonları yapılırdı. Ancak daha önceden de belirttiğimiz gibi
 çekirdek kodlaması için C++ uygun bir dil olarak görülmemektedir.
 
+Çekirdeğin VFS Soyutlaması 
+==========================
 
+Linux kaynak kodlarında 3'lü versiyonlardan itibaren birlikte dosya işlemlerine
+ilişkin sistem fonksiyonları incelendiğinde belli bir noktadan sonra ``vfs_xxx``
+biçiminde ``vfs_`` önekli fonksiyonların çağrıldığı görülmektedir. Örneğin
+``sys_open`` sistem fonksiyonu belli bir aşamadan sonra ``vfs_open`` fonksiyonunu,
+``sys_read`` fonksiyonu ``vfs_read`` fonksiyonunu, ``sys_write`` fonksiyonu
+``vfs_write`` fonksiyonunu çağırmaktadır. Bu ``vfs_xxx`` fonksiyonları dosya
+sistemine ilişkin aygıt sürücünün ilgili fonksiyonlarını çağırmaktadır. Yani sistem
+fonksiyonları belli bir noktadan sonra artık akışı dosya sistemine ilişkin aygıt
+sürücülerin ``inode_operations`` ve ``file_operations`` nesnelerinde belirtilen
+fonksiyonlara devretmektedir. 3'lü versiyonlardan itibaren çekirdekteki bu ``vfs_``
+önekli fonksiyonlar katmansal bir soyutlama sağlamak amacıyla bulundurulmuştur.
+
+Örneğin ``sys_read`` ve ``sys_mkdir`` sistem fonksiyonlarının çağrı mekanizması
+aşağıdaki gibidir:
+
+.. figure:: _static/vfs-call-arch.png
+   :alt: VFS çağrı mimarisi diyagramı
+   :align: center
+   :width: 50%
+   
 Sıfırdan Dosya Sistemi Oluşturma Adımları
 =========================================
 
