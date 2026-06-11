@@ -9789,8 +9789,8 @@ seviyeli fonksiyonların bir listesini yapıp işlevlerini özetlemek istiyoruz.
     ``KERN_WARNING`` (uyarı), ``KERN_ERR`` (hata). Modern çekirdeklerde
     ``pr_info()``, ``pr_warn()``, ``pr_err()`` makroları tercih edilir.
 
-simplefs Dosya Sisteminin İyileştirilmesi
-=========================================
+simplefs Dosya Sisteminin İyileştirilmesi İçin Öneriler
+=======================================================
 
 Burada simplefs dosya sisteminin biraz daha geliştirilmesi için yapılabilecek
 çalışmalar ele alınmaktadır.
