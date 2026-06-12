@@ -14,12 +14,12 @@ Hazırlık İşlemleri
 
 *simplfs* dosya sistemiminin gerçekleştirimine başlamadan önce bazı hazırlık bilgileri vereceğiz.
 
-Linux Çekirdeğinde Kullanılan Temel Türlere İlişkin typedef İsimleri
----------------------------------------------------------------------
+Linux Çekirdeğinde Kullanılan Belli Uzunluklardaki Tamsayı Türlerine İlişkin typedef İsimleri
+---------------------------------------------------------------------------------------------
 
-Linux çekirdeğinin kodlamasında tür ve uzunluk belirten bazı typedef tür isimleri kullanılmıştır.
-Çekirdeğin içsel kodlarında belli uzunlukta tamsayı türleri ``include/linux/types.h`` dosyası
-içerisinde aşağıdaki isimlerle typedef edilmiştir:
+Linux çekirdeğinde belli uzunluktaki tamsayı türlerinin platformdan bağımsız bir biçimde 
+kullanılmasına olanak sağlamak amacıyla ``include/linux/types.h`` dosyası içerisinde aşağıdaki tür
+isimleri typedef edilmiştir:
 
 .. code-block:: c
 
@@ -68,13 +68,12 @@ türlerini tercih etmelisiniz.
 Loop Aygıtları
 ---------------
 
-Bir dosya sistemini gerçekleştirirken bizim bir diske gereksinimimiz olacaktır. Neyse ki Linux'ta bir 
-dosyanın bir disk gibi kullanılmasını sağlayan ismine *loop* denilen aygıt sürücüler bulunmaktadır. Bu *loop* 
-aygıtları sayesinde bir dosyayı disk gibi kullanarak denemelerimizi kolay bir biçimde yapabileceğiz. O halde önce bu *loop* aygıt
-sürücüsünün nasıl kullanıldığını açıklayalım.
+Bir dosya sistemini gerçekleştirirken bizim bir diske gereksinimimiz olacaktır. Dikleri bu tür denemelerde 
+kullanmak oldukça zahmetlidir. Linux'ta bir dosyanın bir disk gibi kullanılmasını sağlayan ismine *loop* denilen 
+aygıt sürücüler bulunmaktadır. Bu *loop* ayygıtları sayesinde bir dosyayı disk gibi kullanarak denemelerimizi 
+kolay bir biçimde yapabilmekteyiz. 
 
-*loop* aygıt sürücülerine ilişkin aygıt dosyaları Linux'ta ``/dev`` dizininin altında
-bulunmaktadır:
+*loop* aygıt sürücülerine ilişkin aygıt dosyaları ``/dev`` dizininin altında bulunmaktadır:
 
 .. code-block:: bash
 
@@ -90,10 +89,7 @@ bulunmaktadır:
     crw-rw---- 1 root disk 10, 237 Kas 23 12:22 /dev/loop-control
 
 Görüldüğü gibi bu sistemde majör numaraları aynı olan, minör numaraları farklı olan 8 loop aygıtı
-bulunmaktadır.
-
-Loop Aygıtları İçin Dosya Oluşturma
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bulunmaktadır. Loop aygıtlarının sayısı çeşitli biçimlerde artırılabilmektedir.
 
 Bir loop aygıtını kullanıma hazır hale getirmek için önce onun kullanacağı bir dosyanın
 oluşturulması gerekir. Linux'ta komut satırında içi 0'larla dolu olan bir dosya *dd* (*disk dump*)
@@ -111,9 +107,6 @@ eşliğinde içi 0'larla dolu 10 MB civarında bir dosya şöyle oluşturulabili
     $ dd if=/dev/zero of=mydisk.dat bs=512 count=20480
 
 Bu komutla elimizde içi sıfırlarla dolu 10 MB'lık bir dosya elde etmiş olacağız.
-
-Loop Aygıtlarını Yapılandırma
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Dosyayı oluşturduktan sonra onun loop aygıtı tarafından disk gibi kullanılmasını sağlamalıyız.
 Bu işlem *losetup* programıyla yapılmaktadır. *losetup* programı şöyle kullanılmaktadır:

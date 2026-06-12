@@ -20,28 +20,28 @@ bölümde biz bu nesneleri ele alıp onların nasıl kullanıldığını açıkl
 Aynı zamanda çok işlemcili ya da çekirdeklerdeki senkronizasyon sorunlarını ele
 alacağız.
 
-Kritik Kod Blokları (Critical Sections)
-=======================================
+Kritik Kod Blokları
+===================
 
-Çekirdek kodlarında senkronizasyon uygulamaya neden gerek vardır? Tıpkı kullanıcı
+Çekirdek kodlarında senkronizasyona neden gerek duyulmaktadır? İşte tıpkı kullanıcı
 modundaki çok thread'li uygulamalarda olduğu gibi bir akış çekirdek içerisinde
 paylaşılan bir veri yapısı üzerinde işlem yaparken bir biçimde thread'ler arası
 geçiş ya da kesme olayı söz konusu olduğunda başka bir akış da bu paylaşılan veri
-yapısını kullanmak isterse bu veri yapısı bozulabilmektedir. Tabii çok çekirdekli
+yapısını kullanmak isterse bu veri yapısı bozulabilmektedir. Çok çekirdekli
 sistemlerde farklı çekirdeklerdeki thread'ler de çekirdek içerisindeki ortak veri
 yapıları üzerinde eş zamanlı işlemler yapabilmektedir. Örneğin çekirdek kodunun bir
 bağlı listeye eleman eklediğini varsayalım. Tam bu işlemin ortalarında bir yerde
 thread'ler arası geçiş oluşursa ya da başka bir çekirdekteki thread de aynı bağlı
 liste üzerinde işlem yapmaya çalışırsa tüm veri yapısı bozulabilecektir.
 
-Çekirdek senkronizasyonunda en önemli kavram *kritik kod (critical section)* denilen
-kavramdır. Başından sonuna kadar tek bir akış tarafından işletilmesi gereken kodlara
-*kritik kod* denilmektedir. Kritik kod kavramını atomiklikle karıştırmayınız.
-Atomiklik *bir işlem yapılırken thread'ler arası geçiş ya da kesme mekanizması
-yoluyla* işlemin kesintiye uğramaması anlamına gelmektedir. Bir akış çekirdekteki
-bir *kritik kod*'a girdiğinde akış *preemption*'dan dolayı kesintiye uğrayabilir.
+Çekirdek senkronizasyonunda en önemli kavram *kritik kod blokları (critical section)* denilen
+kavramdır. Başından sonuna kadar tek bir akış tarafından işletilmesi gereken kod bloklarına
+*kritik kod blokları* denilmektedir. Kritik kod kavramını atomiklikle karıştırmayınız.
+Atomiklik "bir işlem yapılırken thread'ler arası geçiş ya da kesme mekanizması
+yoluyla işlemin kesintiye uğramaması" anlamına gelmektedir. Bir akış çekirdekteki
+bir kritik kod bloğuna girdiğinde akış *preemption*'dan dolayı kesintiye uğrayabilir.
 Ancak bu durumda bile başka bir akış kesintiye uğramış olan akış işini bitirene kadar
-kritik koda girmemelidir. Yani kritik koda girmiş olan bir akışın kesintiye uğraması
+kritik kod bloğuna girmemelidir. Yani kritik kod bloğuna girmiş olan bir akışın kesintiye uğramaması
 biçiminde bir koşul yoktur.
 
 Çekirdek kodları kullanıcı modundaki kodlar gibi değildir. Çekirdek kodları aynı
@@ -49,12 +49,12 @@ zaman diliminde pek çok akış tarafından iç içe geçecek biçimde çalışt
 Bu nedenle çekirdek tasarımında ve aygıt sürücü yazımında senkronizasyon her zaman
 göz önüne alınmalıdır. Maalesef senkronizasyon sorunlarının tespit edilmesi oldukça
 zor olabilmektedir. Çünkü senkronizasyon problemlerinin oluşturduğu böceklerin
-*reproduce* edilmesi oldukça zordur.
+yeniden üretilmesi edilmesi oldukça zordur.
 
-Çekirdek içerisindeki *kritik kod* bloklarının önemli bir bölümü birden fazla akışın
+Çekirdek içerisindeki kritik kod bloklarının önemli bir bölümü birden fazla akışın
 paylaşılan bir veri yapısına erişilmesi nedeniyle oluşturulmaktadır. Örneğin aynı
 hash tablosuna birden fazla prosesin çağırdığı sistem fonksiyonları eleman ekleyebilir.
-Bu durumda bu hash tablosunun böyle erişimlerde *serialize* edilmesi gerekir. Ancak
+Bu durumda bu hash tablosunun böyle erişimlerde *seri hale getirilmesi (serialize edilmesi)* gerekir. Ancak
 senkronizasyon sorunu yalnızca ortak veri yapılarına ve nesnelere erişirken ortaya
 çıkmaz. Bu bölümde ele alacağımız senkronizasyonu gerektiren başka durumlar da
 vardır.
@@ -70,8 +70,8 @@ olacaktır. Her nesnenin ayrı bir senkronizasyon nesnesi ile korunması en norm
 durumdur. Linux çekirdek nesnelerini incelediğinizde onları belirten yapıların
 elemanlarında senkronizasyon nesneleri göreceksiniz.
 
-Manuel Kritik Kod Bloklarının Oluşturulmasında Sorunlar
--------------------------------------------------------
+Kritik Kod Bloklarının Manuel Oluşturulmasındaki Sorunlar
+---------------------------------------------------------
 
 Kritik kodlar ancak özel makine komutları kullanılarak oluşturulabilmektedir.
 Aşağıdaki gibi basit bir mantıkla kritik kod oluşturulamaz:
@@ -122,16 +122,20 @@ biz bu senkronizasyon nesnelerini ele alacağız. Bölümün sonlarına doğru d
 senkronizasyon nesnelerinin oluşturulabilmesi için gereken makine komutları hakkında
 bilgiler vereceğiz.
 
+Blokeye Yol Açabilen ve Blokeye Yol Açmayan Senkronizasyon Nesneleri
+--------------------------------------------------------------------
+
 İşletim sistemindeki senkronizasyon nesnelerini temelde iki gruba ayırabiliriz:
 
-1) Blokeye yol açan senkronizasyon nesneleri
+1) Blokeye yol açabilen senkronizasyon nesneleri
 2) Blokeye yol açmayan senkronizasyon nesneleri
 
-Blokeye yol açan senkronizasyon nesneleri çalışmakta olan kodun çalışmasına ara vererek ileride ele alacağımız
-*bekleme kuyruklarında (wait queue)* bekletildiği yani göreli olarak uzun süre beklemeye yol açan senkronizasyon
-nesneleridir. Blokeye yol açmayan senkronizasyon nesneleri ise akışın bekletilmediği senkronizasyon nesneleridir.
-Bunları da kendi aralarında iki kısma ayırabiliriz. Bunların bir bölümü okuma sırasında döngü içerisinde spin
-yaparak beklemeyi sağlamaktadır. Diğer bölümü ise modern *lock-free* veri yapılarından oluşmaktadır.
+Blokeye yol açabilen senkronizasyon nesneleri çalışmakta olan kodun çalışmasına ara vererek ileride ele alacağımız
+*bekleme kuyruklarında (wait queue)* bekletilebildiği, yani göreli olarak uzun süre beklemeye yol açabilen senkronizasyon
+nesneleridir. Blokeye yol açmayan senkronizasyon nesneleri ise akışın uykuya yatırılarak bekletilmediği senkronizasyon 
+nesneleridir. Bunları da kendi aralarında iki kısma ayırabiliriz. Bunların bir bölümü okuma sırasında spin
+yaparak beklemeye yol açabilmekte, diğer bölümü ise bekleme yapmadan okumayı sağlayabilmektedir. Okuma sırasında beklemeye 
+yol açmayan modern senkronizasyon nesnelerine "klitsiz (lock-free) senkronizasyon nesnesleri" denilmektedir.
 
 Bu bölümde açıklayacağımız çekirdek senkronizasyon nesnelerini kullanıcı modundaki thread senkronizasyonunda
 kullanılan senkronizasyon nesneleri ile karıştırmayınız. Kullanıcı modundaki senkronizasyon nesneleri kullanıcı
@@ -197,10 +201,7 @@ ancak bunun bir garantisi yoktur.)
 
 Çekirdeğin mutex nesneleri tipik olarak şöyle kullanılmaktadır:
 
-Mutex Nesnelerinin Tanımlanması ve İlkDeğer Verilmesi
------------------------------------------------------
-
-Mutex nesnesi ``mutex`` isimli bir yapıyla temsil edilmektedir. Sistem programcısı bu yapı türünden
+**1)** Mutex nesnesi ``mutex`` isimli bir yapıyla temsil edilmektedir. Sistem programcısı bu yapı türünden
 global olarak ya da çekirdeğin heap sisteminde dinamik biçimde bir nesne yaratır ve ona ilk değerini
 verir. ``DEFINE_MUTEX(name)`` makrosu hem ``struct mutex`` türünden nesneyi tanımlamakta hem de ona ilk
 değerini vermektedir. Örneğin:
@@ -249,10 +250,7 @@ Fonksiyon mutex nesnesinin adresini almaktadır. Örneğin:
 
     mutex_init(&g_mutex);
 
-Mutex Nesnelerinin Kilitlenmesi (mutex_lock)
---------------------------------------------
-
-Mutex nesnesini kilitlemek için ``mutex_lock`` fonksiyonu kullanılır:
+**2)** Mutex nesnesini kilitlemek için ``mutex_lock`` fonksiyonu kullanılır:
 
 .. code-block:: c
 
@@ -301,10 +299,7 @@ geri döndüğünü tespit ettiğinde ilgili sistem fonksiyonunun yeniden çalı
 Sistem programcıları çoğu kez ``mutex_lock`` yerine ``mutex_lock_interruptible`` fonksiyonunu tercih
 etmektedir.
 
-Mutex Nesnelerinin  Kilidinin Bırakılması (mutex_unlock)
---------------------------------------------------------
-
-Mutex nesnesinin kilidini bırakmak için (nesneyi unlock etmek için) ``mutex_unlock`` fonksiyonu
+**3)** Mutex nesnesinin kilidini bırakmak için (nesneyi unlock etmek için) ``mutex_unlock`` fonksiyonu
 kullanılmaktadır:
 
 .. code-block:: c
@@ -330,8 +325,8 @@ yapılmaktadır:
 
 Mutex nesnesini kilitledikten sonra fonksiyonlarınızı geri döndürürken kilidi açmayı unutmayınız.
 
-Çekirdeğin mutex nesneleri *özyinelemeli (recursive)* değildir. Yani thread bir mutex nesnesini
-kilitlemişse aynı mutex nesnesini kilitlemeye çalışırsa *deadlock* oluşur.
+Çekirdeğin mutex nesneleri *özyinelemeli (recursive)* değildir. Yani thread kilitlediği bir mutex nesnesini
+yeniden kilitlemeye çalışırsa *deadlock* oluşur.
 
 Mutex Kullanımına Örnek
 -----------------------
