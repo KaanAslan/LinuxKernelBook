@@ -937,10 +937,10 @@ UNIX/Linux sistemlerinde bir dosya açıldığında ``open`` POSIX fonksiyonunun
 betimleyicileri aslında dosya betimleyici tablosunda bir indeks belirtmektedir. Dosya betimleyici tablosu dosya nesnelerinin
 (yani ``file`` yapısı türünden nesnelerin) adreslerini tutan bir gösterici dizisidir. Bu tabloyu şöyle temsil edebiliriz:
 
-.. image:: /_static/fd-table.svg
+.. image:: /_static/fd-table.png
    :alt: Dosya Betimleyici Tablosu
    :align: center
-   :width: 70%
+   :width: 65%
    
 Güncel çekirdeklerde dosya betimleyici tablosuna ``task_struct`` nesnesinden hareketle birkaç hamlede erişilmektedir:
 
@@ -993,10 +993,10 @@ tablosu (file descriptor table)* denilmektedir. Yukarıda da belirttiğimiz gibi
 nesnelerinin adreslerini tutan bir gösterici dizisi biçimindedir. Bir kez daha dosya betimleyici tablosunu temsili 
 biçimde gösteriyoruz:
 
-.. image:: /_static/fd-table.svg
+.. image:: /_static/fd-table.png
    :alt: Dosya Betimleyici Tablosu
    :align: center
-   :width: 70%
+   :width: 65%
 
 Buradaki sayılar dizinin indekslerini belirtmektedir. Tabii zamanla dosyalar kapanınca bu dizinin elemanlarının da 
 boşa düşeceğine dikkat ediniz. Boş elemanlara NULL adres yerleştirilmektedir. İşte ``open`` POSIX fonksiyonunun 
@@ -1580,69 +1580,14 @@ numaralı betimleyicileri aynı dosya nesnelerini gösteriyor durumda olur. Tabi
 yeni açacağı dosyalar onlara özgü olacaktır. Paylaşılan dosya nesneleri yalnızca ``fork`` öncesinde açılmış
 olanlardır. fork işlemi sırasında yapılan işlemleri aşağıdaki şekille de pekiştirmek istiyoruz:
 
-.. graphviz::
-
-   digraph fork_fd {
-       rankdir=LR;
-       graph [fontname="DejaVu Sans", nodesep=0.6, ranksep=0.9, splines=ortho];
-       node  [shape=box, style="rounded,filled", fontname="DejaVu Sans",
-              margin="0.25,0.15", fontsize=11];
-       edge  [fontname="DejaVu Sans", fontsize=9, color="#444444"];
-
-       /* ── Üst proses yapıları ── */
-       ptask  [label="task_struct\n(üst proses)",
-               fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
-       pfiles [label="files_struct\n(üst — mevcut)",
-               fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
-       pfd    [label="fd tablosu (üst)\nfd[0]  fd[1]  fd[2]",
-               fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
-
-       /* ── Alt proses yapıları (fork sonrası yeni tahsis) ── */
-       ctask  [label="task_struct\n(alt proses)",
-               fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
-       cfiles [label="files_struct\n(alt — yeni tahsis)",
-               fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
-       cfd    [label="fd tablosu (alt)\nfd[0]  fd[1]  fd[2]",
-               fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
-
-       /* ── Paylaşılan dosya nesneleri (kopyalanmaz) ── */
-       file0  [label="struct file\n(dosya nesnesi 0)",
-               fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
-       file1  [label="struct file\n(dosya nesnesi 1)",
-               fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
-       file2  [label="struct file\n(dosya nesnesi 2)",
-               fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
-
-       /* ── Sütun hizalaması ── */
-       { rank=same; ptask;  ctask;  }
-       { rank=same; pfiles; cfiles; }
-       { rank=same; pfd;    cfd;    }
-       { rank=same; file0;  file1;  file2; }
-
-       /* ── Üst proses bağlantıları ── */
-       ptask  -> pfiles;
-       pfiles -> pfd;
-       pfd    -> file0;
-       pfd    -> file1;
-       pfd    -> file2;
-
-       /* ── Alt proses bağlantıları ── */
-       ctask  -> cfiles [label="yeni tahsis"];
-       cfiles -> cfd    [label="yeni tahsis"];
-       cfd    -> file0  [color="#E24B4A", penwidth=2.0,
-                          label="sığ kopya", fontcolor="#E24B4A"];
-       cfd    -> file1  [color="#E24B4A", penwidth=2.0];
-       cfd    -> file2  [color="#E24B4A", penwidth=2.0];
-
-       /* ── fork() çağrısı ── */
-       ptask -> ctask [label="fork()", style=dashed,
-                        color="#888780", fontcolor="#5F5E5A",
-                        constraint=false];
-   }
+.. image:: /_static/fork-fd.png
+   :alt: Fork sonrası fd tabloları sığ kopyası
+   :align: center
+   :width: 80%
 
 Dosya betimleyici tablosunun kopyalanmasını için şöyle bir şekille de temsil edebiliriz:
 
-.. image:: /_static/fd_table.svg
+.. image:: /_static/fd-table-fork.png
    :alt: Fork sonrası fd tabloları sığ kopyası
    :align: center
    :width: 70%
