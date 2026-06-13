@@ -214,53 +214,14 @@ Tabii burada oluşturduğumuz ``mydisk.dat`` dosyası kalmaya devam etmektedir. 
 *losetup* ile blok aygıtı gibi kullanabiliriz ve işlemlerimize kaldığımız yerden devam
 edebiliriz.
 
-Loop Aygıtlarının Kullanım Akışı
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 Aşağıdaki şema, loop aygıtının tipik kullanım akışını özetlemektedir:
 
-.. code-block:: text
+.. figure:: _static/loop-device-flow.png
+   :align: center
+   :alt: simplefs disk organizasyonu
+   :width: 50%
 
-    ┌─────────────────────────────────────────────────────────────┐
-    │                   Loop Aygıtı Kullanım Akışı                │
-    └──────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-    ┌─────────────────────────────────────────────────────────────┐
-    │  1. Disk dosyası oluştur                                    │
-    │     dd if=/dev/zero of=mydisk.dat bs=512 count=20480        │
-    └──────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-    ┌─────────────────────────────────────────────────────────────┐
-    │  2. Loop aygıtına bağla                                     │
-    │     sudo losetup /dev/loop0 mydisk.dat                      │
-    └──────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-    ┌─────────────────────────────────────────────────────────────┐
-    │  3. Dosya sistemi oluştur (formatla)                        │
-    │     sudo mkfs.ext2 /dev/loop0                               │
-    └──────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-    ┌─────────────────────────────────────────────────────────────┐
-    │  4. Mount et                                                │
-    │     mkdir ext2-test                                         │
-    │     sudo mount /dev/loop0 ext2-test                         │
-    └──────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-    ┌─────────────────────────────────────────────────────────────┐
-    │  5. Kullan  (ext2-test dizini üzerinden erişim)             │
-    └──────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-    ┌─────────────────────────────────────────────────────────────┐
-    │  6. Geri al (ters sırayla)                                  │
-    │     sudo umount ext2-test                                   │
-    │     sudo losetup -d /dev/loop0                              │
-    └─────────────────────────────────────────────────────────────┘
+   loop aygıtlarının kullanım akışı
 
 Little-Endian/Big Endian Sorunu
 --------------------------------
