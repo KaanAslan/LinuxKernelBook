@@ -1650,7 +1650,6 @@ sonra ``app`` programı çalıştırmalısınız. Bu program önce 10 tane threa
     void exit_sys(const char *msg)
     {
         perror(msg);
-
         exit(EXIT_FAILURE);
     }
 
@@ -2154,7 +2153,6 @@ Aşağıda tüm kodları bütünsel olarak veriyoruz:
     void exit_sys(const char *msg)
     {
         perror(msg);
-
         exit(EXIT_FAILURE);
     }
 

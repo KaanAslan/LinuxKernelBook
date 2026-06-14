@@ -170,7 +170,7 @@ mutex'in sahipliğini alarak kritik koda girer. Kritik kod tipik olarak şöyle 
 
     mutex_lock(...);
     ...
-    ...    <KRİTİK KOD>
+    ...    <KRİTİK KOD BLOĞU>
     ...
     mutex_unlock(...);
 
@@ -328,11 +328,777 @@ Mutex nesnesini kilitledikten sonra fonksiyonlarınızı geri döndürürken kil
 Çekirdeğin mutex nesneleri *özyinelemeli (recursive)* değildir. Yani thread kilitlediği bir mutex nesnesini
 yeniden kilitlemeye çalışırsa *deadlock* oluşur.
 
-Mutex Kullanımına Örnek
------------------------
+Mutex Kullanımına Bir Örnek
+---------------------------
 
 Aşağıda mutex mekanizmasının çalışmasına ilişkin bir örnek verilmiştir. Burada aygıt sürücü için iki *ioctl*
 kodu oluşturulmuştur. ``IOCTL_TEST1`` kodunda mutex'in sahipliği alınıp 30 saniye beklenmektedir.
-``IOCTL_TEST2`` kodunda ise bekleme yapılmadan mutex'in sahipliği alınmak istenmiştir. Test için önce
-*test-sync1* programını sonra da başka bir terminalde *test-sync2* programını çalıştırmalısınız.
-Mesajları *dmesg* komutuyla inceleyebilirsiniz.
+``IOCTL_TEST2`` kodunda ise bekleme yapılmadan mutex'in sahipliği alınmak istenmiştir. Test için farklı terminallerde önce
+*test-sync1* programını sonra da *test-sync2* programını çalıştırmalısınız. Mesajları *dmesg* komutuyla inceleyebilirsiniz.
+
+Aygıt sürücüyü şöyle derleyebilirsiniz:
+
+.. code-block:: console
+
+    $ make file=test-driver
+
+Aşağıdaki gibi yükleyebilirsiniz:
+
+.. code-block:: console
+
+    $ sudo ./load test-driver
+
+Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştırdıktan sonra aygıt sürücüyü
+çekirdekten çıkarmalısınız:
+
+.. code-block:: console
+
+    $ sudo ./unload test-driver
+
+``test-driver.h``
+
+.. code-block:: c
+
+    #ifndef TEST_DRIVER_H_
+    #define TEST_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    #define TEST_DRIVER_MAGIC   't'
+    #define IOC_TEST1           _IO(TEST_DRIVER_MAGIC, 0)
+    #define IOC_TEST2           _IO(TEST_DRIVER_MAGIC, 1)
+
+    #endif
+
+``test-driver.c``
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/delay.h>
+    #include "test-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+    static long ioctl_test1(struct file *filp, unsigned long arg);
+    static long ioctl_test2(struct file *filp, unsigned long arg);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static DEFINE_MUTEX(g_mutex);
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "test-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        switch (cmd) {
+            case IOC_TEST1:
+                result = ioctl_test1(filp, arg);
+                break;
+            case IOC_TEST2:
+                result = ioctl_test2(filp, arg);
+                break;
+            default:
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    static long ioctl_test1(struct file *filp, unsigned long arg)
+    {
+        if (mutex_lock_interruptible(&g_mutex) != 0)
+            return -ERESTARTSYS;
+
+        printk(KERN_INFO "mutex locked and wait 30 seconds...\n");
+
+        ssleep(30);
+
+        mutex_unlock(&g_mutex);
+
+        printk(KERN_INFO "mutex unlocked...\n");
+
+        return 0;
+    }
+
+    static long ioctl_test2(struct file *filp, unsigned long arg)
+    {
+        if (mutex_lock_interruptible(&g_mutex) != 0)
+            return -ERESTARTSYS;
+
+        printk(KERN_INFO "mutex locked...\n");
+
+        mutex_unlock(&g_mutex);
+
+        printk(KERN_INFO "mutex unlocked...\n");
+
+        return 0;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+``Makefile``
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``load``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+``unload``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+
+``test-sync1.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "test-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+
+        if ((fd = open("test-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if (ioctl(fd, IOC_TEST1) == -1)
+            exit_sys("ioctl");
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+
+        exit(EXIT_FAILURE);
+    }
+
+``test-sync2.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "test-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+
+        if ((fd = open("test-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if (ioctl(fd, IOC_TEST2) == -1)
+            exit_sys("ioctl");
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+
+        exit(EXIT_FAILURE);
+    }
+    
+Çekirdekteki Mutex Kodları
+--------------------------
+
+Güncel çekirdeklerde mutex yapısı ``linux/mutex_types.h`` dosyası içerisinde şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct mutex {
+        atomic_long_t           owner;
+        raw_spinlock_t          wait_lock;
+    #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
+        struct optimistic_spin_queue osq; /* Spinner MCS lock */
+    #endif
+        struct list_head        wait_list;
+    #ifdef CONFIG_DEBUG_MUTEXES
+        void    *magic;
+    #endif
+    #ifdef CONFIG_DEBUG_LOCK_ALLOC
+        struct lockdep_map      dep_map;
+    #endif
+    };
+
+Yapıya bazı elemanların konfigürasyon seçeneklerine bağlı olarak eklendiğine dikkat ediniz. Burada ``owner``
+elemanı mutex kilidi için kullanılmaktadır. ``wait_lock`` elemanı nesnenin bazı elemanlarına erişirken nesneyi
+korumak için bulundurulmuştur. Bloke olan thread'ler yapının ``wait_list`` elemanında kaydedilmemektedir.
+``mutex_lock`` fonksiyonu ``kernel/locking/mutex.c`` dosyasında şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    void __sched mutex_lock(struct mutex *lock)
+    {
+        might_sleep();
+
+        if (!__mutex_trylock_fast(lock))
+            __mutex_lock_slowpath(lock);
+    }
+    EXPORT_SYMBOL(mutex_lock);
+
+Buradaki ``might_sleep`` fonksiyonu eğer mutex nesnesi *atomik bir bağlamda (atomic context)* çağrılmışsa
+debug mesajları oluşturmaktadır. Bunun dışında çalışma üzerinde bir etkisi yoktur. ``__mutex_trylock_fast``
+fonksiyonu kilide bakıp eğer kilit açıksa hemen onu almaktadır. Kilit kapalı ise ``__mutex_lock_slowpath``
+fonksiyonu çağrılmaktadır. Bu fonksiyon kendi içerisinde yukarıda belirttiğimiz gibi önce spin yaparak kilidin
+açılmasını beklemekte, eğer kilit açılmazsa thread'i wait kuyruğuna yerleştirerek bloke olmaktadır. Linux
+çekirdeğinin ileri versiyonlarındaki bu tür spin mekanizmalarına *optimistic spin* de denilmektedir. Buradaki
+spin süresi belli koşullara bağlı olarak değişebilmektedir.
+
+Semaphore Nesneleri
+===================
+
+Çekirdekte yaygın kullanılan senkronizasyon nesnelerinden bir diğeri de *semaphore* nesneleridir. Semaphore
+nesneleri 1965 yılında Hollandalı bilgisayar bilimcisi Edsger W. Dijkstra tarafından ortaya atılmıştır.
+Semaphore'lar bugün işletim sistemlerinin çekirdeklerinde ve kullanıcı modundaki thread senkronizasyonunda en
+yaygın kullanılan senkronizasyon nesnelerinden biridir. (Semaphore *tren yollarındaki dur-geç lambaları* için
+kullanılan bir sözcüktür. Bunu anafor sözcüğü ile karıştırmayınız.) Eskiden Linux çekirdeklerinde mutex
+nesneleri yoktu. Mutex nesneleri yerine sonraki paragraflarda açıklayacağımız ikili (binary) semaphore
+nesneleri kullanılıyordu.
+
+Semaphore'lar sayaçlı senkronizasyon nesneleridir. Kritik koda en fazla n tane thread'in girebilmesini
+sağlamaktadır. Örneğin biz kritik koda en fazla 3 thread'in girebilmesini isteyelim. Bu durumda birinci
+thread kritik koda girecektir. İkinci thread de üçüncü thread de girecektir. Ancak dördüncü ve beşinci
+thread'ler kritik koda giremeyecek ve bloke edilerek bekleme kuyruklarında bekletilecektir. Kritik kod
+içerisindeki üç thread'ten birinin kritik koddan çıktığını varsayalım. Bu durumda kritik koda girmek için
+bekleyen thread'lerden biri kritik koda girecektir. Görüldüğü gibi kritik kodun içerisinde en fazla 3 thread
+bulunabilmektedir.
+
+Kritik koda en fazla n tane thread'in girebilmesinin sağlanması size anlamsız gelebilir. Ne de olsa kritik
+koddaki iki thread bile paylaşılan kaynağı bozabilmektedir. Ancak semaphore'lar genellikle kaynak paylaştırmak
+için kullanılmaktadır. Örneğin elimizde üç kaynak olabilir. Her gelen thread'e bunlardan birini tahsis
+edebiliriz. Bu durumda ilk üç thread'e eldeki üç kaynak atanacaktır ancak kaynağı talep eden diğer thread'ler
+CPU zamanı harcamadan blokede bekletilecektir. İşte bu mekanizma semaphore nesneleriyle oluşturulabilmektedir.
+
+Semaphore nesnelerinin bir başlangıç sayaç değeri vardır. Bu başlangıç sayaç değeri kritik koda en fazla kaç
+thread'in girebileceğini belirtir. Kritik koda giren thread bu sayaç değerini azaltır, çıkan thread bu sayaç
+değerini artırır. Eğer semaphore'un sayacı 0 ise kritik koda girmek isteyen thread bloke edilerek bekletilir.
+Ta ki sayaç değeri 0'dan büyük olana kadar. Tabii sayacın artırılması ve azaltılması atomik bir biçimde
+yapılmaktadır.
+
+Çekirdekte Semaphore Kullanımı
+-------------------------------
+
+Çekirdek semaphore nesneleri şöyle kullanılmaktadır:
+
+**1)** Semaphore nesnesi ``semaphore`` isimli bir yapıyla temsil edilmiştir. Güncel çekirdeklerde ``semaphore``
+yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct semaphore {
+        raw_spinlock_t      lock;
+        unsigned int        count;
+        struct list_head    wait_list;
+    #ifdef CONFIG_DETECT_HUNG_TASK_BLOCKER
+        unsigned long       last_holder;
+    #endif
+    };
+
+Buradaki ``lock`` elemanı nesne üzerinde işlem yaparken kritik kod oluşturmak için kullanılmaktadır. ``count``
+elemanı semaphore sayacının o anki değerini belirtmektedir. ``wait_list`` elemanı ise bloke olan thread'lerin
+saklandığı bekleme kuyruğunu temsil etmektedir. ``last_holder`` elemanın konfigürasyon seçeneği ile yapıya
+eklendiğine dikkat ediniz. Bu eleman semaphore'dan geçen son thread'e ilişkin bilgiyi tutmaktadır.
+
+Bir semaphore nesnesi ``DEFINE_SEMAPHORE(name)`` makrosuyla oluşturulabilir. Bu makro tıpkı mutex nesnelerinde
+olduğu gibi hem semaphore nesnesini tanımlar hem de ona ilkdeğerini verir:
+
+.. code-block:: c
+
+    #include <linux/semaphore.h>
+
+    static DEFINE_SEMAPHORE(g_sem);
+
+Güncel çekirdeklerde bu makro şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #define DEFINE_SEMAPHORE(_name, _n)  \
+        struct semaphore _name = __SEMAPHORE_INITIALIZER(_name, _n)
+
+Buradaki ``__SEMAPHORE_INITIALIZER`` makrosu da şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #define __SEMAPHORE_INITIALIZER(name, n)                        \
+    {                                                               \
+        .lock       = __RAW_SPIN_LOCK_UNLOCKED((name).lock),       \
+        .count      = n,                                           \
+        .wait_list  = LIST_HEAD_INIT((name).wait_list)             \
+        __LAST_HOLDER_SEMAPHORE_INITIALIZER                        \
+    }
+
+``DEFINE_SEMAPHORE`` makrosunun birinci parametresi semaphore değişkeninin ismini, ikinci parametresi ise
+başlangıç semaphore sayacını belirtmektedir. Eskiden ``DEFINE_SEMAPHORE`` makrosu tek parametreliydi.
+Semaphore sayacı da default 1 değeriyle olarak oluşturuluyordu. Bu makro 6.4 çekirdeği ile birlikte iki
+parametreli hale getirilmiştir. 2.6 çekirdeği öncesinde bu makro yerine ``DECLARE_MUTEX`` makrosu
+kullanılıyordu.
+
+Semaphore nesnelerine başlangıç değerlerini vermek için ayrıca ``sema_init`` isimli bir fonksiyon da
+bulundurulmuştur. Çünkü bazen semaphore nesnelerine ilkdeğer vermek mümkün olmayabilir. (Örneğin semaphore
+nesnesi çekirdeğin heap alanında yaratılıyor olabilir.) Fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+    #include <linux/semaphore.h>
+
+    void sema_init(struct semaphore *sem, int val);
+
+Fonksiyon inline olarak yazılmıştır. Fonksiyonun birinci parametresi semaphore nesnesinin adresini, ikinci
+parametresi ise semaphore sayacının başlangıç değerini belirtmektedir. Güncel çekirdeklerde bu fonksiyon
+inline olarak şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static inline void sema_init(struct semaphore *sem, int val)
+    {
+        static struct lock_class_key __key;
+        *sem = (struct semaphore) __SEMAPHORE_INITIALIZER(*sem, val);
+        lockdep_init_map(&sem->lock.dep_map, "semaphore->lock", &__key, 0);
+    }
+
+Fonksiyonun içerisinde ilkdeğer verme işleminin *designated initializer* sentaksıyla yapıldığına dikkat
+ediniz.
+
+**2)** Kritik kod ``down`` ve ``up`` fonksiyonları arasına alınır. ``down`` fonksiyonları sayacı bir eksilterek
+kritik koda giriş yapar. ``up`` fonksiyonu ise sayacı bir artırmaktadır. Fonksiyonların prototipleri
+şöyledir:
+
+.. code-block:: c
+
+    #include <linux/semaphore.h>
+
+    void down(struct semaphore *sem);
+    int down_interruptible(struct semaphore *sem);
+    int down_killable(struct semaphore *sem);
+    int down_trylock(struct semaphore *sem);
+    int down_timeout(struct semaphore *sem, long jiffies);
+    void up(struct semaphore *sem);
+
+Kritik kod ``down`` fonksiyonu ile oluşturulduğunda thread bloke olursa sinyal yoluyla uyandırılamamaktadır.
+Ancak kritik kod ``down_interruptible`` fonksiyonu ile oluşturulduğunda thread bloke olursa sinyal yoluyla
+uyandırılabilmektedir. (Örneğin biz kritik koda ``down`` fonksiyonuyla girmiş olalım. Thread'imizin bloke
+olduğunu varsayalım. Şimdi kullanıcı modunda Ctrl+C tuşuyla ``SIGINT`` sinyalini oluşturduğumuzda bu bloke
+çözülmeyecektir.) ``down_interruptible`` fonksiyonu normal sonlanmada 0 değerine, sinyal yoluyla sonlanmada
+``-ERESTARTSYS`` değeri ile geri döner. Normal uygulama eğer bu fonksiyonlar ``-ERESTARTSYS`` ile geri
+dönerse aygıt sürücüdeki fonksiyonun da aynı değerle geri döndürülmesidir. Zaten çekirdek bu ``-ERESTARTSYS``
+geri dönüş değerini aldığında asıl sistem fonksiyonunu eğer sinyal için otomatik restart mekanizması aktif
+değilse ``-EINTR`` değeri ile geri döndürmektedir. Bu da tabii POSIX fonksiyonlarının başarısız olup ``errno``
+değerini ``-EINTR`` biçiminde set eder.
+
+``down_killable`` fonksiyonu bloke olmuş thread'in yalnızca ``SIGKILL`` sinyalini kabul edip
+sonlandırılabilmesini sağlamaktadır. ``down_killable`` fonksiyonunda eğer thread bloke olursa diğer sinyaller
+yine blokeyi sonlandıramamaktadır.
+
+``down_trylock`` nesnenin açık olup olmadığına bakmak için kullanılır. Eğer nesne açıksa yine sayaç 1
+eksiltilir ve kritik koda girilir. Bu durumda fonksiyon 0 dışı bir değerle geri döner. Nesne kapalıysa
+(yani semaphore sayacı 0 ise) fonksiyon bloke olmadan 0 değerine geri döner. ``down_timeout`` ise en kötü
+olasılıkla belli miktar *jiffy* zamanı kadar blokeye yol açmaktadır. (*jiffy* kavramı ileride ele
+alınacaktır.) Fonksiyon zaman aşımı dolduğundan dolayı sonlanmışsa negatif hata koduna, normal bir biçimde
+sonlanmışsa 0 değerine geri dönmektedir.
+
+``up`` fonksiyonu yukarıda da belirttiğimiz gibi semaphore sayacını 1 artırmaktadır.
+
+Bu durumda semaphore nesneleri ile kritik kod tipik olarak şöyle oluşturulmaktadır:
+
+.. code-block:: c
+
+    down_interruptible(&sem);
+    ... 
+    ...     <KRİTİK KOD BLOĞU> 
+    ...
+    up(&sem);
+
+Binary Semaphore Örneği
+------------------------
+
+Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu veriyoruz.
+
+``test-driver.h``
+
+.. code-block:: c
+
+    #ifndef TEST_DRIVER_H_
+    #define TEST_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    #define TEST_DRIVER_MAGIC   't'
+    #define IOC_TEST1           _IO(TEST_DRIVER_MAGIC, 0)
+    #define IOC_TEST2           _IO(TEST_DRIVER_MAGIC, 1)
+
+    #endif
+
+``test-driver.c``
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/delay.h>
+    #include "test-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+    static long ioctl_test1(struct file *filp, unsigned long arg);
+    static long ioctl_test2(struct file *filp, unsigned long arg);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static DEFINE_SEMAPHORE(g_sem, 1);
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "test-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        switch (cmd) {
+            case IOC_TEST1:
+                result = ioctl_test1(filp, arg);
+                break;
+            case IOC_TEST2:
+                result = ioctl_test2(filp, arg);
+                break;
+            default:
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    static long ioctl_test1(struct file *filp, unsigned long arg)
+    {
+        if (down_interruptible(&g_sem) != 0)
+            return -ERESTARTSYS;
+
+        printk(KERN_INFO "semaphore down and wait 30 seconds...\n");
+
+        ssleep(30);
+
+        up(&g_sem);
+
+        printk(KERN_INFO "semaphore up...\n");
+
+        return 0;
+    }
+
+    static long ioctl_test2(struct file *filp, unsigned long arg)
+    {
+        if (down_interruptible(&g_sem) != 0)
+            return -ERESTARTSYS;
+
+        printk(KERN_INFO "semaphore down...\n");
+
+        up(&g_sem);
+
+        printk(KERN_INFO "semaphore up...\n");
+
+        return 0;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+Makefile
+~~~~~~~~
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``load``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+``unload``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+
+``test-sync1.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "test-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+
+        if ((fd = open("test-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if (ioctl(fd, IOC_TEST1) == -1)
+            exit_sys("ioctl");
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+
+``test-sync2.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "test-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+
+        if ((fd = open("test-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if (ioctl(fd, IOC_TEST2) == -1)
+            exit_sys("ioctl");
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+
+Mutex ile Binary Semaphore Arasındaki Farklar
+---------------------------------------------
+
+Peki mutex nesneleriyle binary semaphore'lar arasında ne fark vardır? İki nesne arasındaki tipik farklılıklar
+şunlardır:
+
+1. Mutex nesnelerinin sahipliği thread temelinde alınmaktadır. Dolayısıyla mutex nesnelerini hangi thread
+   kilitlemişse kilidini aynı thread açmak zorundadır. Halbuki semaphore'larda ``up`` işlemleri herhangi
+   bir thread tarafından yapılabilmektedir. Bu da semaphore'ların *üretici-tüketici problemi
+   (producer-consumer problem)* gibi klasik senkronizasyon kalıplarında kullanılabilmesini sağlamaktadır.
+
+2. Linux çekirdeğinde semaphore nesneleri spin yapmamaktadır. Bir kez semaphore sayacına bakılmakta, eğer
+   sayaç sıfırsa hemen thread bloke edilmektedir. Halbuki mutex nesnelerinde *optimistic spinning* işlemi
+   yapılmaktadır. Yani "kilit belki açılır" diye bloke biraz ertelenmektedir.
+
+3. Mutex nesnelerinin kilidi alındığında çekirdek yüksek öncelikli bloke olmuş thread'lerin önceliklerini
+   biraz yükseltmektedir. Ancak semaphore nesnelerinde bu yapılmamaktadır.
