@@ -73,8 +73,8 @@ elemanlarında senkronizasyon nesneleri göreceksiniz.
 Kritik Kod Bloklarının Manuel Oluşturulmasındaki Sorunlar
 ---------------------------------------------------------
 
-Kritik kodlar ancak özel makine komutları kullanılarak oluşturulabilmektedir.
-Aşağıdaki gibi basit bir mantıkla kritik kod oluşturulamaz:
+Kritik kod blokları ancak özel makine komutları kullanılarak oluşturulabilmektedir.
+Aşağıdaki gibi basit bir mantıkla kritik kod bloğu oluşturulamaz:
 
 .. code-block:: c
 
@@ -89,10 +89,10 @@ Aşağıdaki gibi basit bir mantıkla kritik kod oluşturulamaz:
     ...
     g_flag = 0;
 
-Bu biçimdeki manuel kritik kod oluşturma girişiminin iki sorunu vardır:
+Bu biçimdeki manuel kritik kod bloğu oluşturma girişiminin iki sorunu vardır:
 
 1. Bekleme bloke edilerek değil meşgul bir döngüde (busy loop) yapılmaktadır.
-   Yani bir thread kritik kod içerisindeyse diğeri CPU zamanı harcayarak meşgul
+   Yani bir thread kritik kod bloğu içerisindeyse diğeri CPU zamanı harcayarak meşgul
    bir döngüde sürekli bekler.
 
 2. Kodda açık bir pencere bulunmaktadır:
@@ -111,11 +111,11 @@ Bu biçimdeki manuel kritik kod oluşturma girişiminin iki sorunu vardır:
        g_flag = 0;
 
    Yukarıda gösterilen noktada thread'ler arası geçiş oluşursa birden fazla
-   thread kritik koda girebilir.
+   thread kritik kod bloğuna girebilir.
 
 İşte bu sakıncayı ortadan kaldırmak için özel makine komutlarından
 faydalanılmaktadır. Bugün bilgisayar sistemlerinde birden fazla işlemci ya da çekirdek
-bulunabildiği için kritik kod oluşturan sistem programcılarının bunlara dikkat
+bulunabildiği için kritik kod bloğunu oluşturan sistem programcılarının bunlara dikkat
 etmesi gerekir. Linux'un çekirdek kodlarında zaten çeşitli senaryolar için
 kullanılabilecek senkronizasyon nesneleri hazır biçimde bulunmaktadır. Bu bölümde
 biz bu senkronizasyon nesnelerini ele alacağız. Bölümün sonlarına doğru da bu
@@ -147,7 +147,7 @@ kullanılarak yazılmıştır.
 Mutex Nesneleri
 ===============
 
-Kritik kod oluşturmak için en çok kullanılan senkronizasyon nesnelerinden biri *mutex (mutual exclusion)*
+Kritik kod bloğu oluşturmak için en çok kullanılan senkronizasyon nesnelerinden biri *mutex (mutual exclusion)*
 denilen nesnelerdir. (UNIX/Linux sistemlerinde kullanıcı modundan kullanılabilecek mutex nesneleri de
 vardır. Yukarıda belirttiğimiz gibi biz burada çekirdeğin içerisinde bulunan mutex nesneleri üzerinde
 duracağız.) Mutex nesneleri Linux çekirdeğine 2.6 versiyonlarıyla eklenmiştir. Bundan önce mutex işlemleri
@@ -158,13 +158,13 @@ benzemektedir. Çekirdek mutex nesnelerinin yine thread temelinde sahipliği var
 nesneleri thread'i bloke edip onu bekleme kuyruklarında bekletebilmektedir.
 
 Mutex mekanizması şöyle işletilmektedir: Önce global düzeyde ya da çekirdeğin heap sisteminde bir mutex
-nesnesi yaratılır. Kritik koda girişte bu mutex nesnesinin sahipliği ele geçirilmeye çalışılır. Mutex'in
+nesnesi yaratılır. Kritik kod bloğuna girişte bu mutex nesnesinin sahipliği ele geçirilmeye çalışılır. Mutex'in
 sahipliğinin ele geçirilmesine *mutex'in kilitlenmesi (mutex lock)* de denilmektedir. Eğer mutex'in
 sahipliği ele geçirilirse (yani mutex kilitlenirse) sahiplik bırakılana kadar (yani kilit bırakılana kadar)
-başka bir thread kritik koda giremez. Mutex'in sahipliğini almaya çalışan thread mutex kilitli ise bloke
-olarak mutex kilidi açılana kadar bekler. Mutex'in sahipliğini almış olan thread kritik koddan çıkarken
+başka bir thread kritik kod bloğuna giremez. Mutex'in sahipliğini almaya çalışan thread mutex kilitli ise bloke
+olarak mutex kilidi açılana kadar bekler. Mutex'in sahipliğini almış olan thread kritik kod bloğundan çıkarken
 mutex'in sahipliğini bırakır (yani mutex'in kilidini açar). Böylece blokede bekleyen thread'lerden biri
-mutex'in sahipliğini alarak kritik koda girer. Kritik kod tipik olarak şöyle oluşturulmaktadır:
+mutex'in sahipliğini alarak kritik kod bloğuna girer. Kritik kod bloğu tipik olarak şöyle oluşturulmaktadır:
 
 .. code-block:: c
 
@@ -175,12 +175,12 @@ mutex'in sahipliğini alarak kritik koda girer. Kritik kod tipik olarak şöyle 
     mutex_unlock(...);
 
 Akışlardan biri ``mutex_lock`` fonksiyonuna geldiğinde eğer mutex kilitlenmemişse mutex'i kilitler ve
-kritik koda giriş yapar. Eğer mutex zaten kilitlenmişse ``mutex_lock`` fonksiyonunda thread bloke edilir
-ve bekleme kuyruğuna alınır. Kritik koda girmiş olan akış ``mutex_unlock`` fonksiyonu ile mutex nesnesinin
+kritik kod bloğuna giriş yapar. Eğer mutex zaten kilitlenmişse ``mutex_lock`` fonksiyonunda thread bloke edilir
+ve bekleme kuyruğuna alınır. Kritik kod bloğuna girmiş olan akış ``mutex_unlock`` fonksiyonu ile mutex nesnesinin
 kilidini bırakır. Böylece nesneyi bekleyen thread'lerden biri nesnenin sahipliğini alarak mutex'i
 kilitler. Birden fazla akışın ``mutex_lock`` fonksiyonunda bloke edilmesi durumunda mutex'in kilidi
-açıldığında bunlardan hangisinin mutex kilidini alarak kritik koda gireceği konusunda bir garanti
-verilmemektedir. (İlk bloke olan akışın mutex kilidini alarak kritik koda gireceğini düşünebilirsiniz,
+açıldığında bunlardan hangisinin mutex kilidini alarak kritik kod bloğuna gireceği konusunda bir garanti
+verilmemektedir. (İlk bloke olan akışın mutex kilidini alarak kritik kod bloğuna gireceğini düşünebilirsiniz,
 ancak bunun bir garantisi yoktur.)
 
 Çekirdekteki mutex mekanizmasının tipik gerçekleştirimi şöyledir:
@@ -670,23 +670,23 @@ kullanılan bir sözcüktür. Bunu anafor sözcüğü ile karıştırmayınız.)
 nesneleri yoktu. Mutex nesneleri yerine sonraki paragraflarda açıklayacağımız ikili (binary) semaphore
 nesneleri kullanılıyordu.
 
-Semaphore'lar sayaçlı senkronizasyon nesneleridir. Kritik koda en fazla n tane thread'in girebilmesini
-sağlamaktadır. Örneğin biz kritik koda en fazla 3 thread'in girebilmesini isteyelim. Bu durumda birinci
-thread kritik koda girecektir. İkinci thread de üçüncü thread de girecektir. Ancak dördüncü ve beşinci
-thread'ler kritik koda giremeyecek ve bloke edilerek bekleme kuyruklarında bekletilecektir. Kritik kod
-içerisindeki üç thread'ten birinin kritik koddan çıktığını varsayalım. Bu durumda kritik koda girmek için
-bekleyen thread'lerden biri kritik koda girecektir. Görüldüğü gibi kritik kodun içerisinde en fazla 3 thread
+Semaphore'lar sayaçlı senkronizasyon nesneleridir. Kritik kod bloğuna en fazla n tane thread'in girebilmesini
+sağlamaktadır. Örneğin biz kritik kod bloğuna en fazla 3 thread'in girebilmesini isteyelim. Bu durumda birinci
+thread kritik kod bloğuna girecektir. İkinci thread de üçüncü thread de girecektir. Ancak dördüncü ve beşinci
+thread'ler kritik kod bloğuna giremeyecek ve bloke edilerek bekleme kuyruklarında bekletilecektir. Kritik kod bloğu
+içerisindeki üç thread'ten birinin kritik kod bloğundan çıktığını varsayalım. Bu durumda kritik kod bloğuna girmek için
+bekleyen thread'lerden biri kritik kod bloğuna girecektir. Görüldüğü gibi kritik kod bloğunun içerisinde en fazla 3 thread
 bulunabilmektedir.
 
-Kritik koda en fazla n tane thread'in girebilmesinin sağlanması size anlamsız gelebilir. Ne de olsa kritik
+Kritik kod bloğuna en fazla n tane thread'in girebilmesinin sağlanması size anlamsız gelebilir. Ne de olsa kritik
 koddaki iki thread bile paylaşılan kaynağı bozabilmektedir. Ancak semaphore'lar genellikle kaynak paylaştırmak
 için kullanılmaktadır. Örneğin elimizde üç kaynak olabilir. Her gelen thread'e bunlardan birini tahsis
 edebiliriz. Bu durumda ilk üç thread'e eldeki üç kaynak atanacaktır ancak kaynağı talep eden diğer thread'ler
 CPU zamanı harcamadan blokede bekletilecektir. İşte bu mekanizma semaphore nesneleriyle oluşturulabilmektedir.
 
-Semaphore nesnelerinin bir başlangıç sayaç değeri vardır. Bu başlangıç sayaç değeri kritik koda en fazla kaç
-thread'in girebileceğini belirtir. Kritik koda giren thread bu sayaç değerini azaltır, çıkan thread bu sayaç
-değerini artırır. Eğer semaphore'un sayacı 0 ise kritik koda girmek isteyen thread bloke edilerek bekletilir.
+Semaphore nesnelerinin bir başlangıç sayaç değeri vardır. Bu başlangıç sayaç değeri kritik kod bloğuna en fazla kaç
+thread'in girebileceğini belirtir. Kritik kod bloğuna giren thread bu sayaç değerini azaltır, çıkan thread bu sayaç
+değerini artırır. Eğer semaphore'un sayacı 0 ise kritik kod bloğuna girmek isteyen thread bloke edilerek bekletilir.
 Ta ki sayaç değeri 0'dan büyük olana kadar. Tabii sayacın artırılması ve azaltılması atomik bir biçimde
 yapılmaktadır.
 
@@ -709,7 +709,7 @@ yapısı şöyle bildirilmiştir:
     #endif
     };
 
-Buradaki ``lock`` elemanı nesne üzerinde işlem yaparken kritik kod oluşturmak için kullanılmaktadır. ``count``
+Buradaki ``lock`` elemanı nesne üzerinde işlem yaparken kritik kod bloğu oluşturmak için kullanılmaktadır. ``count``
 elemanı semaphore sayacının o anki değerini belirtmektedir. ``wait_list`` elemanı ise bloke olan thread'lerin
 saklandığı bekleme kuyruğunu temsil etmektedir. ``last_holder`` elemanın konfigürasyon seçeneği ile yapıya
 eklendiğine dikkat ediniz. Bu eleman semaphore'dan geçen son thread'e ilişkin bilgiyi tutmaktadır.
@@ -774,8 +774,8 @@ inline olarak şöyle yazılmıştır:
 Fonksiyonun içerisinde ilkdeğer verme işleminin *designated initializer* sentaksıyla yapıldığına dikkat
 ediniz.
 
-**2)** Kritik kod ``down`` ve ``up`` fonksiyonları arasına alınır. ``down`` fonksiyonları sayacı bir eksilterek
-kritik koda giriş yapar. ``up`` fonksiyonu ise sayacı bir artırmaktadır. Fonksiyonların prototipleri
+**2)** Kritik kod bloğu ``down`` ve ``up`` fonksiyonları arasına alınır. ``down`` fonksiyonları sayacı bir eksilterek
+kritik kod bloğuna giriş yapar. ``up`` fonksiyonu ise sayacı bir artırmaktadır. Fonksiyonların prototipleri
 şöyledir:
 
 .. code-block:: c
@@ -789,9 +789,9 @@ kritik koda giriş yapar. ``up`` fonksiyonu ise sayacı bir artırmaktadır. Fon
     int down_timeout(struct semaphore *sem, long jiffies);
     void up(struct semaphore *sem);
 
-Kritik kod ``down`` fonksiyonu ile oluşturulduğunda thread bloke olursa sinyal yoluyla uyandırılamamaktadır.
-Ancak kritik kod ``down_interruptible`` fonksiyonu ile oluşturulduğunda thread bloke olursa sinyal yoluyla
-uyandırılabilmektedir. (Örneğin biz kritik koda ``down`` fonksiyonuyla girmiş olalım. Thread'imizin bloke
+Kritik kod bloğuna ``down`` fonksiyonu ile oluşturulduğunda thread bloke olursa sinyal yoluyla uyandırılamamaktadır.
+Ancak kritik kod bloğu ``down_interruptible`` fonksiyonu ile oluşturulduğunda thread bloke olursa sinyal yoluyla
+uyandırılabilmektedir. (Örneğin biz kritik kod bloğuna ``down`` fonksiyonuyla girmiş olalım. Thread'imizin bloke
 olduğunu varsayalım. Şimdi kullanıcı modunda Ctrl+C tuşuyla ``SIGINT`` sinyalini oluşturduğumuzda bu bloke
 çözülmeyecektir.) ``down_interruptible`` fonksiyonu normal sonlanmada 0 değerine, sinyal yoluyla sonlanmada
 ``-ERESTARTSYS`` değeri ile geri döner. Normal uygulama eğer bu fonksiyonlar ``-ERESTARTSYS`` ile geri
@@ -805,7 +805,7 @@ sonlandırılabilmesini sağlamaktadır. ``down_killable`` fonksiyonunda eğer t
 yine blokeyi sonlandıramamaktadır.
 
 ``down_trylock`` nesnenin açık olup olmadığına bakmak için kullanılır. Eğer nesne açıksa yine sayaç 1
-eksiltilir ve kritik koda girilir. Bu durumda fonksiyon 0 dışı bir değerle geri döner. Nesne kapalıysa
+eksiltilir ve kritik kod bloğuna girilir. Bu durumda fonksiyon 0 dışı bir değerle geri döner. Nesne kapalıysa
 (yani semaphore sayacı 0 ise) fonksiyon bloke olmadan 0 değerine geri döner. ``down_timeout`` ise en kötü
 olasılıkla belli miktar *jiffy* zamanı kadar blokeye yol açmaktadır. (*jiffy* kavramı ileride ele
 alınacaktır.) Fonksiyon zaman aşımı dolduğundan dolayı sonlanmışsa negatif hata koduna, normal bir biçimde
@@ -813,7 +813,7 @@ sonlanmışsa 0 değerine geri dönmektedir.
 
 ``up`` fonksiyonu yukarıda da belirttiğimiz gibi semaphore sayacını 1 artırmaktadır.
 
-Bu durumda semaphore nesneleri ile kritik kod tipik olarak şöyle oluşturulmaktadır:
+Bu durumda semaphore nesneleri ile kritik kod bloğu tipik olarak şöyle oluşturulmaktadır:
 
 .. code-block:: c
 
@@ -1102,3 +1102,4 @@ Peki mutex nesneleriyle binary semaphore'lar arasında ne fark vardır? İki nes
 
 3. Mutex nesnelerinin kilidi alındığında çekirdek yüksek öncelikli bloke olmuş thread'lerin önceliklerini
    biraz yükseltmektedir. Ancak semaphore nesnelerinde bu yapılmamaktadır.
+
