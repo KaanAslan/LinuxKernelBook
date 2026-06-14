@@ -690,9 +690,6 @@ değerini artırır. Eğer semaphore'un sayacı 0 ise kritik kod bloğuna girmek
 Ta ki sayaç değeri 0'dan büyük olana kadar. Tabii sayacın artırılması ve azaltılması atomik bir biçimde
 yapılmaktadır.
 
-Çekirdekte Semaphore Kullanımı
--------------------------------
-
 Çekirdek semaphore nesneleri şöyle kullanılmaktadır:
 
 **1)** Semaphore nesnesi ``semaphore`` isimli bir yapıyla temsil edilmiştir. Güncel çekirdeklerde ``semaphore``
@@ -980,8 +977,7 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-Makefile
-~~~~~~~~
+``Makefile``
 
 .. code-block:: makefile
 
@@ -1103,3 +1099,294 @@ Peki mutex nesneleriyle binary semaphore'lar arasında ne fark vardır? İki nes
 3. Mutex nesnelerinin kilidi alındığında çekirdek yüksek öncelikli bloke olmuş thread'lerin önceliklerini
    biraz yükseltmektedir. Ancak semaphore nesnelerinde bu yapılmamaktadır.
 
+Spinlock Nesneleri
+==================
+
+Linux çekirdeklerinde belki de en yoğun kullanılan senkronizasyon nesneleri *spinlock* denilen nesnedir.
+Spinlock nesneleri hiçbir zaman blokeye yol açmamaktadır. Bu nesnelerde lock yapılmak istendiğinde eğer
+kilit başka bir akış tarafından zaten alınmışsa bir döngü içerisinde sürekli "acaba kilit açıldı mı?" diye
+kilide bakılmaktadır. Spinlock nesnelerinin *meşgul döngü (busy loop)* oluşturduğuna dikkat ediniz. İlk
+bakışta bu nesnelerin kullanılmasının önemli bir CPU zamanının harcanmasına yol açacağını düşünebilirsiniz.
+Ancak bu nesneler çekirdek tasarımcıları tarafından zaten "çok uzun süre beklenmeyecek durumlarda"
+kullanılmaktadır. Bu nesnelerin yanlış yerlerde kullanılması çekirdeğin çökmesine ve *deadlock* oluşumuna
+yol açabilmektedir.
+
+Spin işlemine duyulan gereksinim açıktır. Thread'in uykuya yatırılması ve uyandırılması belli bir zaman
+kaybına yol açmaktadır. Spinlock nesneleri bu zaman kaybını elimine etmek için düşünülmüştür. Spinlock
+nesneleri "doğru yerde kullanılması koşuluyla" çok önemli ve faydalı nesnelerdir. Çekirdeğin her yerinde
+birkaç satırlık kritik kodları oluşturmak için spinlock kullanımıyla karşılaşabilirsiniz.
+
+Spinlock nesnelerinde kilit alındığında aynı zamanda ilgili işlemcide ya da çekirdekte thread'ler arası geçiş
+(context switch) kapatılmaktadır. Böylece kilit bırakılana kadar kodun kesilmemesi garanti edilmiş olur.
+(Tabii birden çok CPU ya da çekirdek söz konusu olduğunda yalnızca ilgili CPU'daki ya da çekirdekteki
+thread'ler arası geçiş kapatılmaktadır.) Eğer ilgili CPU ya da çekirdek thread'ler arası geçişe
+kapatılmasaydı bu durumda başka bir thread işlemi kesebilir ve başka thread'ler aynı spinlock nesnesini
+kilitlemeye çalıştığında tüm quantum süresi boyunca CPU'yu meşgul bırakabilirdi.
+
+Spinlock nesneleri çok işlemcili ya da çok çekirdekli sistemlerde anlamlı nesnelerdir. Tek işlemcili ya
+da tek çekirdekli sistemlerde spin yapmanın hiçbir anlamı yoktur. Örneğin tek işlemcili ya da tek
+çekirdekli bir sistem söz konusu olsun. Bu sistemlerde hiçbir zaman zaten bir thread spinlock nesnesini
+kilitli göremez. Çünkü spinlock'a girildiğinde zaten işlemci ya da çekirdek thread'ler arası geçişe
+kapatılmaktadır. Spinlock ile korunan kritik kod bloğu da zaten hiç kesilmeden çalıştırılmaktadır. Bu
+durumda her zaman zaten spinlock kilidini alan thread'in onu bırakacağı garanti edilmektedir. O halde
+spinlock kullanımından asıl amaç başka bir işlemci ya da çekirdek kritik kod bloğuna girmişse o çıkana
+kadar spin yapmaktır. Peki aşağıda açıklayacağımız çekirdek fonksiyonları hem tek işlemcili ya da tek
+çekirdekli hem de çok işlemcili ya da çok çekirdekli sistemlerde çalıştığına göre, tek işlemcili ya da tek
+çekirdekli sistemlerde spin işlemi nasıl devre dışı bırakılmaktadır? İşte çekirdek kodları bu durumda
+``CONFIG_SMP`` konfigürasyon parametresine bakmaktadır. Sembolik kod olarak çok işlemcili ya da çok
+çekirdekli sistemlerde spinlock fonksiyonları şu yapıdadır:
+
+.. code-block:: c
+
+    spin_lock(...)
+    {
+        disable_preemption();
+
+        for (;;) {
+            if (kilit açıldı mı)
+                <kilidi al>
+                break;
+        }
+    }
+
+    spin_unlock(...)
+    {
+        <kilidi_serbest_bırak>
+
+        enable_preemption();
+    }
+
+Oysa tek işlemcili ya da tek çekirdekli sistemlerde kilidin alınması şu hale gelmektedir:
+
+.. code-block:: c
+
+    spin_lock(...)
+    {
+        disable_preemption();
+    }
+
+    spin_unlock(...)
+    {
+        enable_preemption();
+    }
+
+Linux çekirdeğindeki spinlock işlemleri şöyle yürütülmektedir:
+
+**1)** Spinlock nesnesi ``spinlock_t`` türü ile temsil edilmektedir. Spinlock nesnesi aşağıdaki gibi
+tanımlanabilir:
+
+.. code-block:: c
+
+    static spinlock_t g_spinlock;
+
+Güncel Linux çekirdeklerinde çok işlemcili ya da çok çekirdekli sistemlerde ``CONFIG_SMP``
+konfigürasyon parametresi ``=y`` yapıldığı için ``spinlock_t`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    typedef struct spinlock {
+        struct rt_mutex_base    lock;
+    #ifdef CONFIG_DEBUG_LOCK_ALLOC
+        struct lockdep_map      dep_map;
+    #endif
+    } spinlock_t;
+
+Tek işlemcili ya da tek çekirdekli sistemlerde (``CONFIG_SMP=n`` durumu) ise ``spinlock_t`` yapısı
+yalnızca ``int`` eleman içerecek biçimdedir.
+
+**2)** Spinlock nesnesine ilkdeğer ``DEFINE_SPINLOCK`` makrosuyla verilebilmektedir. Bu makro aynı zamanda yapı
+nesnesini de tanımlar. Örneğin:
+
+.. code-block:: c
+
+    #include <linux/spinlock.h>
+
+    static DEFINE_SPINLOCK(g_spinlock);
+
+Buradaki ``DEFINE_SPINLOCK`` makrosu güncel çekirdeklerde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #define ___SPIN_LOCK_INITIALIZER(lockname)          \
+    {                                                   \
+        .raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,          \
+        SPIN_DEBUG_INIT(lockname)                       \
+        SPIN_DEP_MAP_INIT(lockname) }
+
+    #define __SPIN_LOCK_INITIALIZER(lockname)           \
+        { { .rlock = ___SPIN_LOCK_INITIALIZER(lockname) } }
+
+    #define __SPIN_LOCK_UNLOCKED(lockname)              \
+        (spinlock_t) __SPIN_LOCK_INITIALIZER(lockname)
+
+    #define DEFINE_SPINLOCK(x)  spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
+
+Tek işlemcili ya da tek çekirdekli sistemlerde (``CONFIG_SMP=n`` durumu) bu makro basit bir biçime
+dönüşmektedir:
+
+.. code-block:: c
+
+    #define __SPIN_LOCK_UNLOCKED(lockname)  (spinlock_t) { 1 }
+    #define DEFINE_SPINLOCK(x)  spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
+
+Spinlock nesnesine ``spin_lock_init`` makrosuyla da başlangıç değerleri verilebilmektedir. Güncel
+çekirdeklerde bu makro şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    #define spin_lock_init(_lock)                   \
+    do {                                            \
+        spinlock_check(_lock);                      \
+        *(_lock) = __SPIN_LOCK_UNLOCKED(_lock);     \
+    } while (0)
+
+Makronun parametre olarak spinlock nesnesinin adresini aldığını görüyorsunuz. Örneğin:
+
+.. code-block:: c
+
+    static spinlock_t g_spinlock;
+    /* ... */
+
+    spin_lock_init(&g_spinlock);
+
+**3)** Spinlock kilidini almak için aşağıdaki fonksiyonlar kullanılmaktadır:
+
+.. code-block:: c
+
+    #include <linux/spinlock.h>
+
+    void spin_lock(spinlock_t *lock);
+    void spin_lock_irq(spinlock_t *lock);
+    void spin_lock_irqsave(spinlock_t *lock, unsigned long flags);
+    void spin_lock_bh(spinlock_t *lock);
+
+``spin_lock`` fonksiyonu klasik spin yapan fonksiyondur. Bu fonksiyon thread'ler arası geçişi (preemption
+mekanizmasını) kapatır, ancak kesmeleri kapatmaz. Preemption işleminin kapatılması IRQ'ların (yani donanım
+kesmelerinin) kapatıldığı anlamına gelmemektedir. İşte ``spin_lock_irq`` fonksiyonu o anda çalışılan
+işlemcideki IRQ'ları da (yani donanım kesmelerini de) kapatarak kilidi almaktadır. Yani biz bu fonksiyonla
+kilidi almışsak kilidi bırakana kadar donanım kesmeleri o işlemcide oluşmayacaktır. (Ancak diğer
+işlemcilerde aynı IRQ oluşabilir ve kesme kodu aynı kilidi almaya çalışırsa spin işlemi yapılabilir.)
+``spin_lock_irqsave`` fonksiyonu ise hem o anda çalışılan işlemcideki kesmeleri kapatır hem de işlemcinin
+bayrak yazmacını da saklar. Aslında bu fonksiyonların bazıları makro olarak yazılmıştır. Örneğin
+``spin_lock_irqsave`` aslında bir makrodur. Biz bu fonksiyonun ikinci parametresine nesne adresini geçmiyor
+olsak da bu bir makro olduğu için ikinci parametrede verdiğimiz nesnenin içerisine IRQ durumları
+yazılmaktadır. ``spin_lock_irqsave`` fonksiyonu ile IRQ durumunun ``flags`` değişkenine kaydedilmesinin
+nedeni kilit bırakılırken IRQ durumunun kilit alınmadan önceki biçimde bırakılmasının sağlanması içindir.
+(Örneğin ``spin_lock_irqsave`` fonksiyonundan önce zaten yerel kesmeler disable edilmişse kilidi bırakırken
+yerel kesmelerin enable edilmemesi gerekir.) ``spin_lock_bh`` fonksiyonu ise yalnızca yazılım kesmelerini
+kapatmaktadır.
+
+**4)** Spinlock kilidini bırakmak için ``spin_unlock`` fonksiyonları kullanılmaktadır:
+
+.. code-block:: c
+
+    #include <linux/spinlock.h>
+
+    void spin_unlock(spinlock_t *lock);
+    void spin_unlock_irq(spinlock_t *lock);
+    void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags);
+    void spin_unlock_bh(spinlock_t *lock);
+
+Lock fonksiyonlarının hepsinin birer unlock karşılığının olduğunu görüyorsunuz. Biz kilidi hangi lock
+fonksiyonu ile almışsak o unlock fonksiyonu ile bırakmalıyız. Kritik kod bloğu ``spin_lock`` ile
+``spin_unlock`` fonksiyonları arasında alınmalıdır. Örneğin:
+
+.. code-block:: c
+
+    spin_lock(&g_spinlock);
+     ... 
+...             <KRİTİK KOD BLOĞU> 
+    ... 
+    spin_unlock(&g_spinlock);
+
+Ya da örneğin:
+
+.. code-block:: c
+
+    unsigned long irqstate;
+    /* ... */
+
+    spin_lock_irqsave(&g_spinlock, irqstate);
+    ... 
+    ...     <KRİTİK KOD BLOĞU> 
+    ...
+    spin_unlock_irqrestore(&g_spinlock, irqstate);
+
+Yine kernel spinlock nesnelerinde de try'lı lock fonksiyonları bulunmaktadır:
+
+.. code-block:: c
+
+    #include <linux/spinlock.h>
+
+    int spin_trylock(spinlock_t *lock);
+    int spin_trylock_bh(spinlock_t *lock);
+
+Bu fonksiyonlar eğer spinlock kilitliyse spin yapmazlar ve 0 ile geri dönerler. Eğer kilidi alırlarsa sıfır
+dışı bir değerle geri dönerler. Böylece çekirdek programcısı eğer spinlock kilidi başka bir işlemci
+tarafından alınmışsa başka işlemler yapabilmektedir.
+
+simplefs Örneğinde Spinlock
+----------------------------
+
+Biz simplefs dosya sistemimizde kendi süper blok nesnemize yaptığımız eşzamanlı (concurrent) erişimlerde
+kodumuz zarar görmesin diye spinlock nesnesi kullanmıştık. Çağırdığımız çekirdek fonksiyonları ise zaten
+çekirdek nesnelerine erişirken kendi içlerinde spinlock nesnelerini kullanıyordu. Dolayısıyla bizim
+simplefs dosya sisteminde yalnızca kendimize ilişkin nesneleri korumamız yetiyordu. Kodumuzun bu kısmını
+anımsatmak istiyoruz:
+
+.. code-block:: c
+
+    static int simplefs_alloc_inode_num(struct super_block *sb)
+    {
+        struct simplefs_super_block *sfs_sb;
+        struct simplefs_disk_super_block *sfs_sbd;
+        int ino;
+
+        /* ... */
+
+        spin_lock(&sfs_sb->lock);
+
+        if (sfs_sbd->free_inodes == 0) {
+            spin_unlock(&sfs_sb->lock);
+            return -ENOSPC;
+        }
+
+        ino = find_first_zero_bit(sfs_sb->inode_bitmap, sfs_sbd->inode_count);
+        if (ino >= sfs_sbd->inode_count) {
+            spin_unlock(&sfs_sb->lock);
+            return -ENOSPC;
+        }
+
+        set_bit(ino, sfs_sb->inode_bitmap);
+        sfs_sbd->free_inodes--;
+        mark_buffer_dirty(sfs_sb->inode_bitmap_bh);
+        mark_buffer_dirty(sfs_sb->sb_bh);
+
+        spin_unlock(&sfs_sb->lock);
+
+        /* ... */
+
+        return ino;
+    }
+
+Spinlock nesnesini bir fonksiyon içerisinde kilitlediyseniz fonksiyondan geri dönmeden önce onun kilidini
+açmayı unutmayınız. Yukarıdaki fonksiyonda da fonksiyondan çıkmadan önce spinlock kilidinin açıldığına
+dikkat ediniz.
+
+Spinlock ile Mutex Nesnelerinin Karşılaştırılmasması
+----------------------------------------------------
+
+Spinlock nesnelerinin "kısa sürecek kritik kodlar için" kullanılması uygundur. Aksi takdirde diğer işlemci
+ya da çekirdekteki kilidi bekleyen thread'ler meşgul döngüde spin yaparak uzun süre beklerler; bu da
+gereksiz CPU zamanının harcanmasına yol açar. Spinlock kilidi alındıktan sonra akışın bloke olmadan hızlı
+bir biçimde kilidi geri bırakması gerekir. Spinlock kilidi alındıktan sonra bloke oluşması pek çok soruna
+yol açabilmektedir. IRQ bağlamında (yani IRQ kesme kodları içerisinde) ``mutex`` gibi ``semaphore`` gibi
+blokeye yol açabilecek senkronizasyon nesneleri kullanılmamalıdır. Bu tür durumlarda spinlock
+kullanılmalıdır. Aşağıdaki tabloda spinlock kullanımı ile mutex kullanımı çeşitli bakımlardan
+karşılaştırılmıştır.
+
+.. image:: _static/spinlock-mutex-comparison.png
+   :alt: Spinlock ile Mutex Karşılaştırması
+   :align: center
+
+   
