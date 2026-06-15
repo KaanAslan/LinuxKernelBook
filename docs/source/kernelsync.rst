@@ -1886,8 +1886,8 @@ artırılabilmektedir:
 
 Peki Intel ailesine ilişkin bir işlemcide bu işlem atomik midir? İşte bu tür işlemcilerde
 *read-modify-write* biçiminde gerçekleştirilen işlemlerde ilgili bellek adresi hizalanmış olsa bile işlem
-birden fazla işlemci ya da çekirdek söz konusu olduğunda atomik değildir. Biz atomikliği yukarıda *bir
-işlemcinin ya da çekirdeğin yaptığı işlemi diğeri ya tam olarak görecek ya da görmeyecek* biçiminde
+birden fazla işlemci ya da çekirdek söz konusu olduğunda atomik değildir. Biz atomikliği yukarıda "bir
+işlemcinin ya da çekirdeğin yaptığı işlemi diğeri ya tam olarak görecek ya da görmeyecek" biçiminde
 tanımlamıştık. Bu makine komutunu örneğin iki işlemci aynı zaman dilimi içerisinde yapmaya çalışırsa
 birinin belleğe yazdığı artırılmış değer diğeri tarafından ezilebilmektedir. Bu durumda da bellekteki
 değer iki kez değil sanki bir kez artırılmış gibi bir durum oluşabilmektedir. İşte bu tür durumlar
@@ -1931,3 +1931,951 @@ sağlanamamaktadır:
 
 Burada veri yolu ``LOCK`` önekiyle kilitlenmedikten sonra birden fazla işlemcinin bu komutu tesadüfen aynı
 zaman diliminde çalıştırması sonucunda artırım değeri yanlış oluşabilecektir.
+
+C'de Atomik Değişkenler
+-----------------------
+
+Aslında C'deki basit birtakım işlemler için derleyicinin atomik kod üretmesi çeşitli biçimlerde
+sağlanabilmektedir. Örneğin C11 ile C'ye ``_Atomic(type)`` biçiminde tür belirleyicisi ve ``_Atomic``
+biçiminde tür niteleyicisi eklenmiştir. Eğer bir değişken bu ``_Atomic(type)`` tür belirleyicisi ya da
+``_Atomic`` tür niteleyicisi ile tanımlanırsa derleyici o değişkenle yapılan işlemlerin atomik yapılmasını
+(örneğin ``LOCK`` önekleriyle yapılmasını) kendi sağlamaktadır. Örneğin:
+
+.. code-block:: c
+
+    _Atomic int g_count;
+
+Yukarıda da belirttiğimiz gibi C11'de ``_Atomic`` tür niteleyicisinin yanı sıra ``_Atomic`` tür
+belirleyicisi de bulunmaktadır. ``_Atomic`` tür belirleyicisi parantezli biçimde kullanılmaktadır.
+Örneğin:
+
+.. code-block:: c
+
+    _Atomic(int) g_count;
+
+C11 ile C'ye sokulan ``_Atomic`` niteleyicisi ve tür belirleyicisi *isteğe bağlı (optional)* bir
+özelliktir. Derleyicilerin bunu desteklemesi zorunlu değildir. Derleyicinin bu özelliği destekleyip
+desteklemediği derleme aşamasında ``__STDC_NO_ATOMICS__`` önceden tanımlanmış sembolik sabitiyle
+belirlenebilmektedir.
+
+Artık biz ``++g_count`` gibi bir işlemi yaptığımızda derleyici bunu yapacak atomik kodu kendisi
+üretecektir. Ayrıca C11 ile eklenen ``<stdatomic.h>`` dosyasında aşağıdaki ``typedef`` bildirimleri de
+bulunmaktadır:
+
+.. code-block:: c
+
+    typedef atomic_bool    _Atomic _Bool;
+    typedef atomic_char    _Atomic char;
+    typedef atomic_schar   _Atomic signed char;
+    typedef atomic_uchar   _Atomic unsigned char;
+    typedef atomic_short   _Atomic short;
+    typedef atomic_ushort  _Atomic unsigned short;
+    typedef atomic_int     _Atomic int;
+    typedef atomic_uint    _Atomic unsigned int;
+    typedef atomic_long    _Atomic long;
+    typedef atomic_ulong   _Atomic unsigned long;
+    typedef atomic_llong   _Atomic long long;
+    typedef atomic_ullong  _Atomic unsigned long long;
+    /* ... */
+
+``_Atomic`` tür niteleyicisi Microsoft C derleyicileri tarafından desteklenmemektedir. C11 standartlarına
+göre ``_Atomic`` niteleyicisi gerçek sayı türleriyle, göstericilerle ve yapı türleriyle de
+kullanılabilmektedir. Ancak derleyici atomikliği tek bir makine komutuyla sağlayamadığı durumda kendi
+içerisindeki senkronizasyon nesnelerini de kullanabilmektedir. Derleyiciler arasında bu konuda işlevsel
+farklılıklar ve birtakım kusurlar bulunabilmektedir.
+
+Ayrıca C11'den daha eski zamanlarda da C derleyicileri atomik işlemler için *built-in* (ya da *intrinsic*
+de denilmektedir) fonksiyonlar bulunduruyordu. Örneğin atomik işlemler gcc tarafından sağlanan *built-in*
+``__atomic_xxx`` önekli fonksiyonlar tarafından yapılabilmektedir. Microsoft derleyicileri de aynı amaçla
+``InterlockedXXX`` fonksiyonlarını bulundurmaktadır.
+
+C++'ta da ``<atomic>`` başlık dosyası içerisinde bildirilmiş olan ``atomic`` isimli sınıf şablonu ile
+atomik işlemler yapılabilmektedir. Örneğin:
+
+.. code-block:: cpp
+
+    atomic<int> count;
+
+Ancak Linux çekirdeği yukarıda bahsettiğimiz ``_Atomic`` tür niteleyicisini ve gcc derleyicilerinin
+sağladığı *built-in* ``__atomic_xxx`` fonksiyonlarını kullanmamaktadır. Bunun en önemli nedeni çekirdeğin
+derleyicinin versiyonundan ve yeteneğinden bağımsız biçimde pek çok platformu destekleyecek biçimde
+yazılmak istenmesidir. Atomik işlemler çekirdek içerisindeki fonksiyonlarla gerçekleştirilmektedir.
+Çekirdek geliştirmesi yapan ve aygıt sürücü yazan sistem programcıları da bu mekanizmayı kullanmalıdır.
+
+Linux Çekirdeğinde Atomik İşlemler
+----------------------------------
+
+Linux çekirdeklerinde atomik işlemler ``atomic_t``, ``atomic64_t`` ve ``atomic_long_t`` isimli türler
+kullanılarak yapılmaktadır. Bu türler birer yapı belirtir. Bu yapılar ``include/linux/types.h`` içerisinde
+şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    /* include/linux/types.h */
+
+    typedef struct {
+        int counter;
+    } atomic_t;
+
+    #ifdef CONFIG_64BIT
+    typedef struct {
+        s64 counter;
+    } atomic64_t;
+    #endif
+
+    typedef struct {
+        long counter;
+    } atomic_long_t;
+
+Yeni çekirdeklere ``atomic_long_t`` türü de eklenmiştir. `atomic_long_t`` türü ``include/linux/atomic/atomic_long.h`` 
+dosyası içerisinde diğer türlerle ``typedef`` edilmiş durumdadır:
+
+.. code-block:: c
+
+    #ifdef CONFIG_64BIT
+    typedef atomic64_t atomic_long_t;
+    /* ... */
+    #else
+    typedef atomic_t atomic_long_t;
+    /* ... */
+    #endif
+
+``atomic_t`` türündeki atomik değişken ``int`` türünden, ``atomic64_t`` türündeki atomik değişken ise
+``long long`` türündendir. ``atomic_long_t`` türündeki atomik değişkenin türü de o sistemdeki ``long``
+türünün uzunluğuna bağlı olarak değişebilmektedir. Bu türlerin neden yapılarla sarmalandığını merak
+edebilirsiniz. Bunun en önemli nedeni atomik işlemler yapan çekirdek fonksiyonlarına yanlışlıkla başka
+bir türün parametre olarak geçilmesinin engellenmek istenmesidir. Örneğin eğer ``atomic_t`` türü ``int``
+olarak ``typedef`` edilseydi ``atomic_t`` türünden bir değişkene doğrudan ``int`` bir değer atanabilirdi.
+Aynı zamanda bu atomik temsilin daha okunabilir olacağı düşünülmüştür. Örneğin:
+
+.. code-block:: c
+
+    atomic_t count;
+
+    count++;                /* HATA: invalid operands to binary ++ */
+    count = count + 1;      /* HATA: invalid operands to binary + */
+
+Atomik türden bir nesneye pratik biçimde ilkdeğer vermek için makrolar bulundurulmuştur. Örneğin:
+
+.. code-block:: c
+
+    static atomic_t      my_counter          = ATOMIC_INIT(0);
+    static atomic64_t    my_long_counter     = ATOMIC64_INIT(1000);
+    static atomic_long_t my_platform_counter = ATOMIC_LONG_INIT(-1);
+
+Bu makrolar aslında küme parantezleri oluşturup yapının ``counter`` elemanına değer atanmasını
+sağlamaktadır. Örneğin ``ATOMIC_INIT`` makrosu şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    #define ATOMIC_INIT(i)      { (i) }
+
+Ancak yerel değişken söz konusu ise bu biçimde ilkdeğer verme atomikliği bozabilmektedir. Çünkü
+derleyiciler yerel değişkenlere de makine komutlarıyla değer atamaktadır. Atomik değişkenlere daha sonra
+değer atamak için ``atomic_set`` fonksiyonu kullanılmaktadır. Güncel çekirdeklerde ``atomic_set``
+fonksiyonu inline biçimde şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    static __always_inline void
+    atomic_set(atomic_t *v, int i)
+    {
+        instrument_atomic_write(v, sizeof(*v));
+        raw_atomic_set(v, i);
+    }
+
+Görüldüğü gibi fonksiyonun birinci parametresi ``atomic_t`` türünden nesnenin adresini, ikinci parametresi
+ise buna atanacak değeri almaktadır. Buradaki asıl işlem platforma göre değişebilen ``raw_atomic_set``
+tarafından yapılmaktadır. Fonksiyondaki ``instrument_atomic_write`` çağrısı çekirdek geliştirme süreci
+için debug amaçlı bulunmaktadır. Normal olarak bu çağrı koddan çıkartılmaktadır. ``atomic64_t`` türü için
+de ``atomic64_set`` isimli fonksiyon bulundurulmuştur:
+
+.. code-block:: c
+
+    static __always_inline void
+    atomic64_set(atomic64_t *v, s64 i)
+    {
+        instrument_atomic_write(v, sizeof(*v));
+        raw_atomic64_set(v, i);
+    }
+
+Benzer biçimde ``atomic_long_t`` türü için de ``atomic_long_set`` fonksiyonu bulundurulmuştur:
+
+.. code-block:: c
+
+    static __always_inline void
+    atomic_long_set(atomic_long_t *v, long i)
+    {
+        instrument_atomic_write(v, sizeof(*v));
+        raw_atomic_long_set(v, i);
+    }
+
+Şimdi ``atomic_set`` fonksiyonunun çağırdığı ``raw_atomic_set`` fonksiyonuna bakalım:
+
+.. code-block:: c
+
+    static __always_inline void
+    raw_atomic_set(atomic_t *v, int i)
+    {
+        arch_atomic_set(v, i);
+    }
+
+Burada ``arch_atomic_set`` fonksiyonu işlemciye bağlı olarak değişebilecek asıl işlemi yapan
+fonksiyondur. Derlemenin yapıldığı işlemci modeli neyse ``arch/<işlemci_türü>/include/asm/atomic.h``
+içerisindeki ``arch_atomic_set`` fonksiyonu çağrılmaktadır. ``arch_atomic_set`` bazı mimariler için
+makro olarak bazı mimariler için inline fonksiyon olarak yazılmıştır. Örneğin Intel x86 işlemcileri için
+``arch/x86/include/asm/atomic.h`` içerisindeki bu fonksiyon şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline void arch_atomic_set(atomic_t *v, int i)
+    {
+        __WRITE_ONCE(v->counter, i);
+    }
+
+Buradaki ``__WRITE_ONCE`` makrosu ise şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define __WRITE_ONCE(x, val)                        \
+    do {                                                \
+        *(volatile typeof(x) *)&(x) = (val);           \
+    } while (0)
+
+Burada görüldüğü gibi erişim ``volatile`` olarak yapılmıştır. Yani yazma işleminin doğrudan bellek
+erişimi ile yapılması istenmiştir. Yukarıdaki makroda aklınıza şu sorular gelebilir:
+
+- Nesne hizalanmamışsa yukarıdaki atama işlemi atomik olur mu?
+- ``volatile`` erişim erişimin atomik yapılmasını garanti eder mi?
+
+Nesne hizalanmamışsa yukarıdaki atama tek makine komutuyla yapılsa bile atomik olmaz. Ancak Linux
+çekirdeğindeki tüm nesneler her zaman zaten hizalıdır. Yani bu garanti zaten vardır. Yukarıdaki
+``volatile`` erişim için gcc'nin tek makine komutu üreteceği de bilinmektedir. gcc ``volatile`` atama
+işlemlerini her zaman tek makine komutuyla yapmaktadır. Ayrıca yukarıdaki işlemde ileride ele alacağımız
+bir bellek bariyerinin kullanılmadığına dikkatinizi çekmek istiyoruz. Bellek bariyerleri bir grup makine
+komutunun sıralamasını garanti etmek için kullanılmaktadır. Atomiklik ise bir işlemin araya girilmeden,
+kesilmeden tek parça bir işlem olarak yapılması anlamına gelmektedir.
+
+Yukarıdaki akış Linux çekirdeğinde çok karşılaşılan bir kalıptır. İşlemler işlemci bağımsız fonksiyonlar
+çağrılarak yapılır. Ancak belli bir aşamadan sonra işlemciye ilişkin ``arch`` dizini içerisindeki
+fonksiyonlar ya da makrolar devreye girer. Bazen yalnızca bazı işlemciler için özel işlemlerin yapılması
+söz konusu olabilmektedir. Bu durumda ilgili fonksiyonlar ya da makrolar o işlemciler için yazılır,
+diğerleri için de *generic* bir tanımlama yapılır. Bu tür kodlarda isminde "generic" geçen dosyalar
+görürseniz şaşırmayınız. Bunlar adeta "geri kalan işlemcilerin hepsi için" anlamına gelmektedir. Atomik
+fonksiyonlardaki çağırma dizgesi tipik olarak şöyledir:
+
+.. code-block:: none
+
+    atomic_xxx ---> raw_atomic_xxx ---> arch_atomic_xxx (işlemciye özgü fonksiyon ya da makro)
+
+Atomik Okuma ve Artırım Fonksiyonları
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Atomik türlerden atomik biçimde değer okumak için read fonksiyonları kullanılmaktadır:
+
+.. code-block:: c
+
+    int  atomic_read(const atomic_t *v);
+    s64  atomic64_read(const atomic64_t *v);
+    long atomic_long_read(const atomic_long_t *v);
+
+Tabii bu değer okuma işlemi de tek bir işlemle yani başka bir işlemcinin araya girmesi engellenerek
+yapılmaktadır. ``atomic_read`` fonksiyonu şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline int
+    atomic_read(const atomic_t *v)
+    {
+        instrument_atomic_read(v, sizeof(*v));
+        return raw_atomic_read(v);
+    }
+
+Buradaki ``instrument_atomic_read`` fonksiyonu çekirdek geliştirmesi sırasında debug amaçlı
+çağrılmaktadır. Normal çekirdek derlemelerinde bu çağrı koddan çıkartılmaktadır. ``raw_atomic_read``
+fonksiyonu şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static __always_inline int
+    raw_atomic_read(const atomic_t *v)
+    {
+        return arch_atomic_read(v);
+    }
+
+``arch_atomic_read`` fonksiyonunun Intel x86 gerçekleştirimi şöyledir:
+
+.. code-block:: c
+
+    static __always_inline int arch_atomic_read(const atomic_t *v)
+    {
+        /*
+         * Note for KASAN: we deliberately don't use READ_ONCE_NOCHECK() here,
+         * it's non-inlined function that increases binary size and stack usage.
+         */
+        return __READ_ONCE((v)->counter);
+    }
+
+``__READ_ONCE`` makrosu da şöyle oluşturulmuştur:
+
+.. code-block:: c
+
+    #define __READ_ONCE(x)  (*(const volatile __unqual_scalar_typeof(x) *)&(x))
+
+Burada değişkenin adresi alınarak bu adres ``volatile`` bir adrese dönüştürülmüş ve yukarıda
+belirttiğimiz gibi ``volatile`` erişim yapılmıştır. Fonksiyonun kullanımına şöyle bir örnek
+verebiliriz:
+
+.. code-block:: c
+
+    atomic_t g_counter = ATOMIC_INIT(100);
+    /* ... */
+
+    int value = atomic_read(&g_counter);    /* atomik okuma */
+
+Atomik artırımlar ve eksiltimler için şu fonksiyonlar bulundurulmuştur:
+
+.. code-block:: c
+
+    void atomic_inc(atomic_t *v);       /* v++ */
+    void atomic_dec(atomic_t *v);       /* v-- */
+
+    void atomic64_inc(atomic64_t *v);
+    void atomic64_dec(atomic64_t *v);
+
+    void atomic_long_inc(atomic_long_t *v);
+    void atomic_long_dec(atomic_long_t *v);
+
+Bu fonksiyonlar artırımın atomik bir biçimde yapılmasını garanti etmektedir. Intel'de atomik bellek
+artırımları ``LOCK`` öneki getirilmiş tek makine komutuyla yapılabilmektedir. Ancak 32 bitlik ARM gibi
+RISC işlemcilerinde bu işlemler bir döngü içerisinde özel makine komutlarıyla yapılmaktadır.
+``atomic_inc`` fonksiyonu güncel çekirdeklerde şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline void
+    atomic_inc(atomic_t *v)
+    {
+        instrument_atomic_read_write(v, sizeof(*v));
+        raw_atomic_inc(v);
+    }
+
+``raw_atomic_inc`` fonksiyonu da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline void
+    raw_atomic_inc(atomic_t *v)
+    {
+    #if defined(arch_atomic_inc)
+        arch_atomic_inc(v);
+    #else
+        raw_atomic_add(1, v);
+    #endif
+    }
+
+Her mimaride 1 artırma yapan makine komutu olmadığı için yukarıdaki kodda bir kontrolün yapıldığını
+görüyorsunuz. ``raw_atomic_add`` fonksiyonu da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline void
+    raw_atomic_add(int i, atomic_t *v)
+    {
+        arch_atomic_add(i, v);
+    }
+
+Burada artık işlemciye özgü fonksiyon çağrılmıştır. Intel x86 mimarisi için bu fonksiyon şöyledir:
+
+.. code-block:: c
+
+    static __always_inline void arch_atomic_add(int i, atomic_t *v)
+    {
+        asm_inline volatile(LOCK_PREFIX "addl %1, %0"
+                : "+m" (v->counter)
+                : "ir" (i) : "memory");
+    }
+
+Makine komutunun önüne ``LOCK`` öneki getirilmiş olduğuna dikkat ediniz.
+
+Artırma yapan atomik fonksiyonların artırılmış yeni değeri veren biçimleri de vardır:
+
+.. code-block:: c
+
+    int  atomic_inc_return(atomic_t *v);
+    int  atomic_dec_return(atomic_t *v);
+
+    s64  atomic64_inc_return(atomic64_t *v);
+    s64  atomic64_dec_return(atomic64_t *v);
+
+    long atomic_long_inc_return(atomic_long_t *v);
+    long atomic_long_dec_return(atomic_long_t *v);
+
+Örneğin çekirdek kodlarında ya da aygıt sürücülerde aşağıdaki gibi bir referans sayacı
+oluşturulabilir:
+
+.. code-block:: c
+
+    struct my_object {
+        atomic_t refcount;
+        /* ... */
+    };
+
+    struct my_object *create_object(void)
+    {
+        struct my_object *obj;
+
+        obj = kzalloc(sizeof(*obj), GFP_KERNEL);
+        if (!obj)
+            return NULL;
+
+        atomic_set(&obj->refcount, 1);
+
+        return obj;
+    }
+
+    void get_object(struct my_object *obj)
+    {
+        atomic_inc(&obj->refcount);
+        /* ... */
+    }
+
+    void put_object(struct my_object *obj)
+    {
+        int new_count;
+
+        if (atomic_dec_return(&obj->refcount) == 0) {
+            /* kaynaklar boşaltılıyor */
+        }
+        /* ... */
+    }
+
+Bellekteki atomik nesneye değer eklemek ve onun içerisindeki değeri eksiltmek için de şu fonksiyonlar
+bulundurulmuştur:
+
+.. code-block:: c
+
+    void atomic_add(int i, atomic_t *v);    /* v += i */
+    void atomic_sub(int i, atomic_t *v);    /* v -= i */
+
+    void atomic64_add(s64 a, atomic64_t *v);
+    void atomic64_sub(s64 a, atomic64_t *v);
+
+    void atomic_long_add(long i, atomic_long_t *v);
+    void atomic_long_sub(long i, atomic_long_t *v);
+
+Bunların artırılmış ya da eksiltilmiş değerle geri dönen biçimleri de vardır:
+
+.. code-block:: c
+
+    int  atomic_add_return(int i, atomic_t *v);
+    int  atomic_sub_return(int i, atomic_t *v);
+
+    s64  atomic64_add_return(s64 a, atomic64_t *v);
+    s64  atomic64_sub_return(s64 a, atomic64_t *v);
+
+    long atomic_long_add_return(long i, atomic_long_t *v);
+    long atomic_long_sub_return(long i, atomic_long_t *v);
+
+Artırım ve eksiltim işlemlerinde artırılmış ya da eksiltilmiş değerle değil de eski değerle geri dönen
+fetch'li biçimleri de vardır:
+
+.. code-block:: c
+
+    int  atomic_fetch_add(int i, atomic_t *v);
+    int  atomic_fetch_sub(int i, atomic_t *v);
+
+    s64  atomic64_fetch_add(s64 i, atomic64_t *v);
+    s64  atomic64_fetch_sub(s64 i, atomic64_t *v);
+
+    long atomic_long_fetch_add(long i, atomic_long_t *v);
+    long atomic_long_fetch_sub(long i, atomic_long_t *v);
+
+Atomik işlemler için ``xchg`` fonksiyonları da bulunmaktadır:
+
+.. code-block:: c
+
+    int  atomic_xchg(atomic_t *v, int new);
+    s64  atomic64_xchg(atomic64_t *v, s64 new);
+    long atomic_long_xchg(atomic_long_t *v, long new);
+
+Bu fonksiyonlar *read-modify-write* denilen atama işlemini yapmaktadır. Yani bu fonksiyonlar atomik bir
+biçimde bellekteki nesneye değer atayıp onun eski değerini geri döndürmektedir. ``atomic_xchg``
+fonksiyonu şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline int
+    atomic_xchg(atomic_t *v, int new)
+    {
+        kcsan_mb();
+        instrument_atomic_read_write(v, sizeof(*v));
+        return raw_atomic_xchg(v, new);
+    }
+
+``raw_atomic_xchg`` fonksiyonu da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline int
+    raw_atomic_xchg(atomic_t *v, int new)
+    {
+    #if defined(arch_atomic_xchg)
+        return arch_atomic_xchg(v, new);
+    #elif defined(arch_atomic_xchg_relaxed)
+        int ret;
+        __atomic_pre_full_fence();
+        ret = arch_atomic_xchg_relaxed(v, new);
+        __atomic_post_full_fence();
+        return ret;
+    #else
+        return raw_xchg(&v->counter, new);
+    #endif
+    }
+
+Buradaki ``arch_atomic_xchg`` fonksiyonu da Intel x86 işlemcileri için şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline int arch_atomic_xchg(atomic_t *v, int new)
+    {
+        return arch_xchg(&v->counter, new);
+    }
+
+Bundan sonra da Intel'deki ``XCHG`` makine komutu kullanılarak işlem yapılmıştır.
+
+ARM gibi RISC işlemcilerinde atomik işlemlerin nasıl yapıldığını izleyen paragraflarda açıklayacağız.
+``atomic_set`` fonksiyonlarının bir değer geri döndürmediğine, ``atomic_xchg`` fonksiyonlarının ise eski
+değeri geri döndürdüğüne dikkat ediniz. Ayrıca ``atomic_xchg`` fonksiyonları işlemlerin başına ve sonuna
+bellek bariyerleri de yerleştirmektedir. (Intel x86 işlemcilerinde ``XCHG`` makine komutu zaten atomiktir
+yani ``LOCK`` uygulanmış gibidir. Dolayısıyla bu işlemcilerde bellek bariyerine gerek kalmamaktadır.)
+
+Aslında çekirdekte atomik ``xchg`` fonksiyonunun dışında herhangi bir nesneye atomik değer atayan genel
+bir ``xchg`` makrosu da bulundurulmuştur. Bu makronun birinci parametresi nesnenin bellek adresini,
+ikinci parametresi ise ona aktarılacak değeri almaktadır. Makro atomik bir biçimde bu değeri nesneye
+yerleştirirken onun önceki değerini de geri döndürmektedir:
+
+.. code-block:: c
+
+    #define xchg(ptr, new)  /* arch-specific */
+
+Bu genel makro herhangi bir temel tamsayı türüyle çalışabilmektedir.
+
+Compare-Exchange (Compare-And-Swap) Fonksiyonları
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Özellikle senkronizasyon nesnelerinin gerçekleştirilmesinde kullanılan, İngilizce genellikle
+*compare-exchange* ya da *compare-and-swap (CAS)* biçiminde ifade edilen önemli bir mekanizma vardır.
+İşlemciler bu mekanizmanın gerçekleştirilebilmesi için özel makine komutları bulundurmaktadır. Bu
+mekanizma Linux çekirdeğinde atomik fonksiyonlar biçiminde oluşturulmuştur:
+
+.. code-block:: c
+
+    int atomic_cmpxchg(atomic_t *v, int old, int new);
+    s64  atomic64_cmpxchg(atomic64_t *v, s64 old, s64 new);
+    long atomic_long_cmpxchg(long *v, long old, long new);
+
+Ayrıca çekirdekte genel bir ``cmpxchg`` makrosu da bulunmaktadır. Bu genel makro herhangi bir temel
+tamsayı türüyle çalışabilmektedir:
+
+.. code-block:: c
+
+    #define cmpxchg(ptr, old, new)  /* ... */
+
+*Compare-exchange* mekanizması şu işlemin yapılmasına yol açmaktadır: *Eğer bellekteki bir nesne
+içerisinde bulunan değer benim belirttiğim değerle aynıysa o zaman onun yerine şu değeri yaz.* Tabii bu
+işlem atomik bir biçimde yapılmaktadır. Örneğin bir nesne içerisinde 0 değeri bulunuyor olsun. Biz de bu
+mekanizmayla şu işlemi atomik olarak yapabiliriz: *Eğer nesne içerisinde 0 varsa onu 1 yap.* Burada bir
+koşulun yani karşılaştırmanın (compare) olduğuna dikkat ediniz. Bu örneğimizde nesne içerisinde 0 yoksa
+işlem başarısız olacaktır, ancak 0 varsa başarılı olacaktır. Buradaki karşılaştırma ve atama atomik bir
+biçimde yani tek bir işlemmiş gibi yapılmaktadır. *Compare-exchange* işleminin mantıksal temsili şöyle
+ifade edilebilir:
+
+.. code-block:: c
+
+    int cmpxchg(int *ptr, int old_val, int new_val)     /* dikkat: bu temsili bir koddur */
+    {
+        int current = *ptr;
+
+        if (current == old_val)
+            *ptr = new_val;     /* Eşitse güncelle */
+
+        return current;         /* Eski değeri döndür */
+    }
+
+Tabii tüm işlem aslında tek bir makine komutuyla kesilmeden yapılmaktadır. Fonksiyonların hedeflenen
+nesnenin önceki değeriyle geri döndüğüne dikkat ediniz.
+
+*Compare-exchange* mekanizması senkronizasyon nesnelerinin gerçekleştiriminde kullanılan bir mekanizmadır.
+Örneğin manuel bir spinlock gerçekleştirimi yapacak olalım:
+
+.. code-block:: c
+
+    static atomic_t g_flag = ATOMIC_INIT(0);
+    /* ... */
+
+    preempt_disable();
+
+    while (atomic_read(&g_flag) == 1)
+        ;
+    atomic_set(&g_flag, 1);
+    ... 
+    ...         <KRİTİK KOD BLOĞU> 
+    ...
+    atomic_set(&g_flag, 0);
+
+    preempt_enable();
+
+Buradaki sorun ``g_flag`` değişkeni 0 ise onun 1 yapılması sırasında başka bir işlemcideki kodun açık
+pencere bularak kritik kod bloğuna girebilmesidir:
+
+.. code-block:: c
+
+    while (atomic_read(&g_flag) == 1)
+        ;
+
+    /* ---> DİKKAT: BURADA AÇIK BİR PENCERE VAR! */
+
+    atomic_set(&g_flag, 1);
+
+İşte *compare-exchange* mekanizması bu pencerenin oluşumunu engellemektedir. Çünkü bu mekanizma atomik
+yürütülmektedir:
+
+.. code-block:: c
+
+    preempt_disable();
+
+    while (atomic_cmpxchg(&g_flag, 0, 1) != 0)
+        ;
+    ...
+    ...         <KRİTİK KOD BLOĞU>
+    ... 
+    atomic_set(&g_flag, 0);
+
+    preempt_enable();
+
+Yukarıdaki döngüye dikkat ediniz. ``cmpxchg`` fonksiyonları nesnenin önceki değeriyle geri dönmektedir.
+Buradaki spinlock gerçekleştirimini gerçeğine biraz daha benzetebiliriz:
+
+.. code-block:: c
+
+    typedef struct {
+        atomic_t lock;
+    } spinlock_t;
+
+    #define SPINLOCK_INIT   {.lock = ATOMIC_INIT(0)}
+
+    static inline void spin_lock_init(spinlock_t *lock)
+    {
+        atomic_set(&lock->lock, 0);
+    }
+
+    static inline void spin_lock(spinlock_t *lock)
+    {
+        preempt_disable();
+        while (atomic_cmpxchg(&lock->lock, 0, 1) != 0) {
+            cpu_relax();
+        }
+        smp_mb();
+    }
+
+    static inline void spin_unlock(spinlock_t *lock)
+    {
+        smp_mb();
+        atomic_set(&lock->lock, 0);
+        preempt_enable();
+    }
+
+    static inline int spin_trylock(spinlock_t *lock)
+    {
+        preempt_disable();
+        if (atomic_cmpxchg(&lock->lock, 0, 1) == 0) {
+            smp_mb();
+            return 1;
+        }
+        preempt_enable();
+
+        return 0;
+    }
+
+Bu gerçekleştirim biraz daha gerçeğe uygundur. ``smp_mb`` bariyer fonksiyonunu izleyen paragraflarda ele
+alacağız. ``cpu_relax`` işlemi CPU'da bir duraklama yaratmaktadır. Bu sürekli dönme durumlarında CPU'nun
+güç tüketimini azaltıcı bir etki yaratmaktadır. Intel x86 mimarisinde bu fonksiyon ``PAUSE`` makine
+komutunu, ARM işlemcilerinde ise ``YIELD`` makine komutunu oluşturmaktadır. Eski sistemlerde ``NOP``
+komutları da benzer etkileri yaratabilmektedir.
+
+Peki *compare-exchange* biçiminde bir mekanizma olmasaydı ne olurdu? İşte bu tür durumlarda çok
+işlemcili ya da çok çekirdekli sistemlerdeki senkronizasyon nesnelerinin gerçekleştirilmesi mümkün
+olmazdı. *Compare-exchange* işlemleri işlemcilerdeki özel makine komutlarıyla gerçekleştirilmektedir.
+Bu makine komutlarına sahip olmayan işlemcilerde bu mekanizma oluşturulamamaktadır.
+
+Biz kitabımızda *compare-exchange* yerine *compare-and-swap* terimini ya da doğrudan CAS kısaltmasını da
+kullanacağız.
+
+Koşullu Atomik İşlemler
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Linux çekirdeğinde bir koşula bağlı olarak atomik artırma ve eksiltme gibi işlemleri yapan atomik
+fonksiyonlar da vardır. ``atomic_add_unless`` fonksiyonu bir koşul sağlamadığında artırma yapmaktadır.
+Fonksiyonun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    bool atomic_add_unless(atomic_t *v, int a, int u);
+
+Bu fonksiyon ``v`` içerisindeki değer ``u``'ya eşit değilse ``v`` içerisindeki değeri ``a`` kadar
+artırmaktadır. Fonksiyonun yaptığı işin temsili (pseudo) kodu şöyledir:
+
+.. code-block:: c
+
+    if (atomic_read(v) != u) {
+        atomic_add(a, v);
+        return 1;           /* Başarılı */
+    }
+    return 0;               /* Değer u idi, ekleme yapılmadı */
+
+Tabii yukarıdaki kod yalnızca temsili bir koddur. Yukarıdaki işlemler başka bir işlemci araya girmeden
+atomik bir biçimde yapılmaktadır.
+
+Örneğin çekirdek içerisinde belli bir sayaç belli bir değerden daha fazla artırılamayacak olsun. Bu işlem
+``atomic_add_unless`` fonksiyonu ile kolay bir biçimde yapılabilir:
+
+.. code-block:: c
+
+    #define MAX_CONNECTIONS     1000
+
+    static atomic_t connection_count = ATOMIC_INIT(0);
+
+    int try_new_connection(void)
+    {
+        /* 1000'e ulaşmadıysa artır */
+        if (!atomic_add_unless(&connection_count, 1, MAX_CONNECTIONS)) {
+            printk(KERN_WARNING "Max connections reached!\n");
+            return -EBUSY;
+        }
+
+        return 0;
+    }
+
+Burada görüldüğü gibi sayaç değeri 1000 değilse 1 artırılmaktadır. Eğer sayaç değeri 1000'e gelmişse
+artırım yapılmamakta ve fonksiyon 0 değeri ile geri dönmektedir. Bu fonksiyonun koşullu biçimde 1
+artıran biçimi de vardır:
+
+.. code-block:: c
+
+    bool atomic_inc_not_zero(atomic_t *v);
+
+Bu fonksiyonun temsili (pseudo) kodu da şöyledir:
+
+.. code-block:: c
+
+    if (atomic_read(v) != 0) {
+        atomic_inc(v);
+        return 1;       /* Başarılı */
+    }
+    return 0;           /* Değer 0 idi, artırma yapılmadı */
+
+Test-And-Set Atomik İşlemleri
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Çekirdekte atomik türlerle *test-and-set* işlemlerini yapan bir grup fonksiyon da bulunmaktadır. Bu
+işlemler de yine işlemcilerin bulundurduğu özel makine komutlarıyla yapılabilmektedir:
+
+.. code-block:: c
+
+    int atomic_dec_and_test(atomic_t *v);
+    int atomic_inc_and_test(atomic_t *v);
+    int atomic_sub_and_test(int i, atomic_t *v);
+    int atomic_add_negative(int i, atomic_t *v);
+
+``atomic_dec_and_test`` fonksiyonu atomik değişkendeki değeri 1 eksiltir ve sonucun 0 olup olmadığına
+bakar. Eğer değer 0 olmuşsa 1, olmamışsa 0 geri döndürmektedir. ``atomic_inc_and_test`` fonksiyonu ise
+atomik değişkendeki değeri 1 artırır, eğer artırılmış değer sıfırsa 1, sıfır değilse 0 geri döndürür.
+Bu fonksiyon negatif değerden sıfıra geçişi tespit etmek için kullanılmaktadır. ``atomic_sub_and_test``
+değişkendeki değeri belli miktarda eksiltip sonucun 0 olup olmadığına bakmaktadır. Eğer eksiltilmiş
+değer 0 ise fonksiyon 1 değerine, değilse 0 değerine geri dönmektedir. ``atomic_add_negative``
+fonksiyonu ise atomik değişkene belli bir değeri ekleyip sonucun hâlâ negatif olup olmadığına
+bakmaktadır. Eğer sonuç negatifse fonksiyon 1 değerine, negatif değilse 0 değerine geri dönmektedir.
+
+Atomik Bit İşlemleri
+~~~~~~~~~~~~~~~~~~~~
+
+Linux çekirdeklerinde atomik bir biçimde bir nesnenin bitleri üzerinde işlem yapan fonksiyonlar da
+bulundurulmuştur. Bu fonksiyonlar ilgili işlemcideki özel makine komutlarını kullanmaktadır. Bu işlemler
+*read-modify-write* biçimindedir. Intel işlemcilerinin bellek üzerinde doğrudan bit işlemlerini yapan
+makine komutlarına sahip olduğunu anımsayınız. Intel işlemcilerinde bu makine komutlarının başına ``LOCK``
+öneki getirilmesi yeterli olmaktadır. Ancak ARM gibi RISC işlemcilerinde bu tür işlemler izleyen
+paragraflarda açıklayacağız gibi özel load/store komutlarını kullanarak bir döngü ile yapılabilmektedir.
+Atomik bit işlemleri için güncel çekirdeklerde farklı mimarilerde farklı inline fonksiyonlar ya da
+makrolar bulundurulmuştur. Bu fonksiyonların ya da makroların parametrik yapıları şöyledir:
+
+.. code-block:: c
+
+    void set_bit(int nr, volatile unsigned long *addr);
+    void clear_bit(int nr, volatile unsigned long *addr);
+    void change_bit(int nr, volatile unsigned long *addr);
+
+    int test_and_set_bit(int nr, volatile unsigned long *addr);
+    int test_and_clear_bit(int nr, volatile unsigned long *addr);
+    int test_and_change_bit(int nr, volatile unsigned long *addr);
+
+    int test_bit(int nr, const volatile unsigned long *addr);
+
+Örneğin ``set_bit`` işlemi aşağıdaki fonksiyon ile yapılmaktadır:
+
+.. code-block:: c
+
+    static __always_inline void set_bit(long nr, volatile unsigned long *addr)
+    {
+        instrument_atomic_write(addr + BIT_WORD(nr), sizeof(long));
+        arch_set_bit(nr, addr);
+    }
+
+Burada asıl işlemin ``arch_set_bit`` tarafından yapıldığını görüyorsunuz. Bu fonksiyon da çeşitli
+işlemciler için ayrı ayrı yazılmıştır. Tabii daha önceden belirttiğimiz gibi bir grup işlemci aynı
+özelliğe sahipse bunların *generic* biçimleri de vardır. Intel x86 işlemcileri için buradaki
+``arch_set_bit`` fonksiyonu şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline void
+    arch_set_bit(long nr, volatile unsigned long *addr)
+    {
+        if (__builtin_constant_p(nr)) {
+            asm_inline volatile(LOCK_PREFIX "orb %b1,%0"
+                : CONST_MASK_ADDR(nr, addr)
+                : "iq" (CONST_MASK(nr))
+                : "memory");
+        } else {
+            asm_inline volatile(LOCK_PREFIX __ASM_SIZE(bts) " %1,%0"
+                : : RLONG_ADDR(addr), "Ir" (nr) : "memory");
+        }
+    }
+
+Burada *inline assembly* sentaksıyla doğrudan bellek üzerinde ``LOCK`` öneki kullanılarak bit set işlemi
+yapılmıştır.
+
+Yukarıdaki atomik bit fonksiyonlarının parametrelerinin ``unsigned long *`` türünden olduğuna dikkat
+ediniz. Her ne kadar parametreler bu türdense de bu fonksiyonlar ``unsigned int`` türü için de tür
+dönüştürmesi uygulanarak kullanılabilir.
+
+Şimdi de bu fonksiyonların işlevlerini açıklayalım. ``set_bit`` fonksiyonu bir nesnenin diğer bitlerine
+dokunmadan belli bir bitini atomik bir biçimde 1 yapmak için, ``clear_bit`` fonksiyonu 0 yapmak için
+kullanılmaktadır. ``change_bit`` fonksiyonu ise yine atomik bir biçimde nesnenin diğer bitlerine
+dokunmadan belli bir bitini 1 ise 0, 0 ise 1 yapmaktadır.
+
+``test_and_xxx`` fonksiyonları işlemi yapmakla birlikte ilgili bitin eski durumunu da geri
+döndürmektedir. Örneğin ``test_and_set_bit`` fonksiyonu diğer bitlere dokunmadan belli bir biti atomik
+olarak set eder ve eski değeri geri döndürür. Bu fonksiyonu *compare-exchange* fonksiyonuna
+benzetebilirsiniz. Yani bu fonksiyon adeta ilgili bitteki değer 0 ise onu 1 yapmaktadır. Tabii yukarıda
+da belirttiğimiz gibi genellikle bu işlemler için işlemcinin özel makine komutlarından faydalanılmaktadır.
+Bu makine komutlarının içsel işleyişleri farklı olabilmektedir. ``test_and_clear_bit`` ve
+``test_and_change_bit`` fonksiyonları da benzer biçimde eski değeri geri döndürmektedir. ``test_bit``
+fonksiyonu ise belli bir bitin durumunu atomik bir biçimde elde etmek için kullanılmaktadır. Aşağıda bu
+fonksiyonların işlevleri tablo biçiminde verilmiştir:
+
+.. image:: _static/atomic-bit-ops.png
+   :alt: Atomik Bit Fonksiyonları
+   :align: center
+   :width: 70%
+
+Atomik bit fonksiyonları bit maskelerinden oluşan bayraklı nesnelerdeki bit bayraklarını set ya da clear
+etmek için kullanılmaktadır. Örneğin:
+
+.. code-block:: c
+
+    unsigned long *flags_addr = /* bellek tabanlı aygıt adresi */;
+
+    /* Flag bit pozisyonları */
+    #define FLAG_DEVICE_READY       0
+    #define FLAG_DMA_ENABLED        1
+    #define FLAG_INTERRUPT_ENABLED  2
+    #define FLAG_LOW_POWER_MODE     3
+    #define FLAG_ERROR_STATE        4
+
+    /* Flag'leri ayarla */
+    void device_init(void)
+    {
+        set_bit(FLAG_DEVICE_READY, flags_addr);     /* Aygıtı hazır olarak işaretle */
+        set_bit(FLAG_DMA_ENABLED, flags_addr);      /* DMA'yı etkinleştir */
+    }
+
+    /* Flag kontrolü */
+    int is_device_ready(void)
+    {
+        return test_bit(FLAG_DEVICE_READY, flags_addr);
+    }
+
+    /* Flag temizle */
+    void disable_dma(void)
+    {
+        clear_bit(FLAG_DMA_ENABLED, flags_addr);
+    }
+
+    /* Flag tersine çevir */
+    void toggle_interrupt(void)
+    {
+        change_bit(FLAG_INTERRUPT_ENABLED, flags_addr);
+    }
+
+Burada bir aygıtı programlayan bazı fonksiyonlar bulunmaktadır. Aygıtın çeşitli bitleri çeşitli
+durumları temsil etmektedir. Tabii bu aygıta *bellek tabanlı (memory mapped)* biçimde erişilmektedir.
+Yukarıdaki fonksiyonlar da bu aygıtın çeşitli bitleriyle atomik işlemler yapmaktadır.
+
+``test_and_xxxx`` fonksiyonları genellikle bitleri kilit olarak ele alındığı spinlock işlemlerinde
+kullanılmaktadır. Örneğin:
+
+.. code-block:: c
+
+    #define LOCK_BIT    0
+
+    static unsigned long lock_word = 0;
+
+    void my_lock(void)
+    {
+        /* Bit 0 set olana kadar dene */
+        preempt_disable();
+
+        while (test_and_set_bit(LOCK_BIT, &lock_word)) {   /* spin işlemi */
+            cpu_relax();
+        }
+
+        preempt_enable();
+
+        /* Kilit alındı */
+    }
+
+    void my_unlock(void)
+    {
+        /* Bit 0'ı temizle */
+        clear_bit(LOCK_BIT, &lock_word);
+    }
+
+Burada ``my_lock`` fonksiyonu belli bir bit üzerinde o bit 1 olduğu sürece spin yaparak beklemektedir.
+
+Bellek Bariyerleri
+==================
+
+Bu bölümde çok işlemcili ya da çok çekirdekli sistemlerdeki *bellek bariyerleri (memory barriers)*
+üzerinde duralım. Konuya girişte işlemcilerin birbirleriyle ilişkisi olmayan makine komutlarının
+yerlerini değiştirebildiğini belirtmiştik. Örneğin:
+
+.. code-block:: c
+
+    a = 10;
+    b = 20;
+
+Bu işlemleri makine komutları biçiminde sembolik olarak şöyle ifade edebiliriz:
+
+.. code-block:: none
+
+    STORE a, 10
+    STORE b, 20
+
+İşlemci buradaki belleğe atama (store) işlemlerini farklı sıralarda yapabilmektedir. Yani derleyici
+örneğin yukarıdaki iki atama işleminin sırasını etkin bir çalışma sağlamak için yer değiştirebilmektedir.
+Komutların yer değiştirmesi (instruction reordering) hem derleyici tarafından hem de işlemci tarafından
+yapılabilen bir optimizasyon işlemidir. Biz burada sürecin işlemciyle ilgili kısımları üzerinde
+duracağız. Çok işlemcili ya da çok çekirdekli sistemlerde sistem programcısının (örneğin çekirdek
+geliştiricilerinin) bu sorunu bilip bazı önlemleri alması gerekebilmektedir. İşlemciler birbirine bağlı
+olan makine komutlarının sırasını tek akışlı davranışı korumak için değiştirmemektedir.
