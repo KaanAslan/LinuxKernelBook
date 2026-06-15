@@ -1389,3 +1389,291 @@ karşılaştırılmıştır.
    :alt: Spinlock ile Mutex Karşılaştırması
    :align: center
 
+Okuma Yazma Kilitleri (Readers-Writer Lock)
+============================================
+
+Diğer çok kullanılan senkronizasyon nesnelerinden biri de *okuma yazma kilitleri (readers-writer lock)*
+denilen nesnelerdir. Önce bu nesnelere neden gereksinim duyulduğunu bir örnekle açıklamak istiyoruz.
+Çekirdek kodlarında paylaşılan bir kaynak bulunuyor olsun. Örneğin bunun global bir bağlı liste (linked
+list) olduğunu düşünelim. Bu bağlı listeye bir grup thread eleman (düğüm) ekliyor olsun, bir grup thread
+de bu bağlı listeyi dolaşarak eleman arıyor olsun. Burada bağlı listede arama yapmak *okuma (read)*
+işlemi gibi düşünülebilir. Çünkü bu işlem paylaşılan kaynakta (burada bağlı liste) bir durum değişikliğine
+yol açmadığı için farklı thread'lerden aynı anda yürütülebilmektedir. Ancak bağlı listeye eleman ekleyen
+thread bu işlem sırasında bağlı listenin düğümlerini değiştirdiği için tam o sırada başka bir thread de
+aynı bağlı listeye ekleme yaparsa ya da ondan arama yaparsa bu durum çökmeye yol açabilir. Burada bağlı
+listeye eleman ekleme bir *yazma (write)* işlemi olarak ele alınabilir. O halde bizim öyle bir kritik kod
+bloğu oluşturmamız gerekir ki birden fazla okuma yapan thread bu kritik kod bloğuna bekleme yapmadan
+girebilsin ancak bir thread okuma yaparken yazma yapan bir thread okuma yapan thread kritik kod bloğundan
+çıkana kadar beklesin. Benzer biçimde eğer yazma yapan bir thread kritik kod bloğuna girmişse bu işlem
+bitene kadar okuma yapan bir thread de kritik kod bloğuna giremesin. Aşağıda Thread-1 kritik kod bloğuna
+girmişse Thread-2'nin kritik kod bloğuna girip girmeyeceği bir tablo biçiminde verilmiştir:
+
+.. image:: _static/rwlock-access-table.png
+   :alt: Okuma Yazma Kilidi Erişim Tablosu
+   :align: center
+   :width: 60%
+
+Görüldüğü gibi bu mekanizma yalnızca eş zamanlı okumalar için kritik kod bloğuna girilmesine izin
+vermektedir.
+
+Böyle bir mekanizma tek başına mutex ya da semaphore nesneleriyle sağlanamaz. Aşağıdaki temsili koda
+(pseudo code) dikkat ediniz:
+
+.. code-block:: c
+
+    static DEFINE_MUTEX(g_mutex);
+
+    read()
+    {
+        mutex_lock(&g_mutex);
+        /* okuma işlemi yapılıyor */
+        mutex_unlock(&g_mutex);
+    }
+
+    write()
+    {
+        mutex_lock(&g_mutex);
+        /* yazma işlemi yapılıyor */
+        mutex_unlock(&g_mutex);
+    }
+
+Burada birden fazla okuma işlemi de blokeye yol açacaktır. Halbuki bizim istediğimiz birden fazla okumanın
+kilide yakalanmadan yapılabilmesidir.
+
+Linux çekirdeğinde readers/writer lock nesneleri spinlock mekanizmasıyla çalışmaktadır. Yani bu nesneler
+thread'i bloke ederek uykuya yatırmazlar. Thread'ler arası geçişi (preemption) kapatarak meşgul bir
+döngüde kilidin açılmasını beklerler. Yine bu nesnelerin de tek işlemcili ya da tek çekirdekli sistemlerde
+bir kullanımı yoktur. Bu sistemlerde bu kilit fonksiyonları yalnızca thread'ler arası geçişi kapatıp
+açmaktadır. (Yani kritik kod bloğunun kesilmeden çalıştırılmasını sağlamaktadır.)
+
+Okuma yazma kilitleri ``rwlock_t`` türünden bir yapıyla temsil edilmektedir. Bu yapı güncel çekirdeklerde
+şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    typedef struct {
+        struct rwbase_rt    rwbase;
+        atomic_t            readers;
+    #ifdef CONFIG_DEBUG_LOCK_ALLOC
+        struct lockdep_map  dep_map;
+    #endif
+    } rwlock_t;
+
+Okuma yazma kilit nesnelerinin yaratılması ``DEFINE_RWLOCK`` makrosuyla ya da ``rwlock_init`` fonksiyonuyla
+yapılmaktadır. ``DEFINE_RWLOCK`` makrosu ``include/linux/rwlock_types.h`` dosyası içerisinde aşağıdaki
+gibi bildirilmiştir:
+
+.. code-block:: c
+
+    #ifdef CONFIG_DEBUG_SPINLOCK
+    #define __RW_LOCK_UNLOCKED(lockname)                            \
+        (rwlock_t) {    .raw_lock = __ARCH_RW_LOCK_UNLOCKED,        \
+                        .magic = RWLOCK_MAGIC,                      \
+                        .owner = SPINLOCK_OWNER_INIT,               \
+                        .owner_cpu = -1,                            \
+                        RW_DEP_MAP_INIT(lockname) }
+    #else
+    #define __RW_LOCK_UNLOCKED(lockname)                            \
+        (rwlock_t) {    .raw_lock = __ARCH_RW_LOCK_UNLOCKED,        \
+                        RW_DEP_MAP_INIT(lockname) }
+    #endif
+
+    #define DEFINE_RWLOCK(x)    rwlock_t x = __RW_LOCK_UNLOCKED(x)
+
+``rwlock_init`` fonksiyonunun parametrik yapısı da şöyledir:
+
+.. code-block:: c
+
+    #include <linux/rwlock.h>
+
+    void rwlock_init(rwlock_t *lock);
+
+Okuma yazma kilitlerinin kilidini alan ve kilidini bırakan fonksiyonlar şunlardır:
+
+.. code-block:: c
+
+    void read_lock(rwlock_t *lock);
+    void read_lock_irq(rwlock_t *lock);
+    void read_lock_irqsave(rwlock_t *lock, unsigned long flags);
+    void read_lock_bh(rwlock_t *lock);
+
+    void read_unlock(rwlock_t *lock);
+    void read_unlock_irq(rwlock_t *lock);
+    void read_unlock_irqrestore(rwlock_t *lock, unsigned long flags);
+    void read_unlock_bh(rwlock_t *lock);
+
+    void write_lock(rwlock_t *lock);
+    void write_lock_irq(rwlock_t *lock);
+    void write_lock_irqsave(rwlock_t *lock, unsigned long flags);
+    void write_lock_bh(rwlock_t *lock);
+    int  write_trylock(rwlock_t *lock);
+
+    void write_unlock(rwlock_t *lock);
+    void write_unlock_irq(rwlock_t *lock);
+    void write_unlock_irqrestore(rwlock_t *lock, unsigned long flags);
+    void write_unlock_bh(rwlock_t *lock);
+
+Nesne ``read_lock`` fonksiyonlarıyla kilitlenmişse nesnenin açılması ``read_unlock`` fonksiyonlarıyla,
+nesne ``write_lock`` fonksiyonlarıyla kilitlenmişse nesnenin açılması ``write_unlock`` fonksiyonlarıyla
+yapılmalıdır. Örneğin okuma amaçlı kritik kod şöyle oluşturulabilir:
+
+.. code-block:: c
+
+    static DEFINE_RWLOCK(g_rwlock);
+    /* ... */
+
+    read_lock(&g_rwlock);
+    ... 
+    ...         <KRİTİK KOD BLOĞU> 
+    ...
+    read_unlock(&g_rwlock);
+
+Yazma amaçlı kritik kod bloğu da şöyle oluşturulabilir:
+
+.. code-block:: c
+
+    write_lock(&g_rwlock);
+    ...
+    ...         <KRİTİK KOD BLOĞU> 
+    ... 
+    write_unlock(&g_rwlock);
+
+Örneğin biz bu fonksiyonlarla okuma yazma işlemlerini aşağıdaki gibi senkronize edebiliriz:
+
+.. code-block:: c
+
+    static DEFINE_RWLOCK(g_rwlock);
+
+    read()
+    {
+        read_lock(&g_rwlock);
+        /* okuma işlemi yapılıyor */
+        read_unlock(&g_rwlock);
+    }
+
+    write()
+    {
+        write_lock(&g_rwlock);
+        /* yazma işlemi yapılıyor */
+        write_unlock(&g_rwlock);
+    }
+
+Burada artık okuma yapmak isteyen thread ``read_lock`` fonksiyonu ile spinlock kilidini aldığında başka bir
+thread bu kilidi ``write_lock`` ile alamaz ve spin yapmaya başlar. Ancak başka bir thread kilidi yine
+``read_lock`` ile alabilir. Eğer bir thread kilidi ``write_lock`` ile almışsa başka bir thread kilidi
+``read_lock`` ile de ``write_lock`` ile de alamaz ve spin yaparak bekler.
+
+``read_lock`` ve ``write_lock`` fonksiyonlarının irq sonekli versiyonları spinlock konusunda belirttiğimiz
+gibi akış kritik koda girdiğinde ilgili işlemci ya da çekirdeğin yerel kesmelerini kapatmaktadır. irqsave
+sonekli fonksiyonlar yine önce IRQ durumunu ``flags`` değişkeninde saklayıp unlock işlemi sırasında IRQ
+durumunu önceki duruma set etmektedir.
+
+SMP ve NUMA Mimarileri
+======================
+
+Biz Linux çekirdeğindeki temel senkronizasyon nesnelerini tanıttık. Ancak çekirdek senkronizasyon
+mekanizmasının özellikle çok işlemcili ya da çok çekirdekli sistemler söz konusu olduğunda pek çok
+ayrıntısı da vardır. Burada bu ayrıntılar üzerinde duracağız.
+
+Bugün çok işlemcili ya da çok çekirdekli sistemlerde işlemci ile bellek arasındaki bağlantı söz konusu
+olduğunda iki mimari kullanılmaktadır: *SMP (Symmetric Multiprocessor) Mimarisi* ve *NUMA (Non-Unified
+Memory Access) Mimarisi*.
+
+SMP Mimarisi
+------------
+
+SMP mimarisinde tüm işlemci ya da çekirdekler aynı fiziksel RAM'e bağlıdır. Dolayısıyla bir işlemci ya da
+çekirdek RAM'e erişirken diğeri o erişim bitene kadar beklemektedir. Tabii bu senkronizasyon donanım
+tarafından sağlanmaktadır. SMP mimarisindeki RAM erişimini aşağıdaki şekille betimleyebiliriz:
+
+.. image:: _static/smp-architecture.png
+   :alt: SMP Mimarisi
+   :align: center
+   :width: 60%
+
+SMP sisteminde bir CPU ya da çekirdek DRAM belleğe eriştiği zaman diğeri nano saniyeler mertebesinde
+beklediği için tam bir paralel çalışma mümkün olamamaktadır. Tabii işlemcilerin ya da çekirdeklerin içsel
+önbellekleri DRAM erişimini azaltmayı hedeflemektedir. Ancak işlemci içerisindeki önbellek mekanizmasının
+da *önbellek tutarlılığı (cache coherency)* denilen sorunları vardır. Örneğin bir işlemci ya da çekirdek
+DRAM bellekten belli bir yeri içsel önbelleğine çekmiş olsun. Şimdi o işlemci ya da çekirdek oraya bir
+şey yazdığında diğer işlemcilerin ya da çekirdeklerin onu fark etmesi gerekir. İşte bunu sağlamak
+için *önbellek tutarlılığına* ilişkin bazı mekanizmalar işletilmektedir. Biz burada önbellek protokolleri
+üzerinde durmayacağız. Bunlar hakkındaki bilgileri başka kaynaklardan edinebilirsiniz.
+
+NUMA Mimarisi
+-------------
+
+NUMA mimarisinde DRAM bellek bank'lara ayrılmıştır. Her işlemcinin ya da çekirdeğin ayrı bir bank'ı
+vardır. Bunlar kendi bank'larına diğer bank'lardan daha hızlı erişebilmektedir. Çünkü bunlar kendi
+bank'larına erişirken diğer CPU ya da çekirdekleri durdurmamaktadır. Bu nedenle bu mimarilerde belleğin
+her bölgesine erişim aynı sürede yapılamamaktadır. *Non-unified* sözcüğü bunu anlatmaktadır. Bu mimariyi
+aşağıdaki şekille betimleyebiliriz:
+
+.. image:: _static/numa-architecture.png
+   :alt: NUMA Mimarisi
+   :align: center
+   :width: 60%
+
+SMP ve NUMA Mimarilerinin Avantaj ve Dezavantajları
+----------------------------------------------------
+
+SMP mimarisinin de NUMA mimarisinin de bazı avantajları ve dezavantajları vardır. Ancak kişisel
+bilgisayarlarımızda yaygın olarak SMP mimarisi kullanılmaktadır.
+
+**NUMA Mimarisinin Avantajları:**
+
+- Daha yüksek ölçeklenebilirlik sunar (64+ işlemciye kadar ölçeklenebilir).
+- Yerel bellek (kendi bank'ına) erişimleri çok hızlıdır (düşük gecikme).
+- Bellek bant genişliği toplamda daha yüksektir (her çekirdek kendi belleğine erişir).
+- Büyük ve paylaşımlı bellek sistemleri için daha uygundur.
+- Bellek kapasitesi daha kolay arttırılabilir (düğüm başına bellek eklenebilir).
+- Performansı artırmak için veri yerelliği (data locality) optimizasyonu yapılabilir.
+
+**NUMA Mimarisinin Dezavantajları:**
+
+- Programlama tarafı ve yönetimi daha karmaşıktır.
+- Uzak bellek erişimleri (diğer bank'lara erişim) yavaştır (yerelden 2-3 kat daha yavaş olabilir).
+- İşletim sisteminin ve uygulamaların *NUMA-farkında (NUMA-aware)* olması gerekir.
+- Yanlış veri yerleşimi performansı ciddi şekilde düşürebilir.
+- Donanım maliyeti daha yüksektir.
+- Önbellek tutarlılık (cache consistency) mekanizmaları daha karmaşıktır.
+
+**SMP Mimarisinin Avantajları:**
+
+- Programlama modeli çok daha basittir.
+- Tüm işlemciler ya da çekirdekler için bellek erişim gecikmesi aynıdır (tutarlı performans).
+- İşletim sistemlerinin ve uygulamaların geliştirilmesi daha kolaydır.
+- Donanım tasarımı nispeten daha basittir.
+- Küçük sistemlerde (2-8 işlemci) daha verimli olabilir.
+- Önbellek tutarlılık mekanizması daha basittir.
+
+**SMP Mimarisinin Dezavantajları:**
+
+- Ölçeklenebilirlik sınırlıdır (genellikle 8 işlemciden sonra verim düşer).
+- Bellek veri yolu (memory bus) darboğaz oluşturabilir.
+- Tüm işlemciler ya da çekirdekler aynı veri yolunu paylaştığı için trafik sıkışabilir.
+- Bellek bant genişliği sınırlıdır (paylaşılan veri yolu kapasitesiyle sınırlı).
+- Büyük sistemlerde performans ölçeklemesi zayıftır.
+- Yüksek işlemci sayılarında veri yolu çakışmaları artar.
+
+**Kullanım Senaryoları**
+
+- **SMP:** Küçük sunucular, iş istasyonları, gömülü sistemler.
+- **NUMA:** Büyük veritabanı sunucuları, HPC sistemleri, bulut sunucuları.
+- **SMP:** Daha az sayıda thread çalıştıran uygulamalar.
+- **NUMA:** Yüzlerce thread çalıştıran paralel uygulamalar.
+- **SMP:** Bellek erişim modelinin basit olması gereken durumlar.
+- **NUMA:** Bellek kapasitesi ve bant genişliğinin kritik olduğu durumlar.
+
+**Modern Eğilim**
+
+- Günümüzde çok işlemcili büyük çapta sunucuların çoğu NUMA mimarisi kullanır.
+- Modern işletim sistemleri (Linux, Windows) NUMA optimizasyonlarına sahiptir.
+- Bulut bilişimde NUMA performans için kritiktir.
+- Sanallaştırma ortamlarında NUMA yapılandırması önemli bir optimizasyon alanıdır.
+
+Linux çekirdeği hem SMP hem de NUMA mimarisini destekleyecek biçimde gerçekleştirilmiştir. Yani biz SMP
+içeren sistemlerde de NUMA içeren sistemlerde de Linux'u kurduğumuzda Linux bunu fark etmekte ve o
+mimariye özgü çalışmayı desteklemektedir. Genel olarak Linux çekirdeği (konfigürasyona da bağlıdır) SMP
+sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır.
+
