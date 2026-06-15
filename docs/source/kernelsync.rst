@@ -1328,7 +1328,7 @@ tarafından alınmışsa başka işlemler yapabilmektedir.
 simplefs Dosya Sisteminde Spinlock
 ----------------------------"------
 
-Biz simplefs dosya sistemimizde kendi süper blok nesnemize yaptığımız *eşzamanlı (concurrent)* erişimlerde
+Biz *simplefs* dosya sistemimizde kendi süper blok nesnemize yaptığımız *eşzamanlı (concurrent)* erişimlerde
 kodumuz zarar görmesin diye spinlock nesnesi kullanmıştık. Çağırdığımız çekirdek fonksiyonları ise zaten
 çekirdek nesnelerine erişirken kendi içlerinde spinlock nesnelerini kullanıyordu. Dolayısıyla bizim
 simplefs dosya sisteminde yalnızca kendimize ilişkin nesneleri korumamız yetiyordu. Kodumuzun bu kısmını

@@ -14,7 +14,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
    Yazarlar konu ile ilgili literatürü uzun bir zaman dilimi içerisinde büyük ölçüde gözden geçirmiştir. Her ne kadar 
    güncelliğini yitiriyor olsa da ***Understanding the Linux Kernel 3. Edition (D. P. Bovet ve M. Cesati)** halen 
-   literatürün en önemli kaynağı durumundadır. Linux çekirdeği ile ilgili önemli tüm kaynaklar *Kaynaklar* bölümünde 
+   literatürün en önemli yabancı kaynağı durumundadır. Linux çekirdeği ile ilgili önemli tüm kaynaklar *Kaynaklar* bölümünde 
    listelenmiştir.
 
    Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. Dokümanın kurs formatındaki saf metin haline 
