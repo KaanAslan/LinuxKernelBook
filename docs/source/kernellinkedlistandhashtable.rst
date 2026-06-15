@@ -1005,7 +1005,7 @@ olduğu gibi ``prev`` göstericisi önceki düğümün başlangıç adresini gö
 olabildiği durumlarda bu tasarımda geriye gidiş zorlaşmaktadır. Ancak yukarıda da
 belirttiğimiz gibi hash tablolarındaki zincirlerde zaten geriye gitmenin bir anlamı yoktur.
 
-Hash Tablosunun Oluşturulması
+Hash Tablolarının Oluşturulması
 -------------------------------
 
 Peki biz yukarıdaki ``hlist_head`` ve ``hlist_node`` yapılarını kullanarak hash tablosunu

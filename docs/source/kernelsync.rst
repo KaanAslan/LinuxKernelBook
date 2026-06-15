@@ -1677,3 +1677,257 @@ içeren sistemlerde de NUMA içeren sistemlerde de Linux'u kurduğumuzda Linux b
 mimariye özgü çalışmayı desteklemektedir. Genel olarak Linux çekirdeği (konfigürasyona da bağlıdır) SMP
 sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır.
 
+Çok İşlemcili Sistemlerde Senkronizasyon Sorunları
+====================================================
+
+Çok işlemcili ya da çok çekirdekli sistemlerde senkronizasyon bakımından iki önemli sorun kaynağı vardır:
+
+1. Aynı bellek bölgesine erişimde oluşan sorunlar.
+2. Komutların yer değiştirmesi (instruction reordering) nedeniyle oluşan sorunlar.
+
+Bellek Erişim Sorunları
+------------------------
+
+Birden fazla işlemci ya da çekirdeğin aynı global değişkeni tesadüfen aynı zamanda güncellemeye çalıştığını
+düşünelim. Ya da bir işlemci ya da çekirdek o global değişkeni güncellerken diğerinin onu okumaya çalıştığını
+düşünelim. Yukarıda biz modern sistemlerde bir işlemci ya da çekirdeğin belleğe erişirken zaten diğerlerini
+durdurduğunu belirtmiştik. Ancak Intel gibi bazı mimarilerde bu durdurma bazı durumlarda tüm makine komutu
+süresince yapılmamaktadır. Intel ve 64 bit ARM işlemcileri bazı koşullarda belleğe erişim yapan makine
+komutunu çalışırken veri yolunu birden fazla kez tutup bırakabilmektedir. Örneğin 32 bit Intel işlemcilerinde
+aslında işlemci fiziksel belleğe hep 32 bit genişliğinde erişmektedir. Bu işlemciler bellekten 1 byte bile
+okuyacak olsalar aslında 4 byte okuyup o 4 byte içerisinden o byte'ı ayrıştırmaktadır. İşte bu işlemcilerde
+eğer 4 byte'lık nesneler hizalanmamışsa makine komutunun başından sonuna kadar veri yolu tutulmamaktadır.
+Aşağıdaki gibi bir bellek içeriğinde işlemcinin 4'ün katlarına hizalanmamış olan yyyy byte'larına tek bir
+makine komutuyla yazmak istediğini varsayalım:
+
+.. image:: _static/memory-misaligned.png
+   :alt: Memory misaligned
+   :align: center
+   :width: 20%
+
+İşte bu biçimdeki hizalı olmayan erişimlerde işlemci makine komutunun sonuna kadar veri yolunu tutarak
+diğer işlemcileri durdurmamaktadır. Performans artışını sağlamak için işlemci önce ``xxyy`` satırını
+yazmakta, o sırada veri yolunu bırakmakta, sonra diğer ``yyxx`` satırını yazmaktadır. İşte tam bu sırada
+diğer işlemci ya da çekirdek araya girerse buradaki hizalanmamış nesne içindeki değeri yanlış
+okuyabilmektedir. Intel işlemcileri bunu yalnızca hizalanmamış veriler üzerinde yapmaktadır. Burada
+hizalama demekle *her nesnenin kendi uzunluğunun katlarında bulunması durumunu* kastediyoruz. Örneğin
+1 byte bir bilginin okunup yazılmasında anlattığımız çalışma sisteminde hiçbir sorun oluşmayacaktır:
+
+.. image:: _static/memory-aligned2.png
+   :alt: Memory aligned2
+   :align: center
+   :width: 20%
+
+Ya da aşağıdaki 2 byte'lık bilginin okunup yazılmasında da bir sorun oluşmayacaktır:
+
+.. image:: _static/memory-aligned1.png
+   :alt: Memory aligned1
+   :align: center
+   :width: 20%
+
+Ancak aşağıdaki 2 byte'lık bilginin okunup yazılmasında bir sorun oluşabilecektir:
+
+.. image:: _static/memory-aligned1.png
+   :alt: Memory misaligned2
+   :align: center
+   :width: 20%
+
+Çünkü 32 bit Intel işlemcileri bellek okumalarını 4'ün katlarından dörder byte'lık verileri çekerek
+yapmaktadır. Benzer biçimde 64 bit Intel işlemcileri de 4'ün katları yerine 8'in katlarıyla okuma ve yazma
+yapmaktadır. Tabii bildiğiniz gibi C/C++ derleyicileri zaten default ayarlarında hizalama uygulamaktadır. Bu nedenle
+yukarıda bahsettiğimiz sorun genellikle ortaya çıkmayacaktır.
+
+Intel gibi CISC tarzı işlemcilerde read-modify-write içeren makine komutları da vardır. Örneğin
+``INC mem`` makine komutu önce bellekteki değeri CPU içerisine çeker, artırımı orada yapıp sonucu
+belleğe geri yazar. Read-modify-write komutları birden fazla işlemci ya da çekirdeğin bulunduğu
+sistemlerde diğer işlemci ya da çekirdekler bağlamında atomik değildir.
+
+Peki Intel'de hizalanmamış olan ya da read-modify-write içeren 
+makine komutlarında  sistem programcısının ne yapması gerekir? İşte Intel işlemcilerini tasarlayanlar komutların önüne getirilebilen 
+1 byte'lık LOCK önek komutu bulundurmuşlardırhizalanmamış olan yukarıdaki
+gibi durumlarda sistem programcısının ne yapması gerekir? İşte Intel işlemcilerini tasarlayanlar komutların
+önüne getirilebilen 1 byte'lık ``LOCK`` önek komutu bulundurmuşlardır. Eğer erişim bu ``LOCK`` önekiyle
+yapılırsa ilgili işlemci ya da çekirdek makine komutunun sonuna kadar veri yolunu (data bus) diğer
+işlemciler ya da çekirdekler erişmesin diye tutmaktadır. Tabii C'de ve C++'ta biz makine komutlarını
+doğrudan kullanamayız ancak sembolik makine dilinde yazılmış fonksiyonları çağırabiliriz ya da
+derleyicilerin sunduğu *inline assembly* özelliği ile taşınabilir olmayan bir biçimde C/C++ kodları ile
+makine kodlarını bir arada kullanabiliriz. Linux çekirdeğinde mümkün olduğunca gcc derleyicisinin
+*inline assembly* özelliği kullanılmıştır.
+
+32 bit ARM işlemcilerinde (ARM V7) zaten bellek erişimlerinin hizalanmış olması zorunludur. Aksi takdirde
+işlemci exception oluşturmaktadır. Ancak daha sonra 64 bit ARM işlemcileri (ARM V8) de hizalanmamış
+nesneler üzerinde exception oluşturmadan işlem yapabilir hale getirilmiştir. 64 bit ARM işlemcilerinde bu
+durumu ortadan kaldırmak için Intel'in ``LOCK`` önekinin işlevinin bir bakıma benzerini yapan özel
+``LDREX`` (load exclusive) ve ``STREX`` (store exclusive) makine komutları bulunmaktadır.
+Ayrıca ARMV8 ile ARM'a da bazı read-modify-write komutları da eklenmiştir.
+
+Komutların Yer Değiştirmesi
+----------------------------
+
+İşlemciler biri diğerini etkilemeyen makine komutlarının sırasını değiştirerek çalıştırabilmektedir.
+(Genel olarak böyle ifade edilse de aslında sıra değil görünürlük değişebilmektedir. Konunun ayrıntılarını
+izleyen paragraflarda ele alacağız.) Örneğin:
+
+.. code-block:: none
+
+    LOAD reg1, [mem1]
+    LOAD reg2, [mem2]
+
+Burada belleğin iki farklı bölgesindeki değerler işlemcinin farklı iki yazmacına çekilmiştir. Bu makine
+komutlarının hangisinin önce yapıldığı sonuç üzerinde etkili olmayacaktır. İşte modern işlemciler kodun
+çalışmasını hızlandırmak için bu komutları derleyicinin yazdığı sırada değil farklı sıralarda
+yapabilmektedir. Bu duruma İngilizce *out of order execution* denilmektedir. Örneğin yukarıdaki makine
+komutları işlemci tarafından aşağıdaki sırada da yapılabilecektir:
+
+.. code-block:: none
+
+    LOAD reg2, [mem2]
+    LOAD reg1, [mem1]
+
+Tabii işlemciler birbirleriyle ilişkili olan makine komutlarının sırasını değiştirmezler. Örneğin:
+
+.. code-block:: none
+
+    LOAD reg1, [mem]
+    LOAD reg2, reg1
+
+Ya da örneğin:
+
+.. code-block:: none
+
+    LOAD [mem], reg1
+    LOAD reg2, [mem]
+
+Bu makine komutlarının yer değiştirmesi programın yanlış çalışmasına yol açacağından işlemci bunları yer
+değiştirmez. Ancak maalesef birden fazla CPU ya da çekirdek söz konusu olduğunda diğer çekirdekler
+birbirine bağlı bazı işlemleri bile farklı sıralarda görebilmektedir. Komutların yer değiştirmesinin
+gözlemlenebilir etkisi çok işlemcili ya da çok çekirdekli sistemlerde ortaya çıkmaktadır. Bu konunun
+ayrıntılarını *bellek bariyerleri (memory barriers)* konusu içerisinde ele alacağız.
+
+Burada *mademki çalışan kodu etkilemiyor o zaman sorun nerede?* diye düşünebilirsiniz. Ancak işte birden
+fazla işlemci ya da çekirdeğin bulunduğu sistemlerde bu komut yer değiştirmesi (daha doğru bir ifadeyle
+görünürlüğün yer değiştirmesi) bazı sorunlara yol açabilmektedir.
+
+Derleyici Optimizasyonları ve Komut Yer Değiştirmesi
+-----------------------------------------------------
+
+Komutların yer değiştirmesi (instruction reordering) aslında derleyici tarafından da yapılan bir
+optimizasyon etkinliğidir. Derleyiciler de komutlar daha hızlı çalışsın diye birbirleriyle ilişkisi
+olmayan makine komutlarının yerlerini değiştirebilmektedir. Ancak senkronizasyon sorunlarını oluşturan
+ana unsur derleyiciden ziyade işlemci tarafından yapılan komut yer değiştirmesidir. Zaten bildiğiniz gibi
+derleyiciler optimizasyon aşamasında programcının yazdığı deyimleri de eğer mümkünse elimine
+edebilmektedir. Örneğin:
+
+.. code-block:: c
+
+    a = 10;
+    a = 20;
+
+Burada derleyici ``a = 10`` deyimini tamamen elimine edebilir. Çünkü bu deyim kaldırıldığında programın
+gözlemlenebilir davranışında bir değişiklik oluşmayacaktır. Ancak işlemciler böyle bir eliminasyonu
+yapmazlar. İşlemciler yalnızca komut çalıştırması sırasında basit birtakım iyileştirmeler yapabilmektedir.
+
+İşlemciler aslında makine komutlarını sırasıyla çalıştırmaktadır. Ancak makine komutlarının çalışması
+*boru hattı (pipeline) mekanizması* nedeniyle tek bir cycle'da yapılmamaktadır. İşlemci komutları boru
+hattı kuyruğuna göndermekte, bu kuyrukta işlemler daha küçük evrelere (phases) ayrılmakta ve bu evreler
+mümkün olduğu kadar eşzamanlı biçimde yapılmaktadır. Dolayısıyla bu mekanizma nedeniyle diğerinden daha
+önce kuyruğa gönderilmiş makine komutları diğerinden daha sonra işlemini bitirebilmektedir. İşlemcilerin
+boru hattı mekanizması oldukça ilginç ve detaylı bir mekanizmadır. Biz burada bu mekanizmanın ayrıntıları
+üzerinde durmayacağız. Ancak bütün bunların bir sonucu olarak birbirleriyle ilişkili olmayan makine
+komutları sanki farklı sıralarda yapılıyormuş gibi bir etki oluşabilmektedir. Makine komutları
+birbirleriyle ilişkili olsa bile çok işlemcili ya da çekirdekli sistemlerde bunlar diğer işlemciler ya da
+çekirdekler tarafından farklı sıralarda yapılıyormuş gibi görünebilmektedir.
+
+İşlemciler komutları evrelere bölüp çalıştırırken genel olarak her cycle'da bir evreyi çalıştırmaktadır.
+Böylece her cycle'da boru hattında sonraki komutlarının evreleri de yapılmaktadır. Bu durum özellikle RISC
+işlemcilerinde her cycle'da bir makine komutunun tamamlanmasını sağlayabilmektedir.
+
+Ayrıca işlemciler daha karmaşık komutları kendi içerisinde de parçalara ayırabilmektedir. Bunlara da
+işlemci terminolojisinde genel olarak *mikrokod (microcode)* denilmektedir. Mikrokodları *işlemcinin kendi
+içindeki yazılımı* gibi de düşünebilirsiniz. Örneğin aşağıdaki gibi bir makine komutu söz konusu olsun:
+
+.. code-block:: none
+
+    ADD R1, R2
+
+Bu komut işlemci tarafından alt işlemlere ayrılmaktadır. Örneğin:
+
+1. R1'i oku
+2. R2'yi oku
+3. ALU'da topla
+4. Sonucu R1'e yaz
+
+Mikrokodlar daha çok CISC işlemcilerine özgüdür. RISC işlemcileri komutları mikrokodlara bölerek işlem
+yapmaz. Tek bir lojik devreyle bütünsel bir biçimde işlemleri yapar. Tabii bu sırada komutlar evrelere
+ayrılarak yukarıda belirttiğimiz gibi kendi içlerinde pipeline mekanizması eşliğinde çalıştırılmaktadır.
+
+Atomik İşlemler
+===============
+
+Peki çok işlemcili ya da çok çekirdekli sistemlerde *atomik işlem* ne anlama gelmektedir? Bilindiği gibi
+atomik işlem demek "kesilmeden, bölünmeden, yani araya başka bir unsur girmeden tek parça halinde yapılan
+işlem" demektir. Şimdi şu soruyu soralım: Bir işlemci ya da çekirdekte çalışan makine komutları atomik
+midir? İşte bu durum işlemcilerde çeşitli unsurlara bağlı olarak değişebilmektedir. Yukarıda da
+belirttiğimiz gibi örneğin Intel ve ARM64 V8 işlemcilerinde hizalanmamış bellek bölgelerine yapılan
+erişimler atomik değildir. Çünkü bu işlemler yapılırken araya başka bir işlemci ya da çekirdek girip
+yapılan işlemi kararsız bir biçimde görebilmektedir. Çok işlemcili ya da çok çekirdekli sistemlerde
+atomiklik "bir işlem bir CPU'da yapılırken diğer CPU'ların da bu işlemin yan etkisini ya tamamen görmeleri
+ya da hiç görmemeleri" biçiminde tanımlanabilir. Peki yukarıdaki hizalanmamış bellek erişimleri dışında
+makine komutları bu yaptığımız tanıma göre atomik midir? Evet istisnai başka birkaç durum dışında makine
+komutları genel olarak atomiktir.
+
+Yukarıda da belirttiğimiz gibi Intel gibi CISC işlemcilerinde doğrudan bellek üzerinde işlem yapan read-modfy-write makine 
+komutları bulunmaktadır. Örneğin bu işlemcilerde aşağıdaki gibi tek bir makine komutuyla belli bir adresteki değer 1
+artırılabilmektedir:
+
+.. code-block:: nasm
+
+    INC mem
+
+Peki Intel ailesine ilişkin bir işlemcide bu işlem atomik midir? İşte bu tür işlemcilerde
+*read-modify-write* biçiminde gerçekleştirilen işlemlerde ilgili bellek adresi hizalanmış olsa bile işlem
+birden fazla işlemci ya da çekirdek söz konusu olduğunda atomik değildir. Biz atomikliği yukarıda *bir
+işlemcinin ya da çekirdeğin yaptığı işlemi diğeri ya tam olarak görecek ya da görmeyecek* biçiminde
+tanımlamıştık. Bu makine komutunu örneğin iki işlemci aynı zaman dilimi içerisinde yapmaya çalışırsa
+birinin belleğe yazdığı artırılmış değer diğeri tarafından ezilebilmektedir. Bu durumda da bellekteki
+değer iki kez değil sanki bir kez artırılmış gibi bir durum oluşabilmektedir. İşte bu tür durumlar
+işlemcilerin makine komutu bitene kadar veri yolunu kilitlemesiyle ya da buna benzer bir mekanizmayla
+engellenmektedir. Intel işlemcilerinde ``LOCK`` öneki bu işlemi yapmaktadır:
+
+.. code-block:: nasm
+
+    LOCK INC mem
+
+Atomiklik ile komutların yer değiştirmesi (instruction reordering) kavramlarını birbirine karıştırmayınız.
+Komutların yer değiştirmesinde komutlar yine atomik olabilir. Ancak diğer bir işlemci ya da çekirdek
+bunları farklı sıralarda yapılmış gibi görebilmektedir.
+
+Bizim C'de tek bir operatör ile gerçekleştirdiğimiz ifadeler atomik davranış bakımından hiçbir garanti
+oluşturmamaktadır. Örneğin:
+
+.. code-block:: c
+
+    ++g_count;
+
+Burada ``g_count`` değişkeni 1 artırılmıştır. Ancak bu işlem örneğin Intel x86 kodu üreten derleyiciler
+tarafından tek bir makine komutuyla ``LOCK`` öneki getirilerek yapılmak zorunda değildir. RISC mimarisi
+için kod üreten derleyicilerde ise bu tür işlemler zaten tek bir makine komutuyla yapılamamaktadır.
+Örneğin Intel x86 derleyicileri yukarıdaki gibi C'de tek bir operatörden oluşan ifade için aşağıdaki gibi
+üç makine komutu üretebilmektedir:
+
+.. code-block:: nasm
+
+    MOV reg, g_count
+    INC reg
+    MOV g_count, reg
+
+Kaldı ki x86 kodu üreten bir derleyici bunun için tek bir makine komutu üretse bile komuta ``LOCK`` öneki
+getirmedikten sonra yine birden fazla işlemci ya da çekirdeğin bulunduğu durumda atomiklik
+sağlanamamaktadır:
+
+.. code-block:: nasm
+
+    INC count
+
+Burada veri yolu ``LOCK`` önekiyle kilitlenmedikten sonra birden fazla işlemcinin bu komutu tesadüfen aynı
+zaman diliminde çalıştırması sonucunda artırım değeri yanlış oluşabilecektir.
