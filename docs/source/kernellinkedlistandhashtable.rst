@@ -1,5 +1,5 @@
 ====================================================================================
-Linux Çekirdeğinde Bağlı Listelerin ve Hash Tablolarının Çekirdek Gerçekleştirimleri
+Linux Çekirdeğinde Bağlı Listelerin ve Hash Tablolarının Gerçekleştirimleri
 ====================================================================================
 
 Bu bölümde Linux çekirdeğindeki bağlı listelerin ve hash tablolarının gerçekleştirimleri üzerinde duracağız.

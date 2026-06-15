@@ -2302,11 +2302,11 @@ Artırma yapan atomik fonksiyonların artırılmış yeni değeri veren biçimle
 
 .. code-block:: c
 
-    int  atomic_inc_return(atomic_t *v);
-    int  atomic_dec_return(atomic_t *v);
+    int atomic_inc_return(atomic_t *v);
+    int atomic_dec_return(atomic_t *v);
 
-    s64  atomic64_inc_return(atomic64_t *v);
-    s64  atomic64_dec_return(atomic64_t *v);
+    s64 atomic64_inc_return(atomic64_t *v);
+    s64 atomic64_dec_return(atomic64_t *v);
 
     long atomic_long_inc_return(atomic_long_t *v);
     long atomic_long_dec_return(atomic_long_t *v);
@@ -2368,11 +2368,11 @@ Bunların artırılmış ya da eksiltilmiş değerle geri dönen biçimleri de v
 
 .. code-block:: c
 
-    int  atomic_add_return(int i, atomic_t *v);
-    int  atomic_sub_return(int i, atomic_t *v);
+    int atomic_add_return(int i, atomic_t *v);
+    int atomic_sub_return(int i, atomic_t *v);
 
-    s64  atomic64_add_return(s64 a, atomic64_t *v);
-    s64  atomic64_sub_return(s64 a, atomic64_t *v);
+    s64 atomic64_add_return(s64 a, atomic64_t *v);
+    s64 atomic64_sub_return(s64 a, atomic64_t *v);
 
     long atomic_long_add_return(long i, atomic_long_t *v);
     long atomic_long_sub_return(long i, atomic_long_t *v);
@@ -2395,8 +2395,8 @@ Atomik işlemler için ``xchg`` fonksiyonları da bulunmaktadır:
 
 .. code-block:: c
 
-    int  atomic_xchg(atomic_t *v, int new);
-    s64  atomic64_xchg(atomic64_t *v, s64 new);
+    int atomic_xchg(atomic_t *v, int new);
+    s64 atomic64_xchg(atomic64_t *v, s64 new);
     long atomic_long_xchg(atomic_long_t *v, long new);
 
 Bu fonksiyonlar *read-modify-write* denilen atama işlemini yapmaktadır. Yani bu fonksiyonlar atomik bir
@@ -2879,3 +2879,4 @@ yapılabilen bir optimizasyon işlemidir. Biz burada sürecin işlemciyle ilgili
 duracağız. Çok işlemcili ya da çok çekirdekli sistemlerde sistem programcısının (örneğin çekirdek
 geliştiricilerinin) bu sorunu bilip bazı önlemleri alması gerekebilmektedir. İşlemciler birbirine bağlı
 olan makine komutlarının sırasını tek akışlı davranışı korumak için değiştirmemektedir.
+
