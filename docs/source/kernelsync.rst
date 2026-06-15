@@ -1294,8 +1294,8 @@ fonksiyonu ile almışsak o unlock fonksiyonu ile bırakmalıyız. Kritik kod bl
 .. code-block:: c
 
     spin_lock(&g_spinlock);
-     ... 
-...             <KRİTİK KOD BLOĞU> 
+    ... 
+    ...         <KRİTİK KOD BLOĞU> 
     ... 
     spin_unlock(&g_spinlock);
 
@@ -1325,10 +1325,10 @@ Bu fonksiyonlar eğer spinlock kilitliyse spin yapmazlar ve 0 ile geri dönerler
 dışı bir değerle geri dönerler. Böylece çekirdek programcısı eğer spinlock kilidi başka bir işlemci
 tarafından alınmışsa başka işlemler yapabilmektedir.
 
-simplefs Örneğinde Spinlock
-----------------------------
+simplefs Dosya Sisteminde Spinlock
+----------------------------"------
 
-Biz simplefs dosya sistemimizde kendi süper blok nesnemize yaptığımız eşzamanlı (concurrent) erişimlerde
+Biz simplefs dosya sistemimizde kendi süper blok nesnemize yaptığımız *eşzamanlı (concurrent)* erişimlerde
 kodumuz zarar görmesin diye spinlock nesnesi kullanmıştık. Çağırdığımız çekirdek fonksiyonları ise zaten
 çekirdek nesnelerine erişirken kendi içlerinde spinlock nesnelerini kullanıyordu. Dolayısıyla bizim
 simplefs dosya sisteminde yalnızca kendimize ilişkin nesneleri korumamız yetiyordu. Kodumuzun bu kısmını
@@ -1373,7 +1373,7 @@ Spinlock nesnesini bir fonksiyon içerisinde kilitlediyseniz fonksiyondan geri d
 açmayı unutmayınız. Yukarıdaki fonksiyonda da fonksiyondan çıkmadan önce spinlock kilidinin açıldığına
 dikkat ediniz.
 
-Spinlock ile Mutex Nesnelerinin Karşılaştırılmasması
+Spinlock ile Mutex Nesnelerinin Karşılaştırılması
 ----------------------------------------------------
 
 Spinlock nesnelerinin "kısa sürecek kritik kodlar için" kullanılması uygundur. Aksi takdirde diğer işlemci
@@ -1389,4 +1389,3 @@ karşılaştırılmıştır.
    :alt: Spinlock ile Mutex Karşılaştırması
    :align: center
 
-   
