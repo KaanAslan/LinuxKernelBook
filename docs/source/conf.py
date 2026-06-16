@@ -51,4 +51,3 @@ latex_elements = {
 }
 
 latex_additional_files = ["_static/fontawesome7.sty"]
-
