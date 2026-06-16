@@ -724,7 +724,7 @@ Güncel çekirdeklerde bu makro şöyle tanımlanmıştır:
 
 .. code-block:: c
 
-    #define DEFINE_SEMAPHORE(_name, _n)  \
+    #define DEFINE_SEMAPHORE(_name, _n)     \
         struct semaphore _name = __SEMAPHORE_INITIALIZER(_name, _n)
 
 Buradaki ``__SEMAPHORE_INITIALIZER`` makrosu da şöyle tanımlanmıştır:
@@ -733,10 +733,10 @@ Buradaki ``__SEMAPHORE_INITIALIZER`` makrosu da şöyle tanımlanmıştır:
 
     #define __SEMAPHORE_INITIALIZER(name, n)                        \
     {                                                               \
-        .lock       = __RAW_SPIN_LOCK_UNLOCKED((name).lock),       \
-        .count      = n,                                           \
-        .wait_list  = LIST_HEAD_INIT((name).wait_list)             \
-        __LAST_HOLDER_SEMAPHORE_INITIALIZER                        \
+        .lock       = __RAW_SPIN_LOCK_UNLOCKED((name).lock),        \
+        .count      = n,                                            \
+        .wait_list  = LIST_HEAD_INIT((name).wait_list)              \
+        __LAST_HOLDER_SEMAPHORE_INITIALIZER                         \
     }
 
 ``DEFINE_SEMAPHORE`` makrosunun birinci parametresi semaphore değişkeninin ismini, ikinci parametresi ise
@@ -2139,14 +2139,14 @@ Buradaki ``__WRITE_ONCE`` makrosu ise şöyle yazılmıştır:
 
     #define __WRITE_ONCE(x, val)                        \
     do {                                                \
-        *(volatile typeof(x) *)&(x) = (val);           \
+        *(volatile typeof(x) *)&(x) = (val);            \
     } while (0)
 
 Burada görüldüğü gibi erişim ``volatile`` olarak yapılmıştır. Yani yazma işleminin doğrudan bellek
 erişimi ile yapılması istenmiştir. Yukarıdaki makroda aklınıza şu sorular gelebilir:
 
 - Nesne hizalanmamışsa yukarıdaki atama işlemi atomik olur mu?
-- ``volatile`` erişim erişimin atomik yapılmasını garanti eder mi?
+- ``volatile`` erişim, erişimin atomik yapılmasını garanti eder mi?
 
 Nesne hizalanmamışsa yukarıdaki atama tek makine komutuyla yapılsa bile atomik olmaz. Ancak Linux
 çekirdeğindeki tüm nesneler her zaman zaten hizalıdır. Yani bu garanti zaten vardır. Yukarıdaki
@@ -2175,8 +2175,8 @@ Atomik türlerden atomik biçimde değer okumak için read fonksiyonları kullan
 
 .. code-block:: c
 
-    int  atomic_read(const atomic_t *v);
-    s64  atomic64_read(const atomic64_t *v);
+    int atomic_read(const atomic_t *v);
+    s64 atomic64_read(const atomic64_t *v);
     long atomic_long_read(const atomic_long_t *v);
 
 Tabii bu değer okuma işlemi de tek bir işlemle yani başka bir işlemcinin araya girmesi engellenerek
@@ -2857,7 +2857,7 @@ Bellek Bariyerleri
 ==================
 
 Bu bölümde çok işlemcili ya da çok çekirdekli sistemlerdeki *bellek bariyerleri (memory barriers)*
-üzerinde duralım. Konuya girişte işlemcilerin birbirleriyle ilişkisi olmayan makine komutlarının
+üzerinde duracağız. Konuya girişte işlemcilerin birbirleriyle ilişkisi olmayan makine komutlarının
 yerlerini değiştirebildiğini belirtmiştik. Örneğin:
 
 .. code-block:: c

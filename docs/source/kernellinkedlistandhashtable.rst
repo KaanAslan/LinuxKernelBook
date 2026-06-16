@@ -1,5 +1,5 @@
 ====================================================================================
-Linux Çekirdeğinde Bağlı Listelerin ve Hash Tablolarının Gerçekleştirimleri
+Linux Çekirdeğinde Bağlı Listeler ve Hash Tabloları 
 ====================================================================================
 
 Bu bölümde Linux çekirdeğindeki bağlı listelerin ve hash tablolarının gerçekleştirimleri üzerinde duracağız.
@@ -1548,6 +1548,6 @@ senkronizasyon nesnesiyle korunması gerekir. Bu makrolarla dolaşım yapılırk
 listelerde olduğu gibi ilgili kod bloğunun başına ve sonuna ``rcu_read_lock`` ve
 ``rcu_read_unlock`` çağrılarının yerleştirilmesi gerekmektedir.
 
-Çekirdek tıpkı listelerde olduğu gibi pek çok yerde (ancak her yerde değil) hash tablolarıyla
+Çekirdek tıpkı bağlı listelerde olduğu gibi pek çok yerde (ancak her yerde değil) hash tablolarıyla
 RCU mekanizması eşliğinde işlem yapmaktadır. Çekirdeğin RCU mekanizması eşliğinde işlem
 yaptığı yerlerde sizin de bu RCU'lu fonksiyonları kullanmanız gerekir.
