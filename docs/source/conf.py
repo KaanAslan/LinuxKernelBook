@@ -40,6 +40,7 @@ latex_elements = {
     'papersize': 'a4paper',
     'geometry': r'\usepackage[a4paper, top=2cm, bottom=2cm, left=1.5cm, right=1.5cm]{geometry}',
     'preamble': r'''
+        \usepackage{fontspec}
         \usepackage{newunicodechar}
         \newunicodechar{≈}{\ensuremath{\approx}}
         \newunicodechar{×}{\ensuremath{\times}}
@@ -47,8 +48,21 @@ latex_elements = {
         \newunicodechar{←}{\ensuremath{\leftarrow}}
         \newunicodechar{≥}{\ensuremath{\geq}}
         \newunicodechar{≤}{\ensuremath{\leq}}
+        \newfontfamily{\boxfont}{[DejaVuSansMono.ttf]}[Path=/usr/local/texlive/2026/texmf-dist/fonts/truetype/public/dejavu/]
+        \newunicodechar{┌}{{\boxfont\char"250C}}
+        \newunicodechar{┐}{{\boxfont\char"2510}}
+        \newunicodechar{└}{{\boxfont\char"2514}}
+        \newunicodechar{┘}{{\boxfont\char"2518}}
+        \newunicodechar{├}{{\boxfont\char"251C}}
+        \newunicodechar{┤}{{\boxfont\char"2524}}
+        \newunicodechar{┬}{{\boxfont\char"252C}}
+        \newunicodechar{┴}{{\boxfont\char"2534}}
+        \newunicodechar{┼}{{\boxfont\char"253C}}
+        \newunicodechar{─}{{\boxfont\char"2500}}
+        \newunicodechar{│}{{\boxfont\char"2502}}
     ''',
 }
 
+latex_engine = 'xelatex'
 latex_additional_files = ['_static/fontawesome7.sty']
 templates_path = ['_templates']

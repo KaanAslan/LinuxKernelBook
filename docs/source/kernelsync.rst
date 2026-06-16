@@ -1388,6 +1388,7 @@ karşılaştırılmıştır.
 .. image:: _static/spinlock-mutex-comparison.png
    :alt: Spinlock ile Mutex Karşılaştırması
    :align: center
+   :width: 80%
 
 Okuma Yazma Kilitleri (Readers-Writer Lock)
 ============================================
@@ -1684,9 +1685,6 @@ sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır.
 
 1. Aynı bellek bölgesine erişimde oluşan sorunlar.
 2. Komutların yer değiştirmesi (instruction reordering) nedeniyle oluşan sorunlar.
-
-Aynı Bellek Bölgesine Erişimde Oluşan Sorunlar
-----------------------------------------------
 
 Birden fazla işlemci ya da çekirdeğin aynı global değişkeni tesadüfen aynı zamanda güncellemeye çalıştığını
 düşünelim. Ya da bir işlemci ya da çekirdek o global değişkeni güncellerken diğerinin onu okumaya çalıştığını
@@ -2753,6 +2751,161 @@ kullanılmaktadır. Örneğin:
 
 Burada ``my_lock`` fonksiyonu belli bir bit üzerinde o bit 1 olduğu sürece spin yaparak beklemektedir.
 
+ARM Mimarilerinde Atomik İşlemler 
+---------------------------------
+
+Intel x86 mimarisi temel olarak CISC tarzı bir mimaridir. CISC mimarilerinde doğrudan bellek üzerinde ve
+yazmaçla bellek üzerinde işlemler yapan makine komutları bulunabilmektedir. Böylece zaten bazı işlemler
+tek bir makine komutuyla yapılabilmektedir. Daha önceden de belirttiğimiz gibi Intel x86 mimarisinde bu
+biçimdeki makine komutları çok işlemcili ya da çekirdekli ortamlarda atomik değildir. Biz bu atomikliği
+sağlamak için komutların başına ``LOCK`` önekinin getirildiğini belirtmiştik. Böylece örneğin Intel x86
+mimarisinde bellekteki bir nesnenin çok işlemcili ya da çok çekirdekli sistemlerde atomik bir
+artırılması aşağıdaki gibi sağlanabiliyordu:
+
+.. code-block:: nasm
+
+    LOCK ADD [mem_addr], 1
+
+Ancak ARM gibi RISC tarzı işlemcilerde doğrudan bellek üzerinde bu biçimde işlemler yapabilen makine
+komutları yoktur. ARM işlemcilerinde ``ADD [mem_addr], 1`` işlemi tipik olarak şöyle yapılmaktadır:
+
+.. code-block:: none
+
+    LDR  R0, =mem_addr
+    LDR  R1, [R0]
+    ADD  R2, R1, #1
+    STR  R2, [R0]
+
+ARM işlemcilerinde genellikle bellek erişimleri doğrudan değil yazmaç indekslemesiyle yapılmaktadır. ARM
+gibi RISC işlemcilerinde ``LOAD`` ve ``STORE`` gibi isimlere sahip bellekten yazmaçlara, yazmaçlardan
+belleğe aktarım yapan makine komutları vardır. Ancak tüm aritmetik ve bitsel işlemler yazmaçlar üzerinde
+yapılmaktadır. RISC işlemcilerinde genel olarak ``LOAD`` ve ``STORE`` dışındaki komutların üç
+operand'lı olduğunu kursumuzun giriş kısımlarında belirtmiştik. İşte ARM işlemcilerinde bu tür işlemler
+tek makine komutuyla yapılamadığı için ne tek çekirdekli sistemlerde ne de çok çekirdekli sistemlerde
+atomiklik yukarıdaki biçimle sağlanamamaktadır. Ancak ARM işlemcileri 8.1 versiyonuyla birlikte
+Intel'deki gibi bellek üzerinde atomik işlemler yapabilen makine komutlarına sahip olmuştur. Fakat bu
+makine komutları ancak 64 bit yeni ARM işlemcilerinde kullanılabilmektedir. ARM V8.1 öncesinde atomik
+işlemler ``LDREX`` ve ``STREX`` makine komutlarıyla bir döngü oluşturularak sağlanıyordu.
+
+ARM'daki LDREX, STREX ve Exclusive Monitor Mekanizması
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ARM işlemcilerinde ``LDREX`` özel komutu bellekten yazmaca yükleme yaparken aynı zamanda işlemci
+içerisinde *exclusive monitor* denilen bir bayrağı da set etmektedir. Örneğin:
+
+.. code-block:: none
+
+    LDR    R0, =mem_addr
+    LDREX  R1, [R0]
+
+Burada işlemci içerisindeki *exclusive monitor* set edilmiş, aynı zamanda hangi bellek adresinin (daha
+doğrusu hangi bellek bloğunun) izlendiği de kaydedilmiştir. Bu durumun reset edilmesi temel olarak iki
+makine komutuyla sağlanır:
+
+.. code-block:: none
+
+    STREX
+    CLREX
+
+``CLREX`` hiçbir bellek erişimi yapmadan doğrudan bayrağı reset eder. ``STREX`` ise, başarılı olsun ya
+da olmasın, çalıştıktan sonra bayrağı her zaman reset eder; bu nedenle başarısız bir ``STREX``'ten sonra
+yapılacak yeni deneme ``STREX``'ten değil, ``LDREX``'ten itibaren baştan başlatılmalıdır. (Exception
+alınması gibi durumlarda da bayrağın reset edilmesi beklenir, ama bu mimari olarak kesin garanti
+edilmediğinden işletim sistemleri böyle durumlarda genellikle açıkça ``CLREX`` çalıştırır.)
+
+Ancak burada dikkat edilmesi gereken önemli bir nokta var: ``LDREX`` bayrağı *toggle* etmez, yani bayrak
+zaten set durumdaysa onu reset edip sonra tekrar set etmek gibi bir davranışı yoktur; ``LDREX`` her
+çalıştığında bayrağı (yeniden) set eder ve hangi adresi izlediğini de günceller. Bu da şu soruyu akla
+getirir: biz bir çekirdekte ``LDREX`` ile bayrağı set ettiğimizde, başka bir çekirdek kendi
+``LDREX``'ini çalıştırdığında bizim bayrağımız bundan etkilenir mi? Cevap hayırdır. ``LDREX`` sadece bir
+okuma (``LOAD``) işlemidir; başka bir çekirdeğin ``LDREX`` çalıştırması bizim bayrağımızı reset etmez.
+Bayrağı reset eden şey okuma değil, yazmadır (``STORE``): eğer başka bir çekirdek (veya DMA gibi bellek
+erişimi yapan başka bir birim) bizim izlediğimiz bellek bloğuna bir yazma yaparsa, ancak o zaman
+exclusive monitor durumumuz reset edilir. Dolayısıyla exclusive monitor, *adresten bağımsız, sadece
+işlemci başına bir bayrak* olarak düşünülmemelidir; her çekirdeğin bayrağı hangi adresi/bloğu izlediği
+bilgisini de taşır ve invalidation bu bilgiye bağlı olarak gerçekleşir. (Aynı çekirdek üzerinde, ``STREX``
+yapmadan art arda farklı adreslere ``LDREX`` çağrılırsa, bayrak tek bir kayıt tuttuğu için önceki adrese
+ait izleme bilgisinin üzerine yazılır; bu bir bakıma *reset* gibi görünür ama nedeni adresin önemsiz
+olması değil, bayrağın çekirdek başına yalnızca bir kayıt tutabilmesidir.)
+
+``STREX`` komutu bayrak set durumdaysa ve yazılacak adres ``LDREX``'te izlenen adresle eşleşiyorsa
+``STORE`` işlemini yapmakta ve işlemin başarısını da bize vermektedir. ``STREX`` makine komutu şöyle
+kullanılmaktadır:
+
+.. code-block:: none
+
+    LDR    R0, =mem_addr
+    LDREX  R1, [R0]
+    ADD    R2, R1, #1
+    STREX  R3, R2, [R0]
+
+``STREX`` makine komutundaki birinci operand (örneğimizdeki ``R3``) işlemin başarısını belirtmektedir.
+Eğer bu birinci operand 0 olarak yüklenirse işlem başarılıdır ve yazma yapılmıştır. Eğer bu birinci
+operand 1 ile yüklenirse işlem başarısızdır, yani yazma yapılamamıştır. Başka bir deyişle komutun
+birinci operandı (örneğimizdeki ``R3`` yazmacı) komutun yazma yapıp yapmadığını belirtmektedir. İşte
+eğer yazma yapılamamışsa bir döngü içerisinde bu işlem başarılana kadar deneme yapılmalıdır. Bu döngüyü
+şöyle oluşturabiliriz:
+
+.. code-block:: none
+
+    LDR     R0, =mem_addr
+    REPEAT:
+    LDREX   R1, [R0]
+    ADD     R2, R1, #1
+    STREX   R3, R2, [R0]
+    CMP     R3, #0
+    BNE     REPEAT
+
+``STREX`` komutunun, başarılı olsun ya da olmasın, monitör bayrağını her zaman reset ettiğine dikkat
+ediniz. Yani hem yazma başarılı olduğunda hem de başarısız olduğunda bayrak reset edilmiş olur; bu
+yüzden başarısız durumda döngü ``STREX``'ten değil, ``LDREX``'ten itibaren tekrar başlatılır.
+
+ARM V8.1 ile Gelen Atomik Makine Komutları
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Peki yukarıdaki döngü etkin bir çalışma sağlamakta mıdır? Düşük ve orta çekirdek sayılarında bu biçimde
+yürütme dikkate değer bir performans sorunu yaşatmıyordu. Ancak çekirdek sayısı arttıkça, sürekli
+tekrarlanan ``LDREX``/``STREX`` denemelerinin getirdiği ek coherency trafiği nedeniyle performansın
+etkilendiği görülmüştür. Bu nedenle ARM işlemcileri 8.1 versiyonuyla birlikte read-modify-write
+işlemini kendi içerisinde yapan Intel mimarisine benzer atomik makine komutlarını da komut kümesine
+eklemiştir. Bunların listesi şöyledir:
+
+.. code-block:: none
+
+    /* Atomic ADD */
+    LDADD   Xs, Xt, [Xn|SP]      // *Xn += Xs, return old value to Xt
+    LDADDA  Xs, Xt, [Xn|SP]      // + Acquire
+    LDADDL  Xs, Xt, [Xn|SP]      // + Release
+    LDADDAL Xs, Xt, [Xn|SP]      // + Acquire + Release
+
+    /* Atomic SET (OR) */
+    LDSET   Xs, Xt, [Xn|SP]      // *Xn |= Xs
+
+    /* Atomic CLR (AND NOT) */
+    LDCLR   Xs, Xt, [Xn|SP]      // *Xn &= ~Xs
+
+    /* Atomic XOR */
+    LDEOR   Xs, Xt, [Xn|SP]      // *Xn ^= Xs
+
+    /* Atomic SWAP */
+    SWP     Xs, Xt, [Xn|SP]      // swap *Xn and Xs
+    SWPA    Xs, Xt, [Xn|SP]      // + Acquire
+    SWPL    Xs, Xt, [Xn|SP]      // + Release
+    SWPAL   Xs, Xt, [Xn|SP]      // + Acquire + Release
+
+    /* Compare-and-Swap */
+    CAS     Xs, Xt, [Xn|SP]      // if (*Xn == Xs) *Xn = Xt
+    CASA    Xs, Xt, [Xn|SP]      // + Acquire
+    CASL    Xs, Xt, [Xn|SP]      // + Release
+    CASAL   Xs, Xt, [Xn|SP]      // + Acquire + Release
+
+    /* Byte/Halfword/Word variants */
+    LDADDB, LDADDH, LDADDW
+    CASB, CASH, CAS
+
+Bu komutlar için Intel'de olduğu gibi ``LOCK`` benzeri bir önek kullanılmamaktadır. Bu komutların hepsi
+çok çekirdekli sistemlerde atomiktir.
+
 Komutların Yer Değiştirmesi
 ===========================
 
@@ -2990,3 +3143,141 @@ Biz yukarıdaki örnekte yalnızca peş peşe iki işlemin çalışma sırası v
 örnek verdik. Aslında bu durum yalnızca peş peşe gelen iki makine komutu için söz konusu değildir.
 Peş peşe gelen ikiden fazla makine komutunda da çalışma sırası ve görünürlük sırası değişebilmektedir.
 
+Derleyici Bariyerleri ve READ_ONCE / WRITE_ONCE Makroları
+---------------------------------------------------------
+
+Yukarıda da belirttiğimiz gibi komut yer değiştirmesi derleyici tarafından da işlemci tarafından da
+yapılabilmektedir. Ancak komut yer değiştirmesi denildiğinde akla ilk olarak işlemcilerin yaptığı yer
+değiştirmeler gelmektedir.
+
+Derleyici bariyerleri oldukça basittir. Biz bir yere derleyici bariyeri yerleştirirsek ondan önceki tüm
+Load ve Store işlemleri ondan sonraki tüm Load ve Store işlemlerinden önce yapılır. Yani biz bir yere
+derleyici bariyeri yerleştirdiğimizde derleyiciye şunu demiş oluruz: "Önce yukarıdaki işlemler için
+makine kodları üret, sonra aşağıdaki işlemler için makine kodları üret, bariyerin yukarısıyla aşağısı
+arasında komut yer değiştirmesi yapma." Linux çekirdeklerinde derleyici bariyerleri için ``barrier``
+isimli makro kullanılmaktadır:
+
+.. code-block:: c
+
+    #define barrier()   __asm__ __volatile__("": : :"memory")
+
+Örneğin:
+
+.. code-block:: c
+
+    a = 10;
+    b = 20;
+    barrier();
+    c = 30;
+    d = 40;
+
+Burada derleyici asla bariyerin yukarısıyla aşağısındaki kodları yer değiştirmemektedir. Ancak tabii bu
+örnekte ``a = 10`` ile ``b = 20`` kendi aralarında, ``c = 30`` ile de ``d = 40`` işlemleri kendi
+aralarında yer değiştirebilir. Derleyici bariyerlerinin bir makine kodu üretmediğine, yalnızca derleyici
+için bir direktif oluşturduğuna dikkat ediniz. Linux çekirdeğinin gcc ile derlenebildiğini anımsayınız.
+(Son yıllarda clang derleyicileri ile derleme de artık başarılı biçimde yapılabilmektedir.)
+
+C standartlarına göre ``volatile`` erişimler kodda yazıldığı sırada yapılmak zorundadır. Yani
+birbirleriyle alakasız bile olsa C standartlarına göre iki ``volatile`` erişim kendi aralarındaki sıra
+korunarak gerçekleştirilir. Örneğin:
+
+.. code-block:: c
+
+    x = *(volatile int *)&val1;
+    y = *(volatile int *)&val2;
+
+Burada C standartlarına göre erişim bu sırada yapılmak zorundadır. Dolayısıyla C standartlarına göre bu
+iki işlem arasında bir derleyici bariyerinin kullanılmasına gerek yoktur. Ancak C standartlarındaki bu
+``volatile`` semantiği derleyici bariyeri görevini tam olarak yerine getirmemektedir. C standartlarına
+göre ``volatile`` erişimlerin sıraları yalnızca kendi aralarında korunmaktadır. Dolayısıyla yukarıdaki
+okuma işlemini yer değiştirebilmektedir.
+
+Linux çekirdeğindeki ``READ_ONCE`` ve ``WRITE_ONCE`` makroları ilgili işlemin ``volatile`` semantiği ile
+yapılmasını sağlamaktadır. ``READ_ONCE`` ve ``WRITE_ONCE`` makroları üç işleve sahiptir:
+
+1. Bu makrolar erişimi ``volatile`` olarak yaparlar. Dolayısıyla derleyici ilgili nesne için her zaman
+   bellek başvurusu yapar.
+
+2. Bu makrolar ``volatile`` erişim yaptığından derleyiciler bunların birbirlerine göre sırasını
+   korurlar. Ancak bu tam bir derleyici bariyeri anlamına gelmemektedir.
+
+3. Eğer erişim tek bir makine komutuyla yapılabiliyorsa (yırtılma (tearing) olmuyorsa) bu makrolar okuma
+   ve yazma işlemlerinin atomik biçimde yapılmasını sağlarlar.
+
+Güncel çekirdeklerde ``READ_ONCE`` ve ``WRITE_ONCE`` makroları ``include/asm-generic/rwonce.h`` dosyası
+içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #ifndef __READ_ONCE
+    #define __READ_ONCE(x)  (*(const volatile __unqual_scalar_typeof(x) *)&(x))
+    #endif
+
+    #define READ_ONCE(x)                        \
+    ({                                          \
+        compiletime_assert_rwonce_type(x);      \
+        __READ_ONCE(x);                         \
+    })
+
+    #define __WRITE_ONCE(x, val)                \
+    do {                                        \
+        *(volatile typeof(x) *)&(x) = (val);    \
+    } while (0)
+
+Burada görüldüğü gibi tek yapılan şey ``volatile`` erişimdir.
+
+Daha önceden de belirttiğimiz gibi Linux çekirdeği zaten gcc ile ve bir süredir de clang ile derlenmek
+zorundadır. Linux çekirdeğinde gcc derleyicisine özgü onlarca özellik kullanılmaktadır. Dolayısıyla
+çekirdek kodları herhangi bir derleyiciyle derlenememektedir. Bilindiği gibi clang derleyicileri büyük
+ölçüde gcc uyumludur; gcc'nin eklentilerini desteklemektedir. Eskiden Linux çekirdeği clang
+derleyicileri ile derlenemiyordu. Ancak son yıllarda artık derlenebilir hale gelmiştir. Linux çekirdeğini
+derlerken make işleminde derleyiciyi clang olarak şöyle seçebilirsiniz:
+
+.. code-block:: console
+
+    $ make CC=clang
+
+Burada kısaca C'deki volatile semanatiği üzerinde de durmak istiyoruz. Derleyiciler kod optimizasyonunu tek thread'li 
+çalışmayı esas alarak yapmaktadır. Dolayısıyla nesneleri yazmaçlarda saklayıp onları bellek erişimi yapmadan
+yazmaçlardan alarak kullanabilmektedir. İşte ``volatile`` niteleyici derleyiciye adeta "bu nesneyi
+kullandığımda o nesne yazmaçta olsa bile sen her zaman belleğe başvurarak ona eriş" demektedir. Örneğin:
+
+.. code-block:: c
+
+    int g_flag;
+    /* ... */
+
+    while (g_flag == 1) {
+        /* ... */
+    }
+
+Burada başka bir thread ``g_flag`` değişkenini 0'a çektiğinde bu thread bunu anlamayabilir. Çünkü
+derleyici ``while`` parantezindeki ``g_flag`` değişkeni için döngünün her yinelenmesinde
+belleğe başvurmak zorunda değildir. Derleyici ``g_flag`` değişkenini bir yazamaca çekip yazmaçtaki değeri de 
+kullanabilir. İşte derleyicinin döngünün her yinelenmesinde bellekteki ``g_flag`` değişkenine başvurmasını sağlamak 
+için bu değişkenin ``volatile`` olarak tanımlanması gerekir:
+
+.. code-block:: c
+
+    volatile int g_flag;
+    /* ... */
+
+    while (g_flag == 1) {
+        /* ... */
+    }
+
+Ancak Linux çekirdeğinde değişkenler genellikle ``volatile`` yapılmamaktadır. Çünkü bu durum performans
+kaybına yol açmaktadır. Linux çekirdeğinde ``READ_ONCE`` ve ``WRITE_ONCE`` makrolarıyla "gerektiğinde
+volatile erişim" yapılmaktadır. Örneğin:
+
+.. code-block:: c
+
+    int g_flag;
+    /* ... */
+
+    while (READ_ONCE(g_flag) == 1) {
+        /* ... */
+    }
+
+Çekirdek kodlarında paylaşılan bellek alanlarına erişimlerde her zaman ``READ_ONCE`` ve ``WRITE_ONCE``
+makrolarını kullanmalısınız.

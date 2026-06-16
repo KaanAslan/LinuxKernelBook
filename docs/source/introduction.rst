@@ -1,7 +1,7 @@
 .. _giris:
 
 ===========
-Giriş
+**Giriş**
 ===========
 
 Gereksinimler
@@ -24,7 +24,6 @@ https://elixir.bootlin.com/linux/ sitesini kullanacağız. Bu sitede Linux'un 0.
 versiyonundan günümüzdeki en son versiyonuna kadar bütün resmi versiyonlarının kaynak
 kodları bulunmaktadır ve bu kaynak kodlar üzerinde gezintiler (navigation) yapılabilmektedir.
 
-
 İşletim Sistemi Nedir?
 ======================
 
@@ -33,7 +32,7 @@ kullanıcı arasında arayüz oluşturan sistem programlarıdır. Bilgisayar bil
 öncülerinin çoğu işletim sistemlerini bir kaynak yöneticisi (resource manager) olarak
 tanımlamıştır.
 
-.. image:: /_static/os-layers.svg
+.. image:: /_static/os-layers.png
    :alt: İşletim sistemi katmanları
    :align: center
 
@@ -74,7 +73,7 @@ sistemlerinde bash gibi komut satırı, GNOME, KDE gibi pencere yöneticileri, W
 masaüstü (Explorer), macOS'teki masaüstü (Aqua) bu işletim sistemlerinin kabuk kısımlarını
 oluşturmaktadır.
 
-.. image:: /_static/os-kernel-shell.svg
+.. image:: /_static/os-kernel-shell.png
     :alt: İşletim sistemi katmanları
     :align: center
     :width: 25%
@@ -1007,8 +1006,8 @@ Genel Boot Akışı
    :alt: Genel boot süreci
    :width: 30%
 
-Boot Aşamaları Terminolojisi
-------------------------------
+Boot Aşamalarına İlişkin Terminolojisi
+--------------------------------------
 
 Sistem reset edildiğinde tüm boot işlemi bir bütünün parçaları gibi düşünülürse burada devreye giren programlara
 birer aşama numarası da verilebilmektedir. Örneğin boot işleminin reset vektöründe bulunan kısmına *birinci aşama
