@@ -1685,8 +1685,8 @@ sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır.
 1. Aynı bellek bölgesine erişimde oluşan sorunlar.
 2. Komutların yer değiştirmesi (instruction reordering) nedeniyle oluşan sorunlar.
 
-Bellek Erişim Sorunları
-------------------------
+Aynı Bellek Bölgesine Erişimde Oluşan Sorunlar
+----------------------------------------------
 
 Birden fazla işlemci ya da çekirdeğin aynı global değişkeni tesadüfen aynı zamanda güncellemeye çalıştığını
 düşünelim. Ya da bir işlemci ya da çekirdek o global değişkeni güncellerken diğerinin onu okumaya çalıştığını
@@ -1760,106 +1760,6 @@ nesneler üzerinde exception oluşturmadan işlem yapabilir hale getirilmiştir.
 durumu ortadan kaldırmak için Intel'in ``LOCK`` önekinin işlevinin bir bakıma benzerini yapan özel
 ``LDREX`` (load exclusive) ve ``STREX`` (store exclusive) makine komutları bulunmaktadır.
 Ayrıca ARMV8 ile ARM'a da bazı read-modify-write komutları da eklenmiştir.
-
-Komutların Yer Değiştirmesi
-----------------------------
-
-İşlemciler biri diğerini etkilemeyen makine komutlarının sırasını değiştirerek çalıştırabilmektedir.
-(Genel olarak böyle ifade edilse de aslında sıra değil görünürlük değişebilmektedir. Konunun ayrıntılarını
-izleyen paragraflarda ele alacağız.) Örneğin:
-
-.. code-block:: none
-
-    LOAD reg1, [mem1]
-    LOAD reg2, [mem2]
-
-Burada belleğin iki farklı bölgesindeki değerler işlemcinin farklı iki yazmacına çekilmiştir. Bu makine
-komutlarının hangisinin önce yapıldığı sonuç üzerinde etkili olmayacaktır. İşte modern işlemciler kodun
-çalışmasını hızlandırmak için bu komutları derleyicinin yazdığı sırada değil farklı sıralarda
-yapabilmektedir. Bu duruma İngilizce *out of order execution* denilmektedir. Örneğin yukarıdaki makine
-komutları işlemci tarafından aşağıdaki sırada da yapılabilecektir:
-
-.. code-block:: none
-
-    LOAD reg2, [mem2]
-    LOAD reg1, [mem1]
-
-Tabii işlemciler birbirleriyle ilişkili olan makine komutlarının sırasını değiştirmezler. Örneğin:
-
-.. code-block:: none
-
-    LOAD reg1, [mem]
-    LOAD reg2, reg1
-
-Ya da örneğin:
-
-.. code-block:: none
-
-    LOAD [mem], reg1
-    LOAD reg2, [mem]
-
-Bu makine komutlarının yer değiştirmesi programın yanlış çalışmasına yol açacağından işlemci bunları yer
-değiştirmez. Ancak maalesef birden fazla CPU ya da çekirdek söz konusu olduğunda diğer çekirdekler
-birbirine bağlı bazı işlemleri bile farklı sıralarda görebilmektedir. Komutların yer değiştirmesinin
-gözlemlenebilir etkisi çok işlemcili ya da çok çekirdekli sistemlerde ortaya çıkmaktadır. Bu konunun
-ayrıntılarını *bellek bariyerleri (memory barriers)* konusu içerisinde ele alacağız.
-
-Burada *mademki çalışan kodu etkilemiyor o zaman sorun nerede?* diye düşünebilirsiniz. Ancak işte birden
-fazla işlemci ya da çekirdeğin bulunduğu sistemlerde bu komut yer değiştirmesi (daha doğru bir ifadeyle
-görünürlüğün yer değiştirmesi) bazı sorunlara yol açabilmektedir.
-
-Derleyici Optimizasyonları ve Komut Yer Değiştirmesi
------------------------------------------------------
-
-Komutların yer değiştirmesi (instruction reordering) aslında derleyici tarafından da yapılan bir
-optimizasyon etkinliğidir. Derleyiciler de komutlar daha hızlı çalışsın diye birbirleriyle ilişkisi
-olmayan makine komutlarının yerlerini değiştirebilmektedir. Ancak senkronizasyon sorunlarını oluşturan
-ana unsur derleyiciden ziyade işlemci tarafından yapılan komut yer değiştirmesidir. Zaten bildiğiniz gibi
-derleyiciler optimizasyon aşamasında programcının yazdığı deyimleri de eğer mümkünse elimine
-edebilmektedir. Örneğin:
-
-.. code-block:: c
-
-    a = 10;
-    a = 20;
-
-Burada derleyici ``a = 10`` deyimini tamamen elimine edebilir. Çünkü bu deyim kaldırıldığında programın
-gözlemlenebilir davranışında bir değişiklik oluşmayacaktır. Ancak işlemciler böyle bir eliminasyonu
-yapmazlar. İşlemciler yalnızca komut çalıştırması sırasında basit birtakım iyileştirmeler yapabilmektedir.
-
-İşlemciler aslında makine komutlarını sırasıyla çalıştırmaktadır. Ancak makine komutlarının çalışması
-*boru hattı (pipeline) mekanizması* nedeniyle tek bir cycle'da yapılmamaktadır. İşlemci komutları boru
-hattı kuyruğuna göndermekte, bu kuyrukta işlemler daha küçük evrelere (phases) ayrılmakta ve bu evreler
-mümkün olduğu kadar eşzamanlı biçimde yapılmaktadır. Dolayısıyla bu mekanizma nedeniyle diğerinden daha
-önce kuyruğa gönderilmiş makine komutları diğerinden daha sonra işlemini bitirebilmektedir. İşlemcilerin
-boru hattı mekanizması oldukça ilginç ve detaylı bir mekanizmadır. Biz burada bu mekanizmanın ayrıntıları
-üzerinde durmayacağız. Ancak bütün bunların bir sonucu olarak birbirleriyle ilişkili olmayan makine
-komutları sanki farklı sıralarda yapılıyormuş gibi bir etki oluşabilmektedir. Makine komutları
-birbirleriyle ilişkili olsa bile çok işlemcili ya da çekirdekli sistemlerde bunlar diğer işlemciler ya da
-çekirdekler tarafından farklı sıralarda yapılıyormuş gibi görünebilmektedir.
-
-İşlemciler komutları evrelere bölüp çalıştırırken genel olarak her cycle'da bir evreyi çalıştırmaktadır.
-Böylece her cycle'da boru hattında sonraki komutlarının evreleri de yapılmaktadır. Bu durum özellikle RISC
-işlemcilerinde her cycle'da bir makine komutunun tamamlanmasını sağlayabilmektedir.
-
-Ayrıca işlemciler daha karmaşık komutları kendi içerisinde de parçalara ayırabilmektedir. Bunlara da
-işlemci terminolojisinde genel olarak *mikrokod (microcode)* denilmektedir. Mikrokodları *işlemcinin kendi
-içindeki yazılımı* gibi de düşünebilirsiniz. Örneğin aşağıdaki gibi bir makine komutu söz konusu olsun:
-
-.. code-block:: none
-
-    ADD R1, R2
-
-Bu komut işlemci tarafından alt işlemlere ayrılmaktadır. Örneğin:
-
-1. R1'i oku
-2. R2'yi oku
-3. ALU'da topla
-4. Sonucu R1'e yaz
-
-Mikrokodlar daha çok CISC işlemcilerine özgüdür. RISC işlemcileri komutları mikrokodlara bölerek işlem
-yapmaz. Tek bir lojik devreyle bütünsel bir biçimde işlemleri yapar. Tabii bu sırada komutlar evrelere
-ayrılarak yukarıda belirttiğimiz gibi kendi içlerinde pipeline mekanizması eşliğinde çalıştırılmaktadır.
 
 Atomik İşlemler
 ===============
@@ -2853,30 +2753,240 @@ kullanılmaktadır. Örneğin:
 
 Burada ``my_lock`` fonksiyonu belli bir bit üzerinde o bit 1 olduğu sürece spin yaparak beklemektedir.
 
-Bellek Bariyerleri
-==================
+Komutların Yer Değiştirmesi
+===========================
 
-Bu bölümde çok işlemcili ya da çok çekirdekli sistemlerdeki *bellek bariyerleri (memory barriers)*
-üzerinde duracağız. Konuya girişte işlemcilerin birbirleriyle ilişkisi olmayan makine komutlarının
-yerlerini değiştirebildiğini belirtmiştik. Örneğin:
+İşlemciler biri diğerini etkilemeyen makine komutlarının sırasını değiştirerek çalıştırabilmektedir. 
+Örneğin:
+
+.. code-block:: none
+
+    LOAD reg1, [mem1]
+    LOAD reg2, [mem2]
+
+Burada belleğin iki farklı bölgesindeki değerler işlemcinin farklı iki yazmacına çekilmiştir. Bu makine
+komutlarının hangisinin önce yapıldığı sonuç üzerinde etkili olmayacaktır. İşte modern işlemciler kodun
+çalışmasını hızlandırmak için bu komutları derleyicinin yazdığı sırada değil farklı sıralarda
+yapabilmektedir. Bu duruma İngilizce *out of order execution* denilmektedir. Örneğin yukarıdaki makine
+komutları işlemci tarafından aşağıdaki sırada da yapılabilecektir:
+
+.. code-block:: none
+
+    LOAD reg2, [mem2]
+    LOAD reg1, [mem1]
+
+Tabii işlemciler birbirleriyle ilişkili olan makine komutlarının sırasını değiştirmezler. Örneğin:
+
+.. code-block:: none
+
+    LOAD reg1, [mem]
+    LOAD reg2, reg1
+
+Ya da örneğin:
+
+.. code-block:: none
+
+    LOAD [mem], reg1
+    LOAD reg2, [mem]
+
+Bu makine komutlarının yer değiştirmesi programın yanlış çalışmasına yol açacağından işlemci bunları yer
+değiştirmez. Ancak maalesef birden fazla CPU ya da çekirdek söz konusu olduğunda diğer çekirdekler
+birbirine bağlı bazı işlemleri bile farklı sıralarda görebilmektedir. Komutların yer değiştirmesinin
+gözlemlenebilir etkisi çok işlemcili ya da çok çekirdekli sistemlerde ortaya çıkmaktadır. Bu konunun
+ayrıntılarını *bellek bariyerleri (memory barriers)* konusu içerisinde ele alacağız.
+
+Burada "mademki çalışan kodu etkilemiyor o zaman sorun nerede?"*" diye düşünebilirsiniz. Ancak işte birden
+fazla işlemci ya da çekirdeğin bulunduğu sistemlerde bu komut yer değiştirmesi (daha doğru bir ifadeyle
+görünürlüğün yer değiştirmesi) bazı sorunlara yol açabilmektedir.
+
+İşlemcilerin komutları farklı sıralarda yapıyormuş gibi görünmesinin nedenlerinden biri *boru hattı
+(pipeline) mekanizmasıdır*. İşlemci komutları boru hattı kuyruğuna göndermekte, bu kuyrukta işlemler
+daha küçük evrelere (phases) ayrılmakta ve bu evreler mümkün olduğu kadar eşzamanlı biçimde
+yapılmaktadır. Ancak salt bu evrelere ayırma işlemi tek başına komutların bitirme sırasını değiştirmez;
+basit, tek yola sahip bir boru hattında komutlar girdikleri sırayla çıkar. Bitirme sırasının değişmesi,
+genellikle boru hattına eklenen ek mekanizmalardan kaynaklanır: örneğin çarpma veya bölme gibi işlemler
+için ayrı ve daha gecikmeli yürütme birimleri bulunması ya da işlemcinin operandı hazır olan komutu,
+önündeki bekleyen bir komutu atlayarak çalıştırdığı gerçek *sıra-dışı yürütme (out-of-order execution)*
+mekanizmasıdır. Bu durumda önce kuyruğa gönderilen bir makine komutu, sonra gönderilen başka bir
+komuttan daha sonra işlemini bitirebilir. İşlemcilerin boru hattı mekanizması oldukça ilginç ve detaylı
+bir mekanizmadır. Biz burada bu mekanizmanın ayrıntıları üzerinde durmayacağız. Ancak bütün bunların bir
+sonucu olarak, aynı çekirdek içinde birbirleriyle ilişkili olmayan makine komutları sanki farklı
+sıralarda yapılıyormuş gibi bir etki oluşabilmektedir.
+
+Çok işlemcili ya da çok çekirdekli sistemlerde ise, birbirleriyle ilişkili (bağımlı) komutların bile
+diğer çekirdekler tarafından farklı sırada görünmesi söz konusu olabilir. Bunun nedeni boru hattı
+mekanizması değildir; tamamen ayrı ve daha önemli bir konudur. Her çekirdek, belleğe yazma işlemini
+hemen tamamlamak yerine önce kendi *yazma tamponuna (store buffer)* yazar, tampon arka planda cache'e
+ve oradan da *önbellek tutarlılık (cache coherency)* protokolü üzerinden diğer çekirdeklere yansıtır. Eğer
+işlemci mimarisi *zayıf bellek tutarlılık modeli (weak memory consistency model)* kullanıyorsa, bu
+tamponun yansıtılma sırası program sırasıyla aynı olmak zorunda değildir; dolayısıyla bir çekirdeğin
+ardışık iki yazması, başka bir çekirdeğe ters sırada görünebilir. 
+
+İşlemciler komutları evrelere bölüp çalıştırırken genel olarak her cycle'da bir evreyi çalıştırmaktadır.
+Böylece her cycle'da boru hattında sonraki komutların evreleri de yapılmaktadır. Bu durum özellikle
+basit, tek yola sahip RISC işlemcilerinde, hazard oluşmadığı sürece her cycle'da bir makine komutunun
+tamamlanmasını sağlayabilmektedir.
+
+Ayrıca işlemciler daha karmaşık komutları kendi içerisinde de parçalara ayırabilmektedir. Bunlara da
+işlemci terminolojisinde genel olarak *mikrokod (microcode)* denilmektedir. Mikrokodları *işlemcinin
+kendi içindeki yazılımı* gibi de düşünebilirsiniz. Örneğin aşağıdaki gibi bir makine komutu söz konusu
+olsun:
+
+.. code-block:: none
+
+    ADD R1, R2
+
+Bu komut işlemci tarafından alt işlemlere ayrılmaktadır. Örneğin:
+
+1. R1'i oku
+2. R2'yi oku
+3. ALU'da topla
+4. Sonucu R1'e yaz
+
+Mikrokodlar daha çok CISC işlemcilerine özgüdür. RISC işlemcileri komutları mikrokodlara bölerek işlem
+yapmaz; tek bir lojik devreyle bütünsel bir biçimde işlemleri yapar. Tabii bu sırada komutlar evrelere
+ayrılarak yukarıda belirttiğimiz gibi kendi içlerinde pipeline mekanizması eşliğinde çalıştırılmaktadır.
+
+Konuyu derinleştirmeden önce bazı önemli terimlerin ne anlam ifade ettiğini açıklayalım:
+
+.. image:: _static/memory-ordering-terms.png
+   :alt: Bellek Sıralaması ile İlgili Terimler
+   :align: center
+   :width: 70%
+
+Modern işlemcilerde işlemlerin "programdaki sırası", "çalışma sırası" ve "görünürlük sırası" farklı
+olabilmektedir. Örneğin:
+
+.. code-block:: c
+
+    data = 42;
+    ready = 1;
+
+Burada ``STORE`` işlemleri birbirinden farklı yerlere yapıldığı için işlemci bunları değişik sırada
+yapabilmekte ya da farklı işlemciler ve çekirdekler bunları farklı sıralarda yapılıyormuş gibi
+görebilmektedir. Yani burada diğer bir işlemci ya da çekirdek ``ready`` değerini 1 olarak gördüğünde
+``data`` değerinin o anda 42 olması zorunlu değildir.
+
+Ancak maalesef birden fazla işlemci ya da çekirdeğin bulunduğu sistemlerde birbirleri ile ilişkili
+komutları bile başka çekirdekler değişik sırada yapılıyormuş gibi görebilmektedir. Örneğin ``a`` ve
+``b``'nin önceki değerleri 0 olsun. Bir işlemci ya da çekirdekte aşağıdaki işlemlerin yapıldığını
+varsayalım:
+
+.. code-block:: c
+
+    a = 1;
+    b = a;
+
+Diğer bir işlemci ya da çekirdek ``b``'de 1 gördüğü halde ``a``'da 0 görebilmektedir.
+
+İşlemcilerin birbirinden bağımsız ``LOAD``/``STORE`` komutları için kendi içlerinde uyguladıkları dört
+farklı *çalıştırma sıralaması (execution reordering)* vardır: Load/Load, Load/Store, Store/Store ve
+Store/Load.
+
+.. image:: _static/reordering-types.png
+   :alt: Dört Temel Yeniden Sıralama Türü
+   :align: center
+   :width: 70%
+
+Yukarıdaki dört yer değiştirme her türlü işlemci tarafından uygulanmamaktadır. Örneğin Intel işlemcileri
+yalnızca Store/Load işlemlerinin yerlerini değiştirebilmektedir. Diğer işlemlerde yer değiştirme
+yapmamaktadır. Ancak genel olarak RISC işlemcileri yukarıdaki dört yer değiştirmeyi de yapabilmektedir.
+Aşağıda bazı yaygın işlemcilerin hangi yer değiştirmeleri yaptığını tablo biçiminde veriyoruz:
+
+.. image:: _static/reordering-arch-table.png
+   :alt: İşlemci Mimarilerine Göre Yeniden Sıralama Türleri
+   :align: center
+   :width: 60%
+
+Genel olarak diğer işlemciler söz konusu olduğunda görünürlük sıralaması üç biçimde olabilmektedir:
+
+1. **Sequential Consistency (SC):** Bu modelde komutlar her işlemci ya da çekirdekte program sırasında
+   gözükür.
+
+2. **Total Store Order (TSO):** Bu modelde yalnızca Store/Load program sırası değiştirilebilmekte ve
+   diğer işlemci ya da çekirdekler yalnızca Store/Load işlemlerini farklı sıralarda yapılıyormuş gibi
+   görebilmektedir. Intel x86 işlemci ailesi bu modeli kullanmaktadır.
+
+3. **Relaxed (Weak) Memory Ordering:** Bu modelde yukarıda belirttiğimiz dört grup işlemin de program
+   sırası değiştirilebilmektedir. Diğer işlemciler ve çekirdekler bunları farklı sıralarda
+   görebilmektedir. ARM, RISC-V, PowerPC gibi işlemciler bu modeli kullanmaktadır.
+
+Komutların yer değiştirmesi aslında derleyici tarafından da yapılan bir optimizasyon etkinliğidir. 
+Derleyiciler de komutlar daha hızlı çalışsın diye birbirleriyle ilişkisi olmayan makine komutlarının 
+yerlerini değiştirebilmektedir. Ancak senkronizasyon sorunlarını oluşturan ana unsur derleyiciden ziyade 
+işlemci tarafından yapılan komut yer değiştirmesidir. Zaten bildiğiniz gibi derleyiciler optimizasyon 
+aşamasında programcının yazdığı deyimleri de eğer mümkünse elimine edebilmektedir. Örneğin:
 
 .. code-block:: c
 
     a = 10;
-    b = 20;
+    a = 20;
 
-Bu işlemleri makine komutları biçiminde sembolik olarak şöyle ifade edebiliriz:
+Burada derleyici ``a = 10`` deyimini tamamen elimine edebilir. Çünkü bu deyim kaldırıldığında programın
+gözlemlenebilir davranışında bir değişiklik oluşmayacaktır. Ancak işlemciler böyle bir eliminasyonu
+yapmazlar. İşlemciler yalnızca komut çalıştırması sırasında basit birtakım iyileştirmeler yapabilmektedir.
 
-.. code-block:: none
+Bellek Bariyerleri
+==================
 
-    STORE a, 10
-    STORE b, 20
+*Bellek bariyerleri (memory barriers)* bir işlem yapılmadan önce diğer işlemlerin yapılmış
+olduğunu garanti etmek amacıyla oluşturulan mekanizmalardır. Bellek bariyerleri uygun yerlerde
+kullanılmazsa çok işlemcili ya da çok çekirdekli sistemlerde çalışan kodlarda böcekler oluşabilmektedir.
+Aşağıdaki koda dikkat ediniz:
 
-İşlemci buradaki belleğe atama (store) işlemlerini farklı sıralarda yapabilmektedir. Yani derleyici
-örneğin yukarıdaki iki atama işleminin sırasını etkin bir çalışma sağlamak için yer değiştirebilmektedir.
-Komutların yer değiştirmesi (instruction reordering) hem derleyici tarafından hem de işlemci tarafından
-yapılabilen bir optimizasyon işlemidir. Biz burada sürecin işlemciyle ilgili kısımları üzerinde
-duracağız. Çok işlemcili ya da çok çekirdekli sistemlerde sistem programcısının (örneğin çekirdek
-geliştiricilerinin) bu sorunu bilip bazı önlemleri alması gerekebilmektedir. İşlemciler birbirine bağlı
-olan makine komutlarının sırasını tek akışlı davranışı korumak için değiştirmemektedir.
+.. code-block:: c
+
+    /* Thread 1 */
+
+    data = 42;
+    ready = 1;
+
+    /* Thread 2 */
+
+    while (ready == 0)
+        ;
+    use(data);
+
+Burada kodu yazan sistem programcısı *ready = 1 ise kesinlikle data = 42 olacağını* varsaymıştır.
+Çünkü ``data`` ataması ``ready`` atamasından önce yapılmıştır. Dolayısıyla Thread 2'de ``ready == 1``
+olduğunda ``data == 42`` olacağı sanılmaktadır. Ancak burada bir ihmal söz konusudur. Derleyici ya da
+işlemci ``data`` ve ``ready`` değişkenleri birbirlerinden bağımsız olduğu için bu atamaları yer
+değiştirebilmekte ya da başka bir işlemci ya da çekirdek bunları farklı sıralarda yapılıyormuş gibi
+görebilmektedir. Bu atamalar yer değiştirildiğinde aşağıdaki durum oluşacaktır:
+
+.. code-block:: c
+
+    /* Thread 1 */
+
+    ready = 1;
+    /* ---> Dikkat! diğer işlemcideki kod bu arada çalışabilir */
+    data = 42;
+
+    /* Thread 2 */
+
+    while (ready == 0)
+        ;
+    use(data);
+
+Artık sorun kolaylıkla anlaşılabilir. Diğer işlemci ya da çekirdek ``ready = 1`` durumu oluştuğunda
+``use`` işlemine girebilir. Bu durumda ``data`` değişkeni eski değeriyle kullanılacaktır. İşte sistem
+programcısının *görünürlük sırasının (visibility order)* değişebileceğini göz önünde bulundurarak bu
+tür durumlara önlem alması gerekir. Bu tür önlemler *bellek bariyerleri (memory barriers)* denilen
+mekanizmalarla alınmaktadır.
+
+Burada bir noktaya dikkatinizi çekmek istiyoruz. Derleyici de işlemci kendi akışlarında bağımsız
+olmayan komutları yer değiştirmemektedir. Örneğin:
+
+.. code-block:: c
+
+    data = 42;
+    use(data);
+
+Buradaki işlemi yürüten işlemci ya da çekirdekte bu sıra korunmaktadır. Buradaki sorun başka işlemci
+ya da çekirdeklerin bu işlemleri sanki farklı sıralarda yapılıyormuş gibi görmesidir. Buna da
+*görünürlük sırası (visibility order)* denildiğini anımsayınız.
+
+Biz yukarıdaki örnekte yalnızca peş peşe iki işlemin çalışma sırası ve görünürlük sırası üzerinde
+örnek verdik. Aslında bu durum yalnızca peş peşe gelen iki makine komutu için söz konusu değildir.
+Peş peşe gelen ikiden fazla makine komutunda da çalışma sırası ve görünürlük sırası değişebilmektedir.
 
