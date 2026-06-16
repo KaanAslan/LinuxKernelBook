@@ -51,4 +51,4 @@ latex_elements = {
 }
 
 latex_additional_files = ['_static/fontawesome7.sty']
-html_extra_path = ['_extra']
+html_extra_path = ['google3ec2886e9be5fb29.html']
