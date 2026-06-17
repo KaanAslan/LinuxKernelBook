@@ -2066,8 +2066,8 @@ fonksiyonlardaki çağırma dizgesi tipik olarak şöyledir:
 
     atomic_xxx ---> raw_atomic_xxx ---> arch_atomic_xxx (işlemciye özgü fonksiyon ya da makro)
 
-Atomik Okuma ve Artırım Fonksiyonları
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Atomik Okuma, Artırım ve Eksiltim Fonksiyonları
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Atomik türlerden atomik biçimde değer okumak için read fonksiyonları kullanılmaktadır:
 
