@@ -3281,3 +3281,44 @@ volatile erişim" yapılmaktadır. Örneğin:
 
 Çekirdek kodlarında paylaşılan bellek alanlarına erişimlerde her zaman ``READ_ONCE`` ve ``WRITE_ONCE``
 makrolarını kullanmalısınız.
+
+Çekirdek Bellek Bariyeri Makroları: rmb, wmb, mb
+------------------------------------------------
+
+İşlemciler için bellek bariyerleri işlemciye özgü makine komutlarıyla oluşturulmaktadır. Linux çekirdeği
+bazı fonksiyon ve makrolarla donanım bariyerlerinin işlemciden bağımsız biçimde kullanılmasını
+sağlamaktadır. İşlemci bariyeri oluşturan üç temel çekirdek makrosu vardır:
+
+.. code-block:: c
+
+    rmb()
+    wmb()
+    mb()
+
+Bu makrolar parametre almamaktadır ve aşağıdaki bariyerleri uygulamaktadır:
+
+.. image:: _static/barrier-macros-table.png
+   :alt: rmb, wmb ve mb Makrolarının Uyguladığı Bariyerler
+   :align: center
+   :width: 60%
+
+``rmb`` makrosu *okuma amaçlı bellek bariyeri* oluşturmak için kullanılmaktadır. Bu makro Load/Load
+bariyeri oluşturmaktadır. Yani ``rmb()`` çağrısının yapıldığı yerin yukarısındaki bellek okumalarıyla bu
+çağrının yapıldığı yerin aşağısındaki bellek okumaları yer değiştiremez. Örneğin:
+
+.. code-block:: none
+
+    bellek okuması - 1
+    bellek yazması - 2
+    bellek okuması - 3
+    rmb();
+    bellek okuması - 4
+    bellek yazması - 5
+    bellek okuması - 6
+
+Burada ``rmb()`` çağrısı 1 ve 3'ün 4 ve 6 ile yer değiştirmesini engellemektedir. Yani aşağıdaki
+okumalar yapılmadan önce kesinlikle yukarıdaki okumalar yapılmış olmak zorundadır. Ancak örneğimizde bu
+``rmb()`` çağrısı 1, 2 ve 3'ün kendi aralarındaki, 4, 5 ve 6'nın da kendi aralarındaki yer
+değiştirmeleri üzerinde etkili olmamaktadır. Bariyer üsttekilerle alttakiler arasında bir sınır
+çizmektedir. Burada ``rmb`` bariyeri 2 ile 5 arasındaki yer değiştirme üzerinde etkili olmaz. Çünkü bu
+bariyer yalnızca okuma için (Load/Load) kullanılmaktadır.
