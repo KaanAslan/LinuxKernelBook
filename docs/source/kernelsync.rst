@@ -3143,14 +3143,14 @@ Biz yukarıdaki örnekte yalnızca peş peşe iki işlemin çalışma sırası v
 örnek verdik. Aslında bu durum yalnızca peş peşe gelen iki makine komutu için söz konusu değildir.
 Peş peşe gelen ikiden fazla makine komutunda da çalışma sırası ve görünürlük sırası değişebilmektedir.
 
-Derleyici Bariyerleri ve READ_ONCE / WRITE_ONCE Makroları
----------------------------------------------------------
-
 Yukarıda da belirttiğimiz gibi komut yer değiştirmesi derleyici tarafından da işlemci tarafından da
 yapılabilmektedir. Ancak komut yer değiştirmesi denildiğinde akla ilk olarak işlemcilerin yaptığı yer
 değiştirmeler gelmektedir.
 
-Derleyici bariyerleri oldukça basittir. Biz bir yere derleyici bariyeri yerleştirirsek ondan önceki tüm
+Derleyici Bariyerleri 
+---------------------
+
+Derleyici bariyerlerinin işlevi oldukça basittir. Biz bir yere derleyici bariyeri yerleştirirsek ondan önceki tüm
 Load ve Store işlemleri ondan sonraki tüm Load ve Store işlemlerinden önce yapılır. Yani biz bir yere
 derleyici bariyeri yerleştirdiğimizde derleyiciye şunu demiş oluruz: "Önce yukarıdaki işlemler için
 makine kodları üret, sonra aşağıdaki işlemler için makine kodları üret, bariyerin yukarısıyla aşağısı
@@ -3177,23 +3177,79 @@ aralarında yer değiştirebilir. Derleyici bariyerlerinin bir makine kodu üret
 için bir direktif oluşturduğuna dikkat ediniz. Linux çekirdeğinin gcc ile derlenebildiğini anımsayınız.
 (Son yıllarda clang derleyicileri ile derleme de artık başarılı biçimde yapılabilmektedir.)
 
-C standartlarına göre ``volatile`` erişimler kodda yazıldığı sırada yapılmak zorundadır. Yani
-birbirleriyle alakasız bile olsa C standartlarına göre iki ``volatile`` erişim kendi aralarındaki sıra
-korunarak gerçekleştirilir. Örneğin:
+volatile Erişimler
+------------------
+
+Derleyiciler kod optimizasyonunu tek thread'li çalışmayı esas alarak yapmaktadır. Kodun daha etkin 
+çalışabilmesini sağlamak amacıyla derleyiciler nesneleri yazmaçlarda saklayıp bellek erişimi yapmadan onları yazmaçlardan alarak 
+kullanabilmektedir. Ancak bu optimzasyon tek akışlı programlarda bir soruna yol açmazken çok akışlı programlarda 
+sorunlara yol açabilmektedir. İşte ``volatile`` niteleyici derleyiciye adeta "bu nesneyi kullandığımda o nesne yazmaçta olsa bile 
+sen her zaman belleğe başvurarak ona eriş" demektedir. Örneğin:
+
+.. code-block:: c
+
+    int g_flag;
+    /* ... */
+
+    while (g_flag == 1) {
+        /* ... */
+    }
+
+Burada başka bir thread ``g_flag`` değişkenini 0'a çektiğinde bu thread bunu anlamayabilir. Çünkü
+derleyici ``while`` parantezindeki ``g_flag`` değişkeni için döngünün her yinelenmesinde
+belleğe başvurmak zorunda değildir. Derleyici ``g_flag`` değişkenini bir yazamaca çekip yazmaçtaki değeri de 
+kullanabilir. İşte derleyicinin döngünün her yinelenmesinde bellekteki ``g_flag`` değişkenine başvurmasını sağlamak 
+için bu değişkenin ``volatile`` olarak tanımlanması gerekir:
+
+.. code-block:: c
+
+    volatile int g_flag;
+    /* ... */
+
+    while (g_flag == 1) {
+        /* ... */
+    }
+
+C standartlarına göre aynı nesneye yapılan ``volatile`` erişimler kodda yazıldığı sırada yapılmak
+zorundadır. Örneğin ``val`` int türünden bir nesne olsun:
+
+.. code-block:: c
+
+    x = *(volatile int *)&val;
+    y = *(volatile int *)&val;
+
+Burada C standartlarına göre erişim programdaki sırada yapılmak zorundadır. C standartları farklı
+nesnelere yapılan ``volatile`` erişimlerin sırasının korunması konusunda bir garanti vermemektedir. Ancak
+gcc ve clang derleyicilerinde farklı nesnelere yapılan ``volatile`` erişimler de sıra korunmaktadır.
+Örneğin ``val1`` ve ``val2`` int türünden birer nesne olsun:
 
 .. code-block:: c
 
     x = *(volatile int *)&val1;
     y = *(volatile int *)&val2;
 
-Burada C standartlarına göre erişim bu sırada yapılmak zorundadır. Dolayısıyla C standartlarına göre bu
-iki işlem arasında bir derleyici bariyerinin kullanılmasına gerek yoktur. Ancak C standartlarındaki bu
-``volatile`` semantiği derleyici bariyeri görevini tam olarak yerine getirmemektedir. C standartlarına
-göre ``volatile`` erişimlerin sıraları yalnızca kendi aralarında korunmaktadır. Dolayısıyla yukarıdaki
-okuma işlemini yer değiştirebilmektedir.
+Burada her ne kadar ``val1`` ve ``val2`` farklı nesneler olsa da gcc ve clang derleyicileri bu sırayı
+korumaktadır. Fakat gcc ve clang derleyicilerindeki bu ``volatile`` semantiği derleyici bariyeri görevini
+tam olarak yerine getirememektedir. gcc ve clang derleyicilerinde ``volatile`` erişimlerin sıraları
+yalnızca kendi aralarında korunmaktadır. Bu derleyicilerde ``volatile`` olmayan erişimlerle ``volatile``
+erişimlerin arasındaki sıranın korunması gibi bir garanti verilmemektedir. Örneğin ``val1``, ``val2`` ve
+``val3`` int türünden birer nesne olsun:
 
-Linux çekirdeğindeki ``READ_ONCE`` ve ``WRITE_ONCE`` makroları ilgili işlemin ``volatile`` semantiği ile
-yapılmasını sağlamaktadır. ``READ_ONCE`` ve ``WRITE_ONCE`` makroları üç işleve sahiptir:
+.. code-block:: c
+
+    x = *(volatile int *)&val1;
+    y = val2;
+    z = *(volatile int *)&val3;
+
+Burada ``val1`` erişimi ile ``val2`` erişiminin, ``val2`` erişimi ile ``val3`` erişiminin yerleri
+derleyici tarafından değiştirilebilir.
+
+READ_ONCE ve WRITE_ONCE Makroları
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Biz ``READ_ONCE`` ve ``WRITE_ONCE`` makrolarıyla daha önce karşılaşmıştık. Linux çekirdeğindeki bu makrolar 
+ilgili erişimin ``volatile`` semantiği ile yapılmasını sağlamaktadır. ``READ_ONCE`` ve ``WRITE_ONCE``
+makroları üç işleve sahiptir:
 
 1. Bu makrolar erişimi ``volatile`` olarak yaparlar. Dolayısıyla derleyici ilgili nesne için her zaman
    bellek başvurusu yapar.
@@ -3226,8 +3282,8 @@ içerisinde şöyle tanımlanmıştır:
 
 Burada görüldüğü gibi tek yapılan şey ``volatile`` erişimdir.
 
-Daha önceden de belirttiğimiz gibi Linux çekirdeği zaten gcc ile ve bir süredir de clang ile derlenmek
-zorundadır. Linux çekirdeğinde gcc derleyicisine özgü onlarca özellik kullanılmaktadır. Dolayısıyla
+Daha önceden de belirttiğimiz gibi Linux çekirdeği ancak gcc ile derlenebilmektedir. 
+Linux çekirdeğinde gcc derleyicisine özgü onlarca özellik kullanılmaktadır. Dolayısıyla
 çekirdek kodları herhangi bir derleyiciyle derlenememektedir. Bilindiği gibi clang derleyicileri büyük
 ölçüde gcc uyumludur; gcc'nin eklentilerini desteklemektedir. Eskiden Linux çekirdeği clang
 derleyicileri ile derlenemiyordu. Ancak son yıllarda artık derlenebilir hale gelmiştir. Linux çekirdeğini
@@ -3236,35 +3292,6 @@ derlerken make işleminde derleyiciyi clang olarak şöyle seçebilirsiniz:
 .. code-block:: console
 
     $ make CC=clang
-
-Burada kısaca C'deki volatile semanatiği üzerinde de durmak istiyoruz. Derleyiciler kod optimizasyonunu tek thread'li 
-çalışmayı esas alarak yapmaktadır. Dolayısıyla nesneleri yazmaçlarda saklayıp onları bellek erişimi yapmadan
-yazmaçlardan alarak kullanabilmektedir. İşte ``volatile`` niteleyici derleyiciye adeta "bu nesneyi
-kullandığımda o nesne yazmaçta olsa bile sen her zaman belleğe başvurarak ona eriş" demektedir. Örneğin:
-
-.. code-block:: c
-
-    int g_flag;
-    /* ... */
-
-    while (g_flag == 1) {
-        /* ... */
-    }
-
-Burada başka bir thread ``g_flag`` değişkenini 0'a çektiğinde bu thread bunu anlamayabilir. Çünkü
-derleyici ``while`` parantezindeki ``g_flag`` değişkeni için döngünün her yinelenmesinde
-belleğe başvurmak zorunda değildir. Derleyici ``g_flag`` değişkenini bir yazamaca çekip yazmaçtaki değeri de 
-kullanabilir. İşte derleyicinin döngünün her yinelenmesinde bellekteki ``g_flag`` değişkenine başvurmasını sağlamak 
-için bu değişkenin ``volatile`` olarak tanımlanması gerekir:
-
-.. code-block:: c
-
-    volatile int g_flag;
-    /* ... */
-
-    while (g_flag == 1) {
-        /* ... */
-    }
 
 Ancak Linux çekirdeğinde değişkenler genellikle ``volatile`` yapılmamaktadır. Çünkü bu durum performans
 kaybına yol açmaktadır. Linux çekirdeğinde ``READ_ONCE`` ve ``WRITE_ONCE`` makrolarıyla "gerektiğinde
@@ -3282,8 +3309,8 @@ volatile erişim" yapılmaktadır. Örneğin:
 Çekirdek kodlarında paylaşılan bellek alanlarına erişimlerde her zaman ``READ_ONCE`` ve ``WRITE_ONCE``
 makrolarını kullanmalısınız.
 
-Çekirdek Bellek Bariyeri Makroları: rmb, wmb, mb
-------------------------------------------------
+İşlemci Düzeyinde İşlev Gören Bariyer Makroları
+-----------------------------------------------
 
 İşlemciler için bellek bariyerleri işlemciye özgü makine komutlarıyla oluşturulmaktadır. Linux çekirdeği
 bazı fonksiyon ve makrolarla donanım bariyerlerinin işlemciden bağımsız biçimde kullanılmasını
@@ -3322,3 +3349,150 @@ okumalar yapılmadan önce kesinlikle yukarıdaki okumalar yapılmış olmak zor
 değiştirmeleri üzerinde etkili olmamaktadır. Bariyer üsttekilerle alttakiler arasında bir sınır
 çizmektedir. Burada ``rmb`` bariyeri 2 ile 5 arasındaki yer değiştirme üzerinde etkili olmaz. Çünkü bu
 bariyer yalnızca okuma için (Load/Load) kullanılmaktadır.
+
+``wmb`` makrosu *yazma amaçlı bellek bariyeri* oluşturmak için kullanılmaktadır. Bu makro Store/Store
+bariyeri oluşturmaktadır. Yani ``wmb`` çağrısının yapıldığı yerin yukarısındaki bellek yazmalarıyla bu
+çağrının yapıldığı yerin aşağısındaki bellek yazmaları yer değiştiremez. Örneğin:
+
+.. code-block:: none
+
+    bellek yazması - 1
+    bellek okuması - 2
+    bellek yazması - 3
+    wmb();
+    bellek yazması - 4
+    bellek okuması - 5
+    bellek yazması - 6
+
+Burada kesinlikle 1 ve 3 numaralı bellek yazmaları 4 ve 6 numaralı bellek yazmalarından daha önce
+yapılacaktır. Ancak 1, 2, 3 ve 4, 5, 6 bellek işlemlerini işlemci kendi aralarında, koşullar uygunsa,
+yer değiştirebilir. ``wmb`` makrosu yalnızca yazma bariyeri oluşturduğu için yukarıdaki örneğimizde 2
+ile 5 yer değiştirebilir. Örneğin bellek tabanlı IO kullanılarak bir aygıtın kontrol yazmacına yazma
+yapılarak önce bir ayar yapılıyor olsun, sonra da bu ayar doğrultusunda başka bir yazmacına yazma
+yapılıyor olsun:
+
+.. code-block:: none
+
+    <kontrol_yazmacına_yazarak_durumu_ayarla>
+    <bilgiyi_hedefe_yaz>
+
+Bu iki bellek bölgesi birbirinden bağımsız olduğu için işlemci bu iki işlemi ters sırada yapabilir.
+Halbuki bunların yukarıda belirtilen sırada yapılması gerekmektedir. Çünkü kontrol yazmacını set etmeden
+diğer yazma işlemi anlamsızdır. İşte bu iki yazma arasına ``wmb`` eklenerek yazma sıralarının yer
+değiştirmemesi sağlanmalıdır:
+
+.. code-block:: none
+
+    <kontrol_yazmacına_yazarak_durumu_ayarla>
+    wmb()
+    <bilgiyi_hedefe_yaz>
+
+``mb`` makrosu Load/Load, Load/Store, Store/Load ve Store/Store bariyerlerinin hepsini oluşturmaktadır.
+Yani bu makronun yukarısındaki bellek okumaları ve yazmaları aşağısındaki bellek okumaları ve yazmalarıyla
+yer değiştiremez. Örneğin:
+
+.. code-block:: none
+
+    bellek yazması - 1
+    bellek okuması - 2
+    bellek yazması - 3
+    mb();
+    bellek yazması - 4
+    bellek okuması - 5
+    bellek yazması - 6
+
+Burada ``mb`` çağrısının yukarısındaki okuma ve yazma işlemleri aşağısındaki okuma ve yazma
+işlemlerinden kesinlikle daha önce yapılacaktır. Yani 1, 2, 3 işlemleri ile 4, 5, 6 işlemleri
+birbirleriyle yer değiştiremez. Tabii işlemci eğer koşullar uygunsa 1, 2, 3 ve 4, 5, 6 işlemlerini
+kendi aralarında yer değiştirebilir. Örneğin biz bellek tabanlı IO işlemlerinde önce ilgili aygıtın
+kontrol yazmacına bir değer yazarak belli bir yazmacının aktive edilmesini sağlıyor olabiliriz. Sonra o
+yazmaçtan okuma yapıyor olabiliriz:
+
+.. code-block:: none
+
+    <kontrol_yazmacına_yazarak_durumu_ayarla>
+    <bilgiyi_hedeften_oku>
+
+Burada Store/Load durumu oluştuğuna dikkat ediniz. İşlemci bu iki bellek adresi birbirleriyle ilgili
+olmadığı için iki işlemin yerlerini değiştirebilir. Bunun engellenmesi için araya ``mb`` makrosu ile
+genel bariyer yerleştirmemiz gerekir:
+
+.. code-block:: none
+
+    <kontrol_yazmacına_yazarak_durumu_ayarla>
+    mb()
+    <bilgiyi_hedeften_oku>
+
+Burada bir noktaya dikkatinizi çekmek istiyoruz. ``rmb`` makrosu Load/Load, ``wmb`` makrosu Store/Store
+bariyerini oluşturmaktadır. Load/Store ve Store/Load bariyerlerini oluşturan ayrı bir makro yoktur.
+``mb`` makrosu tüm bariyerleri oluşturmaktadır. Genel olarak işlemcilerde Load/Store ve Store/Load
+bariyerleri için diğer bariyerlerin de oluşturulması gerekmektedir. Linux çekirdeği de ``mb`` makrosuyla
+genel bariyer oluşturmuştur.
+
+``rmb``, ``wmb`` ve ``mb`` makroları zaten derleyici bariyerini de oluşturmaktadır. Yani bu makroları
+kullanıyorsanız ayrıca derleyici bariyeri oluşturmanıza gerek yoktur. Bu makroların herhangi birini
+çağırdığınızda onun yukarısıyla aşağısı arasında derleyici komut yer değiştirmesi yapmamaktadır.
+(Derleyici için Load/Load, Load/Store, Store/Load ve Store/Store biçiminde ayrı yer değiştirme biçimleri
+yoktur. Derleyici bariyerleri yalnızca ``barrier`` isimli fonksiyonla oluşturulmaktadır.)
+
+Anımsanacağı gibi Intel x86 mimarisinde zaten işlemci Load/Load, Load/Store, Store/Store yer
+değiştirmesini yapmıyordu. Yalnızca Store/Load yer değiştirmesini yapıyordu. Peki bu durumda biz çekirdek
+kodlarında kullandığımız ``rmb()`` ve ``wmb()`` makrolarının Intel'de bir etkisi olacak mıdır? Hayır;
+genel olarak bu makroları Intel'de çağırdığınızda, bazı ayrıntıları göz ardı edersek, bu makrolar
+yalnızca derleyici bariyeri oluşturacaktır. Yani koda ekstra bir makine komutu eklemeyecektir.
+
+İşlemcilerin komut yer değiştirmesinin yalnızca çok işlemcili ya da çok çekirdekli sistemlerde sorun
+oluşturduğunu belirtmiştik. Tek işlemcili ya da tek çekirdekli sistemlerde komut yer değiştirmesi bir
+sorun oluşturmamaktadır. (Bellek tabanlı IO işlemlerinde aygıta bilgi aynı sırada gitmektedir.) Peki bu
+durumda sistemimizde tek işlemci ya da tek çekirdek varsa ``rmb``, ``wmb`` ve ``mb`` çağrıları gereksiz
+bir işlem haline gelmez mi? Evet gerçekten de tek işlemcili ya da tek çekirdekli sistemlerde bu çağrılar
+gereksiz hale gelmektedir. İşte Linux çekirdeğinde bu sorunu çözmek için ``smp_rmb``, ``smp_wmb`` ve
+``smp_mb`` makroları da bulundurulmuştur. Bu makrolar ``CONFIG_SMP`` çekirdek konfigürasyon parametresine
+göre işlevini aşağıdaki gibi değiştirmektedir:
+
+.. code-block:: c
+
+    /* include/asm-generic/barrier.h */
+
+    #ifdef CONFIG_SMP
+    #define smp_mb()    mb()            /* işlemci bariyeri */
+    #define smp_rmb()   rmb()           /* işlemci bariyeri */
+    #define smp_wmb()   wmb()           /* işlemci bariyeri */
+    #else
+    /* UP (Uniprocessor): CPU bariyeri gerekli değil */
+    #define smp_mb()    barrier()       /* yalnızca derleyici bariyeri */
+    #define smp_rmb()   barrier()       /* yalnızca derleyici bariyeri */
+    #define smp_wmb()   barrier()       /* yalnızca derleyici bariyeri */
+    #endif
+
+Görüldüğü gibi bu makrolar tek işlemcili ya da tek çekirdekli sistemlerde yalnızca derleyici bariyeri
+oluşturmaktadır. O halde biz çekirdek kodlarımızda ya da aygıt sürücülerimizde ``rmb``, ``wmb`` ya da
+``mb`` yerine ``smp_rmb``, ``smp_wmb`` ve ``smp_mb`` makrolarını kullanabiliriz. Böylece bu makrolar
+çalıştığımız sisteme göre en uygun davranışı gösterecektir. Burada bir noktayı anımsatmak istiyoruz.
+Bugün kullandığımız Ubuntu, Debian gibi dağıtımlardaki çekirdekler ``CONFIG_SMP=y`` biçiminde
+derlenmiştir. Yani biz bu dağıtımları tek çekirdekli işlemcilerde kullanıyor olsak bile çekirdek çok
+çekirdekli işlemciler için derlenmiş durumdadır. Fakat örneğin BeagleBone Black (BBB) isimli SBC'de tek
+çekirdekli ARM işlemcileri kullanılmaktadır. Orada çalışacak Linux çekirdekleri ``CONFIG_SMP=n``
+biçiminde derlenebilmektedir.
+
+İşlemci için oluşturulan yukarıda gördüğümüz bellek bariyerleri ve aşağıda göreceğimiz acquire/release
+bariyerleri özellikle birden çok işlemci ya da çekirdeğin söz konusu olduğu sistemlerde kullanılması
+gereken mekanizmalardır. Sistemde bir tane işlemci varsa bu işlemci için özel bazı durumlar dışında
+bellek bariyerleri oluşturmaya gerek yoktur. Zaten yukarıdaki ``smp_rmb``, ``smp_wmb`` ve ``smp_mb``
+makrolarının tek işlemcili sistemlerde işlemci için bir bariyer oluşturmadığını belirtmiştik. Tek
+işlemcili sistemlerde işlemci yine komutların sırasını değiştirebilir. Ancak bundan çok thread'li
+çalışma olumsuz etkilenmez. Çünkü tek işlemcili sistemlerde bir kesme oluşsa bile işlemci o ana kadar
+boru hattı (pipeline) kuyruğuna sokulan işlemlerin komut sırasına göre görünür olmasını sağladıktan
+sonra kesme durumunu ele almaktadır.
+
+Tabii tek işlemcili sistemlerde de derleyici bariyeri gerekebilmektedir. Çünkü derleyiciler komut
+sırasını değiştirdiği durumda o arada kesmeler ve dolayısıyla da bağlamsal geçişler oluşabilir. Tüm
+bağlamsal geçişin (context switch) kesme yoluyla gerçekleştiğini de anımsayınız. Örneğin:
+
+.. code-block:: c
+
+    data = 42;
+    ready = 1;
+
+Burada derleyici bu iki deyimin yerini değiştirirse ``ready = 1`` işleminden sonra thread'ler arası
+geçiş ya da bu değişkenlerle ilgili işlem yapan bir kesme oluşursa sorun ortaya çıkabilecektir.
