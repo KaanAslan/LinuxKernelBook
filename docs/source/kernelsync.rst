@@ -3496,3 +3496,187 @@ bağlamsal geçişin (context switch) kesme yoluyla gerçekleştiğini de anıms
 
 Burada derleyici bu iki deyimin yerini değiştirirse ``ready = 1`` işleminden sonra thread'ler arası
 geçiş ya da bu değişkenlerle ilgili işlem yapan bir kesme oluşursa sorun ortaya çıkabilecektir.
+
+Acquire/Release Semantiği
+-------------------------
+
+``rmb``, ``wmb`` ve ``mb`` makroları çift yönlü bariyer oluşturmaktadır. Bu bariyerler modern
+işlemcilerdeki boru hattı mekanizması üzerinde olumsuz etkiler oluşturduğu için çalışmayı göreli biçimde
+yavaşlatmaktadır. İşte ``mb`` ile genel bir bariyer oluşturmak yerine boru hattı mekanizmasını bozmadan
+istenilen bellek erişimlerinin güvenle yapılabilmesi için *acquire/release semantics* denilen mekanizmalar
+da bulundurulmuştur. Ancak acquire/release mekanizması her işlemci tarafından desteklenmemektedir. Çünkü
+Intel gibi bazı işlemcilerde zaten komut yer değiştirmesi gevşek değildir. Ancak ARM gibi RISC
+işlemcileri için bu mekanizmalar önemlidir. Bu mekanizmalar bazı programlama dillerinin standart
+kütüphaneleri içerisinde de *bellek sıralaması (memory order)* adı altında bulundurulmaktadır.
+
+smp_load_acquire Makrosu
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+En çok kullanılan acquire/release makrosu ``smp_load_acquire`` isimli makrodur. Bu makronun parametrik
+yapısı şöyledir:
+
+.. code-block:: c
+
+    smp_load_acquire(p)
+
+Bu makro parametre olarak okuma yapılacak nesnenin adresini almaktadır. ``smp_load_acquire`` makrosu tek
+yönlü bir biçimde işlemcinin komut sıralaması üzerinde etki oluşturmaktadır. Bu makronun aşağısındaki
+bellek erişimleri (hem LOAD hem de STORE erişimleri) bu çağrıdaki erişimin yukarısına taşınamaz. Ancak
+yukarısındaki bellek erişimleri aşağısına taşınabilir. Örneğin:
+
+.. code-block:: none
+
+    smp_load_acquire(&object);
+    bellek yazması - 1
+    bellek okuması - 2
+    bellek yazması - 3
+
+Burada 1, 2, 3 numaralı bellek erişimleri işlemci tarafından ``smp_load_acquire()`` çağrısının yukarına
+taşınamaz. Ancak yukarısındakiler aşağısına taşınabilir. Görüldüğü gibi burada tek yönlü bir bariyer söz
+konusudur. ``rmb``, ``wmb`` ve ``mb`` makrolarının hepsi çift yönlü bariyer oluşturmaktadır. Peki bu tek
+yönlü bariyerin anlamı nedir? İşte bazen önce bir bellek okuması yapılıp sonra ona göre başka yerlerden
+okumalar yapılabilir. Bunlar bağımsız işlemler olduğu için ARM gibi RISC işlemcileri komutları yer
+değiştirebilmektedir. Bu tür durumlarda çift yönlü bariyer uygulamak yerine tek yönlü bariyer uygulanması
+modern işlemcilerdeki performansı artırabilmektedir. ``smp_load_acquire`` makrosunun bir erişim yaptığına
+ve bu erişimin aşağısındaki kodların bu erişimin yukarısına taşınmasını engellediğine dikkat ediniz. Bu
+makronun kullanım amacı dikkate alındığında zaten makronun yukarısındaki erişimlerin makrodaki erişimin
+aşağısına alınmasında bir sorun oluşturmayacağı görülecektir.
+
+Örneğin birden fazla thread paylaşılan bir alandan bilgi okuyup yazacak olsun:
+
+.. code-block:: c
+
+    struct shared_data {
+        int payload;
+        int flag;     /* 0 = boş, 1 = dolu */
+    };
+
+Okuyan taraf yeni bilginin geldiğini ``flag`` değişkenine bakarak tespit ediyor olsun. Bu durumda okuyan
+tarafın önce ``flag`` değişkenine bakarak ``payload`` elemanına başvurması gerekir. Bu işlemin aşağıdaki
+biçimde yapılması çok işlemcili ya da çok çekirdekli sistemlerde soruna yol açacaktır:
+
+.. code-block:: c
+
+    int consumer(void)
+    {
+        int val;
+
+        if (READ_ONCE(sd.flag) == 1) {          /* Dikkat! Sorun oluşabilir! */
+            val = READ_ONCE(sd.payload);
+            WRITE_ONCE(sd.flag, 0);
+            return val;
+        }
+        return -1;
+    }
+
+Burada eğer diğer işlemci ya da çekirdek ``sd.payload`` okumasını ``sd.flag`` karşılaştırmasının
+yukarısında görürse (başka bir deyişle bu işlem daha önce yapılırsa) kod hatalı çalışacaktır:
+
+.. code-block:: c
+
+    val = READ_ONCE(sd.payload);
+    if (READ_ONCE(sd.flag) == 1) {
+        WRITE_ONCE(sd.flag, 0);
+        return val;
+    }
+
+    /* dikkat! Koşul sağlanmıyorsa val işlemi yapılmamış gibi durum yaratılır */
+
+Burada ``sd.payload`` ile ``sd.flag`` birbirleriyle ilgisiz bellek adreslerinde bulunduğu için işlemci
+bunların sırasını yer değiştirebilir. Tabii burada siz *işlemci bunu yukarıya taşıyamaz, çünkü o zaman
+kodun anlamı değişir* diye düşünebilirsiniz. Çünkü işlemci eğer ``payload`` okumasını yukarı taşırsa bu
+artık ``if`` içerisinde olmaktan çıkacaktır. Ancak işlemciler bu yukarı taşıma işlemini koşul altında
+bile yapabilmektedir. Buna *speculative load* işlemi denilmektedir. *Speculative load* işleminde işlemci
+koşul altında bile olsa bellek erişimlerini koşulun yukarısına taşıyabilmekte ancak koşul sağlanmıyorsa
+onun etkisini ortadan kaldırabilmektedir. İşte buradaki sorun başka bir işlemci ya da çekirdeğin koşul
+sağlanmadığında bu işlem henüz ortadan kaldırılmadan onun etkisini görebilmesidir. Yukarıdaki işlem
+işlemci tarafından adeta şöyle yapılabilmektedir:
+
+.. code-block:: c
+
+    val = READ_ONCE(sd.payload);
+    if (READ_ONCE(sd.flag) == 1) {
+        WRITE_ONCE(sd.flag, 0);
+        return val;
+    }
+    else
+        /* sanki val = READ_ONCE(sd.payload) işlemi hiç yapılmamış gibi durum oluştur */
+
+İşte işlemci kendi yaptığı *speculative load* işlemini ortadan kaldıramadan başka bir işlemci aynı
+nesneye erişirse koşul ihlal edilmiş gibi durum oluşabilmektedir:
+
+.. code-block:: c
+
+    val = READ_ONCE(sd.payload);
+    /* ---> Bu sırada diğer işlemci payload değerini değiştirirse burada eski değer gözükebilir */
+    if (READ_ONCE(sd.flag) == 1) {
+        WRITE_ONCE(sd.flag, 0);
+        return val;
+    }
+    else
+        /* sanki val = READ_ONCE(sd.payload) işlemi hiç yapılmamış gibi durum oluştur */
+
+Burada diğer bir işlemcide ya da çekirdekte çalışan kod ``sd.payload`` değişkenini ok ile belirtilen
+yerde değiştirip ``sd.flag`` değişkenini 1 yaparsa eski değerin okunması gibi bir durum oluşabilecektir.
+Şimdi kodumuzun bu kısmını düzeltelim:
+
+.. code-block:: c
+
+    int consumer(void)
+    {
+        int val;
+
+        if (smp_load_acquire(&sd.flag) == 1) {      /* olması gereken biçim */
+            val = READ_ONCE(sd.payload);
+            WRITE_ONCE(sd.flag, 0);
+            return val;
+        }
+        return -1;
+    }
+
+Burada artık ``sd.flag`` okumasının aşağısındaki bellek erişimleri bu okumanın yukarısına taşınmayacaktır.
+Ancak hâlâ burada bir sorun daha vardır. ``READ_ONCE`` okumasıyla ``WRITE_ONCE`` yazması da işlemci
+tarafından farklı sıralarda yapılabilir:
+
+.. code-block:: c
+
+    int consumer(void)
+    {
+        int val;
+
+        if (smp_load_acquire(&sd.flag) == 1) {      /* olması gereken biçim */
+            val = READ_ONCE(sd.payload);
+            /* ---> dikkat: burada yer değiştirme yapılabilir! */
+            WRITE_ONCE(sd.flag, 0);
+            return val;
+        }
+        return -1;
+    }
+
+İşte bu yer değiştirmenin de engellenmesi için izleyen paragrafta açıklayacağımız ``smp_store_release``
+ile atamanın yapılması gerekmektedir.
+
+Biz yukarıdaki işlemi bellek bariyeri ile de yapabilirdik:
+
+.. code-block:: c
+
+    int consumer(void)
+    {
+        int val;
+
+        if (READ_ONCE(sd.flag) == 1) {
+            smp_mb();                           /* bellek bariyeri uygulanabilir ancak maliyeti yüksek */
+            val = READ_ONCE(sd.payload);
+            smp_mb();                           /* bellek bariyeri uygulanabilir ancak maliyeti yüksek */
+            WRITE_ONCE(sd.flag, 0);
+            return val;
+        }
+        return -1;
+    }
+
+Ancak bu biçimdeki bellek bariyerleri yukarıda da belirttiğimiz gibi pipeline mekanizmasını bozması
+nedeniyle yavaşlamaya yol açmaktadır.
+
+Intel işlemcilerinde yalnızca Store/Load işlemlerinde komut yer değiştirmesinin uygulandığını anımsayınız.
+Bu nedenle Intel işlemcilerinde yukarıdaki önlem alınmasa bir sorun oluşmayacaktır. Ancak ARM gibi RISC
+işlemcilerinde bu önlemin mutlaka alınması gerekmektedir.
