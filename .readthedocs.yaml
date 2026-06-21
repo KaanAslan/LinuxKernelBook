@@ -11,7 +11,10 @@ build:
     - latexmk
     - texlive-latex-recommended
     - texlive-fonts-recommended
-
+    - texlive-xetex
+    - texlive-lang-other
+    - librsvg2-bin
+    - fonts-deja
 # Sphinx yapılandırması
 sphinx:
   configuration: docs/source/conf.py
