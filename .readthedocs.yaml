@@ -14,7 +14,8 @@ build:
     - texlive-xetex
     - texlive-lang-other
     - librsvg2-bin
-    - fonts-deja
+    - fonts-dejavu-core
+
 # Sphinx yapılandırması
 sphinx:
   configuration: docs/source/conf.py
