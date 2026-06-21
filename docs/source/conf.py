@@ -13,7 +13,7 @@ extensions = [
     'sphinx.ext.graphviz',
 ]
 
-graphviz_output_format = 'svg'
+graphviz_output_format = 'png'
 
 templates_path = ['_templates']
 exclude_patterns = []
