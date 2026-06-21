@@ -6,10 +6,10 @@ release = '1.0.0'
 
 # -- Genel yapılandırma ---------------------------------------------------
 extensions = [
-    'sphinx.ext.autodoc',      # Python docstring'lerinden otomatik döküman
-    'sphinx.ext.viewcode',     # Kaynak koduna link
-    'sphinx.ext.napoleon',     # Google/NumPy stil docstring desteği
-    'sphinx.ext.intersphinx',  # Diğer projelere link
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.graphviz',
 ]
 
@@ -18,13 +18,13 @@ graphviz_output_format = 'svg'
 templates_path = ['_templates']
 exclude_patterns = []
 
-language = 'tr'  # veya 'en'
+language = 'tr'
 
 # -- HTML çıktı seçenekleri ----------------------------------------------
-html_theme = 'sphinx_rtd_theme'         # Read the Docs teması
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
-html_logo = '_static/logo.jpeg'         # İsteğe bağlı logo
-html_favicon = '_static/favicon.ico'    # İsteğe bağlı favicon
+html_logo = '_static/logo.jpeg'
+html_favicon = '_static/favicon.ico'
 html_css_files = ['custom.css']
 
 # -- Tema seçenekleri ---------------------------------------------------
@@ -48,7 +48,7 @@ latex_elements = {
         \newunicodechar{←}{\ensuremath{\leftarrow}}
         \newunicodechar{≥}{\ensuremath{\geq}}
         \newunicodechar{≤}{\ensuremath{\leq}}
-        \newfontfamily{\boxfont}{[DejaVuSansMono.ttf]}[Path=/usr/local/texlive/2026/texmf-dist/fonts/truetype/public/dejavu/]
+        \newfontfamily{\boxfont}[Path=/usr/share/fonts/truetype/dejavu/]{DejaVuSansMono.ttf}
         \newunicodechar{┌}{{\boxfont\char"250C}}
         \newunicodechar{┐}{{\boxfont\char"2510}}
         \newunicodechar{└}{{\boxfont\char"2514}}
@@ -65,4 +65,4 @@ latex_elements = {
 
 latex_engine = 'xelatex'
 latex_additional_files = ['_static/fontawesome7.sty']
-templates_path = ['_templates']
+
