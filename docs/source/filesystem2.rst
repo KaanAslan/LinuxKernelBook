@@ -1136,7 +1136,7 @@ programında bu yapıyı aşağıdaki gibi oluşturmuştuk:
 
 Buradaki ``super_block`` yapısının ``s_fs_info`` elemanı için oluşan durumu aşağıdaki şekil betimlemektedir:
 
-.. image:: _static/superblock-fsinfo.svg
+.. image:: _static/superblock-fsinfo.png
    :alt: super_block → simplefs_super_block → simplefs_disk_super_block gösterici zinciri
    :align: center
    :width: 80%
