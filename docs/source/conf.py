@@ -66,3 +66,10 @@ latex_elements = {
 latex_engine = 'xelatex'
 latex_additional_files = ['_static/fontawesome7.sty']
 
+html_meta = {
+    "description": "Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi",
+    "keywords": (
+        "linux kernel, işletim sistemleri, işletim sistemlerinin tasarımı, dosya sistemi, çekirdek senkronizasayonu, " +
+        "proses yönetimi, çizelgeleme, bekleme kuyrukları"
+    )
+}
