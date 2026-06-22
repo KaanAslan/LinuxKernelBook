@@ -1390,8 +1390,8 @@ karşılaştırılmıştır.
    :align: center
    :width: 80%
 
-Okuma Yazma Kilitleri (Readers-Writer Lock)
-============================================
+Okuma Yazma Kilitleri 
+=====================
 
 Diğer çok kullanılan senkronizasyon nesnelerinden biri de *okuma yazma kilitleri (readers-writer lock)*
 denilen nesnelerdir. Önce bu nesnelere neden gereksinim duyulduğunu bir örnekle açıklamak istiyoruz.
@@ -3788,14 +3788,396 @@ Bu fonksiyonların compare-exchange biçimleri de bulunmaktadır:
 .. code-block:: c
 
     /* Her iki durum için relaxed */
+
     atomic_cmpxchg_relaxed(v, old, new)
 
     /* Gösterici versiyonları */
+
     cmpxchg_acquire(ptr, old, new)
     cmpxchg_release(ptr, old, new)
     cmpxchg_relaxed(ptr, old, new)
 
 Eğer hem atomik işlemlerin yapılması hem de acquire/release işlemlerinin yapılması isteniyorsa
 yukarıdaki fonksiyonlar kullanılabilir.
+
+C ve C++ Standartlarında Bariyerler ve Acquire/Release İşlemleri
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Konuya girişte de belirttiğimiz gibi bariyerler ve acquire/release işlemleri artık çeşitli programlama
+dillerine de onların standart kütüphaneleri yoluyla sokulmuştur. Acquire/release mekanizması C'ye C11
+ile birlikte *isteğe bağlı (optional)* bir özellik olarak eklenmiştir. Bu özelliğin derleyicide olup
+olmadığı ``__STDC_NO_ATOMICS__`` makrosuyla belirlenebilmektedir. C11 ile eklenen acquire/release
+fonksiyonları ve bunların yaklaşık Linux çekirdeğindeki karşılıklarını aşağıda tablo biçiminde
+veriyoruz:
+
+.. image:: _static/c11-acquire-release.png
+   :alt: C11 Acquire/Release — Linux Çekirdeği Karşılaştırması
+   :align: center
+   :width: 90%
+
+Bu fonksiyonların ayrıntıları için C standartlarına başvurabilirsiniz. Tabii daha önceden de
+belirttiğimiz gibi hiçbir zaman Linux çekirdeğinde derleyicinin sunduğu bu tür fonksiyonlar
+kullanılmamaktadır. C++'a da C++11 ile birlikte bariyer ve acquire/release fonksiyonları sınıfsal
+bir temsille eklenmiştir:
+
+.. image:: _static/cpp11-acquire-release.png
+   :alt: C++11 Acquire/Release — Linux Çekirdeği Karşılaştırması
+   :align: center
+   :width: 90%
+
+Bu sınıfların ayrıntıları için de C++ standartlarına başvurabilirsiniz.
+
+Ayrıca daha önceden de belirttiğimiz gibi bariyerler ve acquire/release mekanizması için gcc'de
+built-in fonksiyonlar da bulunmaktadır. Bunların listesini de aşağıda tablo biçiminde veriyoruz:
+
+.. image:: _static/gcc-sync-builtins.png
+   :alt: GCC __sync Built-in — Linux Kernel Karşılaştırması
+   :align: center
+   :width: 90%
+
+RCU (Read-Copy-Update) Mekanizması
+=====================================
+
+Şimdi de çekirdekteki *RCU (read-copy-update)* mekanizması üzerinde duralım. Biz daha önce bu
+mekanizmanın farkına varmıştık. Burada bu mekanizmanın işleyişini ele alacağız.
+
+RCU (Read-Copy-Update) *kilitsiz (lock-free)* veri yapılarının gerçekleştirilmesi için kullanılan bir
+tekniktir. Bir veri yapısından okuma yapan ve ona yazma yapan birtakım thread'lerin bulunduğunu
+düşünelim. Biz daha önce bu tür durumlarda *okuma-yazma kilitlerinin (readers-writer lock)*
+kullanıldığını görmüştük. Anımsayacağınız gibi okuma-yazma kilitleri Linux çekirdeklerinde spinlock
+mekanizmasını kullanıyordu. Paylaşılan alana okuma yazma kilidyle erişen aşağıdaki örneğe dikkat
+ediniz:
+
+.. code-block:: c
+
+    read()
+    {
+        read_lock(...);
+        /* ... */
+        /* ... */
+        read_unlock(...);
+    }
+
+    write()
+    {
+        write_lock(...);
+        /* ... */
+        /* ... */
+        write_unlock(...);
+    }
+
+Burada birden fazla okuyan thread beklemeden işlemlerini yapmaktadır. Ancak işin içerisine bir yazan
+thread girdiği zaman okuma yapan thread'ler de yazma yapan thread'ler de yazan thread'i bekleme
+yapmaktadır. Okuma yazma kilitlerinin performans üzerindeki etkisi için şunları söyleyebiliriz:
+
+- Eğer çok sayıda yazan varsa beklemeler uzar.
+- Okuyan sayısı aşırı fazla ise, yazan sayısı az ise kilit hep okuyan thread'ler tarafından alındığı
+  için yazan thread'lerin yazması gecikebilmektedir.
+- Çok sayıda okuma yapanın bulunması durumunda bloke olunmasa da yine kilit işlemi yapıldığı için
+  küçük bir performans kaybı oluşabilmektedir.
+
+İşte RCU mekanizması okuma-yazma kilitlerinin yukarıda belirttiğimiz sorunlarını ortadan kaldırmak
+için düşünülmüştür. RCU mekanizması Linux çekirdeklerinde 2.6 sürümü ile stabil bir biçime
+getirilmiştir.
+
+Biz aşağıdaki paragraflarda thread terimi yerine akış terimini kullanacağız. Çünkü RCU mekanizması
+thread'lerin dışında örneğin kesme kodları tarafından da kullanılabilmektedir.
+
+RCU'nun Temel Fikri
+---------------------
+
+RCU mekanizmasının dayandığı fikir basittir: Okuma yapan akışlar hiç kilit almadan doğrudan okuma
+işlemini yaparlar. Ancak yazma yapan akışlar paylaşılan veri yapısının bir kopyasını çıkartarak
+işlemleri onun üzerinde yaparlar. Sonra oluşturdukları bu kopyayı asıl veri yapısı haline getirip
+sonraki işlemlerde onun kullanılmasını sağlarlar.
+
+RCU mekanizmasında paylaşılan nesne yani veri yapısı bir gösterici ile gösterilmektedir:
+
+.. image:: _static/rcu-state1.png
+   :alt: RCU — Başlangıç durumu
+   :align: center
+   :width: 40%
+
+Okuma yapan akışlar ``ptr`` göstericisinin gösterdiği yerdeki paylaşılan alana hiç kilit almadan
+erişirler. Ancak yazma yapan akışlar bu veri yapısının bir kopyasını oluşturup yazmayı bu kopya
+üzerinde yaparlar:
+
+.. image:: _static/rcu-state2.png
+   :alt: RCU — Kopya oluşturma aşaması
+   :align: center
+   :width: 40%
+
+Yazma yapan akışlar yazma işlemini kopya üzerinde yaptıktan sonra ``ptr`` göstericisini bu kopyayı
+gösterecek biçimde güncellerler:
+
+.. image:: _static/rcu-state3.png
+   :alt: RCU — Gösterici güncellemesi sonrası
+   :align: center
+   :width: 40%
+
+Burada önemli bir sorun eski veri yapısının ne zaman, nasıl ve kim tarafından yok edileceğidir. İlk
+akla gelen yöntem en son okuma yapan akışın bu veri yapısını silmesidir. Ancak bu yöntemin genel bir
+biçimde işletilmesi mümkün olamamaktadır.
+
+RCU mekanizmasını şuna benzetebiliriz: Önümüzde bir beyaz tahta var. Kişiler bu tahtadaki yazıyı
+okuyorlar. Bu beyaz tahtada değişiklik yapacak kişi okuyanların dikkati dağılmasın diye beyaz
+tahtanın üzerindeki yazıların bir kopyasını arkadaki başka bir beyaz tahtada oluşturuyor ve
+değişiklikleri bu arkadaki beyaz tahtada yapıyor. Sonra da tahtaları değiştirerek kendi tahtasının
+görünür hale gelmesini sağlıyor. Ancak eski beyaz tahtadan okuyanlar okumayı bitirene kadar eski
+tahtayı kullanmaya devam ediyor.
+
+rcu_read_lock ve rcu_read_unlock 
+--------------------------------
+
+RCU mekanizmasının çekirdekte işletilebilmesi için bazı yardımcı fonksiyonlar oluşturulmuştur. RCU
+korumalı veri yapısından okuma yapacak akışlar bu işlemi thread'ler arası geçişi kapatıp (yani
+preemption'ı disable edip) yaparlar, işlem bitince de thread'ler arası geçişi açarlar. Thread'ler
+arası geçişin açılıp kapatılması ``rcu_read_lock`` ve ``rcu_read_unlock`` fonksiyonlarıyla
+yapılmaktadır. Örneğin:
+
+.. code-block:: c
+
+    rcu_read_lock();
+    ...
+    ...         <OKUMA İŞLEMİ> 
+    ... 
+    rcu_read_unlock();
+
+Bu fonksiyonların parametrik yapıları şöyledir:
+
+.. code-block:: c
+
+    #include <linux/rcupdate.h>
+
+    void rcu_read_lock(void);
+    void rcu_read_unlock(void);
+
+Buradaki ``rcu_read_lock`` ve ``rcu_read_unlock`` fonksiyonları aslında ``preempt_disable`` ve
+``preempt_enable`` işlemlerini yapmaktadır. ``rcu_read_lock`` fonksiyonu güncel çekirdeklerde
+``include/linux/rcupdate.h`` içerisinde aşağıdaki gibi tanımlanmıştır:
+
+.. code-block:: c
+
+    static __always_inline void rcu_read_lock(void)
+    {
+        __rcu_read_lock();
+        __acquire(RCU);
+        rcu_lock_acquire(&rcu_lock_map);
+        RCU_LOCKDEP_WARN(!rcu_is_watching(),
+                "rcu_read_lock() used illegally while idle");
+    }
+
+Buradaki ``__rcu_read_lock`` fonksiyonu dışındaki çağrılar debug amaçlıdır, konfigürasyon
+parametrelerine bağlı olarak zaten koda yansıtılmayabilmektedir. ``__rcu_read_lock`` fonksiyonu da
+şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static inline void __rcu_read_lock(void)
+    {
+        preempt_disable();
+    }
+
+rcu_dereference
+-----------------
+
+Çekirdeğin RCU mekanizmasında paylaşılan veri yapısını gösteren gösterici içerisindeki adresi elde
+etmek için ``rcu_dereference`` fonksiyonu kullanılmaktadır. Bu fonksiyon
+``include/linux/rcupdate.h`` dosyası içerisinde bir makro biçiminde yazılmıştır:
+
+.. code-block:: c
+
+    #define rcu_dereference(p)  rcu_dereference_check(p, 0)
+
+Bu makronun çağrı zinciri şöyledir:
+
+.. code-block:: c
+
+    #define rcu_dereference_check(p, c)                                 \
+            __rcu_dereference_check((p), __UNIQUE_ID(rcu),              \
+            (c) || rcu_read_lock_held(), __rcu)
+
+    #define __rcu_dereference_check(p, local, c, space)                 \
+    ({                                                                  \
+        typeof(**(p)) *local = (typeof(**(p)) *__force)(p);             \
+        RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_check()");   \
+        rcu_dereference_raw(local);                                     \
+    })
+
+    #define rcu_dereference_raw(p)      READ_ONCE(p)
+
+Burada neden bu kadar çok kod vardır? Aslında buradaki kodlar debug amaçlı bazı kontrolleri
+yapmaktadır. Bu kontroller çekirdek konfigürasyon parametreleriyle etkin hale getirilmektedir.
+Bizim kullandığımız dağıtımların çekirdekleri derlenirken bu konfigürasyon parametreleri zaten
+kapatılmış durumdadır. Böylece aslında bu kod ``READ_ONCE(p)`` ile göstericinin içerisindeki adresi
+``volatile`` erişimle elde etmektedir.
+
+rcu_assign_pointer
+--------------------
+
+Çekirdek RCU mekanizmasında yazan akış yazma işlemini bitirdiği zaman göstericiyi
+``rcu_assign_pointer`` fonksiyonu ile güncellemektedir. Bu fonksiyon da aslında
+``include/linux/rcupdate.h`` dosyası içerisinde bir makro biçiminde yazılmıştır:
+
+.. code-block:: c
+
+    #define rcu_assign_pointer(p, v)                                        \
+    do {                                                                    \
+        uintptr_t _r_a_p__v = (uintptr_t)(v);                               \
+        rcu_check_sparse(p, __rcu);                                         \
+                                                                            \
+        if (__builtin_constant_p(v) && (_r_a_p__v) == (uintptr_t)NULL)      \
+            WRITE_ONCE((p), (typeof(p))(_r_a_p__v));                        \
+        else                                                                \
+            smp_store_release(&p, RCU_INITIALIZER((typeof(p))_r_a_p__v));   \
+    } while (0)
+
+Bu makro biraz karışık olsa da özünde ``v`` değerini ``p`` göstericisine atomik bir biçimde
+atamaktadır. ``smp_store_release`` makrosunu görmüştük; bu makro tek yönlü bariyer oluşturmaktaydı.
+Buradaki ``__builtin_constant_p`` gcc ve clang derleyicilerinin built-in bir fonksiyonudur. Makro
+parametresi olan ``v``'nin bir sabit olup olmadığına bakmaktadır. Eğer ``v`` değeri NULL adres
+sabiti ise atama işlemi ``WRITE_ONCE`` makrosuyla yapılmıştır. ``rcu_check_sparse`` fonksiyonu ise
+gcc ve clang derleyicilerinin ``__CHECKER__`` isimli önceden tanımlanmış (predefined) sembolik sabiti
+1 ise birtakım kontrol işlemlerini yapmaktadır. Normal bir çekirdek derlemesinde aslında
+``rcu_check_sparse`` fonksiyonu da debug amaçlı olduğu için koddan kaldırılacaktır.
+
+synchronize_rcu ve call_rcu
+-----------------------------
+
+RCU mekanizmasında yazan akış (yani *update* işlemini yapan akış) göstericinin gösterdiği yerdeki
+veri yapısının kopyasını çıkartır. Sonra da ``rcu_assign_pointer`` makrosuyla artık bu yeni kopyayı
+yayınlar. Tabii okuyan tarafların işlemlerini bitirmesinden sonra eski veri yapısının da silinmesi
+gerekir. Bu silme işlemi yazan akış tarafından yapılmaktadır. Eski veri yapısından okuma yapan tüm
+akışların işlemini bitirmesi için geçen süreye *grace period* denilmektedir. Eski veri yapısının bu
+*grace period* bittikten sonra silinmesi gerekir. İşte bu işlem iki biçimde yapılabilmektedir:
+birincisi ``synchronize_rcu`` fonksiyonu ile, ikincisi de ``call_rcu`` fonksiyonu ile.
+
+``synchronize_rcu`` fonksiyonu *grace period* bitene kadar yazan akışı blokede bekletmektedir. RCU
+mekanizmasında yazan tarafın bekletilmesi size tuhaf gelebilir. Ancak RCU mekanizmasının ana amacı
+okuyan akışların bekletilmeden çalışmasının sağlanmasıdır.
+
+``call_rcu`` fonksiyonu ise beklemeye yol açmaz. Bu fonksiyon bir callback fonksiyonu parametre
+olarak alır. *Grace period* bittiğinde çekirdek bu callback fonksiyonu çağırır ve eski veri yapısı
+bu callback fonksiyon tarafından silinir. Bu fonksiyonların parametrik yapıları şöyledir:
+
+.. code-block:: c
+
+    #include <linux/rcupdate.h>
+
+    void synchronize_rcu(void);
+    void call_rcu(struct rcu_head *head, rcu_callback_t func);
+
+``rcu_callback_t`` türü de şöyle ``typedef`` edilmiştir:
+
+.. code-block:: c
+
+    typedef void (*rcu_callback_t)(struct rcu_head *head);
+
+Her ne kadar ``call_rcu`` fonksiyonu yazan tarafı bekletmiyorsa da bazı uygulamalarda yazan tarafın
+açıkça bekletilmesi de gerekebilmektedir. ``call_rcu`` fonksiyonu hakkında daha ayrıntılı açıklamayı
+izleyen paragraflarda yapacağız.
+
+RCU Mekanizmasının Kullanımına Örnek
+------------------------------------
+
+Şimdi RCU mekanizmasının kullanımına birkaç örnek verelim. Örneğin paylaşılan veri yapısı aşağıdaki
+gibi olsun:
+
+.. code-block:: c
+
+    #define MAX_NAME     32
+
+    struct DEVICE_INFO {
+        int  id;
+        char name[MAX_NAME];
+    };
+
+Burada bu veri yapısının tahsis edilmiş olduğunu ve aşağıdaki gösterici tarafından gösterildiğini
+kabul edelim:
+
+.. code-block:: c
+
+    static struct DEVICE_INFO __rcu *device_info;
+
+Buradaki ``__rcu`` niteleyicisi, bu gösterici yanlışlıkla başka bir amaçla kullanıldığında debug
+amaçlı uyarı oluşturmak ve okunabilirliği artırmak için kullanılmaktadır. Bunun düzgün kodların
+çalışmasında herhangi bir etkisi yoktur.
+
+Şimdi veri yapısından okuma yapan thread'lerin olduğunu varsayalım. Bu thread'ler aşağıdaki gibi
+okumayı yapabilirler:
+
+.. code-block:: c
+
+    static long ioctl_read_device(struct file *filp, unsigned long arg)
+    {
+        struct DEVICE_INFO *di;
+
+        rcu_read_lock();
+
+        di = rcu_dereference(device_info);
+        if (di != NULL)
+            printk(KERN_INFO "Device: id=%d Name=%s\n", di->id, di->name);
+
+        rcu_read_unlock();
+
+        return 0;
+    }
+
+Bu veri yapısına yazma yapan thread'ler olsa bile okuma yapan thread'lerin hiç beklemeden işlemini
+yaptığına dikkat ediniz. Burada okuma faaliyeti olarak aygıt bilgileri çekirdeğin log sistemine
+yazılmıştır. Veri yapısına yazan fonksiyon işlemini şöyle yapabilir:
+
+.. code-block:: c
+
+    static int update_device(int new_id, const char *new_name)
+    {
+        struct DEVICE_INFO *di_new, *di_old;
+
+        /* yeni kopya oluşturuluyor */
+        if ((di_new = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO), GFP_KERNEL)) == NULL)
+            return -ENOMEM;
+
+        /* değişiklikler yapılıyor */
+        di_new->id = new_id;
+        strscpy(di_new->name, new_name, MAX_NAME);
+
+        /* eski göstericinin gösterdiği yer değiştiriliyor */
+        spin_lock(&dev_lock);
+        di_old = rcu_dereference(device_info);
+        rcu_assign_pointer(device_info, di_new);
+        spin_unlock(&dev_lock);
+
+        /* tüm okuyan thread'ler bitene kadar bekletiliyor */
+        synchronize_rcu();
+
+        /* eski veri yapısı serbest bırakılıyor */
+        kfree(di_old);
+
+        return 0;
+    }
+
+Burada bir noktaya dikkat ediniz. Global gösterici okunduktan sonra araya bir yazıcı girip eski alanı
+serbest bırakırsa tanımsız davranış oluşur. Bu nedenle eski değerin alınması ve yeni değerin
+yerleştirilmesi kısmı spinlock ile kritik kod bloğu oluşturularak ele alınmıştır.
+
+Çekirdekte ``rcu_dereference`` işlemi ile ``rcu_assign_pointer`` işlemini tek hamlede yapan
+``rcu_replace_pointer`` isimli bir makro da bulunmaktadır:
+
+.. code-block:: c
+
+    #define rcu_replace_pointer(rcu_ptr, ptr, c)                        \
+    ({                                                                  \
+        typeof(ptr) __tmp = rcu_dereference_protected((rcu_ptr), (c));  \
+        rcu_assign_pointer((rcu_ptr), (ptr));                           \
+        __tmp;                                                          \
+    })
+
+Yukarıdaki kodda bu makroyu da kullanabilirdik. Örneğin:
+
+.. code-block:: c
+
+    di_old = rcu_replace_pointer(device_info, di_new, true);
+
+Makronun son parametresi genellikle ``true`` biçimde geçilmektedir.
 
 
