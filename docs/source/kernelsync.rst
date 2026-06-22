@@ -3728,10 +3728,11 @@ işlemler blokesiz yapılacaksa spinlock, blokeli yapılacaksa semaphore nesnele
             return val;
         }
         spin_unlock(&sd.lock);
-        
+
         return -1;
     }
 
 ``spin_lock`` / ``spin_unlock`` fonksiyonları kendi içerisinde ``barrier()`` çağrısı ile derleyici
 bariyeri de oluşturduğu için artık ``READ_ONCE`` ve ``WRITE_ONCE`` ile volatile erişime de gerek
 kalmamaktadır.
+

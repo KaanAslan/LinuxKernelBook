@@ -1,7 +1,7 @@
 # -- Proje bilgileri -----------------------------------------------------
 project = 'Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi'
-copyright = '2025, Kaan Aslan'
-author = 'Kaan Aslan'
+copyright = 'C ve Sistem Programcıları Derneği'
+author = 'Kaan KAAN & Sebahat ERSOY'
 release = '1.0.0'
 
 # -- Genel yapılandırma ---------------------------------------------------
