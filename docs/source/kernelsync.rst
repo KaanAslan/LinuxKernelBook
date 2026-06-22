@@ -3733,6 +3733,69 @@ işlemler blokesiz yapılacaksa spinlock, blokeli yapılacaksa semaphore nesnele
     }
 
 ``spin_lock`` / ``spin_unlock`` fonksiyonları kendi içerisinde ``barrier()`` çağrısı ile derleyici
-bariyeri de oluşturduğu için artık ``READ_ONCE`` ve ``WRITE_ONCE`` ile volatile erişime de gerek
+bariyeri de oluşturduğu için artık ``READ_ONCE`` ve ``WRITE_ONCE`` ile ``volatile`` erişime de gerek
 kalmamaktadır.
+
+Atomik Acquire/Release Fonksiyonları
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``smp_load_acquire`` ve ``smp_store_release`` makroları erişimi atomik yapmak zorunda değildir.
+Örneğin:
+
+.. code-block:: c
+
+    smp_store_release(&sd.flag, 1);
+
+Burada ``sd.flag`` değişkenine 1 atanmıştır. Ancak ARM gibi RISC işlemcilerinde bu işlem tek bir makine
+komutuyla yapılamamaktadır. Dolayısıyla yukarıdaki çağrı komut yer değiştirmesi üzerinde etkili olsa da
+atomiklik sağlamamaktadır. İşte atomik işlemlerin acquire/release semantiği ile yapılabilmesi için
+aşağıdaki fonksiyonlar bulundurulmuştur:
+
+.. code-block:: c
+
+    atomic_read_acquire(v)              /* atomic_t için acquire load */
+    atomic_set_release(v, i)            /* atomic_t için release store */
+
+    atomic64_read_acquire(v)            /* 64-bit için */
+    atomic64_set_release(v, i)
+
+    atomic_long_read_acquire(v)         /* long için */
+    atomic_long_set_release(v, i)
+
+Bu fonksiyonlar gördüğünüz gibi ``atomic_t``, ``atomic64_t`` ve ``atomic_long_t`` türleri üzerinde
+acquire ve release işlemlerini yapmaktadır. Bu fonksiyonların işlem yapıp önceki değeri döndüren
+fetch'li biçimleri de vardır:
+
+.. code-block:: c
+
+    atomic_fetch_add_acquire(i, v)      /* add ve eski değeri döndür, acquire */
+    atomic_fetch_add_release(i, v)      /* add ve eski değeri döndür, release */
+
+    atomic_fetch_sub_acquire(i, v)
+    atomic_fetch_sub_release(i, v)
+
+    atomic_fetch_or_acquire(i, v)
+    atomic_fetch_or_release(i, v)
+
+    atomic_fetch_and_acquire(i, v)
+    atomic_fetch_and_release(i, v)
+
+    atomic_cmpxchg_acquire(v, old, new)
+    atomic_cmpxchg_release(v, old, new)
+
+Bu fonksiyonların compare-exchange biçimleri de bulunmaktadır:
+
+.. code-block:: c
+
+    /* Her iki durum için relaxed */
+    atomic_cmpxchg_relaxed(v, old, new)
+
+    /* Gösterici versiyonları */
+    cmpxchg_acquire(ptr, old, new)
+    cmpxchg_release(ptr, old, new)
+    cmpxchg_relaxed(ptr, old, new)
+
+Eğer hem atomik işlemlerin yapılması hem de acquire/release işlemlerinin yapılması isteniyorsa
+yukarıdaki fonksiyonlar kullanılabilir.
+
 

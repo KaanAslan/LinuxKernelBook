@@ -1,6 +1,6 @@
 # -- Proje bilgileri -----------------------------------------------------
 project = 'Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi'
-copyright = 'C ve Sistem Programcıları Derneği'
+copyright = 'C ve Sistem Programcıları Derneği (1993)'
 author = 'Kaan KAAN & Sebahat ERSOY'
 release = '1.0.0'
 
