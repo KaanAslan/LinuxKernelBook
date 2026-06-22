@@ -3853,16 +3853,18 @@ ediniz:
     read()
     {
         read_lock(...);
-        /* ... */
-        /* ... */
+        ...
+        ...
+        ...
         read_unlock(...);
     }
 
     write()
     {
         write_lock(...);
-        /* ... */
-        /* ... */
+        ...
+        ...
+        ...
         write_unlock(...);
     }
 
