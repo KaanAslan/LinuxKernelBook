@@ -3551,132 +3551,82 @@ aşağısına alınmasında bir sorun oluşturmayacağı görülecektir.
         int flag;     /* 0 = boş, 1 = dolu */
     };
 
-Okuyan taraf yeni bilginin geldiğini ``flag`` değişkenine bakarak tespit ediyor olsun. Bu durumda okuyan
-tarafın önce ``flag`` değişkenine bakarak ``payload`` elemanına başvurması gerekir. Bu işlemin aşağıdaki
+Okuyan taraf yeni bilginin gelip gelmediğini geldiğini ``flag`` elemanına bakarak tespit ediyor olsun. Bu durumda okuyan
+tarafın önce ``flag`` elemanına bakarak ``payload`` elemanına başvurması gerekir. Bu işlemin aşağıdaki
 biçimde yapılması çok işlemcili ya da çok çekirdekli sistemlerde soruna yol açacaktır:
 
 .. code-block:: c
 
-    int consumer(void)
-    {
-        int val;
-
-        if (READ_ONCE(sd.flag) == 1) {          /* Dikkat! Sorun oluşabilir! */
-            val = READ_ONCE(sd.payload);
-            WRITE_ONCE(sd.flag, 0);
-            return val;
-        }
-        return -1;
+    if (READ_ONCE(sd.flag) == 1) {          /* Dikkat! Sorun oluşabilir! */
+        val = READ_ONCE(sd.payload);
+        WRITE_ONCE(sd.flag, 0);
+        use(val);
     }
+    /* ... */
 
-Burada eğer diğer işlemci ya da çekirdek ``sd.payload`` okumasını ``sd.flag`` karşılaştırmasının
-yukarısında görürse (başka bir deyişle bu işlem daha önce yapılırsa) kod hatalı çalışacaktır:
+Burada işlemci ya da çekirdek ``sd.payload`` okumasını ``sd.flag`` okumasının yukarısına taşıyabilecektir.
+İşlemcinin ``sd.payload`` okumasını yukarıya taşımasını ve işleme sokmasını sembolik kodlarla şöyle gösterebiliriz:
+
+.. code-block:: c
+
+    <rob tamponu> = sd.payload;
+    if (READ_ONCE(sd.flag) == 1) {
+        WRITE_ONCE(sd.flag, 0);
+        <yazmaç> = <rob tamponu>;
+        val = <yazmaç>;
+        use(val);
+    }
+    /* koşul sağlanmaza rob tamponundaki değer yazmaca yansıtılmayacak */
+
+Buradaki *<rob tamponu>* işlemcinin "reorder tamponunu (reorder buffer)" belirtmektedir. İşlemci *reorden tmponundaki*
+okunmuş olan değeri yazamaca aktaralabilir ya da onun etkisini ortadan kaldırabilir (geri alabilir). 
+
+Tabii burada siz "işlemci bu okumayı yukarıya taşıyamaz, çünkü o zaman kodun anlamı değişir" diye düşünebilirsiniz. 
+Çünkü işlemci eğer ``payload`` okumasını yukarı taşırsa bu artık ``if`` içerisinde olmaktan çıkacaktır. Ancak 
+işlemciler bu yukarı taşıma işlemini koşul altında bile yapabilmektedir. Buna *speculative load* işlemi denilmektedir. 
+*Speculative load* işleminde işlemci koşul altında bile olsa bellek erişimlerini koşulun yukarısına taşıyabilmekte 
+ancak koşul sağlanmıyorsa onun etkisini geri alabilmektedir. Peki buradaki sorun nedir? İşte başka bir işlemci
+ya da çekirdek aşağıda ok ile gösterilen noktada ``sd.payload`` değişkenine değer yazıp sonra ``sd.flag`` değişkenini"
+set ederse yanlış bilgi okunabilecektir:
+
+.. code-block:: c
+
+    <rob tamponu> = sd.payload;
+            <--- Dikkat! bu noktada sd.payload değeri değiştirilirse bu kod istenildiği gibi çalışmaz
+    if (READ_ONCE(sd.flag) == 1) {
+        WRITE_ONCE(sd.flag, 0);
+        <yazmaç> = <rob tamponu>;
+        val = <yazmaç>;
+        use(val);
+    }
+    /* koşul sağlanmaza rob tamponundaki değer yazmaca yansıtılmayacak */
+
+Biz yukarıdaki işlemi bellek bariyeri ile de yapabiliriz:
+
+.. code-block:: c
+
+    if (READ_ONCE(sd.flag) == 1) {  
+        smp_rmb();        
+        val = READ_ONCE(sd.payload);
+        WRITE_ONCE(sd.flag, 0);
+        use(val);
+    }
+    /* ... */
+
+Burada aşağıdaki iki işlem arasında bir bariyer uygulamaya gerek yoktur:
 
 .. code-block:: c
 
     val = READ_ONCE(sd.payload);
-    if (READ_ONCE(sd.flag) == 1) {
-        WRITE_ONCE(sd.flag, 0);
-        return val;
-    }
+    WRITE_ONCE(sd.flag, 0);
 
-    /* dikkat! Koşul sağlanmıyorsa val işlemi yapılmamış gibi durum yaratılır */
-
-Burada ``sd.payload`` ile ``sd.flag`` birbirleriyle ilgisiz bellek adreslerinde bulunduğu için işlemci
-bunların sırasını yer değiştirebilir. Tabii burada siz *işlemci bunu yukarıya taşıyamaz, çünkü o zaman
-kodun anlamı değişir* diye düşünebilirsiniz. Çünkü işlemci eğer ``payload`` okumasını yukarı taşırsa bu
-artık ``if`` içerisinde olmaktan çıkacaktır. Ancak işlemciler bu yukarı taşıma işlemini koşul altında
-bile yapabilmektedir. Buna *speculative load* işlemi denilmektedir. *Speculative load* işleminde işlemci
-koşul altında bile olsa bellek erişimlerini koşulun yukarısına taşıyabilmekte ancak koşul sağlanmıyorsa
-onun etkisini ortadan kaldırabilmektedir. İşte buradaki sorun başka bir işlemci ya da çekirdeğin koşul
-sağlanmadığında bu işlem henüz ortadan kaldırılmadan onun etkisini görebilmesidir. Yukarıdaki işlem
-işlemci tarafından adeta şöyle yapılabilmektedir:
-
-.. code-block:: c
-
-    val = READ_ONCE(sd.payload);
-    if (READ_ONCE(sd.flag) == 1) {
-        WRITE_ONCE(sd.flag, 0);
-        return val;
-    }
-    else
-        /* sanki val = READ_ONCE(sd.payload) işlemi hiç yapılmamış gibi durum oluştur */
-
-İşte işlemci kendi yaptığı *speculative load* işlemini ortadan kaldıramadan başka bir işlemci aynı
-nesneye erişirse koşul ihlal edilmiş gibi durum oluşabilmektedir:
-
-.. code-block:: c
-
-    val = READ_ONCE(sd.payload);
-    /* ---> Bu sırada diğer işlemci payload değerini değiştirirse burada eski değer gözükebilir */
-    if (READ_ONCE(sd.flag) == 1) {
-        WRITE_ONCE(sd.flag, 0);
-        return val;
-    }
-    else
-        /* sanki val = READ_ONCE(sd.payload) işlemi hiç yapılmamış gibi durum oluştur */
-
-Burada diğer bir işlemcide ya da çekirdekte çalışan kod ``sd.payload`` değişkenini ok ile belirtilen
-yerde değiştirip ``sd.flag`` değişkenini 1 yaparsa eski değerin okunması gibi bir durum oluşabilecektir.
-Şimdi kodumuzun bu kısmını düzeltelim:
-
-.. code-block:: c
-
-    int consumer(void)
-    {
-        int val;
-
-        if (smp_load_acquire(&sd.flag) == 1) {      /* olması gereken biçim */
-            val = READ_ONCE(sd.payload);
-            WRITE_ONCE(sd.flag, 0);
-            return val;
-        }
-        return -1;
-    }
-
-Burada artık ``sd.flag`` okumasının aşağısındaki bellek erişimleri bu okumanın yukarısına taşınmayacaktır.
-Ancak hâlâ burada bir sorun daha vardır. ``READ_ONCE`` okumasıyla ``WRITE_ONCE`` yazması da işlemci
-tarafından farklı sıralarda yapılabilir:
-
-.. code-block:: c
-
-    int consumer(void)
-    {
-        int val;
-
-        if (smp_load_acquire(&sd.flag) == 1) {      /* olması gereken biçim */
-            val = READ_ONCE(sd.payload);
-            /* ---> dikkat: burada yer değiştirme yapılabilir! */
-            WRITE_ONCE(sd.flag, 0);
-            return val;
-        }
-        return -1;
-    }
+Bunlar zaten birbirinden bağımsız işlemlerdir. İşlemci bağımlılık nedeniyle ``WRITE_ONCE(sd.flag, 0)`` ataması 
+zaten ``if`` deyiminin yukarısına taşınamaz. ``Speculative store`` biçiminde bir işlem de yoktur.
 
 İşte bu yer değiştirmenin de engellenmesi için izleyen paragrafta açıklayacağımız ``smp_store_release``
-ile atamanın yapılması gerekmektedir.
-
-Biz yukarıdaki işlemi bellek bariyeri ile de yapabilirdik:
-
-.. code-block:: c
-
-    int consumer(void)
-    {
-        int val;
-
-        if (READ_ONCE(sd.flag) == 1) {
-            smp_mb();                           /* bellek bariyeri uygulanabilir ancak maliyeti yüksek */
-            val = READ_ONCE(sd.payload);
-            smp_mb();                           /* bellek bariyeri uygulanabilir ancak maliyeti yüksek */
-            WRITE_ONCE(sd.flag, 0);
-            return val;
-        }
-        return -1;
-    }
-
-Ancak bu biçimdeki bellek bariyerleri yukarıda da belirttiğimiz gibi pipeline mekanizmasını bozması
-nedeniyle yavaşlamaya yol açmaktadır.
+ile atamanın yapılması gerekmektedir. Ancak bu biçimdeki bellek bariyerleri daha önce de belirttiğimiz gibi boru 
+hattı mekanizmasını bozması nedeniyle yavaşlamaya yol açmaktadır.
 
 Intel işlemcilerinde yalnızca Store/Load işlemlerinde komut yer değiştirmesinin uygulandığını anımsayınız.
-Bu nedenle Intel işlemcilerinde yukarıdaki önlem alınmasa bir sorun oluşmayacaktır. Ancak ARM gibi RISC
+Bu nedenle Intel işlemcilerinde yukarıdaki önlem alınmasa bile bir sorun oluşmayacaktır. Ancak ARM gibi RISC
 işlemcilerinde bu önlemin mutlaka alınması gerekmektedir.
