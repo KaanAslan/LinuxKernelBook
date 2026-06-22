@@ -3966,7 +3966,7 @@ Buradaki ``rcu_read_lock`` ve ``rcu_read_unlock`` fonksiyonları aslında ``pree
         __acquire(RCU);
         rcu_lock_acquire(&rcu_lock_map);
         RCU_LOCKDEP_WARN(!rcu_is_watching(),
-                "rcu_read_lock() used illegally while idle");
+                         "rcu_read_lock() used illegally while idle");
     }
 
 Buradaki ``__rcu_read_lock`` fonksiyonu dışındaki çağrılar debug amaçlıdır, konfigürasyon
@@ -4182,4 +4182,324 @@ Yukarıdaki kodda bu makroyu da kullanabilirdik. Örneğin:
 
 Makronun son parametresi genellikle ``true`` biçimde geçilmektedir.
 
+Yukarıdaki örnek RCU uygulamasını bir aygıt sürücü yoluyla test edebiliriz. Tabii test için kullanıcı
+modundaki thread'lerin iç içe girmesini sağlamalıyız. Biz testi rastgele beklemelerle yüzeysel olarak
+yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
 
+``rcu-test-driver.h``
+
+.. code-block:: c
+
+    #ifndef TEST_DRIVER_H_
+    #define TEST_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    #define MAX_NAME     32
+
+    struct DEVICE_INFO {
+        int id;
+        char name[MAX_NAME];
+    };
+
+    #define TEST_DRIVER_MAGIC    'r'
+    #define IOC_RCU_READ         _IOR(TEST_DRIVER_MAGIC, 0, struct DEVICE_INFO)
+    #define IOC_RCU_WRITE        _IOW(TEST_DRIVER_MAGIC, 1, struct DEVICE_INFO)
+
+    #endif
+
+``rcu-test-driver.c``
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include "rcu-test-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("rcu-test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+    static long ioctl_read_device(struct file *filp, unsigned long arg);
+    static long ioctl_update_device(struct file *filp, unsigned long arg);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static struct DEVICE_INFO __rcu *g_device_info;
+    static DEFINE_SPINLOCK(g_dev_lock);
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "rcu-test-driver initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "rcu-test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        if ((g_device_info = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO),
+                GFP_KERNEL)) == NULL) {
+            unregister_chrdev_region(g_dev, 1);
+            cdev_del(&g_cdev);
+            return -ENOMEM;
+        }
+
+        g_device_info->id = 100;
+        strscpy(g_device_info->name, "Sample", MAX_NAME);
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+        kfree(g_device_info);
+
+        printk(KERN_INFO "rcu-test-driver exit...\n");
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        switch (cmd) {
+            case IOC_RCU_READ:
+                result = ioctl_read_device(filp, arg);
+                break;
+            case IOC_RCU_WRITE:
+                result = ioctl_update_device(filp, arg);
+                break;
+            default:
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    static long ioctl_read_device(struct file *filp, unsigned long arg)
+    {
+        struct DEVICE_INFO *di;
+
+        rcu_read_lock();
+
+        di = rcu_dereference(g_device_info);
+        if (di != NULL) {
+            if (copy_to_user((struct DEVICE_INFO *)arg, di, sizeof(struct DEVICE_INFO)) != 0)
+                return -EFAULT;
+            printk(KERN_INFO "Device: id=%d Name=%s\n", di->id, di->name);
+        }
+
+        rcu_read_unlock();
+
+        return 0;
+    }
+
+    static long ioctl_update_device(struct file *filp, unsigned long arg)
+    {
+        struct DEVICE_INFO *di_new, *di_old;
+        struct DEVICE_INFO di_user;
+
+        if (copy_from_user(&di_user, (struct DEVICE_INFO *)arg,
+                sizeof(struct DEVICE_INFO)) != 0)
+            return -EFAULT;
+
+        if ((di_new = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO),
+                GFP_KERNEL)) == NULL)
+            return -ENOMEM;
+
+        di_new->id = di_user.id;
+        strscpy(di_new->name, di_user.name, MAX_NAME);
+
+        spin_lock(&g_dev_lock);
+        di_old = rcu_dereference(g_device_info);
+        rcu_assign_pointer(g_device_info, di_new);
+        spin_unlock(&g_dev_lock);
+
+        synchronize_rcu();
+
+        kfree(di_old);
+
+        printk(KERN_INFO "DEVICE_INFO updated: %d, %s\n", di_user.id, di_user.name);
+
+        return 0;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+``Makefile``
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+
+``load``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+Aşağıdaki ``unload`` betiği sürücüyü sistemden kaldırır:
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+
+``rcu-test.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <time.h>
+    #include <stdint.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <pthread.h>
+    #include <sys/ioctl.h>
+    #include "rcu-test-driver.h"
+
+    void exit_sys(const char *msg);
+    void *thread_proc_read(void *param);
+    void *thread_proc_update(void *param);
+
+    int main(void)
+    {
+        int fd;
+        int result;
+        pthread_t tid_read, tid_update;
+
+        srand(time(NULL));
+
+        if ((fd = open("rcu-test-driver", O_RDWR)) == -1)
+            exit_sys("open");
+
+        if ((result = pthread_create(&tid_update, NULL, thread_proc_update,
+                (void *)fd)) != 0) {
+            fprintf(stderr, "pthread_create: %s\n", strerror(result));
+            exit(EXIT_FAILURE);
+        }
+
+        if ((result = pthread_create(&tid_read, NULL, thread_proc_read,
+                (void *)fd)) != 0) {
+            fprintf(stderr, "pthread_create: %s\n", strerror(result));
+            exit(EXIT_FAILURE);
+        }
+
+        pthread_join(tid_read, NULL);
+        pthread_join(tid_update, NULL);
+
+        close(fd);
+
+        return 0;
+    }
+
+    void *thread_proc_read(void *param)
+    {
+        int fd;
+        struct DEVICE_INFO di;
+
+        fd = (int)param;
+
+        for (int i = 0; i < 10; ++i) {
+            if (ioctl(fd, IOC_RCU_READ, &di) == -1)
+                exit_sys("ioctl");
+            printf("Device: id=%d Name=%s\n", di.id, di.name);
+            usleep(rand() % 100000);
+        }
+
+        return NULL;
+    }
+
+    void *thread_proc_update(void *param)
+    {
+        int fd;
+        struct DEVICE_INFO di;
+
+        fd = (int)param;
+
+        for (int i = 0; i < 10; ++i) {
+            di.id = i + 1000;
+            strcpy(di.name, "My Device");
+
+            if (ioctl(fd, IOC_RCU_WRITE, &di) == -1)
+                exit_sys("ioctl");
+            usleep(rand() % 100000);
+        }
+
+        return NULL;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+
+        exit(EXIT_FAILURE);
+    }
