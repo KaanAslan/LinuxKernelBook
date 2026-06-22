@@ -3532,9 +3532,9 @@ yukarısındaki bellek erişimleri aşağısına taşınabilir. Örneğin:
     bellek yazması - 3
 
 Burada 1, 2, 3 numaralı bellek erişimleri işlemci tarafından ``smp_load_acquire()`` çağrısının yukarına
-taşınamaz. Ancak yukarısındakiler aşağısına taşınabilir. Görüldüğü gibi burada tek yönlü bir bariyer söz
-konusudur. ``rmb``, ``wmb`` ve ``mb`` makrolarının hepsi çift yönlü bariyer oluşturmaktadır. Peki bu tek
-yönlü bariyerin anlamı nedir? İşte bazen önce bir bellek okuması yapılıp sonra ona göre başka yerlerden
+taşınamaz. Ancak yukarısındakiler aşağısına taşınabilir. Görüldüğü gibi burada belli bir adrese dayalı 
+tek yönlü bir bariyer söz konusudur. ``rmb``, ``wmb`` ve ``mb`` makrolarının hepsi çift yönlü bariyer oluşturmaktadır. 
+Peki bu tek yönlü bariyerin anlamı nedir? İşte bazen önce bir bellek okuması yapılıp sonra ona göre başka yerlerden
 okumalar yapılabilir. Bunlar bağımsız işlemler olduğu için ARM gibi RISC işlemcileri komutları yer
 değiştirebilmektedir. Bu tür durumlarda çift yönlü bariyer uygulamak yerine tek yönlü bariyer uygulanması
 modern işlemcilerdeki performansı artırabilmektedir. ``smp_load_acquire`` makrosunun bir erişim yaptığına
@@ -3613,7 +3613,7 @@ Biz yukarıdaki işlemi bellek bariyeri ile de yapabiliriz:
     }
     /* ... */
 
-Burada aşağıdaki iki işlem arasında bir bariyer uygulamaya gerek yoktur:
+Burada aşağıdaki iki işlem arasında bir bariyer uygulamaya gerek olmadığına dikkat ediniz:
 
 .. code-block:: c
 
@@ -3623,9 +3623,18 @@ Burada aşağıdaki iki işlem arasında bir bariyer uygulamaya gerek yoktur:
 Bunlar zaten birbirinden bağımsız işlemlerdir. İşlemci bağımlılık nedeniyle ``WRITE_ONCE(sd.flag, 0)`` ataması 
 zaten ``if`` deyiminin yukarısına taşınamaz. ``Speculative store`` biçiminde bir işlem de yoktur.
 
-İşte bu yer değiştirmenin de engellenmesi için izleyen paragrafta açıklayacağımız ``smp_store_release``
-ile atamanın yapılması gerekmektedir. Ancak bu biçimdeki bellek bariyerleri daha önce de belirttiğimiz gibi boru 
-hattı mekanizmasını bozması nedeniyle yavaşlamaya yol açmaktadır.
+Daha önce de belirttiğimiz gibi yukarıdaki sorunda ``s``mp_rb bellek bariyeri işlemcinin boru hattı mekanizmasını 
+bozduğundan dolayı göreli bir performans kaybına yol açmaktadır. İşte bu performans kaybı büyük ölçüde ``smp_load_acquire``
+makrosu ile ortadan kaldırılabilmektedir. Bu tür tek yönlü okuma bariyerleri için smp_load_acquire tercih 
+edilmelidir:
+
+.. code-block:: c
+
+    if (smp_load_acquire(&sd.flag) == 1) {
+        val = READ_ONCE(sd.payload);
+        WRITE_ONCE(sd.flag, 0);
+        use(val);
+    }
 
 Intel işlemcilerinde yalnızca Store/Load işlemlerinde komut yer değiştirmesinin uygulandığını anımsayınız.
 Bu nedenle Intel işlemcilerinde yukarıdaki önlem alınmasa bile bir sorun oluşmayacaktır. Ancak ARM gibi RISC
