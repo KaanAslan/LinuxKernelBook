@@ -3810,30 +3810,120 @@ olmadığı ``__STDC_NO_ATOMICS__`` makrosuyla belirlenebilmektedir. C11 ile ekl
 fonksiyonları ve bunların yaklaşık Linux çekirdeğindeki karşılıklarını aşağıda tablo biçiminde
 veriyoruz:
 
-.. image:: _static/c11-acquire-release.png
-   :alt: C11 Acquire/Release — Linux Çekirdeği Karşılaştırması
-   :align: center
-   :width: 90%
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+|                              C11                               |             Linux Çekirdeği             |             Açıklama             |
++================================================================+=========================================+==================================+
+| atomic_load_explicit(…, acquire)                               | smp_load_acquire                        | Acquire load, normal değişken    |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_load_explicit(…, acquire)                               | atomic_read_acquire                     | Acquire load, atomic_t           |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_store_explicit(…, release)                              | smp_store_release                       | Release store, normal değişken   |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_store_explicit(…, release)                              | atomic_set_release                      | Release store, atomic_t          |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_exchange_explicit(…, acq_rel)                           | xchg + barrier                          | Exchange, her iki yön            |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_compare_exchange_strong_explicit(…, acquire, relaxed)   | cmpxchg_acquire                         | CAS, acquire                     |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_compare_exchange_strong_explicit(…, release, relaxed)   | cmpxchg_release                         | CAS, release                     |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_compare_exchange_strong_explicit(…, acq_rel, relaxed)   | cmpxchg                                 | CAS, tam barrier                 |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_fetch_add_explicit(…, acquire)                          | atomic_fetch_add_acquire                | Add + acquire load               |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_fetch_add_explicit(…, release)                          | atomic_fetch_add_release                | Add + release store              |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_thread_fence(acquire)                                   | smp_rmb / smp_acquire__after_ctrl_dep   | Acquire fence                    |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_thread_fence(release)                                   | smp_wmb                                 | Release fence                    |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_thread_fence(seq_cst)                                   | smp_mb                                  | Full barrier                     |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_load_explicit(…, relaxed)                               | READ_ONCE                               | Barrier yok, compiler fence      |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_store_explicit(…, relaxed)                              | WRITE_ONCE                              | Barrier yok, compiler fence      |
++----------------------------------------------------------------+-----------------------------------------+----------------------------------+
 
 Bu fonksiyonların ayrıntıları için C standartlarına başvurabilirsiniz. Tabii daha önceden de
 belirttiğimiz gibi hiçbir zaman Linux çekirdeğinde derleyicinin sunduğu bu tür fonksiyonlar
 kullanılmamaktadır. C++'a da C++11 ile birlikte bariyer ve acquire/release fonksiyonları sınıfsal
 bir temsille eklenmiştir:
 
-.. image:: _static/cpp11-acquire-release.png
-   :alt: C++11 Acquire/Release — Linux Çekirdeği Karşılaştırması
-   :align: center
-   :width: 90%
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+|                                           C++11                                           |             Linux Çekirdeği             |             Açıklama             |
++===========================================================================================+=========================================+==================================+
+| atomic<T>.load(memory_order_acquire)                                                      | smp_load_acquire                        | Acquire load, normal değişken    |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.load(memory_order_acquire)                                                      | atomic_read_acquire                     | Acquire load, atomic_t           |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.store(val, memory_order_release)                                                | smp_store_release                       | Release store, normal değişken   |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.store(val, memory_order_release)                                                | atomic_set_release                      | Release store, atomic_t          |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.exchange(val, memory_order_acq_rel)                                             | xchg + barrier                          | Exchange, her iki yön            |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.compare_exchange_strong(exp, des, memory_order_acquire, memory_order_relaxed)   | cmpxchg_acquire                         | CAS, acquire                     |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.compare_exchange_strong(exp, des, memory_order_release, memory_order_relaxed)   | cmpxchg_release                         | CAS, release                     |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.compare_exchange_strong(exp, des, memory_order_acq_rel, memory_order_relaxed)   | cmpxchg                                 | CAS, tam barrier                 |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.fetch_add(val, memory_order_acquire)                                            | atomic_fetch_add_acquire                | Add + acquire load               |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.fetch_add(val, memory_order_release)                                            | atomic_fetch_add_release                | Add + release store              |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_thread_fence(memory_order_acquire)                                                 | smp_rmb / smp_acquire__after_ctrl_dep   | Acquire fence                    |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_thread_fence(memory_order_release)                                                 | smp_wmb                                 | Release fence                    |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic_thread_fence(memory_order_seq_cst)                                                 | smp_mb                                  | Full barrier                     |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.load(memory_order_relaxed)                                                      | READ_ONCE                               | Barrier yok, compiler fence      |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+| atomic<T>.store(val, memory_order_relaxed)                                                | WRITE_ONCE                              | Barrier yok, compiler fence      |
++-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
 
 Bu sınıfların ayrıntıları için de C++ standartlarına başvurabilirsiniz.
 
 Ayrıca daha önceden de belirttiğimiz gibi bariyerler ve acquire/release mekanizması için gcc'de
 built-in fonksiyonlar da bulunmaktadır. Bunların listesini de aşağıda tablo biçiminde veriyoruz:
 
-.. image:: _static/gcc-sync-builtins.png
-   :alt: GCC __sync Built-in — Linux Kernel Karşılaştırması
-   :align: center
-   :width: 90%
++-----------------------------------------------+------------------------+------------------------------------------------+
+|              GCC __sync Built-in              |      Linux Kernel      |                    Açıklama                    |
++===============================================+========================+================================================+
+| __sync_fetch_and_add(ptr, val)                | atomic_fetch_add       | Add, full barrier, eski değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_fetch_and_sub(ptr, val)                | atomic_fetch_sub       | Sub, full barrier, eski değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_fetch_and_and(ptr, val)                | atomic_fetch_and       | AND, full barrier, eski değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_fetch_and_or(ptr, val)                 | atomic_fetch_or        | OR, full barrier, eski değeri döndürür         |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_fetch_and_xor(ptr, val)                | atomic_fetch_xor       | XOR, full barrier, eski değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_fetch_and_nand(ptr, val)               | —                      | NAND, full barrier, kernel karşılığı yok       |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_add_and_fetch(ptr, val)                | atomic_add_return      | Add, full barrier, yeni değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_sub_and_fetch(ptr, val)                | atomic_sub_return      | Sub, full barrier, yeni değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_and_and_fetch(ptr, val)                | —                      | AND, full barrier, yeni değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_or_and_fetch(ptr, val)                 | —                      | OR, full barrier, yeni değeri döndürür         |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_xor_and_fetch(ptr, val)                | —                      | XOR, full barrier, yeni değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_bool_compare_and_swap(ptr, old, new)   | cmpxchg (bool sonuç)   | CAS, full barrier, başarı/başarısız döndürür   |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_val_compare_and_swap(ptr, old, new)    | cmpxchg (eski değer)   | CAS, full barrier, eski değeri döndürür        |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_lock_test_and_set(ptr, val)            | xchg                   | Exchange, yalnızca acquire barrier             |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_lock_release(ptr)                      | smp_store_release      | Sıfırlama, yalnızca release barrier            |
++-----------------------------------------------+------------------------+------------------------------------------------+
+| __sync_synchronize()                          | smp_mb                 | Full memory barrier                            |
++-----------------------------------------------+------------------------+------------------------------------------------+
+
 
 RCU (Read-Copy-Update) Mekanizması
 =====================================
@@ -4503,3 +4593,507 @@ Aşağıdaki ``unload`` betiği sürücüyü sistemden kaldırır:
 
         exit(EXIT_FAILURE);
     }
+
+call_rcu ve kfree_rcu
+---------------------
+
+Yukarıda da belirttiğimiz gibi yazan taraflar ``synchronize_rcu`` fonksiyonunu çağırdığında *grace
+period* kadar bir bloke oluşabilmektedir. Bunun ``call_rcu`` fonksiyonu ile engellenebileceğini
+söylemiştik. ``call_rcu`` fonksiyonu bir callback fonksiyonu argüman olarak alır ve bunu saklar;
+çekirdek de *grace period* bittiğinde bu callback fonksiyonu çağırır. ``call_rcu`` fonksiyonunun
+parametrik yapısını anımsatmak istiyoruz:
+
+.. code-block:: c
+
+    void call_rcu(struct rcu_head *head, rcu_callback_t func);
+
+Buradaki ``rcu_head`` yapısı callback mekanizmasının işletilmesinde kullanılmaktadır. Sistem
+programcısı paylaşılan nesneye ilişkin yapının içerisine ``rcu_head`` isimli yapı türünden bir eleman
+yerleştirmeli ve fonksiyonun birinci parametresine bu elemanın adresini vermelidir. Örneğin:
+
+.. code-block:: c
+
+    struct DEVICE_INFO {
+        int id;
+        char name[MAX_NAME];
+        struct rcu_head rcu;
+    };
+
+İşte ``call_rcu`` fonksiyonunun birinci parametresine paylaşılan alana ilişkin yapının içerisindeki
+``rcu_head`` türünden elemanın adresi (örneğimizde yapının ``rcu`` elemanı), ikinci parametresine de
+callback fonksiyonun adresi geçirilmelidir. Fonksiyonun ikinci parametresindeki türün typedef bildirimine
+dikkat ediniz:
+
+.. code-block:: c
+
+    typedef void (*rcu_callback_t)(struct rcu_head *head);
+
+Bu durumda sistem programcısının ``call_rcu`` fonksiyonunun ikinci parametresine geri dönüş değeri
+``void`` olan, parametresi ``struct rcu_head *`` türünden olan bir fonksiyonun adresini geçmesi gerekir.
+``struct rcu_head`` yapısı çekirdeğin callback mekanizmasının yönetebilmesi için gereken elemanları
+barındırmaktadır. Bu yapı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+    struct callback_head {
+        struct callback_head *next;
+        void (*func)(struct callback_head *head);
+    } __attribute__((aligned(sizeof(void *))));
+    #define rcu_head callback_head
+
+Örneğin:
+
+.. code-block:: c
+
+    struct DEVICE_INFO *di_new, *di_old;
+    /* ... */
+
+    spin_lock(&g_dev_lock);
+    di_old = rcu_dereference(g_device_info);
+    rcu_assign_pointer(g_device_info, di_new);
+    spin_unlock(&g_dev_lock);
+
+    if (di_old != NULL)
+        call_rcu(&di_old->rcu, device_rcu_callback);
+
+``call_rcu`` fonksiyonunun ikinci parametresine geçirdiğimiz callback fonksiyonun parametresi aslında
+kendi yapı nesnemizin içerisindeki ``rcu_head`` elemanının adresidir. Biz de bu adresten hareketle asıl
+nesne adresini ``container_of`` makrosuyla elde edebiliriz. Örneğin:
+
+.. code-block:: c
+
+    static void device_rcu_callback(struct rcu_head *hrcu)
+    {
+        struct DEVICE_INFO *di;
+
+        di = container_of(hrcu, struct DEVICE_INFO, rcu);
+        kfree(di);
+    }
+
+kfree_rcu Makrosu
+------------------
+
+Ayrıca Linux çekirdeğinde ``call_rcu`` işlemi ile ``kfree`` işlemini birlikte yapan ``kfree_rcu`` isimli
+bir çekirdek makrosu da bulunmaktadır. ``kfree_rcu`` makrosu iki parametre almaktadır:
+
+.. code-block:: c
+
+    kfree_rcu(ptr, rcu_head_fieldname);
+
+Makronun birinci parametresi serbest bırakılacak nesnenin adresini, ikinci parametresi de nesneye ilişkin
+yapıdaki ``rcu_head`` elemanının ismini almaktadır. Örneğin:
+
+.. code-block:: c
+
+    struct DEVICE_INFO *di_new, *di_old;
+    /* ... */
+
+    spin_lock(&g_dev_lock);
+    di_old = rcu_dereference(g_device_info);
+    rcu_assign_pointer(g_device_info, di_new);
+    spin_unlock(&g_dev_lock);
+
+    if (di_old != NULL)
+        kfree_rcu(di_old, rcu);
+
+Yukarıda yaptığımız örneği aşağıda ``call_rcu`` kullanarak yeniden veriyoruz.
+
+Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasını kullanan tam bir çekirdek modülü
+örneği verilmektedir:
+
+``rcu-test-driver.c``
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include "rcu-test-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("rcu-test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+    static long ioctl_read_device(struct file *filp, unsigned long arg);
+    static long ioctl_update_device(struct file *filp, unsigned long arg);
+
+    static void device_rcu_callback(struct rcu_head *hrcu);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    struct DEVICE_INFO {
+        int id;
+        char name[MAX_NAME];
+        struct rcu_head rcu;
+    };
+
+    static struct DEVICE_INFO __rcu *g_device_info;
+    static DEFINE_SPINLOCK(g_dev_lock);
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "rcu-test-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "rcu-test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        if ((g_device_info = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO), GFP_KERNEL)) == NULL) {
+            unregister_chrdev_region(g_dev, 1);
+            cdev_del(&g_cdev);
+            return -ENOMEM;
+        }
+
+        g_device_info->id = 100;
+        strscpy(g_device_info->name, "Sample", MAX_NAME);
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+        kfree(g_device_info);
+
+        printk(KERN_INFO "rcu-test-driver module exit...\n");
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        return 0;
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        switch (cmd) {
+            case IOC_RCU_READ:
+                result = ioctl_read_device(filp, arg);
+                break;
+            case IOC_RCU_WRITE:
+                result = ioctl_update_device(filp, arg);
+                break;
+            default:
+                printk(KERN_INFO "invalid ioctl code!..\n");
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    static long ioctl_read_device(struct file *filp, unsigned long arg)
+    {
+        struct DEVICE_INFO *di;
+        struct DEVICE_PARAM di_param;
+
+        rcu_read_lock();
+        di = rcu_dereference(g_device_info);
+        if (di != NULL) {
+            di_param.id = di->id;
+            strscpy(di_param.name, di->name, MAX_NAME);
+            if (copy_to_user((struct DEVICE_PARAM *)arg, &di_param, sizeof(struct DEVICE_PARAM)) != 0)
+                return -EFAULT;
+            printk(KERN_INFO "Device: id=%d Name=%s\n", di->id, di->name);
+        }
+        rcu_read_unlock();
+
+        return 0;
+    }
+
+    static long ioctl_update_device(struct file *filp, unsigned long arg)
+    {
+        struct DEVICE_INFO *di_new, *di_old;
+        struct DEVICE_PARAM di_param;
+
+        if (copy_from_user(&di_param, (struct DEVICE_PARAM *)arg, sizeof(struct DEVICE_PARAM)) != 0)
+            return -EFAULT;
+
+        if ((di_new = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO), GFP_KERNEL)) == NULL)
+            return -ENOMEM;
+
+        di_new->id = di_param.id;
+        strscpy(di_new->name, di_param.name, MAX_NAME);
+
+        spin_lock(&g_dev_lock);
+        di_old = rcu_dereference(g_device_info);
+        rcu_assign_pointer(g_device_info, di_new);
+        spin_unlock(&g_dev_lock);
+
+        if (di_old != NULL)
+            call_rcu(&di_old->rcu, device_rcu_callback);
+
+        /*
+        if (di_old != NULL)
+            kfree_rcu(di_old, rcu);
+        */
+
+        printk(KERN_INFO "DEVICE_INFO updated: %d, %s\n", di_param.id, di_param.name);
+
+        return 0;
+    }
+
+    static void device_rcu_callback(struct rcu_head *hrcu)
+    {
+        struct DEVICE_INFO *di;
+
+        di = container_of(hrcu, struct DEVICE_INFO, rcu);
+        kfree(di);
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+RCU'lu Bağlı Listeler
+---------------------
+
+Biz çekirdekteki veri yapılarını ele alırken bazı veri yapılarının RCU'lu biçimlerinin olduğunu da
+görmüştük. Örneğin bağlı liste işlemlerini yapan fonksiyonların RCU biçimleri de vardı. RCU'lu bağlı
+liste fonksiyonlarını anımsatmak istiyoruz:
+
+.. code-block:: c
+
+    void list_add_rcu(struct list_head *new, struct list_head *head);
+    void list_add_tail_rcu(struct list_head *new, struct list_head *head);
+
+    void list_del_rcu(struct list_head *entry);
+
+    void list_replace_rcu(struct list_head *old, struct list_head *new);
+    void list_splice_init_rcu(struct list_head *list, struct list_head *head, synchronize_rcu_func wait);
+
+    #define list_entry_rcu(ptr, type, member)
+    #define list_first_entry_rcu(ptr, type, member)
+    #define list_next_rcu(list)
+
+    #define list_for_each_entry_rcu(pos, head, member)
+    #define list_for_each_entry_from_rcu(pos, head, member)
+    #define list_for_each_entry_continue_rcu(pos, head, member)
+
+Şimdi bu RCU'lu bağlı listeler üzerinde ek açıklamalar yapmak istiyoruz. Buradaki RCU'lu bağlı liste
+fonksiyonları ile bağlı liste üzerinde güncelleme yapılırken aynı bağlı listeden okuma yapan akışlar
+bekletilmemektedir. Örneğin bağlı listeden bir düğüm silinecek olsun. Bu durumda okuma yapan akışlar
+hiç bloke olmadan işlemlerine devam ederler, silme işlemi ise *grace period* bittiğinde görünür hale
+gelir.
+
+Linux çekirdeğindeki RCU'lu bağlı listelerdeki düğümler de yine ``list_head`` yapısıyla temsil
+edilmektedir:
+
+.. code-block:: c
+
+    struct list_head {
+        struct list_head *next, *prev;
+    };
+
+Hash tablolarında kök düğümün tek bir gösterici içerdiğini anımsayınız:
+
+.. code-block:: c
+
+    struct hlist_head {
+        struct hlist_node *first;
+    };
+
+    struct hlist_node {
+        struct hlist_node *next, **pprev;
+    };
+
+RCU'lu bağlı listelerden okuma yapan thread'ler (örneğin bağlı listeyi dolaşan thread'ler) yine
+``rcu_read_lock`` ve ``rcu_read_unlock`` çağrıları arasında thread'ler arası geçişi kapatarak
+işlemlerini yapmaktadır:
+
+.. code-block:: c
+
+    struct SAMPLE {
+        /* ... */
+        struct list_head link;
+        struct rcu_head rcu;
+    };
+    LIST_HEAD(g_mylist);
+
+    /* ... */
+
+    struct SAMPLE *ps;
+
+    rcu_read_lock();
+
+    list_for_each_entry_rcu(ps, &g_mylist, link) {
+        /* ... */
+    }
+
+    rcu_read_unlock();
+
+Burada ``struct SAMPLE`` nesneleri bir bağlı liste ile birbirine bağlanmış durumdadır. Bağlı listeyi
+dolaşmadan önce ``rcu_read_lock`` fonksiyonunun, dolaşım sonunda da ``rcu_read_unlock`` fonksiyonunun
+çağrıldığına dikkat ediniz. Dolaşım yapan makro ``list_for_each_entry_rcu`` ismindedir. RCU'suz bağlı
+listelerde bu makronun isminin ``list_for_each_entry`` biçiminde olduğunu anımsayınız. Aslında
+``list_for_each_entry`` makrosuyla ``list_for_each_entry_rcu`` makrosu arasında çok küçük bir fark
+vardır. ``list_for_each_entry_rcu`` makrosu ``include/linux/rculist.h`` içerisinde şöyle
+tanımlanmıştır:
+
+.. code-block:: c
+
+    #define list_for_each_entry_rcu(pos, head, member, cond...)            \
+        for (__list_check_rcu(dummy, ## cond, 0),                          \
+            pos = list_entry_rcu((head)->next, typeof(*pos), member);      \
+            &pos->member != (head);                                        \
+            pos = list_entry_rcu(pos->member.next, typeof(*pos), member))
+
+Buradaki ``list_entry_rcu`` makrosu ise şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #define list_entry_rcu(ptr, type, member)           \
+        container_of(READ_ONCE(ptr), type, member)
+
+Aslında iki makro arasındaki fark yalnızca bağ okumasının ``READ_ONCE`` ile yapılmasıdır.
+
+RCU'lu bağlı listelerde liste üzerinde yazma işlemleri (örneğin düğüm ekleme, düğüm silme gibi
+işlemler) yapılırken yine yazan tarafların bir spinlock ile senkronize edilmesi gerekmektedir. Bu
+spinlock nesnesini sistem programcısı kendisi oluşturmalıdır. Örneğin:
+
+.. code-block:: c
+
+    spin_lock(&g_myspinlock);                       /* yazan tarafların senkronize edilmesi gerekiyor */
+    list_add_rcu(&new_node->list, &g_mylist);
+    spin_unlock(&g_myspinlock);
+
+Burada ``list_add_rcu`` fonksiyonu ile bağlı listenin başına bir düğüm eklenmiştir. Ancak bu işlem
+sırasında bir spinlock ile yazan tarafların senkronize edilmesi sağlanmıştır.
+
+Peki ``list_add_rcu`` fonksiyonu okuyan tarafları bekletmeden işlemini nasıl yapmaktadır? İşte bu
+fonksiyon önce eklenecek düğümün ``next`` ve ``prev`` göstericilerini ayarlar, sonra da eklemeyi
+yaparken ``rcu_assign_pointer`` makrosunu kullanır. Böylece *grace period* bittikten sonra artık yeni
+okuyucular bu düğümü görmeye başlayacaktır. ``list_add_rcu`` fonksiyonunun gerçekleştirimi şöyle
+yapılmıştır:
+
+.. code-block:: c
+
+    static inline void list_add_rcu(struct list_head *new, struct list_head *head)
+    {
+        __list_add_rcu(new, head, head->next);
+    }
+
+    static inline void __list_add_rcu(struct list_head *new, struct list_head *prev, struct list_head *next)
+    {
+        if (!__list_add_valid(new, prev, next))
+            return;
+
+        new->next = next;
+        new->prev = prev;
+        rcu_assign_pointer(list_next_rcu(prev), new);   /* store-release */
+        next->prev = new;
+    }
+
+    #define list_next_rcu(list) (*((struct list_head __rcu **)(&(list)->next)))
+
+Buradaki ``list_add_rcu`` fonksiyonu bağlı listenin başına düğüm eklemektedir. Peki bu düğüm ekleme
+işlemi burada nasıl yapılmıştır? Anımsayacağınız gibi bağlı listenin başına, sonuna ve arasında düğüm
+ekleme işlemi ortak bir fonksiyonla yapılmaktadır. Bu fonksiyon da örneğimizde ``__list_add_rcu``
+fonksiyonudur. Yeni düğümün ``next`` ve ``prev`` göstericileri aşağıdaki gibi ayarlanmıştır:
+
+.. code-block:: c
+
+    new->next = next;
+    new->prev = prev;
+
+Sonra kök düğümün ``next`` göstericisinin ilk düğümü göstermesi sağlanmıştır. Tabii bu işlem yeni
+veri yapısının yayınlanması işlemidir. Dolayısıyla bu işlem ``rcu_assign_pointer`` makrosuyla
+yapılmıştır:
+
+.. code-block:: c
+
+    rcu_assign_pointer(list_next_rcu(prev), new);   /* store-release */
+
+Nihayetinde eski ilk düğümün yeni düğümü göstermesi de şöyle sağlanmıştır:
+
+.. code-block:: c
+
+    next->prev = new;
+
+Peki burada kök gösterici yayınlandıktan sonra ``next->prev = new`` işleminin yapılması bir soruna yol
+açmaz mı? Yani tam o sırada geriye doğru listeyi okuyan bir thread varsa bir kararsızlık oluşmaz mı?
+İşte Linux çekirdeğinin RCU'lu bağlı listelerinden okuma yapan taraflar hiçbir zaman geriye doğru okuma
+yapmamaktadır. Sizin de bu kurala uymanız gerekir.
+
+RCU'lu bağlı listelerden silme işlemi de yine benzer biçimde spinlock kilidi alınarak yapılmalıdır.
+Örneğin:
+
+.. code-block:: c
+
+    spin_lock(&g_myspinlock);
+    list_del_rcu(&node->link);
+    spin_unlock(&g_myspinlock);
+    call_rcu(&node->rcu, free_node_callback);   /* grace period sonrası serbest bırak */
+
+Burada görüldüğü gibi önce spinlock kilidi alınmış sonra düğüm silme işlemi ``list_del_rcu`` fonksiyonu
+ile yapılmıştır. Düğüm silme işlemi *grace period* sonunda gerçekleştiğinde ek birtakım işlemlerin de
+yapılması gerekebilmektedir. Bu nedenle örneğimizde ``call_rcu`` fonksiyonu ile düğümün serbest
+bırakılması sırasında ``free_node_callback`` isimli bizim bir fonksiyonumuz çağrılmıştır. Eğer düğümler
+çekirdeğin heap alanı içerisinde tahsis edilmişse bu fonksiyon onları serbest bırakabilir.
+``list_del_rcu`` fonksiyonu da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static inline void list_del_rcu(struct list_head *entry)
+    {
+        __list_del_entry(entry);
+        entry->prev = LIST_POISON2;
+        /* entry->next kasıtlı olarak bozulmaz! */
+    }
+
+    static inline void __list_del_entry(struct list_head *entry)
+    {
+        if (!__list_del_entry_valid(entry))
+            return;
+
+        __list_del(entry->prev, entry->next);
+    }
+
+    static inline void __list_del(struct list_head *prev, struct list_head *next)
+    {
+        next->prev = prev;
+        WRITE_ONCE(prev->next, next);
+    }
+
+Düğüm silme işleminin herhangi bir yerinde ``rcu_assign_pointer`` makrosunun kullanılmadığına dikkat
+ediniz.

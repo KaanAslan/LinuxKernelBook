@@ -52,3 +52,7 @@ div.admonition.white-note {
 }
 
 
+/* Tablo başlık hücrelerini ortala */
+table.docutils th {
+    text-align: center;
+}
