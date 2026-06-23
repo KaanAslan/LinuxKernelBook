@@ -43,6 +43,8 @@ ilişkin temel bilgilere ve becerilere sahip olduğı varsayılmaktadır.
    filesystem1
    filesystem2
    kernelsync
+   waitqueues
    bibliography
+  
 
    
