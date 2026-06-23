@@ -8,8 +8,23 @@ thread'lerin nasıl bloke edildiği) ve yeniden nasıl çalışır duruma getiri
 çözüldüğü) konuları üzerinde duracağız. Çizelgeleyici (scheduler) alt sistem başka bir bölümde
 ayrıntılarıyla ele alınacaktır.
 
-Thread'lerin Çizelgelenmesi
-===========================
+Linux çekirdek programcılarının bloke işlemleri ile ilgili olan şu süreçler hakkında bilgi sahibi
+olması gerekir:
+
+- Bekleme kuyrukları nasıl oluşturulup nasıl yok edilmektedir?
+- Çalışma kuyruklarından bekleme kuyruklarına transfer (yani bloke işlemi) nasıl yapılmaktadır?
+- Bekleme kuyruklarından çalışma kuyruklarına transfer (yani blokenin çözülmesi) nasıl
+  yapılmaktadır?
+- Bekleme kuyruklarının veri yapısı nasıldır?
+- Bekleme kuyrukları üzerinde işlem yapan çekirdek fonksiyonları bu işlemleri nasıl
+  yapmaktadır?
+
+Tabii Linux'un ilk versiyonlarında bu süreçler oldukça basit kodlarla gerçekleştirilmişti. Ancak
+zaman içerisinde sinekten yağ çıkartma noktasına gelindi ve bu işlemler de gittikçe iyileştirildi.
+Bunun sonucu olarak da kodlar biraz daha karmaşık hale geldi.
+
+Çalışma Kuyrukları ve Thread'lerin Çizelgelenmesi
+=================================================
 
 Linux çekirdeklerinde çizelgeleyici (scheduler) alt sistem zaman içerisinde birkaç kere önemli ölçüde
 değiştirilmiştir. Mevcut Linux çekirdeklerinde sistemdeki her işlemci ya da çekirdek için ayrı bir
@@ -93,7 +108,7 @@ blokesi çözülüp yeniden çalışma kuyruğuna yerleştirilmektedir. Tabii bu
 sadeleştirilmiş bir şekildir. Örneğin thread'in sonlanması başka biçimlerde de gerçekleşebilmektedir.
 
 IO Yoğun ve CPU Yoğun Thread'ler
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Bir thread CPU'ya atandığında eğer quantum süresinin çok azını kullanıp hemen bloke olarak uykuya
 dalıyorsa bu biçimdeki thread'lere *IO yoğun (IO bound)* thread'ler denilmektedir. Sistemde çok
@@ -137,20 +152,5 @@ kullanmaktadır. Programınızdaki thread'lerin CPU kullanım sürelerini çeşi
 gözlemleyebilirsiniz. Örneğin ``htop`` programı (``top`` programının biraz daha gelişmiş bir
 versiyonudur) ve ``perf`` programı ile thread'lerinizin CPU kullanımlarını görebilirsiniz.
 
-Bekleme Kuyruklarına Giriş
-============================
 
-Linux çekirdek programcılarının bloke işlemleri ile ilgili olan şu süreçler hakkında bilgi sahibi
-olması gerekir:
 
-- Bekleme kuyrukları nasıl oluşturulup nasıl yok edilmektedir?
-- Çalışma kuyruklarından bekleme kuyruklarına transfer (yani bloke işlemi) nasıl yapılmaktadır?
-- Bekleme kuyruklarından çalışma kuyruklarına transfer (yani blokenin çözülmesi) nasıl
-  yapılmaktadır?
-- Bekleme kuyruklarının veri yapısı nasıldır?
-- Bekleme kuyrukları üzerinde işlem yapan çekirdek fonksiyonları bu işlemleri nasıl
-  yapmaktadır?
-
-Tabii Linux'un ilk versiyonlarında bu süreçler oldukça basit kodlarla gerçekleştirilmişti. Ancak
-zaman içerisinde sinekten yağ çıkartma noktasına gelindi ve bu işlemler de gittikçe iyileştirildi.
-Bunun sonucu olarak da kodlar biraz daha karmaşık hale geldi.
