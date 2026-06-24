@@ -149,7 +149,7 @@ kullanmaktadır. Programınızdaki thread'lerin CPU kullanım sürelerini çeşi
 gözlemleyebilirsiniz. Örneğin ``htop`` programı (``top`` programının biraz daha gelişmiş bir
 versiyonudur) ve ``perf`` programı ile thread'lerinizin CPU kullanımlarını görebilirsiniz.
 
-Bekleme Kuyruğuklarına İlişkin Veri Yapıları ve Çekirdek Temel Fonksiyonları
+Bekleme Kuyruğuklarına İlişkin Veri Yapıları ve Temel Çekirdek Fonksiyonları
 ============================================================================
 
 Linux çekirdeklerinde bekleme kuyruklarının genel yapısı zaman içerisinde pek değişmemiştir. Biz
@@ -833,17 +833,17 @@ bulundurulmuştur:
 
 .. code-block:: c
 
-    #define wake_up(x)                      __wake_up(x, TASK_NORMAL, 1, NULL)
-    #define wake_up_nr(x, nr)               __wake_up(x, TASK_NORMAL, nr, NULL)
-    #define wake_up_all(x)                  __wake_up(x, TASK_NORMAL, 0, NULL)
-    #define wake_up_locked(x)               __wake_up_locked((x), TASK_NORMAL, 1)
-    #define wake_up_all_locked(x)           __wake_up_locked((x), TASK_NORMAL, 0)
-    #define wake_up_sync(x)                 __wake_up_sync(x, TASK_NORMAL)
+    #define wake_up(x)                          __wake_up(x, TASK_NORMAL, 1, NULL)
+    #define wake_up_nr(x, nr)                   __wake_up(x, TASK_NORMAL, nr, NULL)
+    #define wake_up_all(x)                      __wake_up(x, TASK_NORMAL, 0, NULL)
+    #define wake_up_locked(x)                   __wake_up_locked((x), TASK_NORMAL, 1)
+    #define wake_up_all_locked(x)               __wake_up_locked((x), TASK_NORMAL, 0)
+    #define wake_up_sync(x)                     __wake_up_sync(x, TASK_NORMAL)
 
-    #define wake_up_interruptible(x)        __wake_up(x, TASK_INTERRUPTIBLE, 1, NULL)
-    #define wake_up_interruptible_nr(x, nr) __wake_up(x, TASK_INTERRUPTIBLE, nr, NULL)
-    #define wake_up_interruptible_all(x)    __wake_up(x, TASK_INTERRUPTIBLE, 0, NULL)
-    #define wake_up_interruptible_sync(x)   __wake_up_sync((x), TASK_INTERRUPTIBLE)
+    #define wake_up_interruptible(x)            __wake_up(x, TASK_INTERRUPTIBLE, 1, NULL)
+    #define wake_up_interruptible_nr(x, nr)     __wake_up(x, TASK_INTERRUPTIBLE, nr, NULL)
+    #define wake_up_interruptible_all(x)        __wake_up(x, TASK_INTERRUPTIBLE, 0, NULL)
+    #define wake_up_interruptible_sync(x)       __wake_up_sync((x), TASK_INTERRUPTIBLE)
 
 Bu makroların hepsinin birinci parametreleri ``wait_queue_head`` türünden bekleme kuyruğu nesnesinin
 adresini almaktadır. (``wait_event`` makrolarında adres alma işlemi makro tarafından yapılmaktadır.
