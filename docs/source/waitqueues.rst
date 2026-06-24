@@ -201,6 +201,8 @@ yine çalışma kuyruklarına yerleştiren daha yüksek seviyeli çekirdek fonks
 Bu yüksek seviyeli fonksiyonlar export edildikleri için çekirdek modülleri ve aygıt sürücüler
 tarafından kullanılabilmektedir.
 
+Bekleme Kuyruklarının Yaratılması
+---------------------------------
 
 Bir bekleme kuyruğunu boş bir biçimde oluşturmak için ``DECLARE_WAIT_QUEUE_HEAD`` makrosu
 kullanılmaktadır. Bu makro ``include/linux/wait.h`` dosyası içerisinde bildirilmiştir. Makroya
@@ -253,7 +255,7 @@ gibi tanımlanmıştır:
 
 Görüldüğü gibi burada da spinlock ve bağlı liste ilk durumuna getirilmiştir. Buradaki
 ``lockdep_set_class_and_name`` fonksiyonu debug amaçlı çağrılmaktadır. Normal bir çekirdek
-derlemesinde ``CONFIG_LOCKDEP`` konfigürasyon parametresi 'y' yapılmadığı için zaten önişlemci
+derlemesinde ``CONFIG_LOCKDEP`` konfigürasyon parametresi ``'y'`` yapılmadığı için zaten önişlemci
 tarafından bu çağrı koddan çıkartılmaktadır. Fonksiyon aygıt sürücüler içerisinde şöyle
 kullanılabilir:
 
@@ -263,3 +265,289 @@ kullanılabilir:
     /* ... */
 
     init_waitqueue_head(&g_wq);
+
+Thread'lerin Bekleme Kuyrukları Yoluyla Uykuya Yatırılması ve Uyandırılması
+---------------------------------------------------------------------------
+
+Bir thread çalışırken kendisini bekleme kuyruğuna yerleştirmektedir. Yani çekirdek tasarımında bir
+thread'in başka bir thread'i bekleme kuyruklarına yerleştirmesi gibi bir durum uygun olmadığı
+gerekçesiyle doğrudan mümkün hale getirilmemiştir. Yani bir thread "tamam şimdi artık benim uyumam
+gerekir" diyerek kendini uyutmaktadır. Thread'in uyandırılması ise tek bir thread'in uyandırılması
+biçiminde değil bekleme kuyruğundaki bir grup thread'in uyandırılması biçiminde yapılmaktadır. Yani
+uyandırma işlemi aslında thread temelinde değil bekleme kuyruğu temelinde yapılmaktadır. Bu duruma
+işletim sistemleri terminolojisinde İngilizce *thundering herd (gürüldeyen sürü)* denilmektedir. Bu
+terim bir ahır kapısı açıldığında sürünün gürültülü bir biçimde hep beraber dışarı çıkması
+çağrışımından hareketle uydurulmuştur. İzleyen paragraflarda görüleceği gibi *exclusive uyandırma*
+denilen bir uyandırma biçimi de vardır. Bu uyandırma biçiminde nispeten daha az sayıda thread
+uyandırılmaktadır.
+
+Bir thread'in bekleme kuyruğuna yerleştirilip uykuya yatırılması aşağıdaki çekirdek makroları
+tarafından yapılmaktadır:
+
+.. code-block:: c
+
+    wait_event(wq_head, condition);
+    wait_event_interruptible(wq_head, condition);
+    wait_event_killable(wq_head, condition);
+    wait_event_timeout(wq_head, condition, timeout);
+    wait_event_interruptible_timeout(wq_head, condition, timeout);
+    wait_event_interruptible_exclusive(wq_head, condition);
+
+Bu makroların birinci parametreleri bekleme kuyruğunu temsil eden ``wait_queue_head`` türünden yapı
+nesnesini almaktadır. (Makroya nesnenin adresinin değil kendisinin parametre olarak geçirildiğini
+vurgulamak istiyoruz. Zaten makro gerektiğinde kendisi adres alma işlemini yapmaktadır.) Makroların
+ikinci parametreleri *uyandırma koşulunu* belirtmektedir. Yukarıda da belirttiğimiz gibi aslında,
+exclusive özelliğini göz ardı edersek, bekleme kuyruğundaki tüm thread'ler uyandırılmaktadır.
+Ancak bu uyandırma sonrasında koşul sağlanmıyorsa uyandırılan thread'ler yeniden uykuya
+yatırılmaktadır. Buradaki koşul tipik olarak global değişkenlere dayalı olarak oluşturulmaktadır.
+Örneğin ``g_flag`` isminde bir global değişkenimiz olsun. Biz de koşulu ``g_flag != 0`` biçiminde
+oluşturabiliriz. Bu durumda ``g_flag`` değişkeni 0 ise biz uyandırma işlemini uygulasak bile
+thread'ler önce uyandırılacak, koşul sağlanmadığı için yeniden uykuya dalacaktır. Makroların
+``timeout`` parametresine sahip versiyonları koşul sağlanmasa bile en kötü olasılıkla belli bir süre
+sonra thread'lerin uyandırılmasını sağlamaktadır. Bekleme kuyruğuna yerleştirilen thread'lerin bir
+sinyal geldiğinde uyandırılabilmesi için beklemenin *interruptible* biçimde yapılması gerekir.
+Killable olan bekleme fonksiyonu ise yalnızca ``SIGKILL`` sinyaline yanıt vermektedir.
+
+wait_event Makrosunun Gerçekleştirimi
+----------------------------------------
+
+``wait_event`` makrosu güncel çekirdeklerde ``include/linux/wait.h`` dosyası içerisinde aşağıdaki
+gibi yazılmıştır:
+
+.. code-block:: c
+
+    #define wait_event(wq_head, condition)              \
+    do {                                                \
+        might_sleep();                                  \
+        if (condition)                                  \
+            break;                                      \
+        __wait_event(wq_head, condition);               \
+    } while (0)
+
+Buradaki ``might_sleep`` makrosu debug amaçlı bulundurulmuştur. Eğer ``CONFIG_DEBUG_ATOMIC_SLEEP``
+konfigürasyon parametresi açık değilse bu makro hemen hemen boş gibidir. Burada daha uykuya
+dalmadan koşulun kontrol edildiğine dikkat ediniz. Yani aslında koşul zaten sağlanıyorsa uyuma
+gerçekleşmemektedir. Kodda asıl uykuya daldırma işlemini ``__wait_event`` makrosu yapmaktadır. Bu
+makro da güncel çekirdeklerde üç alt tireli başka bir makroyu çalıştırmaktadır:
+
+.. code-block:: c
+
+    #define __wait_event(wq_head, condition)                            \
+        (void)___wait_event(wq_head, condition, TASK_UNINTERRUPTIBLE,   \
+                            0, 0, schedule())
+
+İşte thread'i bekleme kuyruğuna yerleştiren asıl makro budur:
+
+.. code-block:: c
+
+    #define ___wait_event(wq_head, condition, state, exclusive, ret, cmd)       \
+    ({                                                                          \
+        __label__ __out;                                                        \
+        struct wait_queue_entry __wq_entry;                                     \
+        long __ret = ret;   /* explicit shadow */                               \
+                                                                                \
+        init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);       \
+        for (;;) {                                                              \
+            long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);  \
+                                                                                \
+            if (condition)                                                      \
+                break;                                                          \
+                                                                                \
+            if (___wait_is_interruptible(state) && __int) {                    \
+                __ret = __int;                                                  \
+                goto __out;                                                     \
+            }                                                                   \
+                                                                                \
+            cmd;                                                                \
+                                                                                \
+            if (condition)                                                      \
+                break;                                                          \
+        }                                                                       \
+        finish_wait(&wq_head, &__wq_entry);                                     \
+    __out: __ret;                                                               \
+    })
+
+Bekleme işleminin nasıl gerçekleştiğini ve uyanmanın nasıl yapıldığını anlayabilmek için bu makronun
+üzerinde biraz durmamız gerekiyor. Makroda bekleme kuyruğunun elemanı olan ``wait_queue_entry``
+nesnesinin yerel bir biçimde tanımlandığına dikkat ediniz. Bekleme kuyrukları genellikle global
+düzeyde oluşturuluyor olsa da onun düğümleri olan nesneler yerel biçimde stack'te oluşturulmaktadır.
+Bunun bir sakıncası yoktur. Çünkü uyanma durumunda zaten bu stack'teki nesne otomatik biçimde
+boşaltılacaktır. Böylece gereksiz bir heap tahsisatı yapılmamaktadır. Stack'te yaratılan yerel
+``wait_queue_entry`` nesnesine ilk değer aşağıdaki gibi verilmiştir:
+
+.. code-block:: c
+
+    init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);
+
+Burada *exclusive bekleme* kontrol edilmiş ve duruma göre yapının ``flags`` elemanına
+``WQ_FLAG_EXCLUSIVE`` bayrağı yerleştirilmiştir. Bu fonksiyon da ``kernel/sched/wait.c`` dosyası
+içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    void init_wait_entry(struct wait_queue_entry *wq_entry, int flags)
+    {
+        wq_entry->flags   = flags;
+        wq_entry->private = current;
+        wq_entry->func    = autoremove_wake_function;
+        INIT_LIST_HEAD(&wq_entry->entry);
+    }
+    EXPORT_SYMBOL(init_wait_entry);
+
+Oluşturulan ve ilk değer verilen ``wait_queue_entry`` nesnesinin bekleme kuyruğuna yerleştirilmesi
+``kernel/sched/wait.c`` dosyasındaki ``prepare_to_wait_event`` fonksiyonu tarafından yapılmaktadır:
+
+.. code-block:: c
+
+    long prepare_to_wait_event(struct wait_queue_head *wq_head,
+                               struct wait_queue_entry *wq_entry, int state)
+    {
+        unsigned long flags;
+        long ret = 0;
+
+        spin_lock_irqsave(&wq_head->lock, flags);
+        if (signal_pending_state(state, current)) {
+            list_del_init(&wq_entry->entry);
+            ret = -ERESTARTSYS;
+        } else {
+            if (list_empty(&wq_entry->entry)) {
+                if (wq_entry->flags & WQ_FLAG_EXCLUSIVE)
+                    __add_wait_queue_entry_tail(wq_head, wq_entry);
+                else
+                    __add_wait_queue(wq_head, wq_entry);
+            }
+            set_current_state(state);
+        }
+        spin_unlock_irqrestore(&wq_head->lock, flags);
+
+        return ret;
+    }
+    EXPORT_SYMBOL(prepare_to_wait_event);
+
+Bu fonksiyonun thread'i çalışma kuyruğundan (run queue) çıkartmadığına, yalnızca ilgili bekleme
+kuyruğuna eklediğine dikkat ediniz. ``__wait_event`` makrosunda ``prepare_to_wait_event`` çağrısından
+sonra yeniden koşul kontrol edilmiştir. Çünkü bu arada koşul sağlanmış da olabilir:
+
+.. code-block:: c
+
+    if (condition)
+        break;
+
+Buradaki ``break`` akışı döngünün dışına çıkartmaktadır. Bekleme kuyruğundan thread'in silinmesi
+döngünün sonundaki ``finish_wait`` fonksiyonu tarafından yapılmaktadır. Daha sonra ``__wait_event``
+makrosunda ``___wait_is_interruptible`` makrosu çağrılıp ``prepare_to_wait_event`` fonksiyonun geri
+dönüş değeri kontrol edilmiştir:
+
+.. code-block:: c
+
+    if (___wait_is_interruptible(state) && __int) {
+        __ret = __int;
+        goto __out;
+    }
+
+Şimdi artık thread bekleme kuyruğuna eklenmiştir, ancak henüz çalışma kuyruğundan çıkartılmamıştır
+ve thread hâlâ CPU'da çalışmaktadır. İşte son darbe ``schedule`` fonksiyonu tarafından vurulmaktadır.
+``schedule`` çağrısı ``__wait_event`` makrosuna ``cmd`` parametresi yoluyla geçilmiştir. Dolayısıyla
+``__wait_event`` makrosunun içerisinde bulunan aşağıdaki çağrı aslında ``schedule`` fonksiyonun
+çağrılmasını sağlamaktadır:
+
+.. code-block:: c
+
+    cmd;
+
+``schedule`` fonksiyonunu çizelgeleyici alt sistemini incelerken ele alacağız. Ancak bu fonksiyon
+kabaca şunları yapmaktadır:
+
+- Çalışmakta olan thread'in yazmaç bilgilerini ``task_struct`` alanına aktarmaktadır.
+- Gerekiyorsa thread'i çalışma kuyruğundan çıkartmaktadır.
+
+İşte thread'in konumunun saklanması ``schedule`` fonksiyonu içerisinde yapılmaktadır. Dolayısıyla
+aslında thread uykudan ``schedule`` fonksiyonun içerisinden uyanacaktır. Yani uyandırma gerçekleştiğinde
+çalışma aşağıdaki okla gösterilen noktadan devam edecektir:
+
+.. code-block:: c
+
+    #define ___wait_event(wq_head, condition, state, exclusive, ret, cmd)       \
+    ({                                                                          \
+        __label__ __out;                                                        \
+        struct wait_queue_entry __wq_entry;                                     \
+        long __ret = ret;   /* explicit shadow */                               \
+                                                                                \
+        init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);       \
+        for (;;) {                                                              \
+            long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);  \
+                                                                                \
+            if (condition)                                                      \
+                break;                                                          \
+                                                                                \
+            if (___wait_is_interruptible(state) && __int) {                    \
+                __ret = __int;                                                  \
+                goto __out;                                                     \
+            }                                                                   \
+                                                                                \
+            cmd;                                                                \
+                                                                                \
+    /* -----> uyandırılan thread çalışmasına buradan devam eder! */            \
+                                                                                \
+            if (condition)                                                      \
+                break;                                                          \
+        }                                                                       \
+        finish_wait(&wq_head, &__wq_entry);                                     \
+    __out: __ret;                                                               \
+    })
+
+Burada uyanma sonrasında koşulun sağlanıp sağlanmadığına bakılmıştır. Eğer koşul sağlanıyorsa
+döngüden çıkılmıştır. Ancak koşul sağlanmıyorsa döngü yine başa saracak ve thread yeniden
+uyuyacaktır. Döngüden çıkıldığında ``finish_wait`` fonksiyonunun çağrıldığını görüyorsunuz:
+
+.. code-block:: c
+
+    finish_wait(&wq_head, &__wq_entry);
+
+Bu fonksiyon thread'i bekleme kuyruğundan çıkarmaktadır. Burada bir noktaya dikkat ediniz. İzleyen
+paragraflarda ele alacak olduğumuz thread'i uyandıran ``wake_up`` makroları thread'i bekleme
+kuyruğundan da çıkarmaktadır. Dolayısıyla yukarıda okla gösterdiğimiz yerden akış devam ettiğinde
+thread bekleme kuyruğunda değildir. Tabii koşul sağlanıyorsa zaten bekleme kuyruğunda olmayan
+thread'in kuyruktan da çıkartılmaması gerekir. ``finish_wait`` içerisinde bu kontrol uygulanmıştır.
+Yani ``finish_wait`` içerisinde eğer thread kuyruktan zaten çıkartılmışsa kuyruktan çıkartma işlemi
+yapılmamaktadır.
+
+.. code-block:: c
+
+    void finish_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry)
+    {
+        unsigned long flags;
+
+        __set_current_state(TASK_RUNNING);
+        /*
+         * We can check for list emptiness outside the lock
+         * IFF:
+         *  - we use the "careful" check that verifies both
+         *    the next and prev pointers, so that there cannot
+         *    be any half-pending updates in progress on other
+         *    CPU's that we haven't seen yet (and that might
+         *    still change the stack area.
+         * and
+         *  - all other users take the lock (ie we can only
+         *    have _one_ other CPU that looks at or modifies
+         *    the list).
+         */
+        if (!list_empty_careful(&wq_entry->entry)) {   /* burada kontrol uygulanmış */
+            spin_lock_irqsave(&wq_head->lock, flags);
+            list_del_init(&wq_entry->entry);
+            spin_unlock_irqrestore(&wq_head->lock, flags);
+        }
+    }
+    EXPORT_SYMBOL(finish_wait);
+
+O halde özetlersek ``wait_event`` fonksiyonu çağrıldığında şunlar gerçekleşmektedir:
+
+1. Daha uykuya dalma girişiminden önce hemen koşul kontrol edilmektedir.
+
+2. Thread yeni bir düğüm yaratılarak bekleme kuyruğuna eklenmektedir. Ancak henüz bağlamsal geçiş
+   yapılmadan koşul yeniden kontrol edilmekte ve sinyal durumu dikkate alınmaktadır.
+
+3. Thread uyandırıldığında zaten uyandıran taraf onu bekleme kuyruğundan çıkarmaktadır.
+
+4. Thread uyandırıldığında koşul sağlanıyorsa artık kesin uyandırılmıştır, sağlanmıyorsa yeniden
+   uykuya yatırılmaktadır.
