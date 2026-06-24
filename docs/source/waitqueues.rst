@@ -333,8 +333,8 @@ makro da güncel çekirdeklerde üç alt tireli başka bir makroyu çalıştırm
 
 .. code-block:: c
 
-    #define __wait_event(wq_head, condition)                                \
-        (void)___wait_event(wq_head, condition, TASK_UNINTERRUPTIBLE,       \
+    #define __wait_event(wq_head, condition)                                    \
+        (void)___wait_event(wq_head, condition, TASK_UNINTERRUPTIBLE,           \
                             0, 0, schedule())
 
 İşte thread'i bekleme kuyruğuna yerleştiren asıl makro budur:
@@ -1086,3 +1086,329 @@ Bu fonksiyon da ortak ``__wake_up_common_lock`` fonksiyonunu çağırmaktadır:
 Tabii ``locked`` uyandırmalarda zaten spinlock kilidi alındığı için ve bu spinlock da *koparma (preemption)*
 mekanizmasını kapattığı için uyandırma işlemi zaten kesilmeyecektir. Ancak uyandırılan thread başka
 bir CPU'nun kuyruğunda da olabilir.
+
+``wake_up`` makrolarının da interruptible biçimleri vardır:
+
+.. code-block:: c
+
+    #define wake_up_interruptible(x)            __wake_up(x, TASK_INTERRUPTIBLE, 1, NULL)
+    #define wake_up_interruptible_nr(x, nr)     __wake_up(x, TASK_INTERRUPTIBLE, nr, NULL)
+    #define wake_up_interruptible_all(x)        __wake_up(x, TASK_INTERRUPTIBLE, 0, NULL)
+    #define wake_up_interruptible_sync(x)       __wake_up_sync((x), TASK_INTERRUPTIBLE)
+
+Bu makrolar aslında ``__wake_up`` ve ``__wake_up_sync`` fonksiyonlarını ``TASK_INTERRUPTIBLE``
+thread durum argümanıyla çağırmaktadır. Thread'in durumunu belirten ``TASK_XXX`` bayraklarını
+çizelgeleyiciyi anlattığımız bölümde ele alacağız. interruptible ``wake_up`` makrolarının
+diğerlerinden tek farkı thread durum bilgisi yalnızca ``TASK_INTERRUPTIBLE`` olanları
+uyandırmasıdır. Halbuki interruptible olmayan ``wake_up`` makroları hem ``TASK_UNINTERRUPTIBLE``
+hem de ``TASK_INTERRUPTIBLE`` durumuna ilişkin thread'leri uyandırmaktadır. Normal olarak bir
+thread uykuya interruptible olan ``wait_event`` makrolarıyla yatırılmışsa uyandırılmasının da
+interruptible ``wake_up`` fonksiyonlarıyla yapılması uygun olur. Çünkü bu durumda eğer bekleme
+kuyruğunda ``TASK_UNINTERRUPTIBLE`` thread'ler varsa onlar uyandırılmayacaktır. interruptible
+olarak uyutulan thread'lerin interruptible olmayan ``wake_up`` makrolarıyla uyandırılmasında bir
+sorun oluşmaz ancak amaç dikkate alındığında gereksiz uyandırmalar da yapılacaktır.
+
+Bekleme Kuyruğu Aygıt Sürücüsü Örneği
+-------------------------------------
+
+Şimdi de thread'in uyutulması ve uyandırılması işlemine bir aygıt sürücü yoluyla basit bir örnek
+verelim. Aygıt sürücümüzde bir tampon olsun. Eğer bu tampon boşsa ``read`` işlemini yapan thread
+uykuda bekletilsin. Bu tampona ``write`` fonksiyonu ile yazma yapan thread uyuyan thread'leri
+uyandırsın. Buradaki aygıt sürücünün ``read`` fonksiyonu şöyle yazılabilir:
+
+.. code-block:: c
+
+    static wait_queue_head_t g_wq;
+    static char g_buf[TEXT_BUFFER_SIZE];
+    static atomic_t g_len = ATOMIC_INIT(0);
+    /* ... */
+
+    static ssize_t generic_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        size_t esize;
+
+        wait_event_interruptible(g_wq, atomic_read(&g_len) > 0);
+        esize = size < atomic_read(&g_len) ? size : atomic_read(&g_len);
+        if (copy_to_user(buf, g_buf, esize) != 0)
+            return -EFAULT;
+        atomic_set(&g_len, 0);
+
+        return esize;
+    }
+
+Burada interruptible biçimde bloke oluşturulmuştur. Blokenin çözülme koşulu ``g_len > 0``
+biçimindedir. İşin başında ``g_len = 0`` olduğu için ``read`` fonksiyonunda bloke oluşacaktır.
+Bloke çözüldüğünde okunmak istenen miktarla tampondaki miktar karşılaştırılmış, bunlardan hangisi
+küçükse o miktarda okuma yapılmıştır. ``copy_to_user`` fonksiyonunun çekirdek modundan prosesin
+bellek alanına kopyalama yaptığını anımsayınız. Aktarım sonrasında ``g_len`` değişkeni yine 0
+değerine çekilmiştir. Böylece sonraki ``read`` işleminde tampon tüketildiği için yeniden bloke
+oluşacaktır. Ancak bu kod birden fazla ``read`` işleminin aynı anda yapıldığı durumda kararsız bir
+duruma da yol açabilecektir. Birden fazla thread uykudan uyandırıldığında birden fazlası tamponu
+okuyabilecektir. Eğer tamponun tek bir thread tarafından tüketilmesi fakat diğer thread'lerin
+bekletilmesi gerekiyorsa ``mutex`` gibi ek bir kilit mekanizmasının da sağlanması gerekir. İzleyen
+paragraflarda bu sorunun üzerinde duracağız.
+
+Aygıt sürücünün ``read`` fonksiyonunda bloke olan thread'lerin blokesi aygıt sürücünün ``write``
+fonksiyonunda çözülmektedir:
+
+.. code-block:: c
+
+    static ssize_t generic_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        size_t esize;
+
+        esize = size < TEXT_BUFFER_SIZE ? size : TEXT_BUFFER_SIZE;
+
+        if (copy_from_user(g_buf, buf, esize) != 0)
+            return -EFAULT;
+
+        atomic_set(&g_len, esize);
+        wake_up_interruptible(&g_wq);
+
+        return esize;
+    }
+
+Burada önce tampona yazma yapılmış daha sonra tamponu bekleyen thread'ler
+``wake_up_interruptible`` makrosuyla uyandırılmıştır. Uyandırma işleminden önce koşulun
+sağlanması gerektiğine dikkat ediniz. Bu nedenle örneğimizde önce ``g_len`` değişkenine atama
+yapılıp sonra uyandırma işlemi yapılmıştır.
+
+Aygıt sürücünün kodlarını bütünsel biçimde aşağıda veriyoruz.
+
+``wait-driver.c``
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/wait.h>
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("Wait-Driver");
+
+    static int generic_open(struct inode *inodep, struct file *filp);
+    static int generic_release(struct inode *inodep, struct file *filp);
+    static ssize_t generic_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t generic_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+
+    static dev_t g_dev;
+    static struct cdev *g_cdev;
+    static struct file_operations g_fops = {
+        .owner   = THIS_MODULE,
+        .open    = generic_open,
+        .read    = generic_read,
+        .write   = generic_write,
+        .release = generic_release
+    };
+
+    #define TEXT_BUFFER_SIZE    4096
+
+    static wait_queue_head_t g_wq;
+    static char g_buf[TEXT_BUFFER_SIZE];
+    static atomic_t g_len = ATOMIC_INIT(0);
+
+    static int __init generic_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "wait-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "wait-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+
+        if ((g_cdev = cdev_alloc()) == NULL) {
+            printk(KERN_INFO "cannot allocate cdev!...\n");
+            return -ENOMEM;
+        }
+
+        g_cdev->owner = THIS_MODULE;
+        g_cdev->ops   = &g_fops;
+
+        if ((result = cdev_add(g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        init_waitqueue_head(&g_wq);
+
+        return 0;
+    }
+
+    static void __exit generic_exit(void)
+    {
+        cdev_del(g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "wait-driver module exit...\n");
+    }
+
+    static int generic_open(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "wait-driver opened...\n");
+
+        return 0;
+    }
+
+    static int generic_release(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "wait-driver closed...\n");
+
+        return 0;
+    }
+
+    static ssize_t generic_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        size_t esize;
+
+        wait_event_interruptible(g_wq, atomic_read(&g_len) > 0);
+        esize = size < atomic_read(&g_len) ? size : atomic_read(&g_len);
+        if (copy_to_user(buf, g_buf, esize) != 0)
+            return -EFAULT;
+        atomic_set(&g_len, 0);
+
+        return esize;
+    }
+
+    static ssize_t generic_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        size_t esize;
+
+        esize = size < TEXT_BUFFER_SIZE ? size : TEXT_BUFFER_SIZE;
+
+        if (copy_from_user(g_buf, buf, esize) != 0)
+            return -EFAULT;
+
+        atomic_set(&g_len, esize);
+        wake_up_interruptible(&g_wq);
+
+        return esize;
+    }
+
+    module_init(generic_init);
+    module_exit(generic_exit);
+
+``Makefile``
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``load``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+``unload``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+
+``wait-driver-test-read.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+        char buf[4096];
+        ssize_t result;
+
+        if ((fd = open("wait-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        printf("Buffer empty, thread is sleeping...\n");
+
+        if ((result = read(fd, buf, 10)) == -1)
+            exit_sys("read");
+        buf[result] = '\0';
+
+        printf("%s\n", buf);
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+
+        exit(EXIT_FAILURE);
+    }
+
+``wait-driver-test-write.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+
+    #define TEXT_BUFFER_SIZE    4096
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+        char buf[TEXT_BUFFER_SIZE];
+        char *str;
+        ssize_t result;
+
+        if ((fd = open("wait-driver", O_WRONLY)) == -1)
+            exit_sys("open");
+
+        printf("Enter text:");
+        fgets(buf, TEXT_BUFFER_SIZE, stdin);
+        if ((str = strchr(buf, '\n')) != NULL)
+            *str = '\0';
+
+        if (write(fd, buf, strlen(buf)) == -1)
+            exit_sys("write");
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+
+        exit(EXIT_FAILURE);
+    }
