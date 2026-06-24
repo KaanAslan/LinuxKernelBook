@@ -195,6 +195,7 @@ göstermektedir.
 .. image:: _static/wait-queue-list.png
    :alt: Bekleme Kuyruğu Bağlı Listesi
    :align: center
+   :width: 80%
 
 Çekirdek içerisinde thread'i bekleme kuyruklarına bir düğüm olarak yerleştiren ve oradan çıkartarak
 yine çalışma kuyruklarına yerleştiren daha yüksek seviyeli çekirdek fonksiyonları oluşturulmuştur.
@@ -266,8 +267,8 @@ kullanılabilir:
 
     init_waitqueue_head(&g_wq);
 
-Thread'lerin Bekleme Kuyrukları Yoluyla Uykuya Yatırılması ve Uyandırılması
----------------------------------------------------------------------------
+Thread'lerin Uykuya Yatırılması: wait_event Makroları
+-----------------------------------------------------
 
 Bir thread çalışırken kendisini bekleme kuyruğuna yerleştirmektedir. Yani çekirdek tasarımında bir
 thread'in başka bir thread'i bekleme kuyruklarına yerleştirmesi gibi bir durum uygun olmadığı
@@ -305,11 +306,11 @@ oluşturabiliriz. Bu durumda ``g_flag`` değişkeni 0 ise biz uyandırma işlemi
 thread'ler önce uyandırılacak, koşul sağlanmadığı için yeniden uykuya dalacaktır. Makroların
 ``timeout`` parametresine sahip versiyonları koşul sağlanmasa bile en kötü olasılıkla belli bir süre
 sonra thread'lerin uyandırılmasını sağlamaktadır. Bekleme kuyruğuna yerleştirilen thread'lerin bir
-sinyal geldiğinde uyandırılabilmesi için beklemenin *interruptible* biçimde yapılması gerekir.
-Killable olan bekleme fonksiyonu ise yalnızca ``SIGKILL`` sinyaline yanıt vermektedir.
+sinyal geldiğinde uyandırılabilmesi için beklemenin ``interruptible`` biçimde yapılması gerekir.
+``killable`` olan bekleme fonksiyonu ise yalnızca ``SIGKILL`` sinyaline yanıt vermektedir.
 
-wait_event Makrosunun Gerçekleştirimi
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+wait_event Makrolarının Gerçekleştirimleri
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``wait_event`` makrosu güncel çekirdeklerde ``include/linux/wait.h`` dosyası içerisinde aşağıdaki
 gibi yazılmıştır:
@@ -326,8 +327,8 @@ gibi yazılmıştır:
 
 Buradaki ``might_sleep`` makrosu debug amaçlı bulundurulmuştur. Eğer ``CONFIG_DEBUG_ATOMIC_SLEEP``
 konfigürasyon parametresi açık değilse bu makro hemen hemen boş gibidir. Burada daha uykuya
-dalmadan koşulun kontrol edildiğine dikkat ediniz. Yani aslında koşul zaten sağlanıyorsa uyuma
-gerçekleşmemektedir. Kodda asıl uykuya daldırma işlemini ``__wait_event`` makrosu yapmaktadır. Bu
+yatırmadan koşulun kontrol edildiğine dikkat ediniz. Yani aslında koşul zaten sağlanıyorsa uyuma
+gerçekleşmemektedir. Kodda asıl uykuya yatırma işlemini ``__wait_event`` makrosu yapmaktadır. Bu
 makro da güncel çekirdeklerde üç alt tireli başka bir makroyu çalıştırmaktadır:
 
 .. code-block:: c
@@ -370,7 +371,7 @@ makro da güncel çekirdeklerde üç alt tireli başka bir makroyu çalıştırm
 Bekleme işleminin nasıl gerçekleştiğini ve uyanmanın nasıl yapıldığını anlayabilmek için bu makronun
 üzerinde biraz durmamız gerekiyor. Makroda bekleme kuyruğunun elemanı olan ``wait_queue_entry``
 nesnesinin yerel bir biçimde tanımlandığına dikkat ediniz. Bekleme kuyrukları genellikle global
-düzeyde oluşturuluyor olsa da onun düğümleri olan nesneler yerel biçimde stack'te oluşturulmaktadır.
+düzeyde oluşturuluyor olsa da onun düğümleri olan nesneler genellikle yerel biçimde stack'te oluşturulmaktadır.
 Bunun bir sakıncası yoktur. Çünkü uyanma durumunda zaten bu stack'teki nesne otomatik biçimde
 boşaltılacaktır. Böylece gereksiz bir heap tahsisatı yapılmamaktadır. Stack'te yaratılan yerel
 ``wait_queue_entry`` nesnesine ilk değer aşağıdaki gibi verilmiştir:
@@ -424,7 +425,7 @@ Oluşturulan ve ilk değer verilen ``wait_queue_entry`` nesnesinin bekleme kuyru
     }
     EXPORT_SYMBOL(prepare_to_wait_event);
 
-Bu fonksiyonun thread'i çalışma kuyruğundan (run queue) çıkartmadığına, yalnızca ilgili bekleme
+Bu fonksiyonun thread'i *çalışma kuyruğundan (run queue)* çıkartmadığına, yalnızca ilgili bekleme
 kuyruğuna eklediğine dikkat ediniz. ``__wait_event`` makrosunda ``prepare_to_wait_event`` çağrısından
 sonra yeniden koşul kontrol edilmiştir. Çünkü bu arada koşul sağlanmış da olabilir:
 
@@ -433,7 +434,7 @@ sonra yeniden koşul kontrol edilmiştir. Çünkü bu arada koşul sağlanmış 
     if (condition)
         break;
 
-Buradaki ``break`` akışı döngünün dışına çıkartmaktadır. Bekleme kuyruğundan thread'in silinmesi
+Buradaki ``break`` akışı döngünün dışına çıkartmaktadır. Bekleme kuyruğundan thread'in çıkartılması
 döngünün sonundaki ``finish_wait`` fonksiyonu tarafından yapılmaktadır. Daha sonra ``__wait_event``
 makrosunda ``___wait_is_interruptible`` makrosu çağrılıp ``prepare_to_wait_event`` fonksiyonun geri
 dönüş değeri kontrol edilmiştir:
@@ -458,8 +459,8 @@ ve thread hâlâ CPU'da çalışmaktadır. İşte son darbe ``schedule`` fonksiy
 ``schedule`` fonksiyonunu çizelgeleyici alt sistemini incelerken ele alacağız. Ancak bu fonksiyon
 kabaca şunları yapmaktadır:
 
-- Çalışmakta olan thread'in yazmaç bilgilerini ``task_struct`` alanına aktarmaktadır.
-- Gerekiyorsa thread'i çalışma kuyruğundan çıkartmaktadır.
+- Çalışmakta olan thread'in yazmaç bilgilerini ``task_struct`` alanına aktarır.
+- Gerekiyorsa thread'i çalışma kuyruğundan çıkartır.
 
 İşte thread'in konumunun saklanması ``schedule`` fonksiyonu içerisinde yapılmaktadır. Dolayısıyla
 aslında thread uykudan ``schedule`` fonksiyonun içerisinden uyanacaktır. Yani uyandırma gerçekleştiğinde
@@ -473,21 +474,21 @@ aslında thread uykudan ``schedule`` fonksiyonun içerisinden uyanacaktır. Yani
         struct wait_queue_entry __wq_entry;                                     \
         long __ret = ret;   /* explicit shadow */                               \
                                                                                 \
-        init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);       \
+        init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);        \
         for (;;) {                                                              \
-            long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);  \
+            long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);   \
                                                                                 \
             if (condition)                                                      \
                 break;                                                          \
                                                                                 \
-            if (___wait_is_interruptible(state) && __int) {                    \
+            if (___wait_is_interruptible(state) && __int) {                     \
                 __ret = __int;                                                  \
                 goto __out;                                                     \
             }                                                                   \
                                                                                 \
             cmd;                                                                \
                                                                                 \
-    /* -----> uyandırılan thread çalışmasına buradan devam eder! */            \
+    /* -----> uyandırılan thread çalışmasına buradan devam eder! */             \
                                                                                 \
             if (condition)                                                      \
                 break;                                                          \
@@ -542,7 +543,7 @@ yapılmamaktadır.
 
 O halde özetlersek ``wait_event`` fonksiyonu çağrıldığında şunlar gerçekleşmektedir:
 
-1. Daha uykuya dalma girişiminden önce hemen koşul kontrol edilmektedir.
+1. Daha uykuya yatırma girişiminden önce hemen koşul kontrol edilmektedir.
 
 2. Thread yeni bir düğüm yaratılarak bekleme kuyruğuna eklenmektedir. Ancak henüz bağlamsal geçiş
    yapılmadan koşul yeniden kontrol edilmekte ve sinyal durumu dikkate alınmaktadır.
@@ -551,3 +552,300 @@ O halde özetlersek ``wait_event`` fonksiyonu çağrıldığında şunlar gerçe
 
 4. Thread uyandırıldığında koşul sağlanıyorsa artık kesin uyandırılmıştır, sağlanmıyorsa yeniden
    uykuya yatırılmaktadır.
+
+``wait_event_interruptible`` ve ``wait_event_killable`` makroları aslında taban ``___wait_event``
+makrosunu çağırmaktadır. Bunlar thread'in durumunu da uygun biçimde ayarlamaktadır.
+``wait_event_interruptible`` makrosu ``include/linux/wait.h`` dosyası içerisinde şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define wait_event_interruptible(wq_head, condition)                    \
+    ({                                                                      \
+        int __ret = 0;                                                      \
+        might_sleep();                                                      \
+        if (!(condition))                                                   \
+            __ret = __wait_event_interruptible(wq_head, condition);         \
+        __ret;                                                              \
+    })
+
+Burada ``__wait_event_interruptible`` makrosunun çağrıldığını görüyorsunuz:
+
+.. code-block:: c
+
+    #define __wait_event_interruptible(wq_head, condition)                  \
+        ___wait_event(wq_head, condition, TASK_INTERRUPTIBLE, 0, 0,         \
+                schedule())
+
+Görüldüğü gibi burada thread'in durumu ``TASK_INTERRUPTIBLE`` yapılmaktadır.
+
+``wait_event_killable`` makrosu da benzer biçimde yazılmıştır:
+
+.. code-block:: c
+
+    #define wait_event_killable(wq_head, condition)                         \
+    ({                                                                      \
+        int __ret = 0;                                                      \
+        might_sleep();                                                      \
+        if (!(condition))                                                   \
+            __ret = __wait_event_killable(wq_head, condition);              \
+        __ret;                                                              \
+    })
+
+Burada ``__wait_event_killable`` makrosunun çağrıldığını görüyorsunuz:
+
+.. code-block:: c
+
+    #define __wait_event_killable(wq, condition)                            \
+        ___wait_event(wq, condition, TASK_KILLABLE, 0, 0, schedule())
+
+Tek farklı olan yer thread'in durumunun ``TASK_KILLABLE`` olarak set edilmesidir.
+
+``wait_event_timeout`` ve ``wait_event_interruptible_timeout`` makroları *zaman aşımlı (timeout)*
+bekleme yapmaktadır. Zaman aşımlı bekleme demek en kötü olasılıkla bloke çözülmese bile belli süre
+geçtiğinde beklemenin sonlanması demektir. Bu makroların ayrıca jiffy türünden bir zaman aşımı
+parametresine de sahip olduğuna dikkat ediniz:
+
+.. code-block:: c
+
+    wait_event_timeout(wq_head, condition, timeout);
+    wait_event_interruptible_timeout(wq_head, condition, timeout);
+
+``wait_event_timeout`` makrosu ``include/linux/wait.h`` dosyası içerisinde şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define wait_event_timeout(wq_head, condition, timeout)                 \
+    ({                                                                      \
+        long __ret = timeout;                                               \
+        might_sleep();                                                      \
+        if (!___wait_cond_timeout(condition))                               \
+            __ret = __wait_event_timeout(wq_head, condition, timeout);      \
+        __ret;                                                              \
+    })
+
+Burada da önce koşulun sağlanıp sağlanmadığına bakılmış, koşul zaten sağlanıyorsa doğrudan
+çıkılmıştır. Buradaki ``___wait_cond_timeout`` makrosu da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define ___wait_cond_timeout(condition)                 \
+    ({                                                      \
+        bool __cond = (condition);                          \
+        if (__cond && !__ret)                               \
+            __ret = 1;                                      \
+        __cond || !__ret;                                   \
+    })
+
+Burada koşul sağlanıyorsa ya da zaman aşımı sıfırsa makro 1 değerini üretmektedir.
+``wait_event_timeout`` makrosunda koşul sağlanmıyorsa ``__wait_event_timeout`` makrosu
+çağrılmaktadır. Bu makro da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define __wait_event_timeout(wq_head, condition, timeout)           \
+        ___wait_event(wq_head, ___wait_cond_timeout(condition),         \
+                TASK_UNINTERRUPTIBLE, 0, timeout,                       \
+                __ret = schedule_timeout(__ret))
+
+Bu makro da yukarıda incelediğimiz ``___wait_event`` makrosunu çağırmaktadır. Burada
+``___wait_event`` makrosunun parametrelerinin daha değişik geçildiğine dikkat ediniz. Örneğin artık
+``schedule`` fonksiyonu yerine ``schedule_timeout`` fonksiyonu çağrılmaktadır. Ayrıca makroda koşulun
+``___wait_cond_timeout(condition)`` biçiminde oluşturulduğuna da dikkat ediniz. Böylece aslında
+uyandırılan thread koşul sağlanıyorsa ya da koşul sağlanmıyorsa fakat zaman aşımı dolmuşsa yeniden
+uykuya dalmayacak, akışına devam edecektir. Burada kritik önemdeki fonksiyon ``schedule_timeout``
+fonksiyonudur. Bu fonksiyon ``kernel/time/sleep_timeout.c`` dosyasında şöyle yazılmıştır:
+
+.. code-block:: c
+
+    signed long __sched schedule_timeout(signed long timeout)
+    {
+        struct process_timer timer;
+        unsigned long expire;
+
+        switch (timeout) {
+        case MAX_SCHEDULE_TIMEOUT:
+            /*
+             * These two special cases are useful to be comfortable
+             * in the caller. Nothing more. We could take
+             * MAX_SCHEDULE_TIMEOUT from one of the negative value
+             * but I'd like to return a valid offset (>=0) to allow
+             * the caller to do everything it want with the retval.
+             */
+            schedule();
+            goto out;
+        default:
+            /*
+             * Another bit of PARANOID. Note that the retval will be
+             * 0 since no piece of kernel is supposed to do a check
+             * for a negative retval of schedule_timeout() (since it
+             * should never happens anyway). You just have the printk()
+             * that will tell you if something is gone wrong and where.
+             */
+            if (timeout < 0) {
+                pr_err("%s: wrong timeout value %lx\n", __func__, timeout);
+                dump_stack();
+                __set_current_state(TASK_RUNNING);
+                goto out;
+            }
+        }
+
+        expire = timeout + jiffies;
+
+        timer.task = current;
+        timer_setup_on_stack(&timer.timer, process_timeout, 0);
+        timer.timer.expires = expire;
+        add_timer(&timer.timer);
+        schedule();
+        timer_delete_sync(&timer.timer);
+
+        /* Remove the timer from the object tracker */
+        timer_destroy_on_stack(&timer.timer);
+
+        timeout = expire - jiffies;
+
+    out:
+        return timeout < 0 ? 0 : timeout;
+    }
+    EXPORT_SYMBOL(schedule_timeout);
+
+Burada neler yapılmaktadır? Aslında fonksiyonun ana noktası şudur: fonksiyon ``schedule``
+fonksiyonu ile bağlamsal geçişi oluşturmadan önce bir zamanlayıcı kurar. Bu zamanlayıcının süresi
+dolduğunda thread uyandırılır. Yani sonuçta ``wait_event_timeout`` makrosu ile uykuya yatırılan
+thread başka bir akış tarafından uyandırılmasa bile bu timer mekanizması yoluyla uyandırılmaktadır.
+
+``wait_event_timeout`` makrosu kalan ``jiffy`` süresine geri dönmektedir. Jiffy konusu ileride ele
+alınacaktır.
+
+``wait_event_timeout`` fonksiyonu özetle aşağıdaki gibi çalışmaktadır:
+
+1. Daha uykuya yatırma girişiminden önce koşul ve zaman aşımı kontrol edilmektedir. Koşul
+   sağlanıyorsa ya da zaman aşımı zaten dolmuş durumdaysa (yani zaman aşımı parametresi 0
+   girilmişse) hiç uyuma girişiminde bulunulmaz.
+
+2. Thread bekleme kuyruğuna yazılır ancak bekleme bir timer kurularak sağlanır. Dolayısıyla blokenin
+   çözülmesi için zaman aşımının dolması ya da uyandırıldığında koşulun sağlanması gerekmektedir.
+
+3. Eğer thread uyandırılırsa yine koşula ve zaman aşımına bakılır. Koşul sağlanıyorsa ya da zaman
+   aşımı dolmuşsa thread bekleme kuyruğundan çıkartılarak bloke çözülür.
+
+``wait_event_interruptible_timeout`` makrosunun ``wait_event_timeout`` makrosundan farkı bir sinyal
+oluştuğunda da blokenin çözülmesidir. Makro şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define wait_event_interruptible_timeout(wq_head, condition, timeout)       \
+    ({                                                                          \
+        long __ret = timeout;                                                   \
+        might_sleep();                                                          \
+        if (!___wait_cond_timeout(condition))                                   \
+            __ret = __wait_event_interruptible_timeout(wq_head,                 \
+                            condition, timeout);                                \
+        __ret;                                                                  \
+    })
+
+``__wait_event_interruptible_timeout`` makrosu da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define __wait_event_interruptible_timeout(wq_head, condition, timeout)     \
+        ___wait_event(wq_head, ___wait_cond_timeout(condition),                 \
+                TASK_INTERRUPTIBLE, 0, timeout,                                 \
+                __ret = schedule_timeout(__ret))
+
+Buradaki tek farkın thread'in durumunun ``TASK_INTERRUPTIBLE`` olarak set edilmesi olduğuna dikkat
+ediniz.
+
+Şimdi de ``wait_event_interruptible_exclusive`` makrosu üzerinde duralım.
+``wait_event_interruptible_exclusive`` makrosu bekleme kuyruğuna yerleştirilen ``wait_queue_entry``
+nesnesinin ``flags`` elemanını exclusive durumu belirtmek amacıyla ``WQ_FLAG_EXCLUSIVE`` biçiminde
+set etmektedir. Makro ``include/linux/wait.h`` dosyası içerisinde şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define wait_event_interruptible_exclusive(wq, condition)              \
+    ({                                                                     \
+        int __ret = 0;                                                     \
+        might_sleep();                                                     \
+        if (!(condition))                                                  \
+            __ret = __wait_event_interruptible_exclusive(wq, condition);   \
+        __ret;                                                             \
+    })
+
+Buradaki ``__wait_event_interruptible_exclusive`` makrosu da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define __wait_event_interruptible_exclusive(wq, condition)         \
+        ___wait_event(wq, condition, TASK_INTERRUPTIBLE, 1, 0,          \
+                schedule())
+
+Burada ``___wait_event`` makrosunun dördüncü parametresine 1 geçildiğine dikkat ediniz. Bu parametre
+makroda kontrol edilmekte ve bu parametreye dayalı olarak exclusive bekleme için ``wait_queue_entry``
+nesnesinin ``flags`` elemanı ``WQ_FLAG_EXCLUSIVE`` biçiminde set edilmektedir.
+
+Exclusive uyuma ve uyandırma izleyen paragraflarda ele alacağız.
+
+Thread'in Uykuya Yatırılmasına Bir Örnek
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Şimdi bekleme kuyruklarının kullanımına bir örnek verelim. Bir aygıt sürücü içerisinde bir tampondan
+bilgi okuyacak olalım. Ancak tamponda bilgi yoksa okuma yapan thread bilgi tampona gelene kadar
+uykuya yatırılarak bekletilecek olsun. Aygıt sürücümüzün ``read`` fonksiyonunu şöyle yazabiliriz:
+
+.. code-block:: c
+
+    static wait_queue_head_t g_wq;
+    static char g_buf[1024];
+    atomic_t g_len = ATOMIC_INIT(0);
+    /* ... */
+
+    static ssize_t generic_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        size_t esize;
+
+        wait_event_interruptible(g_wq, atomic_read(&g_len) > 0);
+
+        esize = size < atomic_read(&g_len) ? size : atomic_read(&g_len);
+        if (copy_to_user(buf, g_buf, esize) != 0)
+            return -EFAULT;
+
+        return esize;
+    }
+
+Buradaki koşula dikkat ediniz: ``atomic_read(&g_len) > 0``. Tampona yazma yapan taraf yazma
+yaptıktan sonra yazılan karakter sayısını ``g_len`` değişkenine yerleştirdikten sonra uyandırma
+işlemini yapmalıdır. Böylece uyandırılan thread koşulun sağlandığını görecek ve bloke çözülecektir.
+Bloke çözülünce de tampondaki bilgi kullanıcı alanına ``copy_to_user`` fonksiyonu ile
+kopyalanmaktadır. Ancak burada dikkat edilmesi gereken bir nokta vardır. Birden fazla thread ``read``
+fonksiyonunu çağırıp bloke olduğunda bunların hepsi uyanacak ve aynı tamponu okuyacaktır. Eğer bu
+tamponun tek bir thread tarafından okunup tüketilmesini istiyorsanız ek bir kilit kullanarak başka
+bir döngü içerisinde bu işlemi yapmalısınız. Kodda koşulun atomik bir biçimde oluşturulduğuna da
+dikkat ediniz. Aslında pek çok durumda ``atomic_read`` yerine ``READ_ONCE`` gibi volatile erişim
+yeterli olmaktadır. Ancak eğer birden fazla thread uyandırılıyorsa güvenli olan yaklaşım koşulun
+atomik bir biçimde oluşturulmasıdır.
+
+Thread'lerin Uykudan Uyandırılması: wake_up Makroları
+-----------------------------------------------------
+
+Şimdi de bekleme kuyruğundaki thread'lerin nasıl uyandırıldığı üzerinde duralım. Bunun için Linux
+çekirdeklerinde ``include/linux/wait.h`` dosyası içerisinde bir grup ``wake_up`` makrosu
+bulundurulmuştur:
+
+.. code-block:: c
+
+    #define wake_up(x)                      __wake_up(x, TASK_NORMAL, 1, NULL)
+    #define wake_up_nr(x, nr)               __wake_up(x, TASK_NORMAL, nr, NULL)
+    #define wake_up_all(x)                  __wake_up(x, TASK_NORMAL, 0, NULL)
+    #define wake_up_locked(x)               __wake_up_locked((x), TASK_NORMAL, 1)
+    #define wake_up_all_locked(x)           __wake_up_locked((x), TASK_NORMAL, 0)
+    #define wake_up_sync(x)                 __wake_up_sync(x, TASK_NORMAL)
+
+    #define wake_up_interruptible(x)        __wake_up(x, TASK_INTERRUPTIBLE, 1, NULL)
+    #define wake_up_interruptible_nr(x, nr) __wake_up(x, TASK_INTERRUPTIBLE, nr, NULL)
+    #define wake_up_interruptible_all(x)    __wake_up(x, TASK_INTERRUPTIBLE, 0, NULL)
+    #define wake_up_interruptible_sync(x)   __wake_up_sync((x), TASK_INTERRUPTIBLE)
+
+Bu makroların hepsinin birinci parametreleri ``wait_queue_head`` türünden bekleme kuyruğu nesnesinin
+adresini almaktadır. (``wait_event`` makrolarında adres alma işlemi makro tarafından yapılmaktadır.
+Ancak ``wake_up`` makroları adres istemektedir.) Bunların ``_nr``'li versiyonlarının da olduğunu
+görüyorsunuz.
