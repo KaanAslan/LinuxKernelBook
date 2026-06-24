@@ -309,7 +309,7 @@ sinyal geldiğinde uyandırılabilmesi için beklemenin *interruptible* biçimde
 Killable olan bekleme fonksiyonu ise yalnızca ``SIGKILL`` sinyaline yanıt vermektedir.
 
 wait_event Makrosunun Gerçekleştirimi
-----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``wait_event`` makrosu güncel çekirdeklerde ``include/linux/wait.h`` dosyası içerisinde aşağıdaki
 gibi yazılmıştır:
@@ -332,8 +332,8 @@ makro da güncel çekirdeklerde üç alt tireli başka bir makroyu çalıştırm
 
 .. code-block:: c
 
-    #define __wait_event(wq_head, condition)                            \
-        (void)___wait_event(wq_head, condition, TASK_UNINTERRUPTIBLE,   \
+    #define __wait_event(wq_head, condition)                                \
+        (void)___wait_event(wq_head, condition, TASK_UNINTERRUPTIBLE,       \
                             0, 0, schedule())
 
 İşte thread'i bekleme kuyruğuna yerleştiren asıl makro budur:
@@ -346,14 +346,14 @@ makro da güncel çekirdeklerde üç alt tireli başka bir makroyu çalıştırm
         struct wait_queue_entry __wq_entry;                                     \
         long __ret = ret;   /* explicit shadow */                               \
                                                                                 \
-        init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);       \
+        init_wait_entry(&__wq_entry, exclusive ? WQ_FLAG_EXCLUSIVE : 0);        \
         for (;;) {                                                              \
-            long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);  \
+            long __int = prepare_to_wait_event(&wq_head, &__wq_entry, state);   \
                                                                                 \
             if (condition)                                                      \
                 break;                                                          \
                                                                                 \
-            if (___wait_is_interruptible(state) && __int) {                    \
+            if (___wait_is_interruptible(state) && __int) {                     \
                 __ret = __int;                                                  \
                 goto __out;                                                     \
             }                                                                   \
