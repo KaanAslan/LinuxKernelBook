@@ -1142,11 +1142,11 @@ Bloke çözüldüğünde okunmak istenen miktarla tampondaki miktar karşılaşt
 küçükse o miktarda okuma yapılmıştır. ``copy_to_user`` fonksiyonunun çekirdek modundan prosesin
 bellek alanına kopyalama yaptığını anımsayınız. Aktarım sonrasında ``g_len`` değişkeni yine 0
 değerine çekilmiştir. Böylece sonraki ``read`` işleminde tampon tüketildiği için yeniden bloke
-oluşacaktır. Ancak bu kod birden fazla ``read`` işleminin aynı anda yapıldığı durumda kararsız bir
-duruma da yol açabilecektir. Birden fazla thread uykudan uyandırıldığında birden fazlası tamponu
-okuyabilecektir. Eğer tamponun tek bir thread tarafından tüketilmesi fakat diğer thread'lerin
-bekletilmesi gerekiyorsa ``mutex`` gibi ek bir kilit mekanizmasının da sağlanması gerekir. İzleyen
-paragraflarda bu sorunun üzerinde duracağız.
+oluşacaktır. Ancak bu kod birden fazla ``read`` işleminin aynı anda yapıldığı durumda ya da read 
+işlemi ile write işleminin eşzamanlı yapıldığı durumda senkronizasyon sorununa yol açabilecektir. 
+Eğer tamponun tek bir thread tarafından tüketilmesi fakat diğer thread'lerin bekletilmesi gerekiyorsa 
+``mutex`` gibi ek bir kilit mekanizmasının da kullanılması gerekir. İzleyen paragraflarda bu sorunun 
+üzerinde duracağız.
 
 Aygıt sürücünün ``read`` fonksiyonunda bloke olan thread'lerin blokesi aygıt sürücünün ``write``
 fonksiyonunda çözülmektedir:
