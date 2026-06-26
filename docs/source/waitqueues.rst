@@ -2870,3 +2870,91 @@ aynıdır:
 +------------------+--------------------------------------------+--------------------------------------------+
 | Üst Düzey Makro  | wait_event_* makroları bu çağrıyı sarar    | wait_event_* makroları bu çağrıyı sarar    |
 +------------------+--------------------------------------------+--------------------------------------------+
+
+Bekleme Kuyrukları Kullanılmadan Thread'lerin Uykuya Yatırılması ve Uyandırılması
+=================================================================================
+
+Yukarıdaki anlatımlardan siz bir thread'in ya *çalışma kuyruğunda (run queue)* ya da *bekleme kuyruğunda
+(wait queue)* olması gerektiğini sanabilirsiniz. Aslında gerçek durum tam böyle değildir. Thread çalışma
+kuyruğundan çıkartılabilir ancak bekleme kuyruğuna da yerleştirilmeyebilir. Bunu sağlamak için önce
+thread'in durumunu (state) ``TASK_INTERRUPTIBLE`` olarak ayarlayıp hemen arkasından ``schedule``
+fonksiyonunu çağırmak gerekir. Örneğin:
+
+.. code-block:: c
+
+    set_current_state(TASK_INTERRUPTIBLE);
+    schedule();
+
+Burada ``set_current_state`` fonksiyonu thread'in durumunu değiştirmek için kullanılmıştır. ``schedule``
+fonksiyonu ise bağlamsal geçişi oluşturmaktadır. (Buradaki thread durumunun ``TASK_INTERRUPTIBLE`` olması
+gerekmemektedir. ``TASK_INTERRUPTIBLE`` "sinyal geldiğinde thread yeniden CPU'ya atanıp sinyal fonksiyonu
+çalıştırılabilir" anlamına gelmektedir.) Tabii konunun ayrıntıları aslında *çizelgeleyici (scheduler)* alt
+sistemi ile ilgilidir. Bu konu çizelgeleyici alt sistemin anlatıldığı bölümde ele alınacaktır.
+
+``set_current_state`` fonksiyonu yalnızca ``task_struct`` nesnesindeki ``state`` elemanını güncellemektedir.
+(Bu ``state`` elemanı yeni çekirdeklerde "buraya doğrudan erişmeyin" anlamına gelecek biçimde ``__state``
+haline getirilmiştir.) Thread çalışma kuyruğundan ``schedule`` fonksiyonu tarafından çıkartılmaktadır.
+``schedule`` fonksiyonu içerisinde çağrılan ``deactivate_task`` fonksiyonunda thread'in durumuna bakılır,
+durum 0'dan farklı ise (0 değeri ``TASK_RUNNING`` anlamına gelmektedir) thread çalışma kuyruğundan
+çıkartılmaktadır.
+
+``wake_up_process`` Fonksiyonu
+-------------------------------
+
+Peki thread yukarıdaki gibi çalışma kuyruğundan çıkartıldığında ancak herhangi bir bekleme kuyruğuna da
+yerleştirilmediğinde nasıl yeniden çalışma kuyruğuna aktarılacaktır? İşte bu işlem ``wake_up_process``
+isimli çekirdek fonksiyonuyla yapılmaktadır. ``wake_up_process`` fonksiyonunun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    int wake_up_process(struct task_struct *p);
+
+Fonksiyon başarı durumunda 0 değerine, başarısızlık durumunda negatif errno değerine geri dönmektedir.
+``wake_up_process`` fonksiyonu şöyle yazılmıştır:
+
+.. code-block:: c
+
+    int wake_up_process(struct task_struct *p)
+    {
+        return try_to_wake_up(p, TASK_ALL, 0);
+    }
+    EXPORT_SYMBOL(wake_up_process);
+
+Fonksiyonun export edildiğine dikkat ediniz. Yani bu fonksiyon çekirdek modülleri ve aygıt sürücüler
+tarafından da kullanılabilmektedir. Burada asıl işlemi yapan ``try_to_wake_up`` fonksiyonudur. Bu fonksiyon
+export edilmemiştir. ``try_to_wake_up`` fonksiyonunun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    static int try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags);
+
+``wake_up_process`` fonksiyonu ``try_to_wake_up`` fonksiyonunu ``TASK_ALL`` durum parametresiyle
+çağırmıştır. Bu durum parametresi "hangi duruma sahip thread'lerin uyandırılacağını" belirtmektedir.
+``TASK_ALL`` şöyle define edilmiştir:
+
+.. code-block:: c
+
+    #define TASK_ALL    (TASK_NORMAL | __TASK_STOPPED | __TASK_TRACED)
+
+Çekirdekte ``wake_up_process`` fonksiyonuna benzeyen ancak export edilmemiş ``wake_up_state`` isimli bir
+fonksiyon da bulunmaktadır. Bu fonksiyon da şöyle yazılmıştır:
+
+.. code-block:: c
+
+    int wake_up_state(struct task_struct *p, unsigned int state)
+    {
+        return try_to_wake_up(p, state, 0);
+    }
+
+Görüldüğü gibi bu fonksiyon aslında daha geneldir. Yani herhangi bir thread durumunu parametre olarak
+alabilmektedir.
+
+Peki bir thread'in çalışma kuyruğundan çıkartılıp hiçbir bekleme kuyruğuna alınmamasının nasıl bir faydası
+olabilir? Thread'lerin bekleme kuyruğuna alınmasının da zamansal maliyeti vardır. Bazı durumlarda bu işlemin
+yukarıda anlattığımız gibi hiç bekleme kuyrukları karıştırılmadan doğrudan yapılması uygun olabilmektedir.
+Gerçekten de çekirdeğin kendisi de bazı durumlarda hiç bekleme kuyruğu kullanmamaktadır. Örneğin
+``SIGSTOP`` sinyali ile (ya da terminalden Ctrl+Z tuşuna basılarak) bir proses durdurulduğunda aslında o
+proses (prosesin thread'lerini kastediyoruz) çekirdek tarafından herhangi bir bekleme kuyruğuna
+yerleştirilmemektedir. Prosese ``SIGCONT`` sinyali gönderildiğinde (ya da terminalden *"fg"* komutu
+uygulandığında) doğrudan ``wake_up_state`` fonksiyonu ile proses (prosesin tüm thread'leri) çalışma
+kuyruğuna yeniden yerleştirilmektedir.
