@@ -932,7 +932,7 @@ Formatlama programımızın tamamı ``mkfs.simplefs.c`` ismiyle aşağıda veril
     void exit_sys(const char *msg)
     {
         perror(msg);
- 
+
         exit(EXIT_FAILURE);
     }
 
@@ -8417,7 +8417,6 @@ adreslerini yerleştirebilirsiniz:
     void exit_sys(const char *msg)
     {
         perror(msg);
-
         exit(EXIT_FAILURE);
     }
 
@@ -8465,7 +8464,6 @@ adreslerini yerleştirebilirsiniz:
     void exit_sys(const char *msg)
     {
         perror(msg);
-
         exit(EXIT_FAILURE);
     }
 
