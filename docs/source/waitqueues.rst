@@ -803,7 +803,8 @@ uykuya yatırılarak bekletilecek olsun. Aygıt sürücümüzün ``read`` fonksi
     {
         size_t esize;
 
-        wait_event_interruptible(g_wq, atomic_read(&g_len) > 0);
+        if (wait_event_interruptible(g_wq, atomic_read(&g_len) > 0) != 0)
+            return -ERESTARTSYS;   
 
         esize = size < atomic_read(&g_len) ? size : atomic_read(&g_len);
         if (copy_to_user(buf, g_buf, esize) != 0)
@@ -823,6 +824,15 @@ bir döngü içerisinde bu işlemi yapmalısınız. Kodda koşulun atomik bir bi
 dikkat ediniz. Aslında pek çok durumda ``atomic_read`` yerine ``READ_ONCE`` gibi volatile erişim
 yeterli olmaktadır. Ancak eğer birden fazla thread uyandırılıyorsa güvenli olan yaklaşım koşulun
 atomik bir biçimde oluşturulmasıdır.
+
+Burada bir noktaya daha dikkatinizi çekmek istiyoruz. wait_event_interruptible makrosu sinyal dolayısıyla 
+başarısız olabilir. Bu durumda sistem fonksiyonlarının yeniden çalıştırılabilirliğini sağlamak için 
+onun çağrıldığı fonksiyonu -ERESTARTSYS errno değeri ile geri döndürmek gerekir:
+
+.. code-block:: c
+
+    if (wait_event_interruptible(g_wq, atomic_read(&g_len) > 0) != 0)
+        return -ERESTARTSYS;   
 
 Thread'lerin Uykudan Uyandırılması: wake_up Makroları
 -----------------------------------------------------
@@ -1127,7 +1137,9 @@ uyandırsın. Böyle bir aygıt sürücünün ``read`` fonksiyonu şöyle yazıl
     {
         size_t esize;
 
-        wait_event_interruptible(g_wq, atomic_read(&g_len) > 0);
+        if (wait_event_interruptible(g_wq, atomic_read(&g_len) > 0) != 0)
+            return -ERESTARTSYS;   
+
         esize = size < atomic_read(&g_len) ? size : atomic_read(&g_len);
         if (copy_to_user(buf, g_buf, esize) != 0)
             return -EFAULT;
@@ -1196,7 +1208,7 @@ Farklı terminallerden önce ``wait-driver-test-read.c`` programını sonra da `
 
     $ ./wait-driver-test-write
  
-Test bitince aygıt sürücüyü çekirdekten çıkarabilirsiniz:
+Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
 
 .. code-block:: c
 
@@ -1254,7 +1266,7 @@ Test bitince aygıt sürücüyü çekirdekten çıkarabilirsiniz:
         }
 
         g_cdev->owner = THIS_MODULE;
-        g_cdev->ops   = &g_fops;
+        g_cdev->ops = &g_fops;
 
         if ((result = cdev_add(g_cdev, g_dev, 1)) < 0) {
             unregister_chrdev_region(g_dev, 1);
@@ -1293,7 +1305,9 @@ Test bitince aygıt sürücüyü çekirdekten çıkarabilirsiniz:
     {
         size_t esize;
 
-        wait_event_interruptible(g_wq, atomic_read(&g_len) > 0);
+        if (wait_event_interruptible(g_wq, atomic_read(&g_len) > 0) != 0)
+            return -ERESTARTSYS;   
+
         esize = size < atomic_read(&g_len) ? size : atomic_read(&g_len);
         if (copy_to_user(buf, g_buf, esize) != 0)
             return -EFAULT;
@@ -1437,3 +1451,91 @@ Test bitince aygıt sürücüyü çekirdekten çıkarabilirsiniz:
         perror(msg);
         exit(EXIT_FAILURE);
     }
+
+Yalnızca Tek Bir Thread'in Uyandırılması
+-----------------------------------------
+
+Bekleme kuyruğunda bir koşul altında birden fazla thread'in bloke edildiğini düşünelim. Örneğin
+thread'ler şöyle uykuya yatırılmış olsun:
+
+.. code-block:: c
+
+    if (wait_event_interruptible(g_wq, atomic_read(&g_len) > 0) != 0)
+        return -ERESTARTSYS;
+
+Buradaki koşul ``g_flag`` değerinin 0'a eşit olmamasıdır. Biz ``g_flag`` değerini örneğin 1 yapıp
+``wake_up_interruptible`` makrosunu çağırırsak bu koşulu bekleyen birden fazla thread
+uyanabilecektir:
+
+.. code-block:: c
+
+    atomic_set(&g_flag, 1);
+    wake_up_interruptible(&g_wq);
+
+Ancak bazen programcı "tek bir thread'in uyanmasını, diğer thread'lerin uyumaya devam etmesini"
+isteyebilir. İşte bu tür durumlarda sistem programcısının bir döngü içerisinde bu durumu manuel
+biçimde sağlaması gerekir. Bunu yapabilen tipik kalıp şöyledir:
+
+.. code-block:: c
+
+    if (mutex_lock_interruptible(&g_mutex) != 0)
+        return -ERESTARTSYS;
+    while (g_flag == 0) {
+        mutex_unlock(&g_mutex);
+        if (wait_event_interruptible(g_wq, g_flag != 0) != 0)
+            return -ERESTARTSYS;
+        if (mutex_lock_interruptible(&g_mutex) != 0)
+            return -ERESTARTSYS;
+    }
+    g_flag = 0;
+    mutex_unlock(&g_mutex);
+
+    /* burada uyanınca yapılacak işlemler var */
+
+Aslında bu kalıba kullanıcı modundaki *koşul değişkenleri (condition variable)* konusundan da
+aşinasınızdır. Burada önce ``mutex`` kilitlenmiş ve ``while`` döngüsüne girilmiştir. ``while``
+döngüsündeki koşula dikkat ediniz. Artık bu koşul sağlanmadığı sürece uyanan thread zaten yeniden
+uykuya dalacaktır. Uyanan thread'ler aşağıda okla gösterdiğimiz noktadan çalışmaya devam
+edecektir:
+
+.. code-block:: c
+
+    if (mutex_lock_interruptible(&g_mutex) != 0)
+        return -ERESTARTSYS;
+    while (g_flag == 0) {
+        mutex_unlock(&g_mutex);
+        if (wait_event_interruptible(g_wq, g_flag != 0) != 0)
+            return -ERESTARTSYS;
+
+        /* ----> çalışma buradan devam edecek */
+
+        if (mutex_lock_interruptible(&g_mutex) != 0)
+            return -ERESTARTSYS;
+    }
+    
+    /* burada uyanınca yapılacak işlemler var */
+
+Birden fazla thread uyandığında ``mutex``'in sahipliği tek bir thread tarafından alınacaktır.
+Dolayısıyla diğer thread'ler ``mutex`` kilitli olduğu için bekleyecektir. ``mutex``'in kilidini
+alan thread ``while`` koşuluna takılacak ve ``mutex``'in sahipliğini bırakıp yeniden uykuya
+dalacaktır. Diğer thread'ler de benzer davranışı gösterecektir. Bu kalıp sayesinde aslında çok
+sayıda thread uyandırıldığı halde bunlardan yalnızca bir tanesi akışına devam edecek ve diğerleri
+yeniden bloke olacaktır.
+
+Yukarıdaki kalıpta ``mutex`` yerine kod bloğu kısaysa spinlock da kullanabilirsiniz. Örneğin:
+
+.. code-block:: c
+
+    spin_lock(&g_spinlock);
+    while (g_flag == 0) {
+        spin_unlock(&g_spinlock);
+        if (wait_event_interruptible(g_wq, g_flag != 0) != 0)
+            return -ERESTARTSYS;
+        spin_lock(&g_spinlock);
+    }
+    g_flag = 0;
+    spin_unlock(&g_spinlock);
+
+    /* burada uyanınca yapılacak işlemler var */
+
+Ancak bu tür durumlarda spinlock kullanırken dikkat etmelisiniz.
