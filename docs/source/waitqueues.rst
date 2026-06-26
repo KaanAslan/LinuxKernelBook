@@ -149,8 +149,8 @@ kullanmaktadır. Programınızdaki thread'lerin CPU kullanım sürelerini çeşi
 gözlemleyebilirsiniz. Örneğin ``htop`` programı (``top`` programının biraz daha gelişmiş bir
 versiyonudur) ve ``perf`` programı ile thread'lerinizin CPU kullanımlarını görebilirsiniz.
 
-Bekleme Kuyruğuklarına İlişkin Veri Yapıları ve Temel Çekirdek Fonksiyonları
-============================================================================
+Bekleme Kuyruklarına İlişkin Veri Yapıları ve Temel Çekirdek Fonksiyonları
+==========================================================================
 
 Linux çekirdeklerinde bekleme kuyruklarının genel yapısı zaman içerisinde pek değişmemiştir. Biz
 burada doğrudan çekirdeğin güncel versiyonlarını temel alacağız. Çekirdeğin güncel versiyonlarında
