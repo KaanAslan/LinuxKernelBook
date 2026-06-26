@@ -202,7 +202,7 @@ ancak bunun bir garantisi yoktur.)
 Çekirdeğin mutex nesneleri tipik olarak şöyle kullanılmaktadır:
 
 **1)** Mutex nesnesi ``mutex`` isimli bir yapıyla temsil edilmektedir. Sistem programcısı bu yapı türünden
-global olarak ya da çekirdeğin heap sisteminde dinamik biçimde bir nesne yaratır ve ona ilk değerini
+global olarak ya da çekirdeğin heap sisteminde dinamik biçimde bir nesne yaratır ve ona ilkdeğerini
 verir. ``DEFINE_MUTEX(name)`` makrosu hem ``struct mutex`` türünden nesneyi tanımlamakta hem de ona ilk
 değerini vermektedir. Örneğin:
 
@@ -230,7 +230,7 @@ Buradaki ``__MUTEX_INITIALIZER`` makrosu da şöyle bildirilmiştir:
         __DEBUG_MUTEX_INITIALIZER(lockname)                             \
         __DEP_MAP_MUTEX_INITIALIZER(lockname) }
 
-``DEFINE_MUTEX`` makrosu yerine önce mutex nesnesi tanımlanıp nesneye ilk değerini ``mutex_init``
+``DEFINE_MUTEX`` makrosu yerine önce mutex nesnesi tanımlanıp nesneye ilkdeğerini ``mutex_init``
 fonksiyonuyla da verebiliriz. Bu fonksiyon güncel çekirdeklerde makro biçiminde yazılmıştır:
 
 .. code-block:: c
@@ -3926,7 +3926,7 @@ built-in fonksiyonlar da bulunmaktadır. Bunların listesini de aşağıda tablo
 
 
 RCU (Read-Copy-Update) Mekanizması
-=====================================
+==================================
 
 Şimdi de çekirdekteki *RCU (read-copy-update)* mekanizması üzerinde duralım. Biz daha önce bu
 mekanizmanın farkına varmıştık. Burada bu mekanizmanın işleyişini ele alacağız.
@@ -5097,3 +5097,510 @@ bırakılması sırasında ``free_node_callback`` isimli bizim bir fonksiyonumuz
 
 Düğüm silme işleminin herhangi bir yerinde ``rcu_assign_pointer`` makrosunun kullanılmadığına dikkat
 ediniz.
+
+Kullanıcı Modu Senkronizasyonları ve Futex Mekanizması
+======================================================
+
+Biz senkronizasyon konusunda çekirdek tarafından kullanılan senkronizasyon nesnelerini ele aldık. Peki kullanıcı
+modundan kullandığımız yani pthread kütüphanesinin kullandığı senkronizasyon nesneleri nasıl oluşturulmuştur?
+pthread kütüphanesi bu senkronizasyon nesnelerini hangi sistem fonksiyonlarıyla gerçekleştirmektedir? Şimdi bu
+konu üzerinde biraz durmak istiyoruz.
+
+Bilindiği gibi UNIX türevi sistemlerin programlama bağlamındaki kullanıcı arayüzü POSIX standartlarıyla
+belirlenmiştir. POSIX standartları tüm UNIX türevi işletim sistemlerinin taşınabilir programlama arayüzüdür.
+Dolayısıyla C, C++, Java, C#, Python gibi dillerin kütüphaneleri aşağı seviyeli işlemleri programcılar fark
+etmese de Linux sistemlerinde bu POSIX fonksiyonlarını çağırarak gerçekleştirmektedir. Zaten bu konu üzerinde
+daha önce durmuştuk. Anımsanacağı gibi Linux sistemlerinde POSIX fonksiyonlarının bir bölümü hemen belli bir
+sistem fonksiyonunu çağırmaktadır. Örneğin ``open`` POSIX fonksiyonu aslında Linux'ta ``sys_open`` sistem
+fonksiyonunu çağıran bir sarma fonksiyon gibidir.
+
+UNIX/Linux sistemlerinde kullanıcı modundaki thread senkronizasyonu işlemleri ``pthread_xxx`` fonksiyonlarıyla
+yapılmaktadır. pthread kütüphanesi POSIX'in resmi thread kütüphanesidir. Dolayısıyla programlama dili ne olursa
+olsun Linux sistemlerinde aslında o programlama dillerinin kendi thread ve senkronizasyon fonksiyonları Linux
+sistemlerinde pthread kütüphanesinin fonksiyonlarını çağırmaktadır. Örneğin siz C++'ın C++11 ile eklenen thread
+kütüphanesini Linux'ta kullanıyorsanız bunlar eninde sonunda asıl işlemleri ``pthread_xxx`` fonksiyonlarını
+çağırarak yapmaktadır. Benzer durum Qt kütüphanesi için de geçerlidir. Tabii programlama dillerinin ve
+framework'lerin thread kütüphaneleri ve senkronizasyon nesneleri o programlama dili ya da framework temelinde
+taşınabilir (portable) durumdadır. Yani örneğin biz C++'ın thread kütüphanesini hem Windows'ta hem de Linux'ta
+aynı biçimde kullanırız. Ancak bunların gerçekleştirimleri işletim sistemine özgü bir biçimde yapılmaktadır.
+
+Futex Mekanizması
+-----------------
+
+Linux sistemlerinde pthread kütüphanesinin kullanıcı modundan kullanılabilen senkronizasyon nesneleri şunlardır:
+
+- ``pthread_mutex_t`` (mutex)
+- ``pthread_cond_t`` (condition variable)
+- ``pthread_rwlock_t`` (read-write lock)
+- ``pthread_spinlock_t`` (spinlock)
+- ``pthread_barrier_t`` (barrier)
+- semaphore
+
+İşte kullanıcı modundaki tüm bu senkronizasyon nesneleri aslında çekirdekteki *futex (fast user space mutex)*
+denilen sistem fonksiyonunu ve bu sistem fonksiyonunun sağladığı mekanizmayı kullanmaktadır. Yani çekirdekte her
+senkronizasyon nesnesi için ayrı bir sistem fonksiyonu yoktur. Yalnızca *futex* isimli bir sistem fonksiyonu
+vardır. pthread kütüphanesinin senkronizasyon fonksiyonları bu *futex* sistem fonksiyonunu çağırmaktadır.
+
+.. image:: _static/futex-arch.png
+   :align: center
+   :width: 70%
+
+*futex* sistem fonksiyonu için bir POSIX sarma fonksiyonu olmadığı gibi *libc* kütüphanesinde de bir sarma
+fonksiyon bulunmamaktadır. Ancak anımsanacağı gibi sistem fonksiyonları kullanıcı modundan *libc* kütüphanesinin
+bulundurduğu ``syscall`` isimli fonksiyon yoluyla çağrılabilmektedir. ``syscall`` fonksiyonunun parametrik
+yapısını anımsayınız:
+
+.. code-block:: c
+
+    #include <sys/syscall.h>
+
+    long syscall(long number, ...);
+
+Her sistem fonksiyonun bir numarası vardır. Bu numaralar da ``<sys/syscall.h>`` dosyası içerisinde ``SYS_xxx``
+biçiminde define edilmiştir. Örneğin ``sys_open`` sistem fonksiyonunun numarası ``SYS_open`` sembolik sabiti,
+``sys_futex`` sistem fonksiyonunun numarası için ``SYS_futex`` sembolik sabiti bulunmaktadır. O halde *futex*
+sistem fonksiyonu doğrudan kullanıcı modundan şöyle çağrılabilir:
+
+.. code-block:: c
+
+    int futex(uint32_t *uaddr, int op, uint32_t val, const struct timespec *timeout,
+              uint32_t *uaddr2, uint32_t val3)
+    {
+        return syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
+    }
+
+Futex kullanımında kullanıcı modundaki programcı ``uint32_t`` türünden (64 bit sistem olsa bile bu türden) bir
+nesnenin adresini sistem fonksiyona verir (*uaddr* parametresi). Sonra yapılacak işlemi (*op* parametresi)
+belirtir. Diğer parametrelerin anlamı yapılacak işleme göre değişebilmektedir.
+
+Futex Mekanizmasının Çalışma Biçimi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Futex mekanizmasının ana kullanımı şöyledir: Kullanıcı modundaki programcı ya da kütüphane (örneğin
+``pthread_xxx`` fonksiyonları) global bir değişken tanımlar. Bu değişken kilidin durumunu belirtir. Hiç çekirdek
+moduna geçmeden önce bu değişkenin içerisindeki değere bakarak senkronizasyon nesnesinin kilitli olup olmadığını
+*CAS (compare-and-swap)* makine komutlarıyla belirler. Eğer kilit açıksa bunu kilitler ve hiç çekirdek moduna
+geçiş yapmaz. Eğer kilit kapalıysa futex sistem fonksiyonunu çağırarak bloke oluşturur. Blokenin çözülmesi de
+yine futex sistem fonksiyonunun çağrılmasıyla yapılmaktadır. Bu mekanizmada çekirdek moduna gereksiz bir biçimde
+geçilmesinin engellendiğine dikkat ediniz. Eğer senkronizasyon nesneleri için doğrudan sistem fonksiyonları
+çağrılsaydı çekirdek moduna gereksiz geçiş yapılabilirdi. Çekirdekteki daha önce görmüş olduğumuz senkronizasyon
+nesnelerinin kullanıcı moduyla bir ilgisi olmadığına dikkat ediniz. (Windows sistemlerindeki
+``CRITICAL_SECTION`` nesneler de tamamen bu biçimde çalışmaktadır. Bu sistemlerde ayrıca tamamen çekirdek
+modunda işlem yapan ve ismine "çekirdek senkronizasyon nesneleri" denilen kullanıcı modu mekanizmalar da
+bulunmaktadır.)
+
+Futex İşlem Kodları
+~~~~~~~~~~~~~~~~~~~
+
+Futex sistem fonksiyonunun yaptığı işlemler yani *op* parametresine girilebilecek değerler şunlardır:
+
+.. code-block:: c
+
+    #define FUTEX_WAIT              0
+    #define FUTEX_WAKE              1
+    #define FUTEX_FD                2       /* KULLANIM DIŞI — kaldırıldı */
+    #define FUTEX_REQUEUE           3
+    #define FUTEX_CMP_REQUEUE       4
+    #define FUTEX_WAKE_OP           5
+    #define FUTEX_LOCK_PI           6
+    #define FUTEX_UNLOCK_PI         7
+    #define FUTEX_TRYLOCK_PI        8
+    #define FUTEX_WAIT_BITSET       9
+    #define FUTEX_WAKE_BITSET      10
+    #define FUTEX_WAIT_REQUEUE_PI  11
+    #define FUTEX_CMP_REQUEUE_PI   12
+    #define FUTEX_LOCK_PI2         13
+
+Burada en önemli iki işlem ``FUTEX_WAIT`` ve ``FUTEX_WAKE`` işlemleridir.
+
+Futex'te bloke oluşturmak için kullanılan ``FUTEX_WAIT`` işleminin çalışma biçimi şöyledir:
+
+.. code-block:: c
+
+    if (*uaddr == val) {
+        /* thread'i bekleme kuyruğuna ekle ve uyut */
+        /* bu kontrol + ekleme atomik olarak gerçekleşir */
+    }
+    else {
+        /* EAGAIN döndür — değer değişmiş */
+    }
+
+Yani futex'e verilen adresteki değerle ona verilen değer (*val* parametresi) eğer aynıysa bloke işlemi
+yapılmaktadır, değilse fonksiyon başarısızlıkla geri dönmektedir. ``FUTEX_WAKE`` işlemi de uyutulan
+thread'lerin uyandırılması için kullanılmaktadır. Burada kaç thread'in uyandırılacağı da belirtilebilmektedir.
+
+``FUTEX_WAIT`` işleminin çekirdekteki çağrı zinciri şöyledir:
+
+.. code-block:: text
+
+    sys_futex(FUTEX_WAKE)
+    └── futex_wake()
+            ├── hash_futex()                 ← aynı bucket'ı bul
+            ├── spin_lock(&hb->lock)         ← bucket'ı kilitle
+            ├── plist_for_each_entry_safe()  ← zinciri tara
+            │       └── futex_wake_mark()    ← görevi işaretle
+            │               └── wake_q_add()
+            └── wake_up_q()                  ← asıl uyandırma
+                    └── try_to_wake_up()     ← görev → TASK_RUNNING
+
+``FUTEX_WAKE`` işleminde fonksiyonun *val* parametresi uyandırılacak thread sayısını belirtmektedir. Örneğin bu
+parametreye 1 girildiğinde futex yalnızca 1 tane thread'i uyandırmaktadır. Örneğin:
+
+.. code-block:: c
+
+    futex(&m->state, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, 1, NULL, NULL, 0);
+
+``FUTEX_WAKE`` işleminin çağrı zinciri de şöyledir:
+
+.. code-block:: text
+
+    sys_futex(FUTEX_WAIT)
+    └── futex_wait()
+            ├── futex_wait_setup()       ← anahtar oluştur, bucket kilitle
+            ├── futex_wait_queue()       ← kuyruğa ekle + uyut
+            │       ├── set_current_state(TASK_INTERRUPTIBLE)
+            │       └── schedule()       ← CPU'yu bırak
+            └── futex_wait_restart()     ← sinyal gelirse yeniden dene
+
+Futex'in Çekirdek Gerçekleştirimi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sistemdeki tüm prosesler için aynı sistem fonksiyonunu kullandığından dolayı futex'in çekirdek gerçekleştirimi
+buna uygun bir biçimde yapılmıştır. Çekirdekteki futex sistem fonksiyonu bir hash tablosu kullanır. Bloke
+edilecek thread'ler için çekirdek hiç bekleme kuyruğu oluşturmadan yukarıda belirttiğimiz gibi thread'in
+durumunu ``TASK_INTERRUPTIBLE`` haline getirip schedule işlemini uygular. Tabii uyutulan thread'lerin
+``task_struct`` adresleri de hash tablosunda saklanmaktadır. Uyandırma işleminde de ``task_struct`` nesnesi bu
+hash tablosundan bulunur ve ``try_to_wake_up`` fonksiyonuyla (yani görmüş olduğumuz ``wake_up_state``
+fonksiyonunun çağırdığı fonksiyonla) uyandırılmaktadır. Görüldüğü gibi futex mekanizmada da uyutma ve uyandırma
+işleminde daha önce görmüş olduğumuz standart bekleme kuyrukları kullanılmamaktadır.
+
+Futex Yoluyla Kullanıcı Modunda Mutex Gerçekleştirimi Örneği
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Şimdi de son olarak futex sistem fonksiyonu yoluyla kullanıcı modundan kullanılabilecek bir utex
+gerçekleştirimini yapalım. (pthread kütüphanesinde zaten mutex gerçekleştiriminin bulunduğunu belirtmiştik. Biz
+burada futex sistem fonksiyonunun nasıl kullanıldığını bir örnek üzerinde ele almak istiyoruz.)
+
+Mutex için kullanıcı alanı içerisinde ``uint32_t`` türünden bir global değişken tutmak gerekir. Biz bu
+değişkeni soyutlama sağlamak için bir yapının içerisine yerleştirelim:
+
+.. code-block:: c
+
+    #define MUTEX_UNLOCKED          0
+    #define MUTEX_LOCKED            1
+    #define MUTEX_LOCKED_WAITERS    2
+
+    typedef struct {
+        uint32_t state;
+    } mutex_t;
+
+Burada ``MUTEX_UNLOCKED`` değeri mutex'in kilidinin açık olduğunu, ``MUTEX_LOCKED`` değeri mutex'in kilitli
+olduğunu ancak mutex'i bekleyen uykuya dalmış bir thread olmadığını ve ``MUTEX_LOCKED_WAITERS`` değeri ise
+mutex'in kilitli olduğunu ama mutex'i bekleyen uykuya dalmış bir thread'in olduğunu belirtmektedir. Mutex
+kilidi açıldığında uyandırma işleminin yapılıp yapılmayacağı bu ``MUTEX_LOCKED_WAITERS`` değerine bakılarak
+belirlenmektedir.
+
+Bu yapıya ilkdeğer veren bir makro ve inline fonksiyon yazabiliriz:
+
+.. code-block:: c
+
+    #define MUTEX_INIT {MUTEX_UNLOCKED}
+
+    static inline void init_mutex(mutex_t *mutex)
+    {
+        mutex->state = MUTEX_UNLOCKED;
+    }
+
+Şimdi de ``mutex_lock`` fonksiyonumuzu yazalım. Bu fonksiyonda biz önce atomik bir biçimde CAS işlemi ile
+kullanıcı modunda mutex'in kilitli olup olmadığına bakacağız. Eğer mutex kilitliyse futex sistem fonksiyonu
+ile kendimizi bloke edeceğiz.
+
+Mutex'in kilidini atomic CAS işlemleriyle almaya çalışmalıyız. Bunun için gcc'nin built-in
+``__atomic_compare_exchange_n`` fonksiyonunu kullanabiliriz. Bu fonksiyonu aşağıdaki gibi bir fonksiyonla
+sarmalayalım:
+
+.. code-block:: c
+
+    static inline uint32_t cmpxchg(uint32_t *ptr, uint32_t expected, uint32_t desired)
+    {
+        __atomic_compare_exchange_n(ptr, &expected, desired, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+        return expected;
+    }
+
+gcc'nin built-in ``__atomic_compare_exchange_n`` fonksiyonu şöyle çalışmaktadır: Fonksiyon birinci
+parametresine verilen adresteki değerle ikinci parametresine verilen adresteki değeri karşılaştırır. Eğer bu
+değerler eşitse üçüncü parametresindeki değeri birinci parametresine girilen adrese yerleştirir. Eğer birinci
+parametresine girilen adresteki değer ile ikinci parametresine girilen adresteki değer aynı değilse bu durumda
+birinci parametresine girilen adrese bir şey yerleştirmez, birinci parametresine girilen adresteki değeri ikinci
+parametresine girilen adrese yerleştirir. Fonksiyon yerleştirmeyi yaparsa sıfır dışı bir değere, yapamazsa
+sıfır değerine geri dönmektedir. Ayrıca fonksiyon geri döndüğünde ikinci parametresine girilen adreste ya
+üçüncü parametreye girilen değer ya da birinci parametreye girilen adresteki değerin bulunacağına dikkat ediniz.
+Fonksiyonun son iki parametresi kullanılacak bellek modeliyle ilgilidir. Fonksiyonun çalışmasını aşağıdaki
+sözde kodla da açıklayabiliriz:
+
+.. code-block:: text
+
+    function atomic_compare_exchange(ptr, expected_ptr, desired, success_order, fail_order):
+
+        // Tüm bu işlem atomik olarak (kesilemez şekilde) gerçekleşir
+
+        ATOMIC_BEGIN:
+            current_value ← *ptr          // ptr'nin şu anki değerini oku
+
+            if current_value == *expected_ptr:
+                *ptr ← desired            // Eşleşti → ptr'ye desired'ı yaz
+                return TRUE               // Swap başarılı
+            else:
+                *expected_ptr ← current_value  // Eşleşmedi → expected'ı güncelle
+                return FALSE                    // Swap başarısız
+        ATOMIC_END
+
+O halde biz atomic CAS işlemiyle kilit kontrolünü yukarıdaki fonksiyonu kullanarak şöyle yapabiliriz:
+
+.. code-block:: c
+
+    result = cmpxchg(&mutex->state, 0, 1);
+    if (result == 0)
+        return;
+
+Burada ``mutex->state`` değeri eğer 0 ise o değer atomik bir biçimde 1 yapılacaktır. Fonksiyon da 0 değeri ile
+geri dönecektir. Dolayısıyla bu durum mutex'in hiç çekirdek moduna geçmeden kilitlendiği anlamına gelmektedir.
+Eğer ``mutex->state`` değeri 1 ise bu durumda ``mutex->state`` olduğu gibi kalacak ancak fonksiyon 1 ile geri
+dönecektir. Akış da aşağıdan devam edecektir. Burada artık futex sistem fonksiyonu çağrılacaktır:
+
+.. code-block:: c
+
+    do {
+        if (result == MUTEX_LOCKED_WAITERS || xchg(&mutex->state, MUTEX_LOCKED_WAITERS) != 0)
+            futex(&mutex->state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 2, NULL, NULL, 0);
+        result = cmpxchg(&mutex->state, MUTEX_UNLOCKED, MUTEX_LOCKED_WAITERS);
+    } while (result != MUTEX_UNLOCKED);
+
+Burada henüz futex sistem fonksiyonu çağrılmadan ``mutex->state`` nesnesine ``MUTEX_LOCKED_WAITERS`` değerinin
+yerleştirildiğine dikkat ediniz. Buradaki ``xchg`` fonksiyonu gcc'nin built-in ``__atomic_exchange_n``
+fonksiyonunu sarmalamaktadır:
+
+.. code-block:: c
+
+    static inline uint32_t xchg(uint32_t *ptr, uint32_t val)
+    {
+        return __atomic_exchange_n(ptr, val, __ATOMIC_SEQ_CST);
+    }
+
+gcc'nin atomik ``__atomic_exchange_n`` built-in fonksiyonu ikinci parametresine girilen değeri birinci
+parametresine girilen adrese yerleştirmektedir. Fonksiyon her zaman birinci parametresine girilen adresteki eski
+değerle geri dönmektedir. Yukarıdaki kodda futex çağrısının yapılma koşuluna dikkat ediniz:
+
+.. code-block:: c
+
+    if (result == MUTEX_LOCKED_WAITERS || xchg(&mutex->state, MUTEX_LOCKED_WAITERS) != 0)
+        futex(&mutex->state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 2, NULL, NULL, 0);
+
+Burada önce ``mutex->state`` değeri ``MUTEX_LOCKED_WAITERS`` değilse bu değer ``MUTEX_LOCKED_WAITERS`` yapılarak
+futex sistem fonksiyonuyla uykuya dalınmıştır. Uykudan uyanıldığında aşağıdaki çağrı yapılmıştır:
+
+.. code-block:: c
+
+    result = cmpxchg(&mutex->state, MUTEX_UNLOCKED, MUTEX_LOCKED_WAITERS);
+
+Kritik kod uygulamalarında mutex yüzünden uyanan thread kritik koda gireceğinden dolayı yeniden mutex'in
+kilidini almak zorundadır. Buradaki ``cmpxchg`` çağrısı ile mutex'in kilidi alınmak istenmiştir. Bu çağrı
+sonucunda biz mutex'i kilitleyemeyebiliriz. Çünkü o sırada başka bir thread mutex'i kilitlemiş olabilir. Bu
+nedenle bizim yeniden uykuya dalmamız gerekir. İşte döngü bunu sağlamaktadır. Döngüye bir kez daha dikkat
+ediniz:
+
+.. code-block:: c
+
+    do {
+        if (result == MUTEX_LOCKED_WAITERS || xchg(&mutex->state, MUTEX_LOCKED_WAITERS) != 0)
+            futex(&mutex->state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 2, NULL, NULL, 0);
+
+        /* Bu sırada kilit başka bir thread tarafından alınmış olabilir */
+
+        result = cmpxchg(&mutex->state, MUTEX_UNLOCKED, MUTEX_LOCKED_WAITERS);
+    } while (result != MUTEX_UNLOCKED);
+
+``mutex_lock`` fonksiyonunun bütünsel hali şöyledir:
+
+.. code-block:: c
+
+    void mutex_lock(mutex_t *mutex)
+    {
+        uint32_t result;
+
+        result = cmpxchg(&mutex->state, MUTEX_UNLOCKED, MUTEX_LOCKED);
+        if (result == 0)
+            return;
+
+        do {
+            if (result == MUTEX_LOCKED_WAITERS || xchg(&mutex->state, MUTEX_LOCKED_WAITERS) != 0)
+                futex(&mutex->state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 2, NULL, NULL, 0);
+            result = cmpxchg(&mutex->state, MUTEX_UNLOCKED, MUTEX_LOCKED_WAITERS);
+        } while (result != MUTEX_UNLOCKED);
+    }
+
+Şimdi de ``mutex_unlock`` fonksiyonunu yazalım:
+
+.. code-block:: c
+
+    void mutex_unlock(mutex_t *m)
+    {
+        uint32_t old;
+
+        old = __atomic_exchange_n(&m->state, MUTEX_UNLOCKED, __ATOMIC_SEQ_CST);
+        if (old == MUTEX_LOCKED_WAITERS)
+            futex(&m->state, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, 1, NULL, NULL, 0);
+    }
+
+Burada kilit açılırken ``mutex->state`` nesnesine kullanıcı modunda ``MUTEX_UNLOCKED`` değeri yerleştirilmiştir.
+Ancak ``mutex->state`` değeri ``MUTEX_LOCKED_WAITERS`` ise kuyrukta bekleyen en az bir thread olduğu için
+uyandırma işlemi yapılmıştır.
+
+Aslında tasarımda yalnızca ``MUTEX_LOCKED`` ve ``MUTEX_UNLOCKED`` değerleri kullanılabilirdi. Ancak bu durumda
+uyanırken bekleyen bir thread olmasa bile mecburen ``FUTEX_WAKE`` işleminin yapılması gerekirdi. Buradaki
+``MUTEX_LOCKED_WAITERS`` durumu "kuyrukta mutex'i bekleyen en az bir thread var, kilidi bırakırken
+``FUTEX_WAKE`` işlemini yap" anlamına gelmektedir.
+
+Aşağıda bir test kodu eşliğinde tüm gerçekleştirimi veriyoruz. Kodu derlerken eski derleyicilerde
+çalışıyorsanız *"-lpthread"* seçeneğini komut satırına eklemelisiniz. gcc derleyici sistemi bir süredir bu
+kütüphaneyi varsayılan biçimde link aşamasına dahil etmeye başlamıştır.
+
+``user-mutex.h``
+
+.. code-block:: c
+
+    #ifndef USER_MUTEX_H_
+    #define USER_MUTEX_H_
+
+    #define MUTEX_UNLOCKED          0
+    #define MUTEX_LOCKED            1
+    #define MUTEX_LOCKED_WAITERS    2
+
+    typedef struct {
+        uint32_t state;
+    } mutex_t;
+
+    #define MUTEX_INIT {MUTEX_UNLOCKED}
+
+    static inline void init_mutex(mutex_t *mutex)
+    {
+        mutex->state = MUTEX_UNLOCKED;
+    }
+
+    static inline uint32_t cmpxchg(uint32_t *ptr, uint32_t expected, uint32_t desired)
+    {
+        __atomic_compare_exchange_n(ptr, &expected, desired, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+        return expected;
+    }
+
+    static inline uint32_t xchg(uint32_t *ptr, uint32_t val)
+    {
+        return __atomic_exchange_n(ptr, val, __ATOMIC_SEQ_CST);
+    }
+
+    void mutex_lock(mutex_t *mutex);
+    void mutex_unlock(mutex_t *mutex);
+
+    #endif
+
+``user-mutex.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <time.h>
+    #include <stdint.h>
+    #include <unistd.h>
+    #include <pthread.h>
+    #include <linux/futex.h>
+    #include <sys/syscall.h>
+    #include "user-mutex.h"
+
+    int futex(uint32_t *uaddr, int op, uint32_t val, const struct timespec *timeout,
+              uint32_t *uaddr2, uint32_t val3)
+    {
+        return syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
+    }
+
+    void mutex_lock(mutex_t *mutex)
+    {
+        uint32_t result;
+
+        result = cmpxchg(&mutex->state, MUTEX_UNLOCKED, MUTEX_LOCKED);
+        if (result == 0)
+            return;
+
+        do {
+            if (result == MUTEX_LOCKED_WAITERS || xchg(&mutex->state, MUTEX_LOCKED_WAITERS) != 0)
+                futex(&mutex->state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 2, NULL, NULL, 0);
+            result = cmpxchg(&mutex->state, MUTEX_UNLOCKED, MUTEX_LOCKED_WAITERS);
+        } while (result != MUTEX_UNLOCKED);
+    }
+
+    void mutex_unlock(mutex_t *m)
+    {
+        uint32_t old;
+
+        old = __atomic_exchange_n(&m->state, MUTEX_UNLOCKED, __ATOMIC_SEQ_CST);
+        if (old == MUTEX_LOCKED_WAITERS)
+            futex(&m->state, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, 1, NULL, NULL, 0);
+    }
+
+    #define NTHREADS    10
+
+    void exit_sys_errno(const char *msg, int eno);
+    void *thread_proc(void *param);
+
+    mutex_t g_mutex = MUTEX_INIT;
+
+    int main(void)
+    {
+        pthread_t tids[NTHREADS];
+        char *name;
+        int result;
+
+        srand(time(NULL));
+
+        for (int i = 0; i < NTHREADS; ++i) {
+            if ((name = (char *)malloc(32)) == NULL) {
+                fprintf(stderr, "cannot allocate memory!...\n");
+                exit(EXIT_FAILURE);
+            }
+            sprintf(name, "thread %d", i + 1);
+            if ((result = pthread_create(&tids[i], NULL, thread_proc, name)) != 0)
+                exit_sys_errno("pthread_create", result);
+        }
+
+        for (int i = 0; i < NTHREADS; ++i)
+            if ((result = pthread_join(tids[i], NULL)) != 0)
+                exit_sys_errno("pthread_join", result);
+
+        return 0;
+    }
+
+    void *thread_proc(void *param)
+    {
+        const char *name = (const char *)param;
+
+        for (int i = 0; i < 10; ++i) {
+            mutex_lock(&g_mutex);
+            printf("%s: mutex locked....\n", name);
+
+            usleep(rand() % 10000);
+
+            printf("%s: mutex unlocked....\n", name);
+            mutex_unlock(&g_mutex);
+        }
+    }
+
+    void exit_sys_errno(const char *msg, int eno)
+    {
+        fprintf(stderr, "%s:%s\n", msg, strerror(eno));
+
+        exit(EXIT_FAILURE);
+    }
+    
