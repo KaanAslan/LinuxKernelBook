@@ -44,6 +44,7 @@ ilişkin temel bilgilere ve becerilere sahip olduğı varsayılmaktadır.
    filesystem2
    kernelsync
    waitqueues
+   memorymanagement
    bibliography
   
 
