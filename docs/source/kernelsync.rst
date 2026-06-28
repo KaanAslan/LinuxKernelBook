@@ -574,7 +574,6 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     void exit_sys(const char *msg)
     {
         perror(msg);
-
         exit(EXIT_FAILURE);
     }
 
@@ -609,7 +608,6 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     void exit_sys(const char *msg)
     {
         perror(msg);
-
         exit(EXIT_FAILURE);
     }
     
@@ -4590,7 +4588,6 @@ Aşağıdaki ``unload`` betiği sürücüyü sistemden kaldırır:
     void exit_sys(const char *msg)
     {
         perror(msg);
-
         exit(EXIT_FAILURE);
     }
 
@@ -5600,7 +5597,6 @@ kütüphaneyi varsayılan biçimde link aşamasına dahil etmeye başlamıştır
     void exit_sys_errno(const char *msg, int eno)
     {
         fprintf(stderr, "%s:%s\n", msg, strerror(eno));
-
         exit(EXIT_FAILURE);
     }
     
