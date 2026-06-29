@@ -256,10 +256,28 @@ bir sayfa numarası karşılık getirmektedir. Örneğin 32 bit Intel ya da ARM 
 kullanıldığında fiziksel belleğin ilk 4K'lık bölgesi 0'ıncı sayfa ikinci 4K'lık bölgesi 1'inci sayfa
 biçiminde numaralandırılmaktadır:
 
-.. image:: /_static/physical-.address-space-page.png
-   :alt: Fiziksel adres alanı ve sayfa numaraları tablosu
-   :align: center
-   :width: 40%
+Şunu png olarak çizer misin?
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Fiziksel Adres Alanı
+     - Sayfa No
+   * - 00000000  -  00000FFF
+     - 0
+   * - 00001000  -  00001FFF
+     - 1
+   * - 00002000  -  00002FFF
+     - 2
+   * - 00003000  -  00003FFF
+     - 3
+   * - ...
+     - ...
+   * - FFFFE000  -  FFFFEFFF
+     - 1048574
+   * - FFFFF000  -  FFFFFFFF
+     - 1048575
 
 32 bit bir sistemde sayfa büyüklükleri 4K olduğunda toplam 2³² ÷ 2¹² = 2²⁰ = 1.048.576 = 1048576 sayfanın
 bulunduğuna dikkat ediniz.

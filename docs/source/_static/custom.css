@@ -51,8 +51,16 @@ div.admonition.white-note {
     background-color: #ffffff;
 }
 
-
-/* Tablo başlık hücrelerini ortala */
 table.docutils th {
     text-align: center;
+}
+
+table.docutils {
+    border: 2px solid #7f8c8d !important;
+    border-collapse: collapse;
+}
+
+table.docutils td,
+table.docutils th {
+    border: 1px solid #7f8c8d !important;
 }
