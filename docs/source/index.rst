@@ -26,7 +26,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 
 .. rubric:: Ön Gereksinimler
 
-Okuyucunun C programlama diline hâkim olduğu ve UNIX/Linux sistemlerinin kullanıcı modu (user mode) programlamasına 
+Okuyucunun C programlama diline hâkim olduğu ve UNIX/Linux sistemlerinin *kullanıcı modu (user mode)* programlamasına 
 ilişkin temel bilgilere ve becerilere sahip olduğı varsayılmaktadır. 
 
 ----
