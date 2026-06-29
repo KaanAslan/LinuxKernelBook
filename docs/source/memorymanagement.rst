@@ -869,3 +869,250 @@ büyük sayfaya da ilişkin olabilir 4K'lık küçük sayfaya da ilişkin olabil
 biti 0 ise bu giriş 4K'lık sayfa tablosunu gösteriyor durumdadır, ``PS`` biti 1 ise bu giriş 4 MB'lik fiziksel
 sayfayı gösteriyor durumdadır. Linux işletim sistemi de 4K sayfaların dışında 4 MB'lik sayfaları da
 desteklemektedir.
+
+4K sayfalara ilişkin 32 bit ARM işlemcilerinde de iki kademeli sayfa tabloları kullanılmaktadır. Bu işlemcilerde
+sanal adres yine üç kısma ayrılmaktadır. Ancak bu üç kısmın isimleri ve kullanılan terminoloji Intel işlemcilerinden
+farklıdır:
+
+.. code-block:: none
+
+   ┌──────────────────────┬─────────────┬────────────────────────┐
+   │   L1 Table Index     │  L2 Table   │      Page Offset       │
+   │                      │   Index     │                        │
+   ├──────────────────────┼─────────────┼────────────────────────┤
+   │ 31                20 │ 19       12 │ 11                   0 │
+   ├──────────────────────┼─────────────┼────────────────────────┤
+   │        12 bit        │    8 bit    │         12 bit         │
+   └──────────────────────┴─────────────┴────────────────────────┘
+   ◄────────────────────────── 32 bit ───────────────────────────►
+
+Buradaki sanal adresin parçalarının uzunluklarına dikkat ediniz. L1 tablosunun (Intel'deki sayfa dizini) indeksi
+12 bittir. Yani bu tablo fiziksel bellekte 2¹² × 2² = 16K yer kaplamaktadır. Ancak L2 tabloları (yani
+Intel'deki sayfa tabloları) burada 2⁸ × 2² = 1K yer kaplamaktadır. Sayfalar 4K olduğu için sayfa offset'i yine
+12 bittir.
+
+Aşağıda 4K sayfa kullanan 32 bit Intel işlemcileri ile ARM işlemcilerinin organizasyon karşılaştırmasını bir
+tablo biçiminde veriyoruz:
+
+.. list-table:: 32-bit Intel ve ARM İşlemcilerinin Sayfa Tablosu Organizasyonu (4 KB Sayfa)
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Ölçüt
+     - Intel 32-bit (4 KB sayfa)
+     - ARM 32-bit (4 KB sayfa)
+   * - L1 giriş sayısı
+     - 1024
+     - 4096
+   * - L1 tablo boyutu
+     - 4 KB
+     - 16 KB
+   * - L2 giriş sayısı
+     - 1024
+     - 256
+   * - Tek L2 tablo boyutu
+     - 4 KB
+     - 1 KB
+   * - Toplam L2 (max)
+     - 4 MB
+     - 4 MB
+
+4K'lık sayfa kullanan 64 bit işlemcilerdeki sayfa tabloları genellikle 3 kademelidir. Çünkü 64 bitlik adres alanı
+16 exabyte gibi çok yüksek bir değerdedir. Örneğin 64 bitlik Intel işlemcilerindeki sanal adres aşağıdaki gibi 4
+kısma ayrılmaktadır:
+
+.. code-block:: none
+
+   ┌───────────────┬────────────┬────────────┬────────────┬────────────┬───────────┐
+   │   Sign Ext.   │ PGD Index  │ PUD Index  │ PMD Index  │ PTE Index  │  Offset   │
+   │ (kullanılmaz) │            │            │            │            │           │
+   ├───────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
+   │ 63         48 │ 47      39 │ 38      30 │ 29      21 │ 20      12 │ 11      0 │
+   ├───────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
+   │    16 bit     │   9 bit    │   9 bit    │   9 bit    │   9 bit    │  12 bit   │
+   └───────────────┴────────────┴────────────┴────────────┴────────────┴───────────┘
+   ◄────────────────────────────────────  64 bit ──────────────────────────────────►
+
+64 bit Intel işlemcileri aslında 48 bitlik sanal adresler kullanmaktadır. Bu işlemcilerin adresleyebildiği teorik
+fiziksel bellek uzunluğu ise 2⁶⁴ (16 exabyte) değil daha azdır. Modellere göre 64 bit Intel işlemcilerinin
+kullanabildiği fiziksel RAM aşağıdaki tabloda verilmiştir:
+
+.. list-table:: 64-bit Intel İşlemcilerinde Sanal ve Fiziksel Adres Genişlikleri
+   :header-rows: 1
+   :widths: 35 32 33
+
+   * - Ölçüt
+     - Sanal Adres
+     - Fiziksel Adres
+   * - 4 Kademeli (LA48)
+     - 48 bit → 256 TB
+     - 46–52 bit (nesle göre)
+   * - 5 Kademeli (LA57)
+     - 57 bit → 128 PB
+     - 52 bit → 4 PB
+   * - Teorik maksimum
+     - 57 bit → 128 PB
+     - 52 bit → 4 PB
+
+Fiziksel RAM'in sanal adres alanından fazla olması bir sorun yaratmamaktadır.
+
+64 bit Intel işlemcilerinde sanal adresin dört parçaya ayrıldığına dikkat ediniz. Beşinci parça zaten
+kullanılmamaktadır, her zaman 0'dır. Sanal adres dönüştürmesi yapılırken dört farklı tabloya başvurulmaktadır:
+
+.. code-block:: none
+
+                             48-bit Sanal Adres
+   ┌─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐
+   │  PGD Index  │  PUD Index  │  PMD Index  │  PTE Index  │   Offset    │
+   │    9 bit    │    9 bit    │    9 bit    │    9 bit    │   12 bit    │
+   └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘
+          │             │             │             │             │
+          ▼             │             │             │             │
+   CR3 ──► PGD          │             │             │             │
+          │             │             │             │             │
+   ┌──────┴──────┐      │             │             │             │
+   │   PGD[i]    ├──────┘             │             │             │
+   │ (512 giriş) │                    │             │             │
+   └─────────────┘                    │             │             │
+          │                           │             │             │
+          ▼                           │             │             │
+         PUD                          │             │             │
+          │                           │             │             │
+   ┌──────┴──────┐                    │             │             │
+   │   PUD[j]    ├────────────────────┘             │             │
+   │ (512 giriş) │                                  │             │
+   └─────────────┘                                  │             │
+          │                                         │             │
+          ▼                                         │             │
+         PMD                                        │             │
+          │                                         │             │
+   ┌──────┴──────┐                                  │             │
+   │   PMD[k]    ├──────────────────────────────────┘             │
+   │             │                                                │
+   │ (512 giriş) │                                                │
+   └─────────────┘                                                │
+          │                                                       │
+          ▼                                                       │
+         PTE                                                      │
+          │                                                       │
+   ┌──────┴──────┐                                                │
+   │   PTE[l]    │                                                │
+   │ (512 giriş) │                                                │
+   └──────┬──────┘                                                │
+          │  Fiziksel Sayfa Taban Adresi [51:12]                  │
+          ▼                                                       │
+   ┌──────────────────────────────────┬───────────────────────────┴──┐
+   │     Fiziksel Sayfa (4 KB)        │      Offset (12 bit)         │
+   └──────────────────────────────────┴────────────────┬─────────────┘
+                                                       ▼
+                                             Fiziksel Adres (52 bit)
+
+Burada toplamda dört kademe tablo vardır:
+
+- ``PGD`` (*Page Global Directory*) Tablosu
+- ``PUD`` (*Page Upper Directory*) Tablosu
+- ``PMD`` (*Page Middle Directory*) Tablosu
+- ``PTE`` (*Page Table Entry*) Tablosu
+
+Dönüştürme yukarıdaki şekilden de gördüğünüz gibi şöyle yapılmaktadır:
+
+.. code-block:: none
+
+   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+   │     PGD     │     │     PUD     │     │     PMD     │     │     PTE     │
+   ├─────────────┤     ├─────────────┤     ├─────────────┤     ├─────────────┤
+   │   entry 0   │     │   entry 0   │     │   entry 0   │     │   entry 0   │
+   │   entry 1   │     │   entry 1   │     │   entry 1   │     │   entry 1   │
+   │     ...     ├────►│     ...     ├────►│     ...     ├────►│     ...     ├──► Fiziksel Sayfa
+   │   entry i   │     │   entry j   │     │   entry k   │     │   entry l   │    Taban Adresi
+   │     ...     │     │     ...     │     │     ...     │     │     ...     │         │
+   │   entry 511 │     │   entry 511 │     │   entry 511 │     │   entry 511 │         │
+   └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘         │
+          ▲                                                                            ▼
+         CR3                                                                  ┌─────────────────┐
+                                                                              │  Fiziksel Adres │
+                                                                              │  Sayfa Tabanı   │
+                                                                              │  + Offset       │
+                                                                              └─────────────────┘
+
+4K sayfalar kullanan 64 bit ARM işlemcilerinde de sanal adres aşağıdaki gibi dört parçaya ayrılmaktadır:
+
+.. code-block:: none
+
+   ┌────────────┬────────────┬────────────┬────────────┬────────────┬───────────┐
+   │ Sign Ext.  │  L0 Index  │  L1 Index  │  L2 Index  │  L3 Index  │  Offset   │
+   │            │   (PGD)    │   (PUD)    │   (PMD)    │   (PTE)    │           │
+   ├────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
+   │ 63      48 │ 47      39 │ 38      30 │ 29      21 │ 20      12 │ 11      0 │
+   ├────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
+   │   16 bit   │   9 bit    │   9 bit    │   9 bit    │   9 bit    │  12 bit   │
+   └────────────┴────────────┴────────────┴────────────┴────────────┴───────────┘
+   ◄───────────────────────────────── 64 bit ───────────────────────────────────►
+
+64 bit ARM işlemcilerinde de sanal adres alanı Intel'de olduğu gibi 64 bit değil 48 bittir. 64 bit Intel
+işlemcileri ile 64 bit ARM işlemcilerinin sayfalama aşamalarını aşağıdaki tabloyla karşılaştırıyoruz:
+
+.. list-table:: x86-64 ve AArch64 Sayfa Tablosu Organizasyonu Karşılaştırması
+   :header-rows: 1
+   :widths: 36 32 32
+
+   * - Kriter
+     - x86-64 (LA48)
+     - AArch64 (48-bit)
+   * - Kullanılan bit
+     - 48 bit
+     - 48 bit
+   * - Kademe sayısı
+     - 4
+     - 4
+   * - Her kademedeki giriş
+     - 512
+     - 512
+   * - Tablo boyutu
+     - 4 KB
+     - 4 KB
+   * - Sayfa boyutu
+     - 4 KB
+     - 4 KB
+   * - Taban adresi yazmacı
+     - ``CR3``
+     - ``TTBR0`` / ``TTBR1``
+   * - Kullanıcı/Çekirdek ayrımı
+     - Canonical bits
+     - ``TTBR0`` / ``TTBR1`` ayrımı
+
+Translation Lookaside Buffer (TLB)
+----------------------------------
+
+İşlemcilerin bu kademelerden geçiş sırasında çok fazla bellek başvurusu yaptığını görüyorsunuz. Bu başvurular
+çalışmayı göreli olarak yavaşlatmaktadır. İşte bu nedenle işlemciler kendi içerisinde son erişilen dizin ve sayfa
+tablosu içeriklerini bir önbellek (cache) içerisinde tutmaktadır. Bu önbellek sistemine İngilizce
+*Translation Lookaside Buffer (TLB)* denilmektedir. Bu önbellek sayesinde işlemci son zamanlarda kullanılan sayfa
+dizini ve sayfa tablosu girişlerine hiç bellek okuması yapmadan hızlı bir biçimde erişebilmektedir.
+
+TLB, sanal adresten fiziksel adrese dönüştürme sonuçlarını önbelleğe alan, CPU çekirdeği içindeki özel bir donanım
+yapısıdır. Teknik olarak bir *associative cache (içerik adreslenebilir bellek, CAM)* biçiminde
+gerçekleştirilmektedir. Eğer dönüştürülecek sanal adrese ilişkin dönüştürme bilgisi TLB içerisinde varsa işlemci
+çok hızlı bir biçimde erişimi yapar. Aşağıda bir fikir verebilmek amacıyla 32 bit ve 64 bit Intel işlemcilerinin
+TLB önbelleğinin kaç girişi tutabildiğini gösteren bir tablo veriyoruz:
+
+.. list-table:: Intel İşlemcilerinde TLB Önbellek Girişleri
+   :header-rows: 1
+   :widths: 22 30 30 18
+
+   * - Mimari
+     - L1 ITLB
+     - L1 DTLB
+     - L2 TLB (STLB)
+   * - Core 2 (32-bit)
+     - 128 giriş (4K), 4-yollu
+     - 16 giriş (yalnız load)
+     - 256 giriş
+   * - Nehalem (64-bit)
+     - 128 giriş (4K), 7 giriş (2M/4M)
+     - 64 giriş (4K), 32 giriş (2M/4M)
+     - 512 giriş (4K), 4-yollu
+   * - Sandy Bridge
+     - 64 giriş/thread (4K), 4-yollu
+     - 64 giriş (4K), 4-yollu
+     - 1024 giriş, 4-yollu
