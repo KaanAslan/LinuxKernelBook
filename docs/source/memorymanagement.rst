@@ -1282,3 +1282,243 @@ proseste çekirdek alanı aynı yere haritalanmıştır. Buradaki şekli biraz d
                        ║      Kernel code & data             ║
                        ║  (vmlinux image, BSS, init data)    ║
    0xFFFFFFFFFFFFFFFF  ╚═════════════════════════════════════╝
+
+
+NUMA Düğümlerinin Çekirdek Temsili
+==================================
+
+Anımsanacağı gibi çok işlemcili ya da çekirdekli sistemlerde iki mimari kullanılıyordu: UMA ve NUMA. UMA mimarisinde
+her işlemci ya da çekirdek aynı fiziksel RAM'e erişiyordu. Erişim sırasında diğerlerini durduruyordu. NUMA mimarisinde
+ise her işlemci ya da çekirdeğin daha hızlı erişebildiği bir *düğüm (node)* (*"bank" da denilmektedir*) bulunmaktaydı.
+NUMA mimarilerinde işlemciler ya da çekirdekler kendi düğümlerine ve komşu düğümlere daha hızlı, diğer düğümlere
+göreli olarak daha yavaş erişiyordu. Linux çekirdek terminolojisinde UMA terimi yerine eski eşanlamlısı SMP teriminin
+kullanıldığını çekirdek senkronizasyonunu ele aldığımız 7'inci bölümde söylemiştik.
+
+Linux'un bellek yönetimi hem UMA hem de NUMA mimarilerinde çalışacak biçimde tasarlanmıştır. Bu nedenle daha genel
+veri yapıları oluşturulmuştur. Linux çekirdeklerinde NUMA düğümleri (yani bank'ları) ``pglist_data`` isimli bir yapı
+ile temsil edilmektedir. Bu yapı ``pg_data_t`` ismiyle de typedef edilmiştir. Güncel çekirdeklerde bu yapı
+``include/linux/mmzone.h`` dosyası içerisinde şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   typedef struct pglist_data {
+       /*
+        * node_zones contains just the zones for THIS node. Not all of the
+        * zones may be populated, but it is the full list. It is referenced by
+        * this node's node_zonelists as well as other node's node_zonelists.
+        */
+       struct zone node_zones[MAX_NR_ZONES];
+
+       /*
+        * node_zonelists contains references to all zones in all nodes.
+        * Generally the first zones will be references to this node's
+        * node_zones.
+        */
+       struct zonelist node_zonelists[MAX_ZONELISTS];
+
+       int nr_zones; /* number of populated zones in this node */
+   #ifdef CONFIG_FLATMEM   /* means !SPARSEMEM */
+       struct page *node_mem_map;
+   #ifdef CONFIG_PAGE_EXTENSION
+       struct page_ext *node_page_ext;
+   #endif
+   #endif
+   #if defined(CONFIG_MEMORY_HOTPLUG) || defined(CONFIG_DEFERRED_STRUCT_PAGE_INIT)
+       /*
+        * Must be held any time you expect node_start_pfn,
+        * node_present_pages, node_spanned_pages or nr_zones to stay constant.
+        * Also synchronizes pgdat->first_deferred_pfn during deferred page
+        * init.
+        *
+        * pgdat_resize_lock() and pgdat_resize_unlock() are provided to
+        * manipulate node_size_lock without checking for CONFIG_MEMORY_HOTPLUG
+        * or CONFIG_DEFERRED_STRUCT_PAGE_INIT.
+        *
+        * Nests above zone->lock and zone->span_seqlock
+        */
+       spinlock_t node_size_lock;
+   #endif
+       unsigned long node_start_pfn;
+       unsigned long node_present_pages; /* total number of physical pages */
+       unsigned long node_spanned_pages; /* total size of physical page
+                           range, including holes */
+       int node_id;
+       wait_queue_head_t kswapd_wait;
+       wait_queue_head_t pfmemalloc_wait;
+
+       /* workqueues for throttling reclaim for different reasons. */
+       wait_queue_head_t reclaim_wait[NR_VMSCAN_THROTTLE];
+
+       atomic_t nr_writeback_throttled; /* nr of writeback-throttled tasks */
+       unsigned long nr_reclaim_start; /* nr pages written while throttled
+                       * when throttling started. */
+   #ifdef CONFIG_MEMORY_HOTPLUG
+       struct mutex kswapd_lock;
+   #endif
+       struct task_struct *kswapd; /* Protected by kswapd_lock */
+       int kswapd_order;
+       enum zone_type kswapd_highest_zoneidx;
+
+       atomic_t kswapd_failures; /* Number of 'reclaimed == 0' runs */
+
+   #ifdef CONFIG_COMPACTION
+       int kcompactd_max_order;
+       enum zone_type kcompactd_highest_zoneidx;
+       wait_queue_head_t kcompactd_wait;
+       struct task_struct *kcompactd;
+       bool proactive_compact_trigger;
+   #endif
+       /*
+        * This is a per-node reserve of pages that are not available
+        * to userspace allocations.
+        */
+       unsigned long totalreserve_pages;
+
+   #ifdef CONFIG_NUMA
+       /*
+        * node reclaim becomes active if more unmapped pages exist.
+        */
+       unsigned long min_unmapped_pages;
+       unsigned long min_slab_pages;
+   #endif /* CONFIG_NUMA */
+
+       /* Write-intensive fields used by page reclaim */
+       CACHELINE_PADDING(_pad1_);
+
+   #ifdef CONFIG_DEFERRED_STRUCT_PAGE_INIT
+       /*
+        * If memory initialisation on large machines is deferred then this
+        * is the first PFN that needs to be initialised.
+        */
+       unsigned long first_deferred_pfn;
+   #endif /* CONFIG_DEFERRED_STRUCT_PAGE_INIT */
+
+   #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+       struct deferred_split deferred_split_queue;
+   #endif
+
+   #ifdef CONFIG_NUMA_BALANCING
+       /* start time in ms of current promote rate limit period */
+       unsigned int nbp_rl_start;
+       /* number of promote candidate pages at start time of current rate limit period */
+       unsigned long nbp_rl_nr_cand;
+       /* promote threshold in ms */
+       unsigned int nbp_threshold;
+       /* start time in ms of current promote threshold adjustment period */
+       unsigned int nbp_th_start;
+       /*
+        * number of promote candidate pages at start time of current promote
+        * threshold adjustment period
+        */
+       unsigned long nbp_th_nr_cand;
+   #endif
+       /* Fields commonly accessed by the page reclaim scanner */
+
+       /*
+        * NOTE: THIS IS UNUSED IF MEMCG IS ENABLED.
+        *
+        * Use mem_cgroup_lruvec() to look up lruvecs.
+        */
+       struct lruvec __lruvec;
+
+       unsigned long flags;
+
+   #ifdef CONFIG_LRU_GEN
+       /* kswap mm walk data */
+       struct lru_gen_mm_walk mm_walk;
+       /* lru_gen_folio list */
+       struct lru_gen_memcg memcg_lru;
+   #endif
+
+       CACHELINE_PADDING(_pad2_);
+
+       /* Per-node vmstats */
+       struct per_cpu_nodestat __percpu *per_cpu_nodestats;
+       atomic_long_t vm_stat[NR_VM_NODE_STAT_ITEMS];
+   #ifdef CONFIG_NUMA
+       struct memory_tier __rcu *memtier;
+   #endif
+   #ifdef CONFIG_MEMORY_FAILURE
+       struct memory_failure_stats mf_stats;
+   #endif
+   } pg_data_t;
+
+Yapının bazı elemanlarının çeşitli konfigürasyon parametreleri seçilmişse yapıya dahil edildiğine dikkat ediniz.
+Sistemdeki tüm NUMA düğümlerine ilişkin ``pglist_data_t`` nesnelerinin adresleri ``mm/numa.c`` dosyası içerisindeki
+``node_data`` isimli global bir dizide saklanmaktadır:
+
+.. code-block:: c
+
+   struct pglist_data *node_data[MAX_NUMNODES];
+   EXPORT_SYMBOL(node_data);
+
+Buradaki ``MAX_NUMNODES`` bir üst sınır belirtmektedir. NUMA düğümlerinin sayısı masaüstü sistemlerde donanım
+tarafından ACPI protokolü ile belirlenip ACPI tablosunun *SRAT (System Resource Affinity Table)* kısmına
+yazılmaktadır. ACPI protokolü tipik olarak modern UEFI BIOS'ların bulunduğu sistemlerde işletilmektedir. (Ancak
+eski BIOS'larda (*legacy BIOS*) ACPI protokolü sınırlamalarla işletilebilmektedir.) ACPI protokolünün kullanıldığı
+masaüstü sistemlerinde Linux çekirdeği NUMA bilgilerini bu ACPI tablosundan elde etmektedir. Pek çok gömülü
+sistemde bu biçimde bir donanım belirlemesi yapılamadığı ve bu sistemler de UEFI BIOS'lara sahip olmadığı için
+NUMA düğümleri hakkında bilgiler *aygıt ağacı (device tree)* denilen dosyalar yoluyla çekirdeğe iletilmektedir.
+İşte NUMA düğümlerinin gerçek sayısı yukarıda açıkladığımız biçimde çekirdek tarafından elde edilip ``nr_node_ids``
+ve ``nr_online_nodes`` isimli global değişkenlere yazılmaktadır. ``nr_node_ids`` toplam NUMA düğümlerinin sayısını,
+``nr_online_nodes`` ise çekirdek tarafından kullanılabilecek NUMA düğümlerinin sayısını belirtmektedir. Çekirdek
+bellek yönetiminde ``nr_online_nodes`` değerini dikkate almaktadır.
+
+Linux çekirdeği UMA ve NUMA sistemleri için ayrı kodlar bulundurmamaktadır. UMA sistemleri sanki tek düğümden oluşan
+NUMA sistemiymiş gibi ele alınmaktadır. Örneğin ``nr_node_ids`` ve ``nr_online_nodes`` global değişkenleri UMA
+sistemleri söz konusu olduğunda ``include/linux/nodemask.h`` dosyasında birer sembolik sabite dönüştürülmektedir:
+
+.. code-block:: c
+
+   #ifdef CONFIG_NUMA
+       ...
+       extern int nr_node_ids;
+       extern int nr_online_nodes;
+       ...
+   #else
+       ...
+       #define nr_node_ids     1U
+       #define nr_online_nodes 1U
+       ...
+   #endif
+
+Başka bir deyişle Linux çekirdeği sanki donanım her zaman NUMA mimarisine sahipmiş gibi çalışmaktadır. Tek düğüme
+sahip NUMA sistemi aslında UMA (Linux terminolojisinde SMP) sistemidir.
+
+Çekirdekte NUMA konfigürasyonunun ``CONFIG_NUMA`` konfigürasyon parametresi ile yapıldığına dikkat ediniz. Ancak
+dağıtımlardaki çekirdekler hem UMA hem de NUMA mimarisinde kullanılabilsin diye genel olarak ``CONFIG_NUMA=y``
+konfigürasyon seçeneği ile çekirdek derlemesini yapmaktadır. Yani kullandığınız çekirdeğin konfigürasyon dosyasında
+``CONFIG_NUMA`` konfigürasyonunun *"y"* olduğunu görürseniz şaşırmayınız. ACPI sistemi SMP için tek bir NUMA
+düğümü varmış gibi rapor oluşturmaktadır.
+
+Çekirdekte her NUMA düğümünün bir indeks numarası vardır. Bir NUMA düğümünün yukarıdaki dizi içerisindeki elemanına
+erişmek için ``NODE_DATA(index)`` makrosu kullanılmaktadır. Örneğin SMP sistemleri tek bir NUMA düğümü varmış gibi
+organize edildiği için UMA sistemlerinde biz bu bilgilere ``NODE_DATA(0)`` makrosuyla erişebiliriz. Aslında
+``CONFIG_NUMA=n`` yapıldığında çekirdek ``#ifdef`` komutlarıyla aşağıdaki bildirimleri devreye sokmaktadır:
+
+.. code-block:: c
+
+   #ifndef CONFIG_NUMA
+   extern struct pglist_data contig_page_data;
+   static inline struct pglist_data *NODE_DATA(int nid)
+   {
+       return &contig_page_data;
+   }
+   ...
+   #else
+   ...
+   #endif
+
+``CONFIG_NUMA=n`` durumunda bu makroya biz hangi indeksi verirsek verelim makro hep aynı nesnenin adresini
+döndürmektedir. ``CONFIG_NUMA=n`` durumunda zaten ``node_data`` gösterici dizisinin yalnızca bir elemanı vardır.
+Bu eleman da ``contig_page_data`` nesnesini göstermektedir. Tabii yukarıda belirttiğimiz gibi dağıtımlar
+çekirdeklerini ``CONFIG_NUMA=y`` parametresiyle derlemektedir.
+
+Sisteminizdeki NUMA bilgilerini sys dosya sistemi yoluyla ``/sys/devices/system/node`` dizininden elde
+edebilirsiniz. UMA sistemlerinde burada ``node0`` biçiminde tek bir NUMA düğüm dizini bulunacaktır. Bir düğümün
+bellek kullanımı hakkında genel bilgiler de ``/sys/devices/system/node/nodeN/meminfo`` dosyası yoluyla elde
+edilebilir. Örneğin:
+
+.. code-block:: console
+
+   $ cat /sys/devices/system/node/node0/meminfo
