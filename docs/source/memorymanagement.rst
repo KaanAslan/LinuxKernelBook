@@ -1583,3 +1583,424 @@ kısmını, 64 bit sistemlerde ise 4 GB'den itibaren geri kalan tüm fiziksel be
 adreslenemeyen ilk 896 MB'lik alanın ötesini belirtmektedir. Çekirdek bu bölgeye sayfa tablosunda değişiklikler
 yaparak erişmektedir.
 
+Yukarıda belirttiğimiz fiziksel bellek bölgelerine ilişkin bilgiler güncel çekirdeklerde ``include/linux/mmzone.h``
+dosyası içerisinde bildirilmiş olan ``zone`` yapısı içerisinde tutulmaktadır:
+
+.. code-block:: c
+
+   struct zone {
+       /* Read-mostly fields */
+
+       /* zone watermarks, access with *_wmark_pages(zone) macros */
+       unsigned long _watermark[NR_WMARK];
+       unsigned long watermark_boost;
+
+       unsigned long nr_reserved_highatomic;
+       unsigned long nr_free_highatomic;
+
+       /*
+        * We don't know if the memory that we're going to allocate will be
+        * freeable or/and it will be released eventually, so to avoid totally
+        * wasting several GB of ram we must reserve some of the lower zone
+        * memory (otherwise we risk to run OOM on the lower zones despite
+        * there being tons of freeable ram on the higher zones).  This array is
+        * recalculated at runtime if the sysctl_lowmem_reserve_ratio sysctl
+        * changes.
+        */
+       long lowmem_reserve[MAX_NR_ZONES];
+
+   #ifdef CONFIG_NUMA
+       int node;
+   #endif
+       struct pglist_data *zone_pgdat;
+       struct per_cpu_pages __percpu *per_cpu_pageset;
+       struct per_cpu_zonestat __percpu *per_cpu_zonestats;
+       /*
+        * the high and batch values are copied to individual pagesets for
+        * faster access
+        */
+       int pageset_high_min;
+       int pageset_high_max;
+       int pageset_batch;
+
+   #ifndef CONFIG_SPARSEMEM
+       /*
+        * Flags for a pageblock_nr_pages block. See pageblock-flags.h.
+        * In SPARSEMEM, this map is stored in struct mem_section
+        */
+       unsigned long *pageblock_flags;
+   #endif /* CONFIG_SPARSEMEM */
+
+       /* zone_start_pfn == zone_start_paddr >> PAGE_SHIFT */
+       unsigned long zone_start_pfn;
+
+       /*
+        * spanned_pages is the total pages spanned by the zone, including
+        * holes, which is calculated as:
+        * 	spanned_pages = zone_end_pfn - zone_start_pfn;
+        *
+        * present_pages is physical pages existing within the zone, which
+        * is calculated as:
+        *	present_pages = spanned_pages - absent_pages(pages in holes);
+        *
+        * present_early_pages is present pages existing within the zone
+        * located on memory available since early boot, excluding hotplugged
+        * memory.
+        *
+        * managed_pages is present pages managed by the buddy system, which
+        * is calculated as (reserved_pages includes pages allocated by the
+        * bootmem allocator):
+        *	managed_pages = present_pages - reserved_pages;
+        *
+        * cma pages is present pages that are assigned for CMA use
+        * (MIGRATE_CMA).
+        *
+        * So present_pages may be used by memory hotplug or memory power
+        * management logic to figure out unmanaged pages by checking
+        * (present_pages - managed_pages). And managed_pages should be used
+        * by page allocator and vm scanner to calculate all kinds of watermarks
+        * and thresholds.
+        *
+        * Locking rules:
+        *
+        * zone_start_pfn and spanned_pages are protected by span_seqlock.
+        * It is a seqlock because it has to be read outside of zone->lock,
+        * and it is done in the main allocator path.  But, it is written
+        * quite infrequently.
+        *
+        * The span_seq lock is declared along with zone->lock because it is
+        * frequently read in proximity to zone->lock.  It's good to
+        * give them a chance of being in the same cacheline.
+        *
+        * Write access to present_pages at runtime should be protected by
+        * mem_hotplug_begin/done(). Any reader who can't tolerant drift of
+        * present_pages should use get_online_mems() to get a stable value.
+        */
+       atomic_long_t managed_pages;
+       unsigned long spanned_pages;
+       unsigned long present_pages;
+   #if defined(CONFIG_MEMORY_HOTPLUG)
+       unsigned long present_early_pages;
+   #endif
+   #ifdef CONFIG_CMA
+       unsigned long cma_pages;
+   #endif
+
+       const char *name;
+
+   #ifdef CONFIG_MEMORY_ISOLATION
+       /*
+        * Number of isolated pageblock. It is used to solve incorrect
+        * freepage counting problem due to racy retrieving migratetype
+        * of pageblock. Protected by zone->lock.
+        */
+       unsigned long nr_isolate_pageblock;
+   #endif
+
+   #ifdef CONFIG_MEMORY_HOTPLUG
+       /* see spanned/present_pages for more description */
+       seqlock_t span_seqlock;
+   #endif
+
+       int initialized;
+
+       /* Write-intensive fields used from the page allocator */
+       CACHELINE_PADDING(_pad1_);
+
+       /* free areas of different sizes */
+       struct free_area free_area[NR_PAGE_ORDERS];
+
+   #ifdef CONFIG_UNACCEPTED_MEMORY
+       /* Pages to be accepted. All pages on the list are MAX_PAGE_ORDER */
+       struct list_head unaccepted_pages;
+
+       /* To be called once the last page in the zone is accepted */
+       struct work_struct unaccepted_cleanup;
+   #endif
+
+       /* zone flags, see below */
+       unsigned long flags;
+
+       /* Primarily protects free_area */
+       spinlock_t lock;
+
+       /* Pages to be freed when next trylock succeeds */
+       struct llist_head trylock_free_pages;
+
+       /* Write-intensive fields used by compaction and vmstats. */
+       CACHELINE_PADDING(_pad2_);
+
+       /*
+        * When free pages are below this point, additional steps are taken
+        * when reading the number of free pages to avoid per-cpu counter
+        * drift allowing watermarks to be breached
+        */
+       unsigned long percpu_drift_mark;
+
+   #if defined CONFIG_COMPACTION || defined CONFIG_CMA
+       /* pfn where compaction free scanner should start */
+       unsigned long compact_cached_free_pfn;
+       /* pfn where compaction migration scanner should start */
+       unsigned long compact_cached_migrate_pfn[ASYNC_AND_SYNC];
+       unsigned long compact_init_migrate_pfn;
+       unsigned long compact_init_free_pfn;
+   #endif
+
+   #ifdef CONFIG_COMPACTION
+       /*
+        * On compaction failure, 1<<compact_defer_shift compactions
+        * are skipped before trying again. The number attempted since
+        * last failure is tracked with compact_considered.
+        * compact_order_failed is the minimum compaction failed order.
+        */
+       unsigned int compact_considered;
+       unsigned int compact_defer_shift;
+       int compact_order_failed;
+   #endif
+
+   #if defined CONFIG_COMPACTION || defined CONFIG_CMA
+       /* Set to true when the PG_migrate_skip bits should be cleared */
+       bool compact_blockskip_flush;
+   #endif
+
+       bool contiguous;
+
+       CACHELINE_PADDING(_pad3_);
+       /* Zone statistics */
+       atomic_long_t vm_stat[NR_VM_ZONE_STAT_ITEMS];
+       atomic_long_t vm_numa_event[NR_VM_NUMA_EVENT_ITEMS];
+   } ____cacheline_internodealigned_in_smp;
+
+Görüldüğü gibi bir bölgeyi temsil eden pek çok bilgi bulunmaktadır. Bu yapı içerisinde bölgenin fiziksel belleğin
+neresinden başladığı ve ne uzunlukta olduğu belirtilmektedir.
+
+Bir NUMA düğümündeki bölgeler düğümü temsil eden ``pglist_data`` yapısının ``node_zones`` elemanında tutulmaktadır.
+Bu eleman ``MAX_NR_ZONES`` uzunluğunda bir dizi biçiminde bildirilmiştir. Ancak buradaki ``MAX_NR_ZONES`` değeri
+olabilecek en yüksek bölge sayısını belirtmektedir. Bu dizinin dolu olan elemanlarının sayısı ise ``pglist_data``
+yapısının ``nr_zones`` elemanında tutulmaktadır:
+
+.. code-block:: c
+
+   typedef struct pglist_data {
+       /* ... */
+
+       struct zone node_zones[MAX_NR_ZONES];
+       int nr_zones;
+
+       /* ... */
+   } pg_data_t;
+
+Bölge bilgilerinin NUMA düğümlerinin içerisinde olduğuna bir kez daha dikkatinizi çekmek istiyoruz.
+
+Fiziksel Sayfaların page Yapısıyla Temsili
+==========================================
+
+Çekirdek fiziksel belleği NUMA düğümlerinden, NUMA düğümlerini bellek bölgelerinden (*zones*), bellek bölgelerini
+de sayfalardan oluşuyormuş gibi ele almaktadır. İzleyen paragraflarda ele alacağımız *ikiz blok sayfa tahsisat
+sistemi (buddy allocator)* bölge temelinde oluşturulmuştur. Ancak çekirdek tüm fiziksel belleğin sayfalarını da
+ayrıca kayıt altında tutup izlemektedir. Linux çekirdeğinde bir fiziksel bellek sayfası ``page`` isimli bir yapıyla
+temsil edilmiştir. Güncel çekirdeklerde ``page`` yapısı ``include/linux/mm_types.h`` dosyası içerisinde aşağıdaki
+gibi bildirilmiştir:
+
+.. code-block:: c
+
+   struct page {
+       memdesc_flags_t flags; /* Atomic flags, some possibly
+                   * updated asynchronously */
+       /*
+        * Five words (20/40 bytes) are available in this union.
+        * WARNING: bit 0 of the first word is used for PageTail(). That
+        * means the other users of this union MUST NOT use the bit to
+        * avoid collision and false-positive PageTail().
+        */
+       union {
+           struct { /* Page cache and anonymous pages */
+               /**
+                * @lru: Pageout list, eg. active_list protected by
+                * lruvec->lru_lock.  Sometimes used as a generic list
+                * by the page owner.
+                */
+               union {
+                   struct list_head lru;
+
+                   /* Or, free page */
+                   struct list_head buddy_list;
+                   struct list_head pcp_list;
+                   struct llist_node pcp_llist;
+               };
+               struct address_space *mapping;
+               union {
+                   pgoff_t __folio_index; /* Our offset within mapping. */
+                   unsigned long share; /* share count for fsdax */
+               };
+               /**
+                * @private: Mapping-private opaque data.
+                * Usually used for buffer_heads if PagePrivate.
+                * Used for swp_entry_t if swapcache flag set.
+                * Indicates order in the buddy system if PageBuddy
+                * or on pcp_llist.
+                */
+               unsigned long private;
+           };
+           struct { /* page_pool used by netstack */
+               /**
+                * @pp_magic: magic value to avoid recycling non
+                * page_pool allocated pages.
+                */
+               unsigned long pp_magic;
+               struct page_pool *pp;
+               unsigned long _pp_mapping_pad;
+               unsigned long dma_addr;
+               atomic_long_t pp_ref_count;
+           };
+           struct { /* Tail pages of compound page */
+               unsigned long compound_head; /* Bit zero is set */
+           };
+           struct { /* ZONE_DEVICE pages */
+               /*
+                * The first word is used for compound_head or folio
+                * pgmap
+                */
+               void *_unused_pgmap_compound_head;
+               void *zone_device_data;
+               /*
+                * ZONE_DEVICE private pages are counted as being
+                * mapped so the next 3 words hold the mapping, index,
+                * and private fields from the source anonymous or
+                * page cache page while the page is migrated to device
+                * private memory.
+                * ZONE_DEVICE MEMORY_DEVICE_FS_DAX pages also
+                * use the mapping, index, and private fields when
+                * pmem backed DAX files are mapped.
+                */
+           };
+
+           /** @rcu_head: You can use this to free a page by RCU. */
+           struct rcu_head rcu_head;
+       };
+
+       union { /* This union is 4 bytes in size. */
+           /*
+            * For head pages of typed folios, the value stored here
+            * allows for determining what this page is used for. The
+            * tail pages of typed folios will not store a type
+            * (page_type == _mapcount == -1).
+            *
+            * See page-flags.h for a list of page types which are currently
+            * stored here.
+            *
+            * Owners of typed folios may reuse the lower 16 bit of the
+            * head page page_type field after setting the page type,
+            * but must reset these 16 bit to -1 before clearing the
+            * page type.
+            */
+           unsigned int page_type;
+
+           /*
+            * For pages that are part of non-typed folios for which mappings
+            * are tracked via the RMAP, encodes the number of times this page
+            * is directly referenced by a page table.
+            *
+            * Note that the mapcount is always initialized to -1, so that
+            * transitions both from it and to it can be tracked, using
+            * atomic_inc_and_test() and atomic_add_negative(-1).
+            */
+           atomic_t _mapcount;
+       };
+
+       /* Usage count. *DO NOT USE DIRECTLY*. See page_ref.h */
+       atomic_t _refcount;
+
+   #ifdef CONFIG_MEMCG
+       unsigned long memcg_data;
+   #elif defined(CONFIG_SLAB_OBJ_EXT)
+       unsigned long _unused_slab_obj_exts;
+   #endif
+
+       /*
+        * On machines where all RAM is mapped into kernel address space,
+        * we can simply calculate the virtual address. On machines with
+        * highmem some memory is mapped into kernel virtual memory
+        * dynamically, so we need a place to store that address.
+        * Note that this field could be 16 bits on x86 ... ;)
+        *
+        * Architectures with slow multiplication can define
+        * WANT_PAGE_VIRTUAL in asm/page.h
+        */
+   #if defined(WANT_PAGE_VIRTUAL)
+       void *virtual; /* Kernel virtual address (NULL if
+                   not kmapped, ie. highmem) */
+   #endif /* WANT_PAGE_VIRTUAL */
+
+   #ifdef LAST_CPUPID_NOT_IN_PAGE_FLAGS
+       int _last_cpupid;
+   #endif
+
+   #ifdef CONFIG_KMSAN
+       /*
+        * KMSAN metadata for this page:
+        *  - shadow page: every bit indicates whether the corresponding
+        *    bit of the original page is initialized (0) or not (1);
+        *  - origin page: every 4 bytes contain an id of the stack trace
+        *    where the uninitialized value was created.
+        */
+       struct page *kmsan_shadow;
+       struct page *kmsan_origin;
+   #endif
+   } _struct_page_alignment;
+
+Tabii eskiden bu yapı bu kadar büyük değildi. Zaman içerisinde yapıya çeşitli konfigürasyon parametreleri eşliğinde
+alanlar eklendi ve yapı büyüdü. Örneğin çekirdeğin 2.2 versiyonunda ``page`` yapısı şöyleydi:
+
+.. code-block:: c
+
+   typedef struct page {
+       /* these must be first (free area handling) */
+       struct page *next;
+       struct page *prev;
+       struct inode *inode;
+       unsigned long offset;
+       struct page *next_hash;
+       atomic_t count;
+       unsigned long flags; /* atomic flags, some possibly updated asynchronously */
+       struct wait_queue *wait;
+       struct page **pprev_hash;
+       struct buffer_head *buffers;
+   } mem_map_t;
+
+2.4 çekirdeğinde yapı şu hale geldi:
+
+.. code-block:: c
+
+   typedef struct page {
+       struct list_head list; /* ->mapping has some page lists. */
+       struct address_space *mapping; /* The inode (or ...) we belong to. */
+       unsigned long index; /* Our offset within mapping. */
+       struct page *next_hash; /* Next page sharing our hash bucket in
+                   the pagecache hash table. */
+       atomic_t count; /* Usage count, see below. */
+       unsigned long flags; /* atomic flags, some possibly
+                   updated asynchronously */
+       struct list_head lru; /* Pageout list, eg. active_list;
+                   protected by pagemap_lru_lock !! */
+       struct page **pprev_hash; /* Complement to *next_hash. */
+       struct buffer_head *buffers; /* Buffer maps us to a disk block. */
+
+       /*
+        * On machines where all RAM is mapped into kernel address space,
+        * we can simply calculate the virtual address. On machines with
+        * highmem some memory is mapped into kernel virtual memory
+        * dynamically, so we need a place to store that address.
+        * Note that this field could be 16 bits on x86 ... ;)
+        *
+        * Architectures with slow multiplication can define
+        * WANT_PAGE_VIRTUAL in asm/page.h
+        */
+   #if defined(CONFIG_HIGHMEM) || defined(WANT_PAGE_VIRTUAL)
+       void *virtual; /* Kernel virtual address (NULL if
+                   not kmapped, ie. highmem) */
+   #endif /* CONFIG_HIGMEM || WANT_PAGE_VIRTUAL */
+   } mem_map_t;
+
+Güncel çekirdeklerde ``page`` yapısının uzunluğu 64 byte'tır. Dolayısıyla bir fiziksel sayfaya bu ``page``
+yapılarından 64 tanesi sığabilmektedir.
