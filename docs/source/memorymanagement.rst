@@ -610,18 +610,14 @@ Görüldüğü gibi sayfa tablosunun bir elemanı (yani bir sayfa girişi) 4 byt
 vardır. 3 bitlik IGN alanı kullanılmamaktadır. Sayfa tablosu da aşağıdaki gibi dörder byte'lık girişlerden oluşmaktadır:
 
 .. list-table::
-   :widths: 70 30
+   :widths: 70 
 
    * - 0 Numaralı Sayfa Tablosu Girişi
-     - 4 Byte
    * - 1 Numaralı Sayfa Tablosu Girişi
-     - 4 Byte
    * - 2 Numaralı Sayfa Tablosu Girişi
-     - 4 Byte
    * - ...
-     -
    * - Son Sayfa Tablosu Girişi
-     - 4 Byte
+
 
 Sayfa tablosu girişlerini şöyle de temsil edebiliriz:
 
@@ -2004,3 +2000,85 @@ alanlar eklendi ve yapı büyüdü. Örneğin çekirdeğin 2.2 versiyonunda ``pa
 
 Güncel çekirdeklerde ``page`` yapısının uzunluğu 64 byte'tır. Dolayısıyla bir fiziksel sayfaya bu ``page``
 yapılarından 64 tanesi sığabilmektedir.
+
+Linux çekirdeğinin fiziksel bellekteki her sayfa için bir ``page`` yapı nesnesi tuttuğunu belirtmiştik. Çekirdek
+aynı zamanda fiziksel belleğe ilişkin tüm ``page`` nesnelerini bir dizi içerisinde de tutmaktadır. Ancak bunları
+tutuş biçimi konfigürasyon parametrelerine göre değişmektedir.
+
+Linux çekirdeklerinde belli bir süredir tüm ``page`` nesneleri ``CONFIG_FLATMEM``, ``CONFIG_SPARSEMEM`` ve
+``CONFIG_SPARSEMEM_VMEMMAP`` konfigürasyon parametrelerine bağlı olarak değişik biçimlerde saklanmaktadır.
+``CONFIG_FLATMEM`` ilgili sistemdeki fiziksel belleğin hiç delikler olmadan düz bir biçimde bulunduğunu
+belirtmektedir. Yani ``CONFIG_FLATMEM`` durumunda fiziksel bellek her sayfası kullanılabilen ve arada hiç boşluk
+olmayan tek parçadan oluşmaktadır. Siz "zaten fiziksel belleğin bu biçimde olması gerektiğini"
+düşünebilirsiniz. Ancak bu durum zorunlu değildir. Bazı mimarilerde fiziksel belleğin belli bölgelerinde delikler
+vardır. Tabii bu delikler başka amaçlarla oluşturulmuştur. Ancak bu delikler işletim sistemi tarafından bellek
+yönetiminde kullanılmamaktadır. Örneğin bugün kökeni IBM PC'ye dayanan Intel işlemcilerinin kullanıldığı masaüstü
+bilgisayar mimarisinde BIOS alanı fiziksel adres alanı içerisindedir ve buraya yazma yapılamamaktadır. Bu bölge
+aslında fiziksel belleği kesintiye uğratan bir delik oluşturmaktadır. İşte fiziksel belleğin aralarında böyle
+boşlukların bulunduğu durum ``CONFIG_SPARSEMEM`` konfigürasyon parametresiyle belirtilmektedir. Bugün
+kullandığımız Intel tabanlı masaüstü bilgisayarlarındaki fiziksel bellek delikleri aşağıdaki gibidir:
+
+.. code-block:: none
+
+   Adres                Boyut     İçerik
+   ──────────────────────────────────────────────────────────────
+
+   0x0000_0000   ┬──────────────────────────────────────────────┐
+                 │  IVT + BDA                        (    1 KB) │ RAM
+   0x0000_0500   │  Kullanılabilir RAM               (  637 KB) │
+   0x0009_FC00   │  EBDA                             (    1 KB) │ RAM (reserved)
+   0x000A_0000   ├──────────────────────────────────────────────┤
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                 │░  VGA Frame Buffer                (  128 KB) │░ DELİK
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+   0x000C_0000   ├──────────────────────────────────────────────┤
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                 │░  Video BIOS ROM                  (   32 KB) │░ DELİK
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+   0x000C_8000   ├──────────────────────────────────────────────┤
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                 │░  Option ROM / reserved           (  224 KB) │░ DELİK
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+   0x000F_0000   ├──────────────────────────────────────────────┤
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                 │░  System BIOS ROM                 (   64 KB) │░ DELİK
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+   0x0010_0000   ├──────────────────────────────────────────────┤
+                 │                                              │
+                 │  Kullanılabilir RAM                          │ RAM
+                 │  (çekirdek + kullanıcı belleği)              │
+                 │                                              │
+   0xBFFE_0000   ├──────────────────────────────────────────────┤
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                 │░  ACPI Tabloları / Reserved       (  128 KB) │ DELİK
+                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+   0xC000_0000   ├──────────────────────────────────────────────┤
+                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
+                 │▓  PCI Hole (32-bit MMIO alanı)               │▓ BÜYÜK DELİK
+                 │▓  PCIe BAR'ları, GPU belleği      (  ~1  GB) │▓
+                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
+   0xFEC0_0000   ├──────────────────────────────────────────────┤
+                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
+                 │▓  I/O APIC                        (    4 KB) │▓ DELİK
+                 │▓  HPET                            (    4 KB) │▓
+                 │▓  TPM                             (   64 KB) │▓
+                 │▓  Local APIC  (0xFEE0_0000)       (    4 KB) │▓
+                 │▓  UEFI Runtime / MSI-X            (  ~12 MB) │▓
+                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
+   0xFFFF_FFFF   └──────────────────────────────────────────────┘  ← 4 GB sınırı
+
+   0x1_0000_0000 ┬─────────────────────────────────────────────┐
+                 │  Remapped RAM                               │ RAM
+                 │  (32-bit'te görünemeyen RAM buraya taşınır) │
+                 │  TOLUD/TOUUD üzeri sistem RAM'i             │
+                 │                                             │
+                 │         . . .                               │
+                 │                                             │
+   0x?_????_???? └─────────────────────────────────────────────┘
+                   (kurulu RAM miktarına bağlı olarak değişir)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Gösterim:   (boş)  = Kullanılabilir RAM  (struct page tahsis edilir)
+               ░░░░░  = Küçük delik         (donanım ROM / legacy I/O)
+               ▓▓▓▓▓  = Büyük delik         (MMIO / PCIe / APIC)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
