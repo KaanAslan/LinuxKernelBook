@@ -1522,3 +1522,65 @@ edilebilir. Örneğin:
 .. code-block:: console
 
    $ cat /sys/devices/system/node/node0/meminfo
+
+Fiziksel Belleğin Bölgelere Ayrılması 
+=====================================
+
+NUMA sistemlerinde her düğüm kendi içerisinde bölgelerden (*zones*) ouşmaktadır. UMA sistemlerinin Linux çekirdeği
+tarafından tek düğümlü NUMA sistemleri gibi ele alındığını belirtmiştik. Fiziksel belleğin (ya da NUMA düğümlerinin)
+bölgelere ayrılmasının anlamı nedir? İşte fiziksel bellekteki bölgeler "bazı işlemlerin yapılabilirliği" ile ilgili
+olabilmektedir. Örneğin bazı sistemlerde DMA ile aktarım RAM'in her yerine yapılamamaktadır. Yalnızca özel bir
+bölgesine yapılabilmektedir. Linux çekirdeklerinde bu bölgeye ``ZONE_DMA`` denilmektedir. İşletim sistemlerinin
+çekirdeklerinin pek çok donanımda çalışacak biçimde genel tasarlandığına dikkatinizi çekmek istiyoruz. Linux
+çekirdeğinde her *bölge (zone)* bellek yönetimi tarafından ayrı bir biçimde yönetilmektedir.
+
+Linux çekirdeğinde kullanılan bölgeler şunlardır:
+
+- ``ZONE_DMA``
+- ``ZONE_DMA32``
+- ``ZONE_NORMAL``
+- ``ZONE_HIGHMEM``
+- ``ZONE_MOVABLE``
+- ``ZONE_DEVICE``
+
+Bu bölgelerin hepsi her türlü donanımda bulunmak zorunda değildir. Bölge türleri ``include/linux/mmzone.h`` dosyası
+içerisinde aşağıdaki gibi bir ``enum`` türü ile sembolik sabitler biçiminde bildirilmiştir:
+
+.. code-block:: c
+
+   enum zone_type {
+   #ifdef CONFIG_ZONE_DMA
+       ZONE_DMA,
+   #endif
+   #ifdef CONFIG_ZONE_DMA32
+       ZONE_DMA32,
+   #endif
+       ZONE_NORMAL,
+   #ifdef CONFIG_HIGHMEM
+       ZONE_HIGHMEM,
+   #endif
+       ZONE_MOVABLE,
+   #ifdef CONFIG_ZONE_DEVICE
+       ZONE_DEVICE,
+   #endif
+       __MAX_NR_ZONES
+   };
+
+Görüldüğü gibi bazı bölgeler bazı konfigürasyon parametreleri aktifse ``enum`` içerisinde yer almaktadır. Örneğin
+64 bit sistemlerde ``ZONE_HIGHMEM`` yoktur. Çünkü 64 bit sistemlerde sayfa tablosu değiştirilmeden fiziksel belleğin
+her yerine erişilebilmektedir. 32 bit Linux çekirdeklerinin derlenmesinde kullanılan ``CONFIG_HIGHMEM`` konfigürasyon
+parametresi *"y"* biçiminde, 64 bit Linux çekirdeklerinin derlenmesinde kullanılan ``CONFIG_HIGHMEM`` konfigürasyon
+parametresi ise *"n"* biçimindedir.
+
+``ZONE_DMA``, 24 bit fiziksel adres kullanabilen DMA'ların bulunduğu donanımlar için, ``ZONE_DMA32`` ise 32 bit
+fiziksel adres kullanabilen DMA'ların bulunduğu donanımlar için tanımlı bölgelerdir. Genellikle konfigürasyon
+dosyalarında ``CONFIG_ZONE_DMA32=y`` ise aynı zamanda ``CONFIG_ZONE_DMA=y`` biçimindedir.
+
+``ZONE_NORMAL`` bölgesi çekirdeğin doğrudan adresleme yapabildiği en geniş bölgedir. 32 bit Linux sistemlerinde
+ileride açıklayacağımız gerekçeler nedeniyle ``ZONE_NORMAL`` bölgesi fiziksel belleğin 16 MB ile 896 MB arasındaki
+kısmını, 64 bit sistemlerde ise 4 GB'den itibaren geri kalan tüm fiziksel belleği belirtmektedir.
+
+``ZONE_HIGHMEM`` alanı 32 bit Linux sistemlerinde ileride açıklayacağımız gerekçeler nedeniyle doğrudan
+adreslenemeyen ilk 896 MB'lik alanın ötesini belirtmektedir. Çekirdek bu bölgeye sayfa tablosunda değişiklikler
+yaparak erişmektedir.
+
