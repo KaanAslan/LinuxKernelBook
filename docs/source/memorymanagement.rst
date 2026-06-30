@@ -283,7 +283,7 @@ biçiminde numaralandırılmaktadır:
 bulunduğuna dikkat ediniz.
 
 Sayfa Tabloları ve Sanal Adreslerin Fiziksel Adreslere Dönüştürülmesi
----------------------------------------------------------------------
+=====================================================================
 
 Sayfalama mekanizması aktif hale getirildiğinde artık işlemci makine kodlarındaki adresleri *sayfa tablosu
 (page table)* denilen bir tabloya bakarak fiziksel adrese dönüştürmektedir. Sayfa tablolarının organizasyonu
@@ -739,7 +739,7 @@ işlemcileri iki kademeli sayfa tablolarına sahiptir ve bu işlemcilerde sanal 
    ├───────────────────────┼───────────────────────┼─────────────────────┤
    │        10 bit         │        10 bit         │       12 bit        │
    └───────────────────────┴───────────────────────┴─────────────────────┘
-   ◄──────────────────────────── 32 bit ───────────────────────────────►
+   ◄─────────────────────────────── 32 bit ──────────────────────────────►
 
 Görüldüğü gibi 4K sayfa kullanan 32 bit Intel işlemcilerinde sanal adres üç kısma ayrılmaktadır: 10 bitlik
 *PGD (Page Directory)* alanı, 10 bitlik *PTE (Page Table Entry)* alanı ve 12 bitlik *Page Offset* alanı. Bu
@@ -846,19 +846,19 @@ dönüştürülecek sanal adres ``1F3243A4`` olsun. Bu adresi bitlerine ayrışt
 
 Biz yukarıda 4K sayfa kullanan 32 bit Intel işlemcileri üzerinde örnek verdik. Sayfa büyüklükleri değiştiğinde
 sanal adres dönüştürmesinin formatı da değişmektedir. Örneğin 4 MB'lık büyük sayfalar söz konusu olduğunda 32
-bit Intel işlemcileri sanal adresi 2 kısma ayırmaktadır:
+bit Intel işlemcileri sanal adresi iki kısma ayırmaktadır:
 
 .. code-block:: none
 
    ┌──────────────────────┬────────────────────────────────────────┐
-   │   Page Directory     │           Page Offset                  │
-   │       Index          │                                        │
+   │    Page Directory    │             Page Offset                │
+   │        Index         │                                        │
    ├──────────────────────┼────────────────────────────────────────┤
    │  31               22 │  21                                  0 │
    ├──────────────────────┼────────────────────────────────────────┤
    │        10 bit        │               22 bit                   │
    └──────────────────────┴────────────────────────────────────────┘
-   ◄──────────────────────── 32 bit ──────────────────────────────►
+   ◄──────────────────────────── 32 bit ───────────────────────────►
 
 Burada artık tek kademeli bir dönüştürmenin olduğuna dikkat ediniz. Bu durumda işlemci yüksek anlamlı 10 bitten
 sayfa dizininin indeksini elde edip sayfa dizininin o indeksine başvurarak 4 MB'lik sayfanın yerini tespit
@@ -933,7 +933,7 @@ kısma ayrılmaktadır:
    └───────────────┴────────────┴────────────┴────────────┴────────────┴───────────┘
    ◄────────────────────────────────────  64 bit ──────────────────────────────────►
 
-64 bit Intel işlemcileri aslında 48 bitlik sanal adresler kullanmaktadır. Bu işlemcilerin adresleyebildiği teorik
+64 bit Intel işlemcileri aslında 48 bit ya da 57 bitlik sanal adresler kullanmaktadır. Bu işlemcilerin adresleyebildiği teorik
 fiziksel bellek uzunluğu ise 2⁶⁴ (16 exabyte) değil daha azdır. Modellere göre 64 bit Intel işlemcilerinin
 kullanabildiği fiziksel RAM aşağıdaki tabloda verilmiştir:
 
@@ -1035,6 +1035,10 @@ Dönüştürme yukarıdaki şekilden de gördüğünüz gibi şöyle yapılmakta
                                                                               │  + Offset       │
                                                                               └─────────────────┘
 
+Intel'de 48 bit sanal adres kullanımında sanal adresin yüksek anlamlı 16 biti 47'inci bitle aynı olmak zorundadır. 
+Benzer biçimde 57 bit sanal adres kullanımında ise sanal adresin yüksek anlamlı biti 56'ıncı bitle aynı olmak zorundadır.
+Bu kurala uymayan adres erişimlerinde işlemci exception oluşturmaktadır.
+
 4K sayfalar kullanan 64 bit ARM işlemcilerinde de sanal adres aşağıdaki gibi dört parçaya ayrılmaktadır:
 
 .. code-block:: none
@@ -1049,8 +1053,10 @@ Dönüştürme yukarıdaki şekilden de gördüğünüz gibi şöyle yapılmakta
    └────────────┴────────────┴────────────┴────────────┴────────────┴───────────┘
    ◄───────────────────────────────── 64 bit ───────────────────────────────────►
 
-64 bit ARM işlemcilerinde de sanal adres alanı Intel'de olduğu gibi 64 bit değil 48 bittir. 64 bit Intel
-işlemcileri ile 64 bit ARM işlemcilerinin sayfalama aşamalarını aşağıdaki tabloyla karşılaştırıyoruz:
+64 bit ARM işlemcilerinde de sanal adres alanı Intel'de olduğu gibi 64 bit değil 48 bittir. Adres dönüştürme 
+mekanizmaları biraz farklı olsa da 64 bit ARM işlemcilerinde de sanal adresin yüksek anlamlı 16 biti 47'inci bit 
+ile aynı olmazsa dönüştürme sırasında exception (translation fault) oluşmaktadır. 64 bit Intel işlemcileri ile 64 
+bit ARM işlemcilerinin sayfalama aşamalarını aşağıdaki tabloyla karşılaştırıyoruz:
 
 .. list-table:: x86-64 ve AArch64 Sayfa Tablosu Organizasyonu Karşılaştırması
    :header-rows: 1
@@ -1116,3 +1122,163 @@ TLB önbelleğinin kaç girişi tutabildiğini gösteren bir tablo veriyoruz:
      - 64 giriş/thread (4K), 4-yollu
      - 64 giriş (4K), 4-yollu
      - 1024 giriş, 4-yollu
+
+Proseslerin Sanal Adres Alanları
+================================
+
+Şimdi de 32 bit ve 64 bit Linux işletim sistemlerinde proseslerin sanal adres alanları üzerinde duralım. Biz yukarıda
+her proses için sanki o proses fiziksel belleğe tek başına yükleniyormuş gibi bir sanal adres alanının oluşturulduğunu
+belirtmiştik. Böylece örneğin 32 bit Linux sistemlerinde her bir proses sanki 4 GB belleği tek başına kullanabiliyormuş
+gibi bir çalışma sistemi oluşturulmuştur. Peki işletim sisteminin kendisi sanal belleğin neresindedir? Sistem
+fonksiyonları çağrıldığında sayfa tablosu değiştirilmemektedir. Bir sistem fonksiyonu çağrıldığında thread'in çalışma
+modu kullanıcı modundan (*user mode*) çekirdek moduna (*kernel mode*) geçirilir ve sistem fonksiyonuna dallanılır. O
+halde işletim sisteminin kodlarının da her proses tarafından erişilebilir bir yerde bulundurulması gerekmektedir.
+İşte Linux sistemlerinde (Windows sistemlerinde de benzer) işletim sistemi sanal adres alanının belli bir yerine
+haritalanmıştır. 32 bit Linux sistemlerinde bir prosesin sanal bellek alanı şöyledir:
+
+.. code-block:: none
+
+   0x00000000  ┌─────────────────────────────────────┐
+               │                                     │
+               │                                     │
+               │           Kullanıcı Alanı           │  3 GB
+               │            (User Space)             │
+               │                                     │
+   0xC0000000  ├─────────────────────────────────────┤
+               │                                     │
+               │           Çekirdek Alanı            │  1 GB
+               │            (Kernel Space)           │
+               │                                     │
+   0xFFFFFFFF  └─────────────────────────────────────┘
+
+Buradan da görüldüğü gibi 32 bit Linux sistemlerinde kullanıcı alanı (yani prosesin sanal bellekte kapladığı maksimum
+alan) 3 GB, çekirdek alanı da 1 GB'dir. Her proseste çekirdek alanı o prosesin sanal belleğinin aynı yerine
+(``0xC0000000``'dan itibaren) haritalanmıştır. Sayfa tablolarının çok kademeli olması bu haritalama işlemini
+kolaylaştırmaktadır. Buradaki alanların içeriklerini biraz daha ayrıntılandırabiliriz:
+
+.. code-block:: none
+
+   0x00000000  ┌─────────────────────────────────────┐
+               │           NULL guard                │
+               │     (unmapped, trap on access)      │
+   0x08048000  ├─────────────────────────────────────┤
+               │         Text segment                │
+               │   (read-only, executable, .text)    │
+               ├─────────────────────────────────────┤
+               │         Data segment                │
+               │   (initialized globals & statics)   │
+               ├─────────────────────────────────────┤
+               │           BSS segment               │
+               │  (zero-init globals & statics)      │
+               ├─────────────────────────────────────┤  ◄── program break
+               │              Heap                   │
+               │      (grows downward  ▼)            │
+               │                                     │
+               │    · · · free virtual space · · ·   │  U
+               │                                     │  S
+               │       mmap / shared libs            │  E
+               │  (libc.so, ld.so, anon mmap)        │  R
+               │                                     │
+               │    · · · free virtual space · · ·   │
+               │                                     │
+               │             Stack                   │
+               │      (grows upward  ▲)              │
+               │                                     │
+   0xBFFFFFFF  │    (argv, envp, local vars)         │
+               ├═════════════════════════════════════╡
+               ║   ──── Kernel / User boundary ────  ║
+   0xC0000000  ╠═════════════════════════════════════╣
+               ║      Physical memory map            ║  K
+               ║   (1:1 lowmem, up to ~896 MB)       ║  E
+               ╠─────────────────────────────────────╣  R
+               ║    Kernel stacks (8 KB/thread)      ║  N
+               ╠─────────────────────────────────────╣  E
+               ║   Page tables & fixed maps          ║  L
+               ║   (PGD/PTE, kmap, fixmap)           ║
+               ╠─────────────────────────────────────╣
+               ║    Modules & vmalloc area           ║
+               ║  (insmod, vmalloc(), ioremap())     ║
+               ╠─────────────────────────────────────╣
+               ║       Kernel code & data            ║
+               ║   (vmlinux image, BSS, init data)   ║
+   0xFFFFFFFF  ╚═════════════════════════════════════╝
+
+64 bit Linux sistemlerinde ise prosesin sanal bellek alanı şöyledir:
+
+.. code-block:: none
+
+   0x0000000000000000  ┌─────────────────────────────────────┐
+                       │                                     │
+                       │          Kullanıcı Alanı            │
+                       │           (User Space)              │  128 TB
+                       │                                     │
+   0x00007FFFFFFFFFFF  ├─────────────────────────────────────┤
+                       │                                     │
+                       │         Kullanılmayan Alan          │
+                       │          (invalid range)            │  ~16 milyon TB
+                       │           Non-canonical             │
+                       │                                     │
+   0xFFFF800000000000  ├─────────────────────────────────────┤
+                       │                                     │
+                       │           Çekirdek Alanı            │
+                       │           (Kernel Space)            │  128 TB
+                       │                                     │
+   0xFFFFFFFFFFFFFFFF  └─────────────────────────────────────┘
+
+64 bit Linux sistemlerinde prosesin sanal bellek alanının 256 TB büyüklüğünde olduğuna dikkat ediniz. Bu sistemlerde
+sanal adreslerin 48 bit olduğunu ve sanal adreslerin yüksek anlamlı 16 bitinin 47'inci bit ile aynı olmak zorunda
+olduğunu anımsayınız. 64 bit Linux sistemlerinde kullanıcı alanı 128 TB ve çekirdek alanı da 128 TB'dir. Bugün için
+bu büyüklük oldukça yeterlidir. Bellekte 128 TB yer kaplayabilecek programlar yok denilecek kadar azdır. Kullanıcı
+alanının sanal bellek alanının düşük adresinde, çekirdek alanının da yüksekte bulunduğuna dikkat ediniz. Yine her
+proseste çekirdek alanı aynı yere haritalanmıştır. Buradaki şekli biraz daha ayrıntılı biçimde aşağıdaki gibi de
+çizebiliriz:
+
+.. code-block:: none
+
+   0x0000000000000000  ┌─────────────────────────────────────┐
+                       │           NULL guard                │
+                       │     (unmapped, trap on access)      │
+   0x0000000000400000  ├─────────────────────────────────────┤
+                       │         Text segment                │
+                       │   (read-only, executable, .text)    │
+                       ├─────────────────────────────────────┤
+                       │         Data segment                │
+                       │   (initialized globals & statics)   │
+                       ├─────────────────────────────────────┤
+                       │           BSS segment               │
+                       │  (zero-init globals & statics)      │
+                       ├─────────────────────────────────────┤  ◄── program break
+                       │              Heap                   │
+                       │      (grows downward  ▼)            │
+                       │                                     │
+                       │    · · · free virtual space · · ·   │  U
+                       │                                     │  S
+                       │       mmap / shared libs            │  E
+                       │  (libc.so, ld.so, anon mmap)        │  R
+                       │                                     │
+                       │    · · · free virtual space · · ·   │
+                       │                                     │
+                       │             Stack                   │
+                       │      (grows upward  ▲)              │
+                       │                                     │
+   0x00007FFFFFFFFFFF  │    (argv, envp, local vars)         │
+                       ├═════════════════════════════════════╡
+                       ║  · · · non-canonical hole · · ·     ║
+                       ║   (invalid, hardware rejects all    ║
+                       ║    refs into this range)            ║
+                       ╠═════════════════════════════════════╣
+                       ║   ──── Kernel / User boundary ────  ║
+   0xFFFF800000000000  ╠═════════════════════════════════════╣
+                       ║      Physical memory map            ║
+                       ║   (1:1 lowmem, direct-map)          ║ K
+                       ╠─────────────────────────────────────╣ E
+                       ║    Kernel stacks (16 KB/thread)     ║ R
+                       ╠─────────────────────────────────────╣ N
+                       ║   Page tables (PML4/PUD/PMD/PTE)    ║ E
+                       ╠─────────────────────────────────────╣ L
+                       ║    Modules & vmalloc area           ║
+                       ║  (insmod, vmalloc(), ioremap())     ║
+                       ╠─────────────────────────────────────╣
+                       ║      Kernel code & data             ║
+                       ║  (vmlinux image, BSS, init data)    ║
+   0xFFFFFFFFFFFFFFFF  ╚═════════════════════════════════════╝

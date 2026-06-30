@@ -1567,7 +1567,7 @@ gibi akış kritik koda girdiğinde ilgili işlemci ya da çekirdeğin yerel kes
 sonekli fonksiyonlar yine önce IRQ durumunu ``flags`` değişkeninde saklayıp unlock işlemi sırasında IRQ
 durumunu önceki duruma set etmektedir.
 
-SMP ve NUMA Mimarileri
+UMA ve NUMA Mimarileri
 ======================
 
 Biz Linux çekirdeğindeki temel senkronizasyon nesnelerini tanıttık. Ancak çekirdek senkronizasyon
@@ -1581,16 +1581,16 @@ Memory Access) Mimarisi*.
 SMP Mimarisi
 ------------
 
-SMP mimarisinde tüm işlemci ya da çekirdekler aynı fiziksel RAM'e bağlıdır. Dolayısıyla bir işlemci ya da
+UMA mimarisinde tüm işlemci ya da çekirdekler aynı fiziksel RAM'e bağlıdır. Dolayısıyla bir işlemci ya da
 çekirdek RAM'e erişirken diğeri o erişim bitene kadar beklemektedir. Tabii bu senkronizasyon donanım
 tarafından sağlanmaktadır. SMP mimarisindeki RAM erişimini aşağıdaki şekille betimleyebiliriz:
 
 .. image:: _static/smp-architecture.png
-   :alt: SMP Mimarisi
+   :alt: UMA Mimarisi
    :align: center
    :width: 60%
 
-SMP sisteminde bir CPU ya da çekirdek DRAM belleğe eriştiği zaman diğeri nano saniyeler mertebesinde
+UMA sisteminde bir CPU ya da çekirdek DRAM belleğe eriştiği zaman diğeri nano saniyeler mertebesinde
 beklediği için tam bir paralel çalışma mümkün olamamaktadır. Tabii işlemcilerin ya da çekirdeklerin içsel
 önbellekleri DRAM erişimini azaltmayı hedeflemektedir. Ancak işlemci içerisindeki önbellek mekanizmasının
 da *önbellek tutarlılığı (cache coherency)* denilen sorunları vardır. Örneğin bir işlemci ya da çekirdek
@@ -1598,6 +1598,10 @@ DRAM bellekten belli bir yeri içsel önbelleğine çekmiş olsun. Şimdi o işl
 şey yazdığında diğer işlemcilerin ya da çekirdeklerin onu fark etmesi gerekir. İşte bunu sağlamak
 için *önbellek tutarlılığına* ilişkin bazı mekanizmalar işletilmektedir. Biz burada önbellek protokolleri
 üzerinde durmayacağız. Bunlar hakkındaki bilgileri başka kaynaklardan edinebilirsiniz.
+
+Eskiden UMA yerine (o zamanlar NUMA yoktu) "SMP (Symmetric Multiprocessing)" kavramı kullanılıyordu. Yani bu kavramlar
+eşanlamlı idi. Ancak daha sonra SMP kavramı "tüm işlemcilerin eşit hakka sahip olduğu çok işlemcili sistemleri" belirtmek
+için kullanılmaya başlandı. Biz de kitabımızda SMP yerine UMA terimini kullanacaız.
 
 NUMA Mimarisi
 -------------
@@ -1613,7 +1617,7 @@ aşağıdaki şekille betimleyebiliriz:
    :align: center
    :width: 60%
 
-SMP ve NUMA Mimarilerinin Avantaj ve Dezavantajları
+UMA ve NUMA Mimarilerinin Avantaj ve Dezavantajları
 ----------------------------------------------------
 
 SMP mimarisinin de NUMA mimarisinin de bazı avantajları ve dezavantajları vardır. Ancak kişisel
@@ -1637,7 +1641,7 @@ bilgisayarlarımızda yaygın olarak SMP mimarisi kullanılmaktadır.
 - Donanım maliyeti daha yüksektir.
 - Önbellek tutarlılık (cache consistency) mekanizmaları daha karmaşıktır.
 
-**SMP Mimarisinin Avantajları:**
+**UMA Mimarisinin Avantajları:**
 
 - Programlama modeli çok daha basittir.
 - Tüm işlemciler ya da çekirdekler için bellek erişim gecikmesi aynıdır (tutarlı performans).
@@ -1646,7 +1650,7 @@ bilgisayarlarımızda yaygın olarak SMP mimarisi kullanılmaktadır.
 - Küçük sistemlerde (2-8 işlemci) daha verimli olabilir.
 - Önbellek tutarlılık mekanizması daha basittir.
 
-**SMP Mimarisinin Dezavantajları:**
+**UMA Mimarisinin Dezavantajları:**
 
 - Ölçeklenebilirlik sınırlıdır (genellikle 8 işlemciden sonra verim düşer).
 - Bellek veri yolu (memory bus) darboğaz oluşturabilir.
@@ -1657,11 +1661,11 @@ bilgisayarlarımızda yaygın olarak SMP mimarisi kullanılmaktadır.
 
 **Kullanım Senaryoları**
 
-- **SMP:** Küçük sunucular, iş istasyonları, gömülü sistemler.
+- **UMA:** Küçük sunucular, iş istasyonları, gömülü sistemler.
 - **NUMA:** Büyük veritabanı sunucuları, HPC sistemleri, bulut sunucuları.
-- **SMP:** Daha az sayıda thread çalıştıran uygulamalar.
+- **UMA:** Daha az sayıda thread çalıştıran uygulamalar.
 - **NUMA:** Yüzlerce thread çalıştıran paralel uygulamalar.
-- **SMP:** Bellek erişim modelinin basit olması gereken durumlar.
+- **UMA:** Bellek erişim modelinin basit olması gereken durumlar.
 - **NUMA:** Bellek kapasitesi ve bant genişliğinin kritik olduğu durumlar.
 
 **Modern Eğilim**
@@ -1671,10 +1675,11 @@ bilgisayarlarımızda yaygın olarak SMP mimarisi kullanılmaktadır.
 - Bulut bilişimde NUMA performans için kritiktir.
 - Sanallaştırma ortamlarında NUMA yapılandırması önemli bir optimizasyon alanıdır.
 
-Linux çekirdeği hem SMP hem de NUMA mimarisini destekleyecek biçimde gerçekleştirilmiştir. Yani biz SMP
+Linux çekirdeği hem UMA hem de NUMA mimarisini destekleyecek biçimde gerçekleştirilmiştir. Yani biz UMA
 içeren sistemlerde de NUMA içeren sistemlerde de Linux'u kurduğumuzda Linux bunu fark etmekte ve o
-mimariye özgü çalışmayı desteklemektedir. Genel olarak Linux çekirdeği (konfigürasyona da bağlıdır) SMP
-sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır.
+mimariye özgü çalışmayı desteklemektedir. Genel olarak Linux çekirdeği (konfigürasyona da bağlıdır) UMA
+sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır. Ancak Linux çekirdeği UMA terimi 
+yerine bunun eski eşanlamlısı olan SMP terimini kullanmaktadır.
 
 Çok İşlemcili Sistemlerde Senkronizasyon Sorunları
 ====================================================
