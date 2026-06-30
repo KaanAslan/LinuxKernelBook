@@ -1601,7 +1601,8 @@ için *önbellek tutarlılığına* ilişkin bazı mekanizmalar işletilmektedir
 
 Eskiden UMA yerine (o zamanlar NUMA yoktu) "SMP (Symmetric Multiprocessing)" kavramı kullanılıyordu. Yani bu kavramlar
 eşanlamlı idi. Ancak daha sonra SMP kavramı "tüm işlemcilerin eşit hakka sahip olduğu çok işlemcili sistemleri" belirtmek
-için kullanılmaya başlandı. Biz de kitabımızda SMP yerine UMA terimini kullanacaız.
+için kullanılmaya başlandı. Linux çekirdeklerinde CONFIG_SMP parametresi sistemin birden fazla CPU için mi yoksa tek CPU
+için mi derleneceğini belirtmektedir. 
 
 NUMA Mimarisi
 -------------
@@ -1678,8 +1679,7 @@ bilgisayarlarımızda yaygın olarak SMP mimarisi kullanılmaktadır.
 Linux çekirdeği hem UMA hem de NUMA mimarisini destekleyecek biçimde gerçekleştirilmiştir. Yani biz UMA
 içeren sistemlerde de NUMA içeren sistemlerde de Linux'u kurduğumuzda Linux bunu fark etmekte ve o
 mimariye özgü çalışmayı desteklemektedir. Genel olarak Linux çekirdeği (konfigürasyona da bağlıdır) UMA
-sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır. Ancak Linux çekirdeği UMA terimi 
-yerine bunun eski eşanlamlısı olan SMP terimini kullanmaktadır.
+sistemlerini sanki tek düğümden oluşan NUMA sistemleri gibi ele almaktadır. 
 
 Çok İşlemcili Sistemlerde Senkronizasyon Sorunları
 ====================================================

@@ -1291,8 +1291,7 @@ Anımsanacağı gibi çok işlemcili ya da çekirdekli sistemlerde iki mimari ku
 her işlemci ya da çekirdek aynı fiziksel RAM'e erişiyordu. Erişim sırasında diğerlerini durduruyordu. NUMA mimarisinde
 ise her işlemci ya da çekirdeğin daha hızlı erişebildiği bir *düğüm (node)* (*"bank" da denilmektedir*) bulunmaktaydı.
 NUMA mimarilerinde işlemciler ya da çekirdekler kendi düğümlerine ve komşu düğümlere daha hızlı, diğer düğümlere
-göreli olarak daha yavaş erişiyordu. Linux çekirdek terminolojisinde UMA terimi yerine eski eşanlamlısı SMP teriminin
-kullanıldığını çekirdek senkronizasyonunu ele aldığımız 7'inci bölümde söylemiştik.
+göreli olarak daha yavaş erişiyordu. 
 
 Linux'un bellek yönetimi hem UMA hem de NUMA mimarilerinde çalışacak biçimde tasarlanmıştır. Bu nedenle daha genel
 veri yapıları oluşturulmuştur. Linux çekirdeklerinde NUMA düğümleri (yani bank'ları) ``pglist_data`` isimli bir yapı
@@ -1483,16 +1482,16 @@ sistemleri söz konusu olduğunda ``include/linux/nodemask.h`` dosyasında birer
    #endif
 
 Başka bir deyişle Linux çekirdeği sanki donanım her zaman NUMA mimarisine sahipmiş gibi çalışmaktadır. Tek düğüme
-sahip NUMA sistemi aslında UMA (Linux terminolojisinde SMP) sistemidir.
+sahip NUMA sistemi aslında UMA sistemidir.
 
 Çekirdekte NUMA konfigürasyonunun ``CONFIG_NUMA`` konfigürasyon parametresi ile yapıldığına dikkat ediniz. Ancak
 dağıtımlardaki çekirdekler hem UMA hem de NUMA mimarisinde kullanılabilsin diye genel olarak ``CONFIG_NUMA=y``
 konfigürasyon seçeneği ile çekirdek derlemesini yapmaktadır. Yani kullandığınız çekirdeğin konfigürasyon dosyasında
-``CONFIG_NUMA`` konfigürasyonunun *"y"* olduğunu görürseniz şaşırmayınız. ACPI sistemi SMP için tek bir NUMA
+``CONFIG_NUMA`` konfigürasyonunun *"y"* olduğunu görürseniz şaşırmayınız. ACPI sistemi UMA için tek bir NUMA
 düğümü varmış gibi rapor oluşturmaktadır.
 
 Çekirdekte her NUMA düğümünün bir indeks numarası vardır. Bir NUMA düğümünün yukarıdaki dizi içerisindeki elemanına
-erişmek için ``NODE_DATA(index)`` makrosu kullanılmaktadır. Örneğin SMP sistemleri tek bir NUMA düğümü varmış gibi
+erişmek için ``NODE_DATA(index)`` makrosu kullanılmaktadır. Örneğin UMA sistemleri tek bir NUMA düğümü varmış gibi
 organize edildiği için UMA sistemlerinde biz bu bilgilere ``NODE_DATA(0)`` makrosuyla erişebiliriz. Aslında
 ``CONFIG_NUMA=n`` yapıldığında çekirdek ``#ifdef`` komutlarıyla aşağıdaki bildirimleri devreye sokmaktadır:
 
