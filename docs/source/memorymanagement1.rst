@@ -1518,8 +1518,8 @@ edilebilir. Örneğin:
 
    $ cat /sys/devices/system/node/node0/meminfo
 
-Fiziksel Belleğin Bölgelere Ayrılması 
-=====================================
+Fiziksel Bellek Bölgeleri 
+=========================
 
 NUMA sistemlerinde her düğüm kendi içerisinde bölgelerden (*zones*) ouşmaktadır. UMA sistemlerinin Linux çekirdeği
 tarafından tek düğümlü NUMA sistemleri gibi ele alındığını belirtmiştik. Fiziksel belleğin (ya da NUMA düğümlerinin)
@@ -2014,8 +2014,9 @@ alanlar) bulunmaktadır. Tabii bu delikle boşuna oluşturulmuş değildir, onla
 işletim sistemi tarafından bellek yönetiminde kullanılamamaktadır. Örneğin bugün kökeni IBM PC'ye dayanan Intel 
 işlemcilerinin kullanıldığı masaüstü bilgisayar mimarisinde BIOS alanı fiziksel adres alanı içerisindedir ve burayı 
 işletim sistemi kullanamamaktadır. Bu bölge aslında fiziksel belleği kesintiye uğratan bir delik oluşturmaktadır. İşte 
-fiziksel belleğin aralarında böyle boşlukların bulunduğu durumu çekirdekte ``CONFIG_SPARSEMEM`` konfigürasyon parametresiyle 
-belirtilmektedir. Örneğin Intel 32 bit Intel tabanlı masaüstü bilgisayarlarındaki fiziksel bellek delikleri aşağıdaki gibidir:
+fiziksel belleğin aralarında böyle boşlukların bulunduğu durum çekirdekte ``CONFIG_SPARSEMEM_VMEMMAP`` ve ``CONFIG_SPARSEMEM`` 
+konfigürasyon parametreleriyle belirtilmektedir. Örneğin Intel 32 bit Intel tabanlı masaüstü bilgisayarlarındaki fiziksel 
+bellek delikleri aşağıdaki gibidir:
 
 .. list-table:: Intel Tabanlı PC Fiziksel Adres Haritası
    :header-rows: 1
