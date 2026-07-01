@@ -2020,7 +2020,7 @@ bellek delikleri aşağıdaki gibidir:
 
 .. list-table:: Intel Tabanlı PC Fiziksel Adres Haritası
    :header-rows: 1
-   :widths: 14 14 11 20 41
+   :widths: 14 14 11 20 25
 
    * - Başlangıç Adresi
      - Bitiş Adresi
@@ -2160,3 +2160,287 @@ biçiminde konfigüre edilmektedir. Aşağıda üç mimariyi bir tablo eşliğin
      - Çok sayıda büyük delik
      - Tek sürekli blok (``0x80000000``'dan)
      - GPU MMIO + RP1 PCIe deliği
+
+CONFIG_FLATMEM Organizasyonu
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``CONFIG_FLATMEM`` durumunda fiziksel bellek sayfalarına ilişkin ``page`` nesneleri ``mem_map`` isimli global bir
+göstericinin gösterdiği dizide bulundurulmaktadır. Bu dizi çekirdek yüklendiğinde bellek yönetimi alt sistemine
+ilişkin ilk değer verme işlemleri sırasında yaratılmaktadır. ``mem_map`` dizisinin tanımlanması güncel çekirdeklerde
+``mm/mm_init.c`` dosyası içerisinde aşağıdaki gibi yapılmıştır:
+
+.. code-block:: c
+
+   #ifndef CONFIG_NUMA
+   unsigned long max_mapnr;
+   EXPORT_SYMBOL(max_mapnr);
+
+   struct page *mem_map;
+   EXPORT_SYMBOL(mem_map);
+   #endif
+
+Görüldüğü gibi bu dizinin uzunluğu da ``max_mapnr`` değişkeninde tutulmaktadır. Yani sistemde en fazla
+``max_mapnr`` kadar fiziksel sayfa vardır. Fiziksel belleğin hangi miktarda olduğunun tespiti masaüstü
+bilgisayarlarda ACPI protokolü yoluyla, gömülü sistemlerde aygıt ağaçları yoluyla yapılmaktadır.
+
+CONFIG_SPARSEMEM_VMEMMAP Organizasyonu
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Eğer ``CONFIG_SPARSEMEM_VMEMMAP`` durumu söz konusuysa fiziksel sayfalar için ``page`` dizisinin başlangıç adresi
+``vmemmap`` değişkeninde tutulmaktadır. ``vmemmap`` bazı mimarilerde bir nesne biçiminde bazı mimarilerde ise bir
+makro biçiminde tanımlanmıştır. Örneğin Intel x86 mimarisi için güncel çekirdeklerde ``vmemmap``
+``arch/x86/include/asm/pgtable_64.h`` dosyasında aşağıdaki gibi bir makro biçiminde tanımlanmıştır:
+
+.. code-block:: c
+
+   #define vmemmap     ((struct page *)VMEMMAP_START)
+
+Buradaki ``VMEMMAP_START`` değeri şöyle define edilmiştir:
+
+.. code-block:: c
+
+   #define VMEMMAP_START   vmemmap_base
+   ...
+   extern unsigned long vmemmap_base;
+
+Buradan ``vmemmap`` dizisinin adresinin sanal bellekte belli bir değişkenin içindeki değerden alındığını
+görüyorsunuz. Yani ``vmemmap_base`` aslında sabit bir adres belirtmektedir. Peki neden
+``CONFIG_SPARSEMEM_VMEMMAP`` durumunda doğrudan bir dizi kullanılmamış da bir sanal adrese referans edilmiştir?
+İşte bunun nedeni delikli olan ancak deliklerin belli büyüklüklerde ve makul sayıda olduğu sistemlerde daha etkin
+bir temsilin oluşturulmasını sağlamaktır. ``vmemmap`` sanal adresinin gösterdiği yerde ``page`` yapılarından oluşan
+bir dizi vardır; ancak bu dizinin deliklere karşı gelen elemanları için sayfa tablosunda eşleştirme
+yapılmamıştır. ``vmemmap`` göstericisinin gösterdiği sanal adrese ilişkin sayfa tablosunu aşağıdaki gibi
+düşünebilirsiniz (basitlik oluşturmak için sayfa tablosunu tek kademeymiş gibi çizeceğiz):
+
+.. code-block:: none
+
+                     Sayfa Tablosu
+                  ┌─────────────────┐
+                  │                 │
+                  │       ...       │
+   vmemmap ──→    ├─────────────────┤
+                  │                 │ ──→ referans edilen fiziksel sayfada dizi elemanları var
+                  ├─────────────────┤
+                  │                 │ ──→ referans edilen fiziksel sayfada dizi elemanları var
+                  ├─────────────────┤
+                  │                 │ ──→ fiziksel sayfaya referans edilmemiş, DELİK
+                  ├─────────────────┤
+                  │                 │ ──→ referans edilen fiziksel sayfada dizi elemanları var
+                  ├─────────────────┤
+                  │       ...       │
+                  │                 │
+                  └─────────────────┘
+
+Görüldüğü gibi sanki ``vmemmap`` adresinden itibaren ardışıl bir ``page`` dizisi varmış gibi bir durum
+oluşturulmuştur. Ancak bu dizinin bazı elemanları deliklere ilişkin olduğu için o elemanlara ilişkin sayfa
+tablosunda fiziksel sayfa eşleştirmesi yapılmamıştır. Dolayısıyla delikli yapı aslında fiziksel bellekte hiç yer
+harcanmadan oluşturulabilmektedir. Tabii burada bir noktaya dikkat ediniz. Bir sayfa tipik olarak 4K
+büyüklüğündedir. ``page`` yapı nesnesinin de bellekte 64 byte yer kapladığını belirtmiştik. O halde bir sayfa
+toplam 64 dizi elemanını tutacak genişliktedir. Eğer delikler 4K'dan küçükse böyle bir temsil
+uygulanamayacaktır.
+
+CONFIG_SPARSEMEM Organizasyonu
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Peki ``CONFIG_SPARSEMEM`` organizasyonu nasıldır? İşte eğer delikler oldukça büyükse ``CONFIG_SPARSEMEM``
+organizasyonu daha verimli hale gelmektedir. ``CONFIG_SPARSEMEM`` organizasyonunda çekirdek fiziksel belleği
+bölümlere (*sections*) ayırmaktadır. Her bölüm ardışıl uzunluktadır. Çekirdekte bu uzunluk
+``SECTION_SIZE_BITS`` değeri ile belirtilmektedir. Bu değer bölümün 2 üzeri kaç uzunlukta olduğunu belirtir.
+Bölümler tipik olarak 128 MB'dir ve 32768 sayfa içermektedir. Bu durumu aşağıdaki gibi bir çizimle
+betimleyebiliriz:
+
+.. code-block:: none
+
+   PFN: 0                                                    max
+       │                                                      │
+       ▼                                                      ▼
+       ┌──────────┬──────────┬──────────┬──────────┬──────────┐
+       │ section  │ section  │ section  │ section  │ section  │
+       │    0     │    1     │    2     │    3     │    4     │
+       └──────────┴──────────┴──────────┴──────────┴──────────┘
+
+Buradaki *PFN*, *"Page Frame Number"* sözcüklerinden kısaltılmıştır.
+
+Bölümler ``mem_section`` isminde bir yapıyla temsil edilmektedir. Bu yapı güncel çekirdeklerde şöyle
+bildirilmiştir:
+
+.. code-block:: c
+
+   struct mem_section {
+       /*
+        * This is, logically, a pointer to an array of struct
+        * pages.  However, it is stored with some other magic.
+        * (see sparse.c::sparse_init_one_section())
+        *
+        * Additionally during early boot we encode node id of
+        * the location of the section here to guide allocation.
+        * (see sparse.c::memory_present())
+        *
+        * Making it a UL at least makes someone do a cast
+        * before using it wrong.
+        */
+       unsigned long section_mem_map;
+
+       struct mem_section_usage *usage;
+   #ifdef CONFIG_PAGE_EXTENSION
+       /*
+        * If SPARSEMEM, pgdat doesn't have page_ext pointer. We use
+        * section. (see page_ext.h about this.)
+        */
+       struct page_ext *page_ext;
+       unsigned long pad;
+   #endif
+       /*
+        * WARNING: mem_section must be a power-of-2 in size for the
+        * calculation and use of SECTION_ROOT_MASK to make sense.
+        */
+   };
+
+Yapının ``section_mem_map`` elemanı o bölümdeki ``page`` nesnelerinin başlangıç adresini belirtmektedir. Tabii
+çekirdek tüm bölümleri ``mem_section`` isimli bir dizide saklamaktadır:
+
+.. code-block:: none
+
+   mem_section[] dizisi:
+
+       ┌──────────────────────┐
+   0   │  struct mem_section  │──→ section 0'ın struct page dizisi
+       ├──────────────────────┤
+   1   │  struct mem_section  │──→ 0 (bu section tamamen delik içeriyor)
+       ├──────────────────────┤
+   2   │  struct mem_section  │──→ section 2'nin struct page dizisi
+       ├──────────────────────┤
+   3   │  struct mem_section  │──→ 0 (bu section tamamen delik içeriyor)
+       ├──────────────────────┤
+       │          ...         │
+       └──────────────────────┘
+
+Bu sistemlerde çekirdek için fiziksel sayfa numarası iki bileşenden oluşmaktadır:
+
+.. code-block:: none
+
+   PFN (örneğin 64-bit):
+
+   ┌─────────────────────────────┬──────────────────────────┐
+   │         section_nr          │    within_section_pfn    │
+   │        (üst bitler)         │       (alt bitler)       │
+   └─────────────────────────────┴──────────────────────────┘
+   │← PFN >> SECTION_SIZE_BITS  →│← PFN & ~SECTION_MASK    →│
+
+Bu bileşenleri veren makrolar vardır:
+
+.. code-block:: c
+
+   #define pfn_to_section_nr(pfn)       ((pfn) >> PFN_SECTION_SHIFT)
+   #define pfn_to_section_offset(pfn)   ((pfn) & ~PAGE_SECTION_MASK)
+
+Bu durumda çekirdek fiziksel sayfa numarası verildiğinde ilgili ``page`` nesnesine şöyle erişmektedir:
+
+1. Çekirdek önce fiziksel sayfa numarasını iki bileşene ayırır.
+
+2. Fiziksel sayfa numarasındaki bölüm numarasını ``mem_section`` dizisine indeks yaparak oradan ilgili bölümün
+   bilgilerine, dolayısıyla ``section_mem_map`` elemanından da o bölümün ``page`` dizisinin adresine erişir.
+
+3. Fiziksel sayfa numarasında offset'i (yukarıdaki şekildeki ``within_section_pfn`` kısmını) indeks yaparak bu
+   dizideki ``page`` nesnesine erişir.
+
+Bu işlemi şekilsel olarak da aşağıdaki gibi ifade edebiliriz:
+
+.. code-block:: none
+
+   Adım 1: section_nr = pfn >> PFN_SECTION_SHIFT
+           ┌─────────────────────────────────────────────────┐
+           │  PFN'nin üst bitlerini al → section numarası    │
+           └─────────────────────────────────────────────────┘
+
+   Adım 2: sp = __nr_to_section(section_nr)
+           ┌─────────────────────────────────────────────────┐
+           │  mem_sections[] dizisine indeksle               │
+           │  → struct mem_section pointer'ı al              │
+           └─────────────────────────────────────────────────┘
+
+   Adım 3: page_base = sp->section_mem_map  (flag bitleri maskelenir)
+           ┌─────────────────────────────────────────────────┐
+           │ bölüme ilişkin struct page dizisinin başı       │
+           └─────────────────────────────────────────────────┘
+
+   Adım 4: within = pfn & ~PAGE_SECTION_MASK
+           ┌─────────────────────────────────────────────────┐
+           │  PFN'nin alt bitleri → bölüm içi offset         │
+           └─────────────────────────────────────────────────┘
+
+   Adım 5: return page_base + within
+           ┌─────────────────────────────────────────────────┐
+           │  diziye offset ekle → struct page nesnesi       │
+           └─────────────────────────────────────────────────┘
+
+Örnek bir erişim görseli de şöyle olabilir:
+
+.. code-block:: none
+
+       PFN (örnek: 0x8001F)
+   ┌──────────────────────┬──────────────────┐
+   │  section_nr = 0x10   │  offset = 0x01F  │
+   └──────────────────────┴──────────────────┘
+           │                       │
+           ▼                       │
+   mem_section[]                   │
+   ┌──────────────────┐            │
+   │ [0]  mem_section │            │
+   ├──────────────────┤            │
+   │ [1]  mem_section │            │
+   ├──────────────────┤            │
+   │      ...         │            │
+   ├──────────────────┤            │
+   │ [0x10]           │            │
+   │  section_mem_map │            │
+   │       │          │            │
+   └───────┼──────────┘            │
+           │                       │
+           ▼                       ▼
+           ┌──────────────────────────────────────┐
+           │   bölümün struct page dizisi         │
+           ├───────┬───────┬───────┬───────┬──────┤
+           │ [0]   │ [1]   │  ...  │[0x01F]│ ...  │
+           │ page  │ page  │       │ page  │      │
+           └───────┴───────┴───────┴───────┴──────┘
+                                       ▲
+                                       │
+                               pfn_to_page()
+                               sonucu burası
+
+Üç Konfigürasyonun Karşılaştırılması
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edileceğini şöyle özetleyebiliriz:
+
+.. list-table:: Tercih Edilme Durumları
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Konfigürasyon
+     - Tercih Edilme Durumu
+   * - ``FLATMEM``
+     - Bellek haritasında hiç delik olmayan, küçük ya da orta ölçekli UMA sistemler.
+   * - ``SPARSEMEM``
+     - Fiziksel bellekte büyük boşluklar olan veya bellek yapısının çalışma anında
+       değiştiği (*hotplug*) sistemler.
+   * - ``SPARSEMEM_VMEMMAP``
+     - Modern, büyük ölçekli ve yüksek performans gerektiren tüm x86-64 ve ARM64
+       sistemler.
+
+Üç konfigürasyon parametresini erişim bakımından da şöyle karşılaştırabiliriz:
+
+.. list-table:: Erişim Karşılaştırması
+   :header-rows: 1
+   :widths: 20 40
+
+   * - Konfigürasyon
+     - ``pfn_to_page()`` yöntemi
+   * - ``CONFIG_FLATMEM``
+     - ``mem_map + (pfn - ARCH_PFN_OFFSET)`` → tek global dizi, tek toplama
+   * - ``CONFIG_SPARSEMEM_VMEMMAP``
+     - ``vmemmap + pfn`` → ``FLATMEM`` kadar hızlı, tek toplama; ama delikler için
+       fiziksel sayfa yok
+   * - ``CONFIG_SPARSEMEM`` (VMEMMAP'siz)
+     - ``mem_sections[pfn >> SHIFT].section_mem_map + pfn`` 
