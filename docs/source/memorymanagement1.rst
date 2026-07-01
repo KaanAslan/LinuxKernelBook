@@ -1788,8 +1788,8 @@ yapısının ``nr_zones`` elemanında tutulmaktadır:
 
 Bölge bilgilerinin NUMA düğümlerinin içerisinde olduğuna bir kez daha dikkatinizi çekmek istiyoruz.
 
-Fiziksel Sayfaların page Yapısıyla Temsili
-==========================================
+Fiziksel Sayfaların page Yapısıyla Temsil Edilmesi
+==================================================
 
 Çekirdek fiziksel belleği NUMA düğümlerinden, NUMA düğümlerini bellek bölgelerinden (*zones*), bellek bölgelerini
 de sayfalardan oluşuyormuş gibi ele almaktadır. İzleyen paragraflarda ele alacağımız *ikiz blok sayfa tahsisat
@@ -2001,84 +2001,161 @@ alanlar eklendi ve yapı büyüdü. Örneğin çekirdeğin 2.2 versiyonunda ``pa
 Güncel çekirdeklerde ``page`` yapısının uzunluğu 64 byte'tır. Dolayısıyla bir fiziksel sayfaya bu ``page``
 yapılarından 64 tanesi sığabilmektedir.
 
-Linux çekirdeğinin fiziksel bellekteki her sayfa için bir ``page`` yapı nesnesi tuttuğunu belirtmiştik. Çekirdek
-aynı zamanda fiziksel belleğe ilişkin tüm ``page`` nesnelerini bir dizi içerisinde de tutmaktadır. Ancak bunları
-tutuş biçimi konfigürasyon parametrelerine göre değişmektedir.
+Tüm Fiziksel Sayfalara İlişkin Bilgilerin Tutulması
+---------------------------------------------------
 
-Linux çekirdeklerinde belli bir süredir tüm ``page`` nesneleri ``CONFIG_FLATMEM``, ``CONFIG_SPARSEMEM`` ve
-``CONFIG_SPARSEMEM_VMEMMAP`` konfigürasyon parametrelerine bağlı olarak değişik biçimlerde saklanmaktadır.
-``CONFIG_FLATMEM`` ilgili sistemdeki fiziksel belleğin hiç delikler olmadan düz bir biçimde bulunduğunu
-belirtmektedir. Yani ``CONFIG_FLATMEM`` durumunda fiziksel bellek her sayfası kullanılabilen ve arada hiç boşluk
-olmayan tek parçadan oluşmaktadır. Siz "zaten fiziksel belleğin bu biçimde olması gerektiğini"
-düşünebilirsiniz. Ancak bu durum zorunlu değildir. Bazı mimarilerde fiziksel belleğin belli bölgelerinde delikler
-vardır. Tabii bu delikler başka amaçlarla oluşturulmuştur. Ancak bu delikler işletim sistemi tarafından bellek
-yönetiminde kullanılmamaktadır. Örneğin bugün kökeni IBM PC'ye dayanan Intel işlemcilerinin kullanıldığı masaüstü
-bilgisayar mimarisinde BIOS alanı fiziksel adres alanı içerisindedir ve buraya yazma yapılamamaktadır. Bu bölge
-aslında fiziksel belleği kesintiye uğratan bir delik oluşturmaktadır. İşte fiziksel belleğin aralarında böyle
-boşlukların bulunduğu durum ``CONFIG_SPARSEMEM`` konfigürasyon parametresiyle belirtilmektedir. Bugün
-kullandığımız Intel tabanlı masaüstü bilgisayarlarındaki fiziksel bellek delikleri aşağıdaki gibidir:
+Linux çekirdeklerinde -belli bir süredir- tüm ``page`` nesneleri ``CONFIG_FLATMEM``, ``CONFIG_SPARSEMEM`` ve
+``CONFIG_SPARSEMEM_VMEMMAP`` konfigürasyon parametrelerine bağlı olarak değişik biçimlerde tutulmaktadır.
+``CONFIG_FLATMEM`` ilgili sistemdeki fiziksel belleğin delikler olmadan düz bir biçimde bulunduğunu
+belirtmektedir. Yani ``CONFIG_FLATMEM`` durumunda fiziksel bellek "her sayfası kullanılabilen ve arada hiç boşluk
+olmayan tek parçadan" oluşmaktadır. Şimdi siz "zaten fiziksel belleğin bu biçimde olması gerektiğini" düşünebilirsiniz. 
+Ancak bazı mimarilerde fiziksel belleğin belli bölgelerinde delikler (yani işletim sistemi tarafından kullnılamayan 
+alanlar) bulunmaktadır. Tabii bu delikle boşuna oluşturulmuş değildir, onların çeşitli işlevleri vardır. Ancak bu delikler 
+işletim sistemi tarafından bellek yönetiminde kullanılamamaktadır. Örneğin bugün kökeni IBM PC'ye dayanan Intel 
+işlemcilerinin kullanıldığı masaüstü bilgisayar mimarisinde BIOS alanı fiziksel adres alanı içerisindedir ve burayı 
+işletim sistemi kullanamamaktadır. Bu bölge aslında fiziksel belleği kesintiye uğratan bir delik oluşturmaktadır. İşte 
+fiziksel belleğin aralarında böyle boşlukların bulunduğu durumu çekirdekte ``CONFIG_SPARSEMEM`` konfigürasyon parametresiyle 
+belirtilmektedir. Örneğin Intel 32 bit Intel tabanlı masaüstü bilgisayarlarındaki fiziksel bellek delikleri aşağıdaki gibidir:
 
-.. code-block:: none
+.. list-table:: Intel Tabanlı PC Fiziksel Adres Haritası
+   :header-rows: 1
+   :widths: 14 14 11 20 41
 
-   Adres                Boyut     İçerik
-   ──────────────────────────────────────────────────────────────
+   * - Başlangıç Adresi
+     - Bitiş Adresi
+     - Boyut
+     - Tür
+     - Açıklama
+   * - ``0x00000000``
+     - ``0x0009FFFF``
+     - 640 KB
+     - Kullanılabilir RAM
+     - Conventional (Low) Memory
+   * - ``0x000A0000``
+     - ``0x000BFFFF``
+     - 128 KB
+     - DELİK
+     - VGA Frame Buffer
+   * - ``0x000C0000``
+     - ``0x000DFFFF``
+     - 128 KB
+     - DELİK
+     - Option ROM
+   * - ``0x000E0000``
+     - ``0x000EFFFF``
+     - 64 KB
+     - DELİK
+     - Genişletilmiş Sistem BIOS
+   * - ``0x000F0000``
+     - ``0x000FFFFF``
+     - 64 KB
+     - DELİK
+     - Sistem BIOS ROM
+   * - ``0x00100000``
+     - ``0xBFFFFFFF``
+     - ~3067 MB
+     - Kullanılabilir RAM
+     - Extended Memory
+   * - ``0xC0000000``
+     - ``0xDFFFFFFF``
+     - 512 MB
+     - DELİK
+     - PCI/PCIe BAR, GPU aperture
+   * - ``0xE0000000``
+     - ``0xEFFFFFFF``
+     - 256 MB
+     - DELİK
+     - MMCONFIG / PCIe ECAM
+   * - ``0xF0000000``
+     - ``0xFEBFFFFF``
+     - ~236 MB
+     - DELİK / REZERVE
+     - Ek chipset rezerve alanı
+   * - ``0xFEC00000``
+     - ``0xFEC00FFF``
+     - 4 KB
+     - DELİK
+     - I/O APIC
+   * - ``0xFED00000``
+     - ``0xFED003FF``
+     - 1 KB
+     - DELİK
+     - HPET
+   * - ``0xFEE00000``
+     - ``0xFEE00FFF``
+     - 4 KB
+     - DELİK
+     - Local APIC
+   * - ``0xFF000000``
+     - ``0xFFFFFFFF``
+     - 16 MB
+     - DELİK
+     - Firmware / BIOS Flash
+   * - ``0x100000000``
+     - Değişken
+     - Değişken
+     - Kullanılabilir RAM
+     - 4 GB Üzeri Remap Edilen RAM
 
-   0x0000_0000   ┬──────────────────────────────────────────────┐
-                 │  IVT + BDA                        (    1 KB) │ RAM
-   0x0000_0500   │  Kullanılabilir RAM               (  637 KB) │
-   0x0009_FC00   │  EBDA                             (    1 KB) │ RAM (reserved)
-   0x000A_0000   ├──────────────────────────────────────────────┤
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-                 │░  VGA Frame Buffer                (  128 KB) │░ DELİK
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-   0x000C_0000   ├──────────────────────────────────────────────┤
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-                 │░  Video BIOS ROM                  (   32 KB) │░ DELİK
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-   0x000C_8000   ├──────────────────────────────────────────────┤
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-                 │░  Option ROM / reserved           (  224 KB) │░ DELİK
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-   0x000F_0000   ├──────────────────────────────────────────────┤
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-                 │░  System BIOS ROM                 (   64 KB) │░ DELİK
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-   0x0010_0000   ├──────────────────────────────────────────────┤
-                 │                                              │
-                 │  Kullanılabilir RAM                          │ RAM
-                 │  (çekirdek + kullanıcı belleği)              │
-                 │                                              │
-   0xBFFE_0000   ├──────────────────────────────────────────────┤
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-                 │░  ACPI Tabloları / Reserved       (  128 KB) │ DELİK
-                 │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-   0xC000_0000   ├──────────────────────────────────────────────┤
-                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
-                 │▓  PCI Hole (32-bit MMIO alanı)               │▓ BÜYÜK DELİK
-                 │▓  PCIe BAR'ları, GPU belleği      (  ~1  GB) │▓
-                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
-   0xFEC0_0000   ├──────────────────────────────────────────────┤
-                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
-                 │▓  I/O APIC                        (    4 KB) │▓ DELİK
-                 │▓  HPET                            (    4 KB) │▓
-                 │▓  TPM                             (   64 KB) │▓
-                 │▓  Local APIC  (0xFEE0_0000)       (    4 KB) │▓
-                 │▓  UEFI Runtime / MSI-X            (  ~12 MB) │▓
-                 │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│
-   0xFFFF_FFFF   └──────────────────────────────────────────────┘  ← 4 GB sınırı
+Buradaki deliklerin bir kusurdan kaynaklanmadığına, bir tasarım biçiminden kaynaklandığına dikkat ediniz. Fiziksel
+bellekte deliklerin bulunması durumunda deliklerdeki sayfalar için ``page`` nesneleri sayfa tabloları yoluyla daha
+etkin bir biçimde (bellekte yer kaplamadan) temsil edilebilir durumdaysa buna ``CONFIG_SPARSEMEM_VMEMMAP``
+konfigürasyonu denilmektedir. İşte aslında Intel tabanlı masaüstü bilgisayarlarımızda delikler olmakla birlikte
+bunların ``page`` nesneleri sayfa tabloları yoluyla daha etkin bir biçimde oluşturulabilmektedir. Yani bu sistemler
+``CONFIG_SPARSEMEM_VMEMMAP`` biçiminde konfigüre edilmiştir. Örneğin 32 bit ARM tabanlı *Beaglebone Black (BBB)*
+mimarisinde fiziksel RAM en fazla 2 GB olabilmektedir ve deliksizdir. Bu mimari ``CONFIG_FLATMEM`` biçiminde
+konfigüre edilmiştir. Raspberry Pi 5 ve ARM tabanlı Mac bilgisayar mimarileri ise ``CONFIG_SPARSEMEM_VMEMMAP``
+biçiminde konfigüre edilmektedir. Aşağıda üç mimariyi bir tablo eşliğinde karşılaştırıyoruz:
 
-   0x1_0000_0000 ┬─────────────────────────────────────────────┐
-                 │  Remapped RAM                               │ RAM
-                 │  (32-bit'te görünemeyen RAM buraya taşınır) │
-                 │  TOLUD/TOUUD üzeri sistem RAM'i             │
-                 │                                             │
-                 │         . . .                               │
-                 │                                             │
-   0x?_????_???? └─────────────────────────────────────────────┘
-                   (kurulu RAM miktarına bağlı olarak değişir)
+.. list-table:: Farklı Mimarilerde Linux Bellek Modeli Karşılaştırması
+   :header-rows: 1
+   :widths: 24 24 24 24
 
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Gösterim:   (boş)  = Kullanılabilir RAM  (struct page tahsis edilir)
-               ░░░░░  = Küçük delik         (donanım ROM / legacy I/O)
-               ▓▓▓▓▓  = Büyük delik         (MMIO / PCIe / APIC)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * - Özellik
+     - Intel Masaüstü (x86-64)
+     - Beaglebone Black (AM335x/ARMv7)
+     - Raspberry Pi 5 (BCM2712/ARM64)
+   * - İşletim Sistemi (tipik)
+     - Linux
+     - Linux
+     - Linux
+   * - CPU Çekirdeği
+     - Çeşitli (Alder Lake vb.)
+     - Cortex-A8
+     - Cortex-A76 (quad-core)
+   * - ISA
+     - x86-64 (64-bit)
+     - ARMv7 (32-bit)
+     - ARMv8.2 (64-bit)
+   * - Max RAM
+     - TB mertebesi
+     - 512 MB – 2 GB
+     - 4/8/16 GB
+   * - Linux çekirdeği kullanıyor mu?
+     - Evet
+     - Evet
+     - Evet
+   * - Linux Bellek Modeli
+     - ``SPARSEMEM_VMEMMAP``
+     - ``FLATMEM``
+     - ``SPARSEMEM_VMEMMAP``
+   * - Model değiştirilebilir mi?
+     - Hayır (tek seçenek)
+     - Evet (``SPARSEMEM`` de seçilebilir)
+     - Hayır (2021'den beri tek seçenek)
+   * - Sayfa Boyutu
+     - 4 KB
+     - 4 KB
+     - 4 KB
+   * - NUMA Desteği
+     - Evet (Xeon)
+     - Hayır
+     - Hayır
+   * - RAM Hot-plug
+     - Desteklenir
+     - Desteklenmez
+     - Desteklenmez
+   * - Fiziksel adres alanının yapısı
+     - Çok sayıda büyük delik
+     - Tek sürekli blok (``0x80000000``'dan)
+     - GPU MMIO + RP1 PCIe deliği
