@@ -4136,8 +4136,8 @@ gcc ve clang derleyicilerinin ``__CHECKER__`` isimli önceden tanımlanmış (pr
 1 ise birtakım kontrol işlemlerini yapmaktadır. Normal bir çekirdek derlemesinde aslında
 ``rcu_check_sparse`` fonksiyonu da debug amaçlı olduğu için koddan kaldırılacaktır.
 
-synchronize_rcu ve call_rcu
------------------------------
+synchronize_rcu ve call_rcu Fonksiyonları
+-----------------------------------------
 
 RCU mekanizmasında yazan akış (yani *update* işlemini yapan akış) göstericinin gösterdiği yerdeki
 veri yapısının kopyasını çıkartır. Sonra da ``rcu_assign_pointer`` makrosuyla artık bu yeni kopyayı
@@ -4596,8 +4596,8 @@ Aşağıdaki ``unload`` betiği sürücüyü sistemden kaldırır:
         exit(EXIT_FAILURE);
     }
 
-call_rcu ve kfree_rcu
----------------------
+call_rcu Fonksiyonu ve kfree_rcu Makrosu
+----------------------------------------
 
 Yukarıda da belirttiğimiz gibi yazan taraflar ``synchronize_rcu`` fonksiyonunu çağırdığında *grace
 period* kadar bir bloke oluşabilmektedir. Bunun ``call_rcu`` fonksiyonu ile engellenebileceğini
@@ -4672,11 +4672,8 @@ nesne adresini ``container_of`` makrosuyla elde edebiliriz. Örneğin:
         kfree(di);
     }
 
-kfree_rcu Makrosu
-------------------
-
 Ayrıca Linux çekirdeğinde ``call_rcu`` işlemi ile ``kfree`` işlemini birlikte yapan ``kfree_rcu`` isimli
-bir çekirdek makrosu da bulunmaktadır. ``kfree_rcu`` makrosu iki parametre almaktadır:
+bir makro da bulunmaktadır. ``kfree_rcu`` makrosu iki parametre almaktadır:
 
 .. code-block:: c
 
