@@ -2444,3 +2444,110 @@ Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edil
        fiziksel sayfa yok
    * - ``CONFIG_SPARSEMEM`` (VMEMMAP'siz)
      - ``mem_sections[pfn >> SHIFT].section_mem_map + pfn`` 
+
+page Nesneleri ile İlgili Erişim Makrolrı ve Fonksiyonları
+----------------------------------------------------------
+
+Çekirdeğin yukarıda belirttiğimiz ``CONFIG_FLATMEM``, ``CONFIG_SPARSEMEM_VMEMMAP`` ve ``CONFIG_SPARSEMEM``
+konfigürasyon parametreleri ne olursa olsun, çekirdek belli bir fiziksel sayfa numarasını alarak ``page``
+nesnesinin adresini veren ``pfn_to_page`` isimli bir makro bulundurmaktadır. Yani bu makro bu üç konfigürasyon
+parametresinde de kullanılabilir durumdadır. Makro ``CONFIG_FLATMEM`` durumunda şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+   #define pfn_to_page          __pfn_to_page
+   #define __pfn_to_page(pfn)   (mem_map + ((pfn) - ARCH_PFN_OFFSET))
+
+Buradaki ``ARCH_PFN_OFFSET`` değeri genellikle 0'dır. Görüldüğü gibi makronun yaptığı tek şey ``mem_map``
+dizisinin ilgili elemanının adresini elde etmektir. ``CONFIG_SPARSEMEM_VMEMMAP`` durumunda ise makro şöyle
+tanımlanmıştır:
+
+.. code-block:: c
+
+   #define pfn_to_page          __pfn_to_page
+   #define __pfn_to_page(pfn)   (vmemmap + (pfn))
+
+Burada da görüldüğü gibi ``page`` yapı nesnesinin adresi ``vmemmap`` adresine ``pfn`` toplanarak elde edilmiştir.
+``CONFIG_SPARSEMEM`` durumunda ise makro şöyledir:
+
+.. code-block:: c
+
+   #define pfn_to_page          __pfn_to_page
+   #define __pfn_to_page(pfn)                                      \
+   ({  unsigned long __pfn = (pfn);                                \
+       struct mem_section *__sec = __pfn_to_section(__pfn);        \
+       __section_mem_map_addr(__sec) + __pfn;                      \
+   })
+
+Burada yukarıda açıkladığımız gibi önce fiziksel sayfa numarasından bölüm (*section*), sonra da bu bölüm
+içerisindeki ``page`` nesnesi elde edilmiştir. Buradaki ``__pfn_to_section`` fonksiyonu sayfa numarasından bölüm
+nesnesini, ``__section_mem_map_addr`` fonksiyonu ise sayfa numarasından offset'i elde etmektedir.
+
+Örneğin 12345 numaralı fiziksel sayfanın ``page`` yapı nesnesinin adresini elde etmek isteyelim. Yukarıda da
+belirttiğimiz gibi bizim artık çekirdeğin hangi konfigürasyonu kullandığını bilmemize gerek kalmamaktadır. Tek
+yapacağımız şey ``pfn_to_page(12345)`` çağrısını uygulamaktır.
+
+Bazen yukarıdaki işlemin tersinin de yapılması gerekebilmektedir. Yani elimizde bir ``page`` nesnesinin adresi
+vardır ve bunun hangi fiziksel sayfa numarasına karşı geldiğini bulmak isteyebiliriz. Eskiden ``page`` yapısının
+içerisinde bu bilgi vardı. Ancak daha sonra bu bilgi kaldırıldı. Bu işlemi yapan ``page_to_pfn`` makrosu
+bulundurulmuştur. Bu makro yukarıdaki işlemlerin tersini yapmaktadır. Örneğin ``CONFIG_FLATMEM`` durumunda şöyle
+tanımlanmıştır:
+
+.. code-block:: c
+
+   #define page_to_pfn __page_to_pfn
+   #define __page_to_pfn(page)  ((unsigned long)((page) - mem_map) + ARCH_PFN_OFFSET)
+
+``CONFIG_SPARSEMEM_VMEMMAP`` durumunda ise şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+   #define page_to_pfn __page_to_pfn
+   #define __page_to_pfn(page)  ((unsigned long)((page) - vmemmap))
+
+``CONFIG_SPARSEMEM`` durumunda ise şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+   #define __page_to_pfn(pg)                                                           \
+   ({  const struct page *__pg = (pg);                                                 \
+       int __sec = memdesc_section(__pg->flags);                                       \
+       (unsigned long)(__pg - __section_mem_map_addr(__nr_to_section(__sec)));         \
+   })
+
+``page_to_virt`` isimli makro ``page`` nesnesinin adresini parametre olarak alıp sanal adres vermektedir. Bu işlem
+aslında zaten ``page_to_pfn`` kullanılarak yapılabilmektedir. Bu makro ``include/linux/pfn.h`` dosyasında tipik
+olarak şöyle yazılmıştır:
+
+.. code-block:: c
+
+   #define page_to_virt(x)  __va(PFN_PHYS(page_to_pfn(x)))
+
+Buradaki ``PFN_PHYS`` makrosu aslında değeri sayfa büyüklüğü ile çarpmaktadır:
+
+.. code-block:: c
+
+   #define PFN_PHYS(x)  ((phys_addr_t)(x) << PAGE_SHIFT)
+
+``virt_to_page`` makrosu da ters işlem yapmaktadır. Yani sanal adresi verilen sayfanın ``page`` nesne adresini
+bize vermektedir. Makro tipik olarak şöyle yazılmıştır:
+
+.. code-block:: c
+
+   #define virt_to_page(kaddr)  pfn_to_page(__pa(kaddr) >> PAGE_SHIFT)
+
+Burada tam ters işlem yapıldığını görüyorsunuz.
+
+Ayrıca çekirdekte ``page_to_virt`` fonksiyonuna benzer ``page_address`` isimli bir fonksiyon da bulunmaktadır.
+Bu fonksiyon da ``page`` nesne adresini alıp sayfanın sanal bellek adresini vermektedir. Ancak bu fonksiyon
+``page_to_virt`` fonksiyonundan daha temkinli yazılmıştır. ``page_to_virt`` fonksiyonu 32 bit sistemlerdeki
+``HIGHMEM`` alanındaki sayfa adreslerini dönüştürememektedir. Halbuki ``page_address`` fonksiyonu bu işlemi de
+yapmaktadır. Fonksiyon mevcut çekirdeklerde ``mm/highmem.c`` içerisinde aşağıdaki parametrik yapıya sahip
+biçimde tanımlanmıştır:
+
+.. code-block:: c
+
+   void *page_address(const struct page *page);
+
+Tabii 64 bit sistemlerde ``page_to_virt`` fonksiyonuyla ``page_address`` fonksiyonu arasında işlevsel bir fark
+yoktur.

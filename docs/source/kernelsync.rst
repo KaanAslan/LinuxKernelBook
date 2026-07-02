@@ -4260,11 +4260,11 @@ yerleştirilmesi kısmı spinlock ile kritik kod bloğu oluşturularak ele alın
 
 .. code-block:: c
 
-    #define rcu_replace_pointer(rcu_ptr, ptr, c)                        \
-    ({                                                                  \
-        typeof(ptr) __tmp = rcu_dereference_protected((rcu_ptr), (c));  \
-        rcu_assign_pointer((rcu_ptr), (ptr));                           \
-        __tmp;                                                          \
+    #define rcu_replace_pointer(rcu_ptr, ptr, c)                            \
+    ({                                                                      \
+        typeof(ptr) __tmp = rcu_dereference_protected((rcu_ptr), (c));      \
+        rcu_assign_pointer((rcu_ptr), (ptr));                               \
+        __tmp;                                                              \
     })
 
 Yukarıdaki kodda bu makroyu da kullanabilirdik. Örneğin:
