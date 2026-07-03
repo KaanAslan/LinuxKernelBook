@@ -2445,8 +2445,8 @@ Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edil
    * - ``CONFIG_SPARSEMEM`` (VMEMMAP'siz)
      - ``mem_sections[pfn >> SHIFT].section_mem_map + pfn`` 
 
-page Nesneleri ile İlgili Erişim Makrolrı ve Fonksiyonları
-----------------------------------------------------------
+page Nesneleri ile İlgili Erişim Makroları ve Fonksiyonları
+----------------------------------------------------------_
 
 Çekirdeğin yukarıda belirttiğimiz ``CONFIG_FLATMEM``, ``CONFIG_SPARSEMEM_VMEMMAP`` ve ``CONFIG_SPARSEMEM``
 konfigürasyon parametreleri ne olursa olsun, çekirdek belli bir fiziksel sayfa numarasını alarak ``page``
@@ -2551,3 +2551,48 @@ biçimde tanımlanmıştır:
 
 Tabii 64 bit sistemlerde ``page_to_virt`` fonksiyonuyla ``page_address`` fonksiyonu arasında işlevsel bir fark
 yoktur.
+
+Çekirdeğin Fiziksel Adresler Yoluyla Belleğe Erişimi
+====================================================
+
+Şimdi de çekirdeğin fiziksel belleğe nasıl eriştiği üzerinde duralım. Bu konuya Linux çekirdek terminolojisinde
+*doğrudan haritalama* (*kernel direct mapping*) de denilmektedir. Anımsanacağı gibi proseslerin sayfa tablolarında
+çekirdeğe ilişkin alanlar aynıdır ve prosesler arası geçiş olsa bile çekirdek her zaman sanal belleğin aynı
+yerindedir. Örneğin 32 bit Linux sistemlerinde sayfa tablolarının şuna benzediğini belirtmiştik (aslında bu
+sistemlerde sayfa tabloları iki kademelidir, ancak biz algısal kolaylık sağlamak amacıyla sanki bunu tek
+kademeliymiş gibi gösteriyoruz):
+
+.. code-block:: none
+
+                           Sayfa Tablosu
+   0x00000000  ┌─────────────────────────────────────┐
+               │                                     │
+               │                                     │
+               │           Kullanıcı Alanı           │  3 GB
+               │                                     │
+               │                                     │
+   0xC0000000  ├─────────────────────────────────────┤
+               │                                     │
+               │           Çekirdek Alanı            │  1 GB
+               │                                     │
+   0xFFFFFFFF  └─────────────────────────────────────┘
+
+64 bit sistemlerde de sayfa tablosu şöyleydi:
+
+.. code-block:: none
+
+   0x0000000000000000  ┌─────────────────────────────────────┐
+                       │                                     │
+                       │           Kullanıcı Alanı           │  128 TB
+                       │                                     │
+   0x00007FFFFFFFFFFF  ├─────────────────────────────────────┤
+                       │                                     │
+                       │       Non-canonical Hole            │  ~16 milyon TB
+                       │         (Geçersiz Aralık)           │
+                       │                                     │
+   0xFFFF800000000000  ├─────────────────────────────────────┤
+                       │                                     │
+                       │           Çekirdek Space            │  128 TB
+                       │                                     │
+   0xFFFFFFFFFFFFFFFF  └─────────────────────────────────────┘
+
