@@ -2445,8 +2445,9 @@ Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edil
    * - ``CONFIG_SPARSEMEM`` (VMEMMAP'siz)
      - ``mem_sections[pfn >> SHIFT].section_mem_map + pfn`` 
 
+
 page Nesneleri ile İlgili Erişim Makroları ve Fonksiyonları
-----------------------------------------------------------_
+-----------------------------------------------------------
 
 Çekirdeğin yukarıda belirttiğimiz ``CONFIG_FLATMEM``, ``CONFIG_SPARSEMEM_VMEMMAP`` ve ``CONFIG_SPARSEMEM``
 konfigürasyon parametreleri ne olursa olsun, çekirdek belli bir fiziksel sayfa numarasını alarak ``page``
