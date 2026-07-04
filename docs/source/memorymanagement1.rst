@@ -2559,41 +2559,41 @@ yoktur.
 Şimdi de çekirdeğin fiziksel belleğe nasıl eriştiği üzerinde duralım. Bu konuya Linux çekirdek terminolojisinde
 *doğrudan haritalama* (*kernel direct mapping*) de denilmektedir. Anımsanacağı gibi proseslerin sayfa tablolarında
 çekirdeğe ilişkin alanlar aynıdır ve prosesler arası geçiş olsa bile çekirdek her zaman sanal belleğin aynı
-yerindedir. Örneğin 32 bit Linux sistemlerinde sayfa tablolarının şuna benzediğini belirtmiştik (aslında bu
+yerindedir. Örneğin 32 bit Linux sistemlerinde sayfa tablolarının aşağıdakine benzediğini belirtmiştik (aslında bu
 sistemlerde sayfa tabloları iki kademelidir, ancak biz algısal kolaylık sağlamak amacıyla sanki bunu tek
 kademeliymiş gibi gösteriyoruz):
 
 .. code-block:: none
 
-                           Sayfa Tablosu
-   0x00000000  ┌─────────────────────────────────────┐
-               │                                     │
-               │                                     │
-               │           Kullanıcı Alanı           │  3 GB
-               │                                     │
-               │                                     │
-   0xC0000000  ├─────────────────────────────────────┤
-               │                                     │
-               │           Çekirdek Alanı            │  1 GB
-               │                                     │
-   0xFFFFFFFF  └─────────────────────────────────────┘
+                        Sayfa Tablosu
+   0x00000000  ┌──────────────────────────────┐
+               │                              │
+               │                              │
+               │       Kullanıcı Alanı        │  3 GB
+               │                              │
+               │                              │
+   0xC0000000  ├──────────────────────────────┤
+               │                              │
+               │       Çekirdek Alanı         │  1 GB
+               │                              │
+   0xFFFFFFFF  └──────────────────────────────┘
 
 64 bit sistemlerde de sayfa tablosu şöyleydi:
 
 .. code-block:: none
-
-   0x0000000000000000  ┌─────────────────────────────────────┐
-                       │                                     │
-                       │           Kullanıcı Alanı           │  128 TB
-                       │                                     │
-   0x00007FFFFFFFFFFF  ├─────────────────────────────────────┤
-                       │                                     │
-                       │       Non-canonical Hole            │  ~16 milyon TB
-                       │         (Geçersiz Aralık)           │
-                       │                                     │
-   0xFFFF800000000000  ├─────────────────────────────────────┤
-                       │                                     │
-                       │           Çekirdek Space            │  128 TB
-                       │                                     │
-   0xFFFFFFFFFFFFFFFF  └─────────────────────────────────────┘
+                                 Sayfa Tablosu
+   0x0000000000000000  ┌───────────────────────────────┐
+                       │                               │
+                       │       Kullanıcı Alanı         │  128 TB
+                       │                               │
+   0x00007FFFFFFFFFFF  ├───────────────────────────────┤
+                       │                               │
+                       │      Non-canonical Hole       │  ~16 milyon TB
+                       │      (Geçersiz Aralık)        │
+                       │                               │
+   0xFFFF800000000000  ├───────────────────────────────┤
+                       │                               │
+                       │       Çekirdek Space          │  128 TB
+                       │                               │
+   0xFFFFFFFFFFFFFFFF  └───────────────────────────────┘
 
