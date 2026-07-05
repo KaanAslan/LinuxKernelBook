@@ -287,40 +287,69 @@ ayrıntılarıyla gözden geçirilecektir.
 Okuma ve Yazma İşlemleri
 ========================
 
-Biz UNIX/Linux sistemlerinde bir dosyadan okuma yapmak için ya da bir dosyaya yazma yapmak için
-``read``/``write`` POSIX fonksiyonlarını kullanmış olalım. Bu fonksiyonlar çekirdek içerisindeki
-``sys_read`` ve ``sys_write`` sistem fonksiyonlarını çalıştırmaktadır.
+Biz UNIX/Linux sistemlerinde bir dosyadan okuma yapmak için ya da bir dosyaya yazma yapmak için ``read`` / ``write`` POSIX 
+fonksiyonlarını kullanmış olalım. Bu fonksiyonlar çekirdek içerisindeki ``sys_read`` ve ``sys_write`` sistem fonksiyonlarını 
+çalıştırmaktadır. Ancak işletim sisteminin ``sys_read`` ve ``sys_write`` gibi sistem fonksiyonları hemen diske yönelmez.
+Bu fonksiyonlar çağrıyı dosya "sistemi sürücüsüne (files ystem driver)" iletirler. Dosya sistemi sürücüsü de önce 
+dosyanın ilgili bölümünün sayfa önbelleğnde içerisinde olup olmadığına bakan çekirdek kodlarını çalıştırır. Eğer ilgili 
+dosyanın ilkili kısmı bu önbellek sisteminin içerisinde varsa bu fonksiyonlar diske hiç erişmeden dolayısıyla 
+da hiç bloke olmadan bu okuma yazma işlemini gerçekleştirmiş olurlar. Eğer dosyadan okunacak ya da dosyaya yazılacak 
+kısım sayfa önbelleğinde yoksa bu durumda gerçek disk okuması ya da yazması dosya sistemi sürücüsü tarafından blok aygıt 
+sürücüleri kullanılarak yapılmaktadır.
 
-İşletim sistemi bellek tarafında yaptığı organizasyonla okunacak ya da yazılacak bilginin ilgili
-blok aygıtının (disk bölümünün) kaç numaralı bloğuna ve sektörüne ilişkin olduğunu
-belirleyebilmektedir. Ancak ``sys_read`` ve ``sys_write`` gibi sistem fonksiyonları hemen diske
-yönelmez. Bu fonksiyonlar önce dosyanın ilgili bölümünün RAM'de oluşturulmuş bir sayfa önbelleği
-(*page cache*) içerisinde olup olmadığına bakmaktadır. Eğer ilgili bölüm bu önbellek sisteminin
-içerisinde varsa bu fonksiyonlar diske hiç erişmeden dolayısıyla da hiç bloke olmadan bu okuma
-yazma işlemini gerçekleştirmektedir.
-
-``read``/``write`` POSIX fonksiyonları çağrıldığında yapılan işlemler aşağıdaki diyagramda
+``read``/ ``write`` POSIX fonksiyonları çağrıldığında yapılan işlemler aşağıdaki diyagramda
 özetlenmiştir:
 
-.. figure:: _static/rw-flow.png
-   :align: center
-   :alt: file → dentry → inode zinciri
-   :width: 45%
+.. code-block:: none
 
-Peki dosyadaki okunacak ya da yazılacak kısım sayfa önbelleğinde (*page cache*) yoksa gerçek
-transfer nasıl yapılmaktadır? Linux sistemlerinde bu transferlerin yapıldığı birime *blok aygıt
-sürücüleri (block device drivers)* denilmektedir.
 
-Bir Linux sistemi kurulduğunda zaten temel disk denetleyicileri üzerinden transfer yapabilen blok
-aygıt sürücüleri çekirdeğin içerisine gömülmüş durumda olur. Ancak sistem programcısının kendisi
-de blok aygıt sürücüleri yazabilir. Örneğin bir gömülü Linux sisteminde yeni bir SD kart birimi
-için bir blok aygıt sürücüsü yazmak zorunda kalabilirsiniz.
+    ┌─────────────────────────────────────┐
+    │    read/write POSIX Fonksiyonları   │
+    └──────────────┬──────────────────────┘
+                   │    Çekirdek Moduna Geçiliyor
+                   ▼
+    ┌──────────────────────────────┐
+    │    sys_read / sys_write      │
+    └──────────────┬───────────────┘
+                   │
+                   ▼
+    ┌──────────────────────────────┐
+    │    Dosya Sistemi Sürücüsü    │
+    └──────────────┬───────────────┘
+                   │
+                   ▼
+    ┌────────────────────────────────────┐
+    │  Veri Sayfa Önbelleğinde var mı?   │
+    └───────┬───────────────────┬────────┘
+            │                   │
+           Evet               Hayır
+            │                   │
+            ▼                   ▼
+    ┌──────────────┐    ┌─────────────────────────┐
+    │  Veriyi      │    │ Gerçek disk I/O başlat  │
+    │  kopyala     │    │     (okuma / yazma)     │
+    └──────────────┘    └───────────┬─────────────┘
+                                    │
+                                    ▼
+                        ┌─────────────────────────────┐
+                        │ Sayfa Önbelleği güncellenir │
+                        └─────────────────────────────┘
 
-İşletim sistemi bu IO isteklerini hemen blok aygıt sürücüsüne göndermez. Çünkü çok sayıda
-farklı proses aynı disk sektörlerini okuyacak ya da o sektörlere yazacak olabilir. İşletim
-sistemi önce istekleri sıraya dizer, mümkünse birleştirir, bu biçimdeki iyileştirme işleminden
-sonra istekleri blok aygıt sürücüsüne gönderir. Bu sürece *IO çizelgelemesi (IO scheduling)*
-denilmektedir.
+Peki dosyadaki okunacak ya da yazılacak kısım *sayfa önbelleğinde (page cache)* yoksa gerçek transfer nasıl yapılmaktadır? 
+İşte işletim sistemlerinde bu tür transferler aslında başka bir birime devredilmektedir. Linux sistemlerinde bu 
+transferlerin yapıldığı birime *blok aygıt sürücüleri (block device drivers)* denilmektedir. Bir Linux sistemi 
+kurulduğunda zaten temel disk denetleyicileri üzerinden transfer yapabilen blok aygıt sürücüleri çekirdeğin içerisine 
+gömülmüş durumda olur. Ancak sistem programcısının kendisi de blok aygıt sürücüleri yazabilir. Örneğin bir gömülü 
+Linux sisteminde yeni bir SD kart birimi için bir blok aygıt sürücüsü yazmak zorunda kalabilirsiniz. Blok aygıt 
+sürücülerinin yazımı aygıt sürücülerinin yazılmasına ilişkin konuların bir bölümünü oluşturmaktadır.
+
+Aslında işletim sistemi *sayfa önbelleğinde (page cache)* olmayan kısımların diskteki yerlerini callback fonksiyonlar 
+aracılığıyla dosya sistemine iletip transferi blok aygıt sürücüsüne yaptırmaktadır. Disklere ilişkin (bunlara genel 
+olarak *blok aygıtları* denilmektedir) birtakım okuma yazma işlemleri aslında işletim sistemleri tarafından çizelgelemeye 
+sokulmaktadır. Çünkü çok sayıda farklı proses aynı disk sektörlerini okuyacak ya da o sektörlere yazacak olabilir. 
+İşletim sistemi bu nedenle hemen IO isteğini blok aygıt sürücüsüne göndermez. Önce onları sıraya dizer, mümkünse 
+birleştirir, bu biçimdeki iyileştirme işleminden sonra istekleri blok aygıt sürücüsüne gönderir. Bu sürece işletim 
+sistemlerinin "IO çizelgelemesi (IO scheduling)" denilmektedir.
 
 O halde bir dosya okuması ya da yazması sonucunda gelişen olayları şöyle özetleyebiliriz:
 

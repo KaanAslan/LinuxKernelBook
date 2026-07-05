@@ -2705,7 +2705,7 @@ Tüm mount noktalarını *mount* komutunun argümansız kullanımıyla da elde e
 
 Bu bilgi de aslında ``/proc/mounts`` dosyasından elde edilmektedir.
 
-Aşağıda şu ana kadar geldiğimiz noktaya kadarki *simplefs* dosya sistemi aygıt sürücümüzün kodlarını bir
+Aşağıda şu ana kadar geldiğimiz noktaya kadarki *simplefs* dosya sistemi sürücümüzün kodlarını bir
 bütün olarak veriyoruz.
 
 ``simplefs.c``
