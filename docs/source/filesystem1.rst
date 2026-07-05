@@ -290,50 +290,19 @@ Okuma ve Yazma İşlemleri
 Biz UNIX/Linux sistemlerinde bir dosyadan okuma yapmak için ya da bir dosyaya yazma yapmak için ``read`` / ``write`` POSIX 
 fonksiyonlarını kullanmış olalım. Bu fonksiyonlar çekirdek içerisindeki ``sys_read`` ve ``sys_write`` sistem fonksiyonlarını 
 çalıştırmaktadır. Ancak işletim sisteminin ``sys_read`` ve ``sys_write`` gibi sistem fonksiyonları hemen diske yönelmez.
-Bu fonksiyonlar çağrıyı dosya "sistemi sürücüsüne (files ystem driver)" iletirler. Dosya sistemi sürücüsü de önce 
-dosyanın ilgili bölümünün sayfa önbelleğnde içerisinde olup olmadığına bakan çekirdek kodlarını çalıştırır. Eğer ilgili 
+Bu fonksiyonlar çağrıyı "dosya sistemi sürücüsüne (file system driver)" iletirler. Dosya sistemi sürücüsü de önce 
+dosyanın ilgili bölümünün sayfa önbelleği içerisinde olup olmadığına bakan çekirdek kodlarını çalıştırır. Eğer ilgili 
 dosyanın ilkili kısmı bu önbellek sisteminin içerisinde varsa bu fonksiyonlar diske hiç erişmeden dolayısıyla 
 da hiç bloke olmadan bu okuma yazma işlemini gerçekleştirmiş olurlar. Eğer dosyadan okunacak ya da dosyaya yazılacak 
-kısım sayfa önbelleğinde yoksa bu durumda gerçek disk okuması ya da yazması dosya sistemi sürücüsü tarafından blok aygıt 
-sürücüleri kullanılarak yapılmaktadır.
+kısım sayfa önbelleğinde yoksa bu durumda gerçek disk okuması ya da yazması dosya sistemi sürücüsünün önayak olması ile 
+blok aygıt sürücüleri tarafından yapılmaktadır.
 
 ``read``/ ``write`` POSIX fonksiyonları çağrıldığında yapılan işlemler aşağıdaki diyagramda
 özetlenmiştir:
 
-.. code-block:: none
-
-
-    ┌─────────────────────────────────────┐
-    │    read/write POSIX Fonksiyonları   │
-    └──────────────┬──────────────────────┘
-                   │    Çekirdek Moduna Geçiliyor
-                   ▼
-    ┌──────────────────────────────┐
-    │    sys_read / sys_write      │
-    └──────────────┬───────────────┘
-                   │
-                   ▼
-    ┌──────────────────────────────┐
-    │    Dosya Sistemi Sürücüsü    │
-    └──────────────┬───────────────┘
-                   │
-                   ▼
-    ┌────────────────────────────────────┐
-    │  Veri Sayfa Önbelleğinde var mı?   │
-    └───────┬───────────────────┬────────┘
-            │                   │
-           Evet               Hayır
-            │                   │
-            ▼                   ▼
-    ┌──────────────┐    ┌─────────────────────────┐
-    │  Veriyi      │    │ Gerçek disk I/O başlat  │
-    │  kopyala     │    │     (okuma / yazma)     │
-    └──────────────┘    └───────────┬─────────────┘
-                                    │
-                                    ▼
-                        ┌─────────────────────────────┐
-                        │ Sayfa Önbelleği güncellenir │
-                        └─────────────────────────────┘
+.. image:: _static/read-write-page-cache-flow.png
+   :align: center
+   :width: 50%
 
 Peki dosyadaki okunacak ya da yazılacak kısım *sayfa önbelleğinde (page cache)* yoksa gerçek transfer nasıl yapılmaktadır? 
 İşte işletim sistemlerinde bu tür transferler aslında başka bir birime devredilmektedir. Linux sistemlerinde bu 
@@ -343,58 +312,57 @@ gömülmüş durumda olur. Ancak sistem programcısının kendisi de blok aygıt
 Linux sisteminde yeni bir SD kart birimi için bir blok aygıt sürücüsü yazmak zorunda kalabilirsiniz. Blok aygıt 
 sürücülerinin yazımı aygıt sürücülerinin yazılmasına ilişkin konuların bir bölümünü oluşturmaktadır.
 
-Aslında işletim sistemi *sayfa önbelleğinde (page cache)* olmayan kısımların diskteki yerlerini callback fonksiyonlar 
-aracılığıyla dosya sistemine iletip transferi blok aygıt sürücüsüne yaptırmaktadır. Disklere ilişkin (bunlara genel 
-olarak *blok aygıtları* denilmektedir) birtakım okuma yazma işlemleri aslında işletim sistemleri tarafından çizelgelemeye 
-sokulmaktadır. Çünkü çok sayıda farklı proses aynı disk sektörlerini okuyacak ya da o sektörlere yazacak olabilir. 
-İşletim sistemi bu nedenle hemen IO isteğini blok aygıt sürücüsüne göndermez. Önce onları sıraya dizer, mümkünse 
-birleştirir, bu biçimdeki iyileştirme işleminden sonra istekleri blok aygıt sürücüsüne gönderir. Bu sürece işletim 
-sistemlerinin "IO çizelgelemesi (IO scheduling)" denilmektedir.
+Aslında çekirdek *sayfa önbelleğinde (page cache)* olmayan kısımların diskteki yerlerini callback fonksiyonlar 
+aracılığıyla dosya sistemine iletip transferin dosya sistemi sürücüsünün önayak olmasıyla *blok aygıt sürücüsüne* 
+yaptırılmasını sağlamaktadır. Disklere ilişkin (bunlara genel olarak blok aygıtları denilmektedir) birtakım okuma 
+yazma işlemleri aslında işletim sistemleri tarafından çizelgelemeye sokulmaktadır. Çünkü çok sayıda farklı proses 
+aynı disk sektörlerini okuyacak ya da o sektörlere yazacak olabilir. İşletim sistemi bu nedenle hemen IO isteğini 
+blok aygıt sürücüsüne göndermez. Önce onları sıraya dizer, mümkünse birleştirir, bu biçimdeki iyileştirme 
+işleminden sonra istekleri blok aygıt sürücüsüne gönderir. Bu sürece işletim sistemlerinin "IO çizelgelemesi 
+(IO scheduling)" denilmektedir.
 
 O halde bir dosya okuması ya da yazması sonucunda gelişen olayları şöyle özetleyebiliriz:
 
-1. Kullanıcı modunda çalışan program (yani proses) ``read`` ya da ``write`` POSIX fonksiyonlarını
-   çağırır. (UNIX/Linux sistemlerindeki C derleyicilerinin standart dosya fonksiyonları da eğer
-   okunacak ya da yazılacak kısım kendi tamponlarında yoksa zaten bu POSIX fonksiyonlarını
-   çağırmaktadır.)
+1. Kullanıcı modunda çalışan program (yani proses) ``read`` ya da ``write`` POSIX fonksiyonlarını çağırır. 
+   (UNIX/Linux sistemlerindeki C derleyicilerinin standart dosya fonksiyonları da eğer okunacak 
+   ya da yazılacak kısım kendi tamponlarında yoksa zaten bu POSIX fonksiyonlarını çağırmaktadır.)
 
-2. ``read`` ve ``write`` POSIX fonksiyonları Linux'ta ``sys_read`` ve ``sys_write`` isimli sistem
-   fonksiyonlarını çağırır. Artık akış kullanıcı modundan (user mode) çekirdek moduna (kernel
-   mode) geçmiştir.
+2. ``read`` ve ``write`` POSIX fonksiyonları Linux'ta ``sys_read`` ve ``sys_write`` isimli sistem fonksiyonlarını 
+   çağırır. Artık akış kullanıcı modundan (user mode) çekirdek moduna (kernel mode) geçmiştir. Çekirdekteki 
+   kodlar çalışmaktadır.
 
-3. ``sys_read`` ve ``sys_write`` fonksiyonları önce okunacak ya da yazılacak yerin Linux'un disk
-   önbellek sistemi olan sayfa önbelleğinde (*page cache*, eski ismiyle *buffer cache*) olup
-   olmadığına bakar. Eğer ilgili disk blokları sayfa önbelleğinde varsa akış hiç bloke olmadan
-   sayfa önbelleği içerisinden karşılanır. Aksi hâlde Linux çekirdeği isteği *IO çizelgeleyicisi
-   (IO scheduler)* denilen çekirdek birimine iletir; ``read``/``write`` çağrısını yapan thread
-   bloke edilir.
+3. ``sys_read`` ve ``sys_write`` fonksiyonları dosya sistemi sürücüsünün callback fonksiyonları yoluyla çağrıyı dosya 
+   sistemi sürücüsüne iletir.
 
-4. IO çizelgeleyicisi istekleri çizelgeler. Okuma işlemi söz konusuysa sayfa önbelleğinde
-   transfer edilecek önbellek bloklarını tahsis eder. Yazma işlemi söz konusuysa diske transfer
-   edilecek önbellek bloklarını belirler. Blok aygıt sürücüsüne transfer edilecek sektörleri ve
-   transfere ilişkin bellek adreslerini iletir.
+4. Dosya sistemi sürücüsü çekirdek kodlarını kullanarak okunacak ya da yazılacak yerin *sayfa önbelleğinde (page cache)*
+   olup olmadığına bakar. Eğer dosyanın ilgili kısımları sayfa önbelleğinde varsa akış hiç bloke olmadan sayfa önbelleği 
+   içerisinden karşılanır. Ancak eğer söz konusu bloklar sayfa önbelleğinde yoksa bu durumda dosya sistemi sürücüsü 
+   okuma yazma işlemlerininin blok aygıt sürücüsünü yoluyla yapılmasını sağlar. 
 
-5. Gerçek transfer işlemi blok aygıt sürücüsü tarafından yapılmaktadır. İşletim sistemi blok
-   aygıt sürücüsüne hangi sektörlerin sayfa önbelleğindeki hangi adreslere (ya da tersi yönde)
-   transfer edileceğini bir kuyruk sistemi yardımıyla iletmektedir.
+5. Transfer işlemleri hemen blok aygıt sürücüsüne gönderilmez. Önce IO çizelgeleyicisi tarafından işlenir. Çekirdek 
+   okuma işlemi söz konusuysa sayfa önbelleğinde transfer edilecek önbellek bloklarını tahsis eder. Yazma işlemi söz 
+   konusuysa diske transfer edilecek önbellek bloklarını belirler. (Bu konuda bazı ayrıntılar da vardır.) Blok aygıt 
+   sürücüsüne transfer edilecek sektörleri ve transfere ilişkin bellek adreslerini iletir.
 
-6. Blok aygıt sürücüsü diskten istenen sektörleri sayfa önbelleği içerisinde belirtilen adrese
-   ya da sayfa önbelleğindeki bilgileri diskin belirtilen sektörlerine transfer eder.
+6. Gerçek transfer işlemi blok aygıt sürücüsü tarafından yapılmaktadır. İşletim sistemi blok aygıt sürücüsüne "hangi 
+   sektörlerin sayfa önbelleğindeki hangi adreslere transfer edileceğini ya da sayfa önbelleği içerisindeki hangi adresteki 
+   bilgilerin diskteki hangi sektörlere transfer edileceğini" bir kuyruk sistemi yardımıyla iletmektedir.
 
-7. Artık okuma söz konusuysa okunan bilgi sayfa önbelleği içerisindedir. İşlemi başlatan
-   thread'in blokesi çözülür. ``sys_read`` sistem fonksiyonu bunu sayfa önbelleği içerisinden
-   programcının kullanıcı modundaki adresine kopyalar.
+7. Blok aygıt sürücüsü diskten istenen sektörleri sayfa önbelleği içerisinde belirtilen adrese ya da sayfa önbelleğinde 
+   belirtilen adresteki bilgileri diskin belirtilen sektörlerine transfer eder.
+
+8. Artık okuma söz konusuysa okunan bilgi sayfa önbelleği içerisindedir. İşlemi başlatan thread'in blokesi çözülür. 
+   ``sys_read`` sistem fonksiyonu bunu sayfa önbelleği içerisinden programcının kullanıcı modundaki adresine kopyalar.
 
 Tabii bugün kullandığımız Linux sistemlerinde aslında disk transflerini yapan blok aygıt sürücüleri zaten çekirdek 
 imajı içerisine gömülmüş bir biçimde bulunmaktadır. Ancak nadiren de olsa sistem programcısının yeni birtakım aygıtlar 
 için blok aygıt sürücüleri yazması gerekebilmektedir.
 
-
 Yukarıda maddeler halinde açıkladığımız süreci bir şekille de özetleyebiliriz:
 
 .. image:: _static/io-pipeline.png
    :align: center
-   :width: 30%
+   :width: 40%
 
 Linux sistemlerinde yukarıda özetlediğimiz olaylar silsilesi zaman içerisinde değişikliklere
 uğratılarak ve sürekli geliştirilerek bugünkü durumuna getirilmiştir.
@@ -430,29 +398,9 @@ Bu biçimdeki aktarmaya *gecikmeli yazım (delayed write)* da denilmektedir.
 
 Buradaki süreci aşağıdaki şekille özetleyebiliriz:
 
-.. graphviz::
-
-   digraph delayed_write {
-       rankdir=LR;
-       node [shape=box, style="rounded,filled", fillcolor="#D6E8FA",
-             fontname="DejaVu Sans", margin="0.25,0.18"];
-       edge [fontname="DejaVu Sans", fontsize=9, color="#444444"];
-
-       write   [label="write()\nKullanıcı Modu"];
-       sysw    [label="sys_write()\nÇekirdek Modu"];
-       cache   [label="Page Cache'e kopyala\n(sayfa \"dirty\" olarak işaretlenir)",
-                fillcolor="#FFF3CD"];
-       ret     [label="Geri dönüş\n(User Mode)", fillcolor="#D5F5D5"];
-       flush   [label="Flusher Thread\n(Asenkron)", fillcolor="#F8D7DA"];
-       sched   [label="I/O Çizelgeleyici"];
-       driver  [label="Blok Aygıt\nSürücüsü"];
-       ctrl    [label="Disk\nDenetleyicisi"];
-       disk    [label="Disk\nDonanımı", fillcolor="#D5F5D5"];
-
-       write  -> sysw  -> cache -> ret;
-       cache  -> flush [style=dashed, label="zaman geçince"];
-       flush  -> sched -> driver -> ctrl -> disk;
-   }
+.. image:: _static/delayed-write-flow.png
+   :align: center
+   :width: 100%
 
 Peki işletim sistemi transfer işlemlerini ne kadar süre bekletmektedir? Eğer transfer çok uzun süre bekletilirse 
 elektrik kesilmesi gibi durumlarda kayıplar fazlalaşır. İşte modern işletim sistemlerinde kirlenmiş sayfaların 
