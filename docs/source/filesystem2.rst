@@ -939,7 +939,10 @@ Formatlama programımızın tamamı ``mkfs.simplefs.c`` ismiyle aşağıda veril
 simplefs Dosya Sistemi Aygıt Sürücüsünün Gerçekleştirimi
 ========================================================
 
-*simplefs* dosya sistemini bir aygıt sürücü olarak yazacağız. Yazıma iskelet bir çekirdek modülü ile başlayabiliriz:
+İlk İşlemler
+------------
+
+simplefs dosya sisteminin yazımına iskelet bir çekirdek modülü ile başlayabiliriz:
 
 ``simplefs.c``
 
@@ -1357,7 +1360,7 @@ Buradaki akışı şöyle açıklayabiliriz:
               │         └─ write_inode()        ← inode metadata
               └─ inode_io_list_del()            ← listeden çıkar
 
-Biz sayfa önbelleği ve tampon (buffer) yönetimi konularını kitabımızın "Bellek Yönetimi" bölümünde ayrıntılarıyla 
+Biz sayfa önbelleği ve tampon (buffer) yönetimi konularını kitabımızın "Sayfa Önbelleği" bölümünde ayrıntılarıyla 
 açıklayacağız.
 
 simplefs Süper Bloğunun ve Bitmap Bloklarının Diskten Okunması

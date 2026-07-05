@@ -280,9 +280,9 @@ bu önbellek sistemi iyileştirildi ve ismi *page cache* olarak değiştirildi.
 sistem performansı üzerinde en önemli olumlu etkilerden birini oluşturmaktadır. Eğer işletim
 sistemlerinde böyle bir disk önbellek sistemi olmasaydı sistemler çok yavaş çalışırdı.
 
-Linux sistemlerinde sayfa önbelleği oldukça kritik öğelerden biridir. Biz burada yalnızca bu 
-kavramı tanıttık. Sayfa önbelleği "bellek yönetiminin" ele alındığı bölümde ayrı bir başlık altında 
-ayrıntılarıyla gözden geçirilecektir.  
+Linux'ta sistem genelinde tek bir sayfa önbelleği yoktur. Her dosyanın ayrı bir sayfa önbelleği vardır. Ancak biz 
+bu bölümde sayfa önbelleğini genel bir kavram olarak kullanacağız. Sayfa önbelleğini kitabımızın ayrı bir bölümünde 
+ayrıntılarıyla ele alacağız. 
 
 Okuma ve Yazma İşlemleri
 ========================
