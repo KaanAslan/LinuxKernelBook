@@ -939,10 +939,20 @@ Formatlama programımızın tamamı ``mkfs.simplefs.c`` ismiyle aşağıda veril
 simplefs Dosya Sistemi Aygıt Sürücüsünün Gerçekleştirimi
 ========================================================
 
+Dosya sistemlerinin gerçekleştirilmesinde birkaç model kullanılabilmektedir. Biz *simplefs* dosya sisteminde en basit
+model olan ``sb_bread`` modelini kullanacağız. Bu modelde disk blokları ``sb_bread`` fonksiyonuyla tampon (buffer) tabanlı 
+biçimde blok aygıtına ilişkin inode nesnesinin sayfa önbelleği yardımıyla okunup yazılmaktadır. Bu yöntem basit 
+olmasına karşın çeşitli nedenlerden dolayı verimsizdir. Biz diğer modelleri sayfa önbelleğini ayrıntılı bir biçimde
+inceledikten sonra ele alacağız. 
+
+Yukarıda da belirttiğimiz gibi *simplefs* dosya sisteminin gerçekleştirilmesinde kullanılan "sayfa önbelleği" aslında 
+blok aygıt sürücüsüne ilişkin inode nesnesinin sağladığı sayfa önbelleğidir. Sayfa önbelleğinin ayrıntılarını anlattığımız 
+bölümde taşları yerlerine oturtabilecekseniz.
+
 İlk İşlemler
 ------------
 
-simplefs dosya sisteminin yazımına iskelet bir çekirdek modülü ile başlayabiliriz:
+*simplefs* dosya sisteminin yazımına iskelet bir çekirdek modülü ile başlayabiliriz:
 
 ``simplefs.c``
 
