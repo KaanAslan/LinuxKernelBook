@@ -64,3 +64,11 @@ table.docutils td,
 table.docutils th {
     border: 1px solid #7f8c8d !important;
 }
+
+@media screen and (max-width: 768px) {
+    .rst-content img {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+}
