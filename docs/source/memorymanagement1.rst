@@ -1130,94 +1130,26 @@ halde işletim sisteminin kodlarının da her proses tarafından erişilebilir b
 İşte Linux sistemlerinde (Windows sistemlerinde de benzer) işletim sistemi sanal adres alanının belli bir yerine
 haritalanmıştır. 32 bit Linux sistemlerinde bir prosesin sanal bellek alanı şöyledir:
 
-.. code-block:: none
+.. image:: _static/user-kernel-address-space.png
+   :align: center
+   :width: 40%
 
-   0x00000000  ┌─────────────────────────────────────┐
-               │                                     │
-               │                                     │
-               │           Kullanıcı Alanı           │  3 GB
-               │            (User Space)             │
-               │                                     │
-   0xC0000000  ├─────────────────────────────────────┤
-               │                                     │
-               │           Çekirdek Alanı            │  1 GB
-               │            (Kernel Space)           │
-               │                                     │
-   0xFFFFFFFF  └─────────────────────────────────────┘
 
 Buradan da görüldüğü gibi 32 bit Linux sistemlerinde kullanıcı alanı (yani prosesin sanal bellekte kapladığı maksimum
 alan) 3 GB, çekirdek alanı da 1 GB'dir. Her proseste çekirdek alanı o prosesin sanal belleğinin aynı yerine
 (``0xC0000000``'dan itibaren) haritalanmıştır. Sayfa tablolarının çok kademeli olması bu haritalama işlemini
-kolaylaştırmaktadır. Buradaki alanların içeriklerini biraz daha ayrıntılandırabiliriz:
+kolaylaştırmaktadır. Buradaki alanların içeriklerini biraz daha ayrıntılandırabiliriz (şeklin uzamaması için içeriklerini
+İngilizce yazdıyoruz):
 
-.. code-block:: none
-
-   0x00000000  ┌─────────────────────────────────────┐
-               │           NULL guard                │
-               │     (unmapped, trap on access)      │
-   0x08048000  ├─────────────────────────────────────┤
-               │         Text segment                │
-               │   (read-only, executable, .text)    │
-               ├─────────────────────────────────────┤
-               │         Data segment                │
-               │   (initialized globals & statics)   │
-               ├─────────────────────────────────────┤
-               │           BSS segment               │
-               │  (zero-init globals & statics)      │
-               ├─────────────────────────────────────┤  ◄── program break
-               │              Heap                   │
-               │      (grows downward  ▼)            │
-               │                                     │
-               │    · · · free virtual space · · ·   │  U
-               │                                     │  S
-               │       mmap / shared libs            │  E
-               │  (libc.so, ld.so, anon mmap)        │  R
-               │                                     │
-               │    · · · free virtual space · · ·   │
-               │                                     │
-               │             Stack                   │
-               │      (grows upward  ▲)              │
-               │                                     │
-   0xBFFFFFFF  │    (argv, envp, local vars)         │
-               ├═════════════════════════════════════╡
-               ║   ──── Kernel / User boundary ────  ║
-   0xC0000000  ╠═════════════════════════════════════╣
-               ║      Physical memory map            ║  K
-               ║   (1:1 lowmem, up to ~896 MB)       ║  E
-               ╠─────────────────────────────────────╣  R
-               ║    Kernel stacks (8 KB/thread)      ║  N
-               ╠─────────────────────────────────────╣  E
-               ║   Page tables & fixed maps          ║  L
-               ║   (PGD/PTE, kmap, fixmap)           ║
-               ╠─────────────────────────────────────╣
-               ║    Modules & vmalloc area           ║
-               ║  (insmod, vmalloc(), ioremap())     ║
-               ╠─────────────────────────────────────╣
-               ║       Kernel code & data            ║
-               ║   (vmlinux image, BSS, init data)   ║
-   0xFFFFFFFF  ╚═════════════════════════════════════╝
+.. image:: _static/process-virtual-address-space-32bit.png
+   :align: center
+   :width: 70%
 
 64 bit Linux sistemlerinde ise prosesin sanal bellek alanı şöyledir:
 
-.. code-block:: none
-
-   0x0000000000000000  ┌─────────────────────────────────────┐
-                       │                                     │
-                       │          Kullanıcı Alanı            │
-                       │           (User Space)              │  128 TB
-                       │                                     │
-   0x00007FFFFFFFFFFF  ├─────────────────────────────────────┤
-                       │                                     │
-                       │         Kullanılmayan Alan          │
-                       │          (invalid range)            │  ~16 milyon TB
-                       │           Non-canonical             │
-                       │                                     │
-   0xFFFF800000000000  ├─────────────────────────────────────┤
-                       │                                     │
-                       │           Çekirdek Alanı            │
-                       │           (Kernel Space)            │  128 TB
-                       │                                     │
-   0xFFFFFFFFFFFFFFFF  └─────────────────────────────────────┘
+.. image:: _static/user-kernel-address-space-64bit.png
+   :align: center
+   :width: 50%
 
 64 bit Linux sistemlerinde prosesin sanal bellek alanının 256 TB büyüklüğünde olduğuna dikkat ediniz. Bu sistemlerde
 sanal adreslerin 48 bit olduğunu ve sanal adreslerin yüksek anlamlı 16 bitinin 47'inci bit ile aynı olmak zorunda
@@ -2210,24 +2142,9 @@ bir dizi vardır; ancak bu dizinin deliklere karşı gelen elemanları için say
 yapılmamıştır. ``vmemmap`` göstericisinin gösterdiği sanal adrese ilişkin sayfa tablosunu aşağıdaki gibi
 düşünebilirsiniz (basitlik oluşturmak için sayfa tablosunu tek kademeymiş gibi çizeceğiz):
 
-.. code-block:: none
-
-                     Sayfa Tablosu
-                  ┌─────────────────┐
-                  │                 │
-                  │       ...       │
-   vmemmap ──→    ├─────────────────┤
-                  │                 │ ──→ referans edilen fiziksel sayfada dizi elemanları var
-                  ├─────────────────┤
-                  │                 │ ──→ referans edilen fiziksel sayfada dizi elemanları var
-                  ├─────────────────┤
-                  │                 │ ──→ fiziksel sayfaya referans edilmemiş, DELİK
-                  ├─────────────────┤
-                  │                 │ ──→ referans edilen fiziksel sayfada dizi elemanları var
-                  ├─────────────────┤
-                  │       ...       │
-                  │                 │
-                  └─────────────────┘
+.. image:: _static/vmemmap-page-table.png
+   :align: center
+   :width: 70%
 
 Görüldüğü gibi sanki ``vmemmap`` adresinden itibaren ardışıl bir ``page`` dizisi varmış gibi bir durum
 oluşturulmuştur. Ancak bu dizinin bazı elemanları deliklere ilişkin olduğu için o elemanlara ilişkin sayfa
@@ -2247,15 +2164,9 @@ bölümlere (*sections*) ayırmaktadır. Her bölüm ardışıl uzunluktadır. �
 Bölümler tipik olarak 128 MB'dir ve 32768 sayfa içermektedir. Bu durumu aşağıdaki gibi bir çizimle
 betimleyebiliriz:
 
-.. code-block:: none
-
-   PFN: 0                                                    max
-       │                                                      │
-       ▼                                                      ▼
-       ┌──────────┬──────────┬──────────┬──────────┬──────────┐
-       │ section  │ section  │ section  │ section  │ section  │
-       │    0     │    1     │    2     │    3     │    4     │
-       └──────────┴──────────┴──────────┴──────────┴──────────┘
+.. image:: _static/pfn-range-sections.png
+   :align: center
+   :width: 60%
 
 Buradaki *PFN*, *"Page Frame Number"* sözcüklerinden kısaltılmıştır.
 
@@ -2294,36 +2205,18 @@ bildirilmiştir:
         */
    };
 
-Yapının ``section_mem_map`` elemanı o bölümdeki ``page`` nesnelerinin başlangıç adresini belirtmektedir. Tabii
-çekirdek tüm bölümleri ``mem_section`` isimli bir dizide saklamaktadır:
+Yapının ``section_mem_map`` elemanı o bölümdeki ``page`` nesnelerinin başlangıç adresini belirtmektedir. Çekirdek
+aynı zamanda tüm bölümleri ``mem_section`` isimli bir dizide saklamaktadır:
 
-.. code-block:: none
-
-   mem_section[] dizisi:
-
-       ┌──────────────────────┐
-   0   │  struct mem_section  │──→ section 0'ın struct page dizisi
-       ├──────────────────────┤
-   1   │  struct mem_section  │──→ 0 (bu section tamamen delik içeriyor)
-       ├──────────────────────┤
-   2   │  struct mem_section  │──→ section 2'nin struct page dizisi
-       ├──────────────────────┤
-   3   │  struct mem_section  │──→ 0 (bu section tamamen delik içeriyor)
-       ├──────────────────────┤
-       │          ...         │
-       └──────────────────────┘
+.. image:: _static/mem-section-array-holes.png
+   :align: center
+   :width: 60%
 
 Bu sistemlerde çekirdek için fiziksel sayfa numarası iki bileşenden oluşmaktadır:
 
-.. code-block:: none
-
-   PFN (örneğin 64-bit):
-
-   ┌─────────────────────────────┬──────────────────────────┐
-   │         section_nr          │    within_section_pfn    │
-   │        (üst bitler)         │       (alt bitler)       │
-   └─────────────────────────────┴──────────────────────────┘
-   │← PFN >> SECTION_SIZE_BITS  →│← PFN & ~SECTION_MASK    →│
+.. image:: _static/pfn-section-bit-split.png
+   :align: center
+   :width: 60%
 
 Bu bileşenleri veren makrolar vardır:
 
@@ -2348,13 +2241,13 @@ Bu işlemi şekilsel olarak da aşağıdaki gibi ifade edebiliriz:
 
    Adım 1: section_nr = pfn >> PFN_SECTION_SHIFT
            ┌─────────────────────────────────────────────────┐
-           │  PFN'nin üst bitlerini al → section numarası    │
+           │  PFN'nin üst bitlerini al → bölüm numarası      │
            └─────────────────────────────────────────────────┘
 
    Adım 2: sp = __nr_to_section(section_nr)
            ┌─────────────────────────────────────────────────┐
            │  mem_sections[] dizisine indeksle               │
-           │  → struct mem_section pointer'ı al              │
+           │  → struct mem_section adresini al               │
            └─────────────────────────────────────────────────┘
 
    Adım 3: page_base = sp->section_mem_map  (flag bitleri maskelenir)
@@ -2374,38 +2267,9 @@ Bu işlemi şekilsel olarak da aşağıdaki gibi ifade edebiliriz:
 
 Örnek bir erişim görseli de şöyle olabilir:
 
-.. code-block:: none
-
-       PFN (örnek: 0x8001F)
-   ┌──────────────────────┬──────────────────┐
-   │  section_nr = 0x10   │  offset = 0x01F  │
-   └──────────────────────┴──────────────────┘
-           │                       │
-           ▼                       │
-   mem_section[]                   │
-   ┌──────────────────┐            │
-   │ [0]  mem_section │            │
-   ├──────────────────┤            │
-   │ [1]  mem_section │            │
-   ├──────────────────┤            │
-   │      ...         │            │
-   ├──────────────────┤            │
-   │ [0x10]           │            │
-   │  section_mem_map │            │
-   │       │          │            │
-   └───────┼──────────┘            │
-           │                       │
-           ▼                       ▼
-           ┌──────────────────────────────────────┐
-           │   bölümün struct page dizisi         │
-           ├───────┬───────┬───────┬───────┬──────┤
-           │ [0]   │ [1]   │  ...  │[0x01F]│ ...  │
-           │ page  │ page  │       │ page  │      │
-           └───────┴───────┴───────┴───────┴──────┘
-                                       ▲
-                                       │
-                               pfn_to_page()
-                               sonucu burası
+.. image:: _static/sparsemem-pfn-to-page.png
+   :align: center
+   :width: 40%
 
 Üç Konfigürasyonun Karşılaştırılması
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2563,12 +2427,12 @@ kademeliymiş gibi gösteriyoruz):
 
 .. image:: _static/user-kernel-address-space.png
    :align: center
-   :width: 30%
+   :width: 40%
 
 
 64 bit sistemlerde de sayfa tablosu şöyleydi:
 
 .. image:: _static/user-kernel-address-space-64bit.png
    :align: center
-   :width: 40%
+   :width: 50%
 
