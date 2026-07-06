@@ -256,8 +256,6 @@ bir sayfa numarası karşılık getirmektedir. Örneğin 32 bit Intel ya da ARM 
 kullanıldığında fiziksel belleğin ilk 4K'lık bölgesi 0'ıncı sayfa ikinci 4K'lık bölgesi 1'inci sayfa
 biçiminde numaralandırılmaktadır:
 
-Şunu png olarak çizer misin?
-
 .. list-table::
    :header-rows: 1
    :widths: 50 50
@@ -2563,37 +2561,14 @@ yerindedir. Örneğin 32 bit Linux sistemlerinde sayfa tablolarının aşağıda
 sistemlerde sayfa tabloları iki kademelidir, ancak biz algısal kolaylık sağlamak amacıyla sanki bunu tek
 kademeliymiş gibi gösteriyoruz):
 
-.. code-block:: none
+.. image:: _static/user-kernel-address-space.png
+   :align: center
+   :width: 30%
 
-                        Sayfa Tablosu
-   0x00000000  ┌──────────────────────────────┐
-               │                              │
-               │                              │
-               │       Kullanıcı Alanı        │  3 GB
-               │                              │
-               │                              │
-   0xC0000000  ├──────────────────────────────┤
-               │                              │
-               │       Çekirdek Alanı         │  1 GB
-               │                              │
-   0xFFFFFFFF  └──────────────────────────────┘
 
 64 bit sistemlerde de sayfa tablosu şöyleydi:
 
-.. code-block:: none
-                                 Sayfa Tablosu
-   0x0000000000000000  ┌───────────────────────────────┐
-                       │                               │
-                       │       Kullanıcı Alanı         │  128 TB
-                       │                               │
-   0x00007FFFFFFFFFFF  ├───────────────────────────────┤
-                       │                               │
-                       │      Non-canonical Hole       │  ~16 milyon TB
-                       │      (Geçersiz Aralık)        │
-                       │                               │
-   0xFFFF800000000000  ├───────────────────────────────┤
-                       │                               │
-                       │       Çekirdek Space          │  128 TB
-                       │                               │
-   0xFFFFFFFFFFFFFFFF  └───────────────────────────────┘
+.. image:: _static/user-kernel-address-space-64bit.png
+   :align: center
+   :width: 40%
 
