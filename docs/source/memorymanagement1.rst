@@ -386,7 +386,7 @@ sayfa tablosunda eşleştirmektedir. Prosesin diğer sanal sayfalarını fizikse
 yapıldığını izleyen paragraflarda göreceğiz. Örneğin bir proses yüklendiğinde onun sayfa tablosu aşağıdaki gibi
 olabilir:
 
-.. list-table:: Örnek Sayfa Tablosu
+.. list-table::
    :header-rows: 1
    :widths: 50 50
 
@@ -551,6 +551,7 @@ adres yoluyla o fiziksel sayfaya yazdığını diğeri başka bir sanal adres yo
 .. image:: /_static/shared-memory-page-tables.png
    :alt: P1 ve P2 proseslerinin paylaşılan fiziksel sayfayı farklı sanal adreslerle eşleştirmesi
    :align: center
+   :width: 70%
 
 Burada P1 prosesinin sayfa tablosundaki ``28A00`` sanal sayfa numarasının P2 prosesinin sayfa tablosundaki ``32B00``
 sanal sayfa numarası ile fiziksel bellek bağlamında çakıştırıldığını görüyorsunuz. Tabii işletim sistemi böyle bir
@@ -563,18 +564,16 @@ Sayfa Tablolarının İçeriğine İlişkin Ayrıntılar
 
 Biz yukarıdaki çizimlerde sayfa tablosu girişlerinde yalnızca fiziksel sayfa numarasının bulunduğunu ima ettik.
 Ancak aslında durum böyle değildir. Sayfa tablosu girişleri yalnızca fiziksel sayfa numarasını değil aynı zamanda
-o fiziksel sayfaya ilişkin ek birtakım bilgileri de tutmaktadır. Örneğin 32 bit Intel işlemcilerindeki 4K'lık sayfa
-tablosu girişlerinin (*Page Table Entry*) formatı şöyledir:
+o fiziksel sayfaya ilişkin ek birtakım bilgileri de tutmaktadır. Örneğin 32 bit Intel işlemcilerindeki 4K'lık *sayfa
+tablosu girişlerinin (page table entry)* formatı şöyledir:
 
-.. code-block:: none
+.. image:: _static/page-table-entry-bit-layout.png
+   :align: center
+   :width: 70%
 
-   ┌─────────────────────────┬─────────┬───┬────┬───┬───┬────┬────┬─────┬─────┬───┐
-   │        31 .. 12         │ 11 .. 9 │ 8 │  7 │ 6 │ 5 │  4 │  3 │  2  │  1  │ 0 │
-   ├─────────────────────────┼─────────┼───┼────┼───┼───┼────┼────┼─────┼─────┼───┤
-   │ Physical Page No (20 b) │IGN (3b) │ G │ PS │ D │ A │ CD │ WT │ U/S │ R/W │ P │
-   └─────────────────────────┴─────────┴───┴────┴───┴───┴────┴────┴─────┴─────┴───┘
+Buradaki alanların anlamları da şöyledir:
 
-.. list-table:: Alan Açıklamaları
+.. list-table:: 
    :header-rows: 1
    :widths: 20 80
 
@@ -674,7 +673,7 @@ Sayfa tablosu girişlerini şöyle de temsil edebiliriz:
   yapılır; okuma işlemlerinde ise CPU'nun önbelleğine başvurulmaktadır. Tabii bu bit ``CD`` biti 1 ise işlev
   görmemektedir. Bu iki biti birlikte şöyle de ele alabiliriz:
 
-.. list-table:: CD ve WT Bitlerinin Önbellek Davranışına Etkisi
+.. list-table:: 
    :header-rows: 1
    :widths: 10 10 80
 
@@ -721,19 +720,9 @@ ortadan kaldırmaktadır.
 Çok kademeli sayfa tablolarında sanal adres ikiden fazla parçaya ayrılmaktadır. Örneğin 4K sayfa kullanan 32 bit Intel
 işlemcileri iki kademeli sayfa tablolarına sahiptir ve bu işlemcilerde sanal adresler üç parçaya ayrılmaktadır:
 
-.. code-block:: none
-
-   ┌─────────────────────────────────────────────────────────────────────┐
-   │              32-bit Intel — 2 Kademeli Sayfa Tablosu                │
-   ├───────────────────────┬───────────────────────┬─────────────────────┤
-   │    Page Directory     │      Page Table       │    Page Offset      │
-   │        (PGD)          │        (PTE)          │                     │
-   ├───────────────────────┼───────────────────────┼─────────────────────┤
-   │  31              22   │  21              12   │  11               0 │
-   ├───────────────────────┼───────────────────────┼─────────────────────┤
-   │        10 bit         │        10 bit         │       12 bit        │
-   └───────────────────────┴───────────────────────┴─────────────────────┘
-   ◄─────────────────────────────── 32 bit ──────────────────────────────►
+.. image:: _static/two-level-page-table-address-split.png
+   :align: center
+   :width: 60%
 
 Görüldüğü gibi 4K sayfa kullanan 32 bit Intel işlemcilerinde sanal adres üç kısma ayrılmaktadır: 10 bitlik
 *PGD (Page Directory)* alanı, 10 bitlik *PTE (Page Table Entry)* alanı ve 12 bitlik *Page Offset* alanı. Bu
@@ -749,13 +738,9 @@ içerisindeki ``CR3`` yazmacı tarafından gösterilmektedir.
 
 4K sayfa kullanan 32 bit Intel işlemcilerinde 4 byte'lık sayfa dizin girişlerinin formatı şöyledir:
 
-.. code-block:: none
-
-   ┌──────────────────────────────────────┬─────┬──┬──┬────┬──┬───┬─────┬─────┬─────┬─────┬───┐
-   │   Page Table Base Address [31:12]    │ AVL │  │  │ PS │  │ A │ PCD │ PWT │ U/S │ R/W │ P │
-   │              (20 bit)                │     │  │  │    │  │   │     │     │     │     │   │
-   └──────────────────────────────────────┴─────┴──┴──┴────┴──┴───┴─────┴─────┴─────┴─────┴───┘
-    31                                  12  11 9  8  7   6  5   4    3    2    1    0
+.. image:: _static/page-directory-entry-bit-layout.png
+   :align: center
+   :width: 70%
 
 Buradaki yüksek anlamlı 20 bit sayfa tablosunun fiziksel bellekteki adresini belirtmektedir. (Tabii sayfa tabloları
 4K olduğu için 20 bitin son 12 bitinin 0 olduğu kabul edilmektedir.) Diğer bitlerin anlamları şöyledir:
@@ -842,17 +827,9 @@ Biz yukarıda 4K sayfa kullanan 32 bit Intel işlemcileri üzerinde örnek verdi
 sanal adres dönüştürmesinin formatı da değişmektedir. Örneğin 4 MB'lık büyük sayfalar söz konusu olduğunda 32
 bit Intel işlemcileri sanal adresi iki kısma ayırmaktadır:
 
-.. code-block:: none
-
-   ┌──────────────────────┬────────────────────────────────────────┐
-   │    Page Directory    │             Page Offset                │
-   │        Index         │                                        │
-   ├──────────────────────┼────────────────────────────────────────┤
-   │  31               22 │  21                                  0 │
-   ├──────────────────────┼────────────────────────────────────────┤
-   │        10 bit        │               22 bit                   │
-   └──────────────────────┴────────────────────────────────────────┘
-   ◄──────────────────────────── 32 bit ───────────────────────────►
+.. image:: _static/pse-4mb-address-split.png
+   :align: center
+   :width: 60%
 
 Burada artık tek kademeli bir dönüştürmenin olduğuna dikkat ediniz. Bu durumda işlemci yüksek anlamlı 10 bitten
 sayfa dizininin indeksini elde edip sayfa dizininin o indeksine başvurarak 4 MB'lik sayfanın yerini tespit
@@ -868,17 +845,9 @@ desteklemektedir.
 sanal adres yine üç kısma ayrılmaktadır. Ancak bu üç kısmın isimleri ve kullanılan terminoloji Intel işlemcilerinden
 farklıdır:
 
-.. code-block:: none
-
-   ┌──────────────────────┬─────────────┬────────────────────────┐
-   │   L1 Table Index     │  L2 Table   │      Page Offset       │
-   │                      │   Index     │                        │
-   ├──────────────────────┼─────────────┼────────────────────────┤
-   │ 31                20 │ 19       12 │ 11                   0 │
-   ├──────────────────────┼─────────────┼────────────────────────┤
-   │        12 bit        │    8 bit    │         12 bit         │
-   └──────────────────────┴─────────────┴────────────────────────┘
-   ◄────────────────────────── 32 bit ───────────────────────────►
+.. image:: _static/l1-l2-page-table-address-split.png
+   :align: center
+   :width: 60%
 
 Buradaki sanal adresin parçalarının uzunluklarına dikkat ediniz. L1 tablosunun (Intel'deki sayfa dizini) indeksi
 12 bittir. Yani bu tablo fiziksel bellekte 2¹² × 2² = 16K yer kaplamaktadır. Ancak L2 tabloları (yani
@@ -915,17 +884,9 @@ tablo biçiminde veriyoruz:
 16 exabyte gibi çok yüksek bir değerdedir. Örneğin 64 bitlik Intel işlemcilerindeki sanal adres aşağıdaki gibi 4
 kısma ayrılmaktadır:
 
-.. code-block:: none
-
-   ┌───────────────┬────────────┬────────────┬────────────┬────────────┬───────────┐
-   │   Sign Ext.   │ PGD Index  │ PUD Index  │ PMD Index  │ PTE Index  │  Offset   │
-   │ (kullanılmaz) │            │            │            │            │           │
-   ├───────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
-   │ 63         48 │ 47      39 │ 38      30 │ 29      21 │ 20      12 │ 11      0 │
-   ├───────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
-   │    16 bit     │   9 bit    │   9 bit    │   9 bit    │   9 bit    │  12 bit   │
-   └───────────────┴────────────┴────────────┴────────────┴────────────┴───────────┘
-   ◄────────────────────────────────────  64 bit ──────────────────────────────────►
+.. image:: _static/64bit-address-split-pgd-pte.png
+   :align: center
+   :width: 70%
 
 64 bit Intel işlemcileri aslında 48 bit ya da 57 bitlik sanal adresler kullanmaktadır. Bu işlemcilerin adresleyebildiği teorik
 fiziksel bellek uzunluğu ise 2⁶⁴ (16 exabyte) değil daha azdır. Modellere göre 64 bit Intel işlemcilerinin
@@ -953,53 +914,9 @@ Fiziksel RAM'in sanal adres alanından fazla olması bir sorun yaratmamaktadır.
 64 bit Intel işlemcilerinde sanal adresin dört parçaya ayrıldığına dikkat ediniz. Beşinci parça zaten
 kullanılmamaktadır, her zaman 0'dır. Sanal adres dönüştürmesi yapılırken dört farklı tabloya başvurulmaktadır:
 
-.. code-block:: none
-
-                             48-bit Sanal Adres
-   ┌─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐
-   │  PGD Index  │  PUD Index  │  PMD Index  │  PTE Index  │   Offset    │
-   │    9 bit    │    9 bit    │    9 bit    │    9 bit    │   12 bit    │
-   └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘
-          │             │             │             │             │
-          ▼             │             │             │             │
-   CR3 ──► PGD          │             │             │             │
-          │             │             │             │             │
-   ┌──────┴──────┐      │             │             │             │
-   │   PGD[i]    ├──────┘             │             │             │
-   │ (512 giriş) │                    │             │             │
-   └─────────────┘                    │             │             │
-          │                           │             │             │
-          ▼                           │             │             │
-         PUD                          │             │             │
-          │                           │             │             │
-   ┌──────┴──────┐                    │             │             │
-   │   PUD[j]    ├────────────────────┘             │             │
-   │ (512 giriş) │                                  │             │
-   └─────────────┘                                  │             │
-          │                                         │             │
-          ▼                                         │             │
-         PMD                                        │             │
-          │                                         │             │
-   ┌──────┴──────┐                                  │             │
-   │   PMD[k]    ├──────────────────────────────────┘             │
-   │             │                                                │
-   │ (512 giriş) │                                                │
-   └─────────────┘                                                │
-          │                                                       │
-          ▼                                                       │
-         PTE                                                      │
-          │                                                       │
-   ┌──────┴──────┐                                                │
-   │   PTE[l]    │                                                │
-   │ (512 giriş) │                                                │
-   └──────┬──────┘                                                │
-          │  Fiziksel Sayfa Taban Adresi [51:12]                  │
-          ▼                                                       │
-   ┌──────────────────────────────────┬───────────────────────────┴──┐
-   │     Fiziksel Sayfa (4 KB)        │      Offset (12 bit)         │
-   └──────────────────────────────────┴────────────────┬─────────────┘
-                                                       ▼
-                                             Fiziksel Adres (52 bit)
+.. image:: _static/four-level-page-table-walk.png
+   :align: center
+   :width: 70%
 
 Burada toplamda dört kademe tablo vardır:
 
@@ -1010,24 +927,9 @@ Burada toplamda dört kademe tablo vardır:
 
 Dönüştürme yukarıdaki şekilden de gördüğünüz gibi şöyle yapılmaktadır:
 
-.. code-block:: none
-
-   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-   │     PGD     │     │     PUD     │     │     PMD     │     │     PTE     │
-   ├─────────────┤     ├─────────────┤     ├─────────────┤     ├─────────────┤
-   │   entry 0   │     │   entry 0   │     │   entry 0   │     │   entry 0   │
-   │   entry 1   │     │   entry 1   │     │   entry 1   │     │   entry 1   │
-   │     ...     ├────►│     ...     ├────►│     ...     ├────►│     ...     ├──► Fiziksel Sayfa
-   │   entry i   │     │   entry j   │     │   entry k   │     │   entry l   │    Taban Adresi
-   │     ...     │     │     ...     │     │     ...     │     │     ...     │         │
-   │   entry 511 │     │   entry 511 │     │   entry 511 │     │   entry 511 │         │
-   └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘         │
-          ▲                                                                            ▼
-         CR3                                                                  ┌─────────────────┐
-                                                                              │  Fiziksel Adres │
-                                                                              │  Sayfa Tabanı   │
-                                                                              │  + Offset       │
-                                                                              └─────────────────┘
+.. image:: _static/four-level-page-table-chain.png
+   :align: center
+   :width: 75%
 
 Intel'de 48 bit sanal adres kullanımında sanal adresin yüksek anlamlı 16 biti 47'inci bitle aynı olmak zorundadır. 
 Benzer biçimde 57 bit sanal adres kullanımında ise sanal adresin yüksek anlamlı biti 56'ıncı bitle aynı olmak zorundadır.
@@ -1035,28 +937,20 @@ Bu kurala uymayan adres erişimlerinde işlemci exception oluşturmaktadır.
 
 4K sayfalar kullanan 64 bit ARM işlemcilerinde de sanal adres aşağıdaki gibi dört parçaya ayrılmaktadır:
 
-.. code-block:: none
-
-   ┌────────────┬────────────┬────────────┬────────────┬────────────┬───────────┐
-   │ Sign Ext.  │  L0 Index  │  L1 Index  │  L2 Index  │  L3 Index  │  Offset   │
-   │            │   (PGD)    │   (PUD)    │   (PMD)    │   (PTE)    │           │
-   ├────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
-   │ 63      48 │ 47      39 │ 38      30 │ 29      21 │ 20      12 │ 11      0 │
-   ├────────────┼────────────┼────────────┼────────────┼────────────┼───────────┤
-   │   16 bit   │   9 bit    │   9 bit    │   9 bit    │   9 bit    │  12 bit   │
-   └────────────┴────────────┴────────────┴────────────┴────────────┴───────────┘
-   ◄───────────────────────────────── 64 bit ───────────────────────────────────►
+.. image:: _static/64bit-virtual-address-split.png
+   :align: center
+   :width: 60%
 
 64 bit ARM işlemcilerinde de sanal adres alanı Intel'de olduğu gibi 64 bit değil 48 bittir. Adres dönüştürme 
 mekanizmaları biraz farklı olsa da 64 bit ARM işlemcilerinde de sanal adresin yüksek anlamlı 16 biti 47'inci bit 
 ile aynı olmazsa dönüştürme sırasında exception (translation fault) oluşmaktadır. 64 bit Intel işlemcileri ile 64 
 bit ARM işlemcilerinin sayfalama aşamalarını aşağıdaki tabloyla karşılaştırıyoruz:
 
-.. list-table:: x86-64 ve AArch64 Sayfa Tablosu Organizasyonu Karşılaştırması
+.. list-table:: 
    :header-rows: 1
    :widths: 36 32 32
 
-   * - Kriter
+   * - Ölçüt
      - x86-64 (LA48)
      - AArch64 (48-bit)
    * - Kullanılan bit
@@ -1139,7 +1033,7 @@ Buradan da görüldüğü gibi 32 bit Linux sistemlerinde kullanıcı alanı (ya
 alan) 3 GB, çekirdek alanı da 1 GB'dir. Her proseste çekirdek alanı o prosesin sanal belleğinin aynı yerine
 (``0xC0000000``'dan itibaren) haritalanmıştır. Sayfa tablolarının çok kademeli olması bu haritalama işlemini
 kolaylaştırmaktadır. Buradaki alanların içeriklerini biraz daha ayrıntılandırabiliriz (şeklin uzamaması için içeriklerini
-İngilizce yazdıyoruz):
+İngilizce yazıyoruz):
 
 .. image:: _static/process-virtual-address-space-32bit.png
    :align: center
@@ -1157,58 +1051,11 @@ olduğunu anımsayınız. 64 bit Linux sistemlerinde kullanıcı alanı 128 TB v
 bu büyüklük oldukça yeterlidir. Bellekte 128 TB yer kaplayabilecek programlar yok denilecek kadar azdır. Kullanıcı
 alanının sanal bellek alanının düşük adresinde, çekirdek alanının da yüksekte bulunduğuna dikkat ediniz. Yine her
 proseste çekirdek alanı aynı yere haritalanmıştır. Buradaki şekli biraz daha ayrıntılı biçimde aşağıdaki gibi de
-çizebiliriz:
+çizebiliriz (şeklin uzamaması için içeriklerini İngilizce yazıyoruz):
 
-.. code-block:: none
-
-   0x0000000000000000  ┌─────────────────────────────────────┐
-                       │           NULL guard                │
-                       │     (unmapped, trap on access)      │
-   0x0000000000400000  ├─────────────────────────────────────┤
-                       │         Text segment                │
-                       │   (read-only, executable, .text)    │
-                       ├─────────────────────────────────────┤
-                       │         Data segment                │
-                       │   (initialized globals & statics)   │
-                       ├─────────────────────────────────────┤
-                       │           BSS segment               │
-                       │  (zero-init globals & statics)      │
-                       ├─────────────────────────────────────┤  ◄── program break
-                       │              Heap                   │
-                       │      (grows downward  ▼)            │
-                       │                                     │
-                       │    · · · free virtual space · · ·   │  U
-                       │                                     │  S
-                       │       mmap / shared libs            │  E
-                       │  (libc.so, ld.so, anon mmap)        │  R
-                       │                                     │
-                       │    · · · free virtual space · · ·   │
-                       │                                     │
-                       │             Stack                   │
-                       │      (grows upward  ▲)              │
-                       │                                     │
-   0x00007FFFFFFFFFFF  │    (argv, envp, local vars)         │
-                       ├═════════════════════════════════════╡
-                       ║  · · · non-canonical hole · · ·     ║
-                       ║   (invalid, hardware rejects all    ║
-                       ║    refs into this range)            ║
-                       ╠═════════════════════════════════════╣
-                       ║   ──── Kernel / User boundary ────  ║
-   0xFFFF800000000000  ╠═════════════════════════════════════╣
-                       ║      Physical memory map            ║
-                       ║   (1:1 lowmem, direct-map)          ║ K
-                       ╠─────────────────────────────────────╣ E
-                       ║    Kernel stacks (16 KB/thread)     ║ R
-                       ╠─────────────────────────────────────╣ N
-                       ║   Page tables (PML4/PUD/PMD/PTE)    ║ E
-                       ╠─────────────────────────────────────╣ L
-                       ║    Modules & vmalloc area           ║
-                       ║  (insmod, vmalloc(), ioremap())     ║
-                       ╠─────────────────────────────────────╣
-                       ║      Kernel code & data             ║
-                       ║  (vmlinux image, BSS, init data)    ║
-   0xFFFFFFFFFFFFFFFF  ╚═════════════════════════════════════╝
-
+.. image:: _static/process-virtual-address-space-64bit.png
+   :align: center
+   :width: 70%
 
 NUMA Düğümlerinin Çekirdek Temsili
 ==================================
@@ -2166,7 +2013,7 @@ betimleyebiliriz:
 
 .. image:: _static/pfn-range-sections.png
    :align: center
-   :width: 60%
+   :width: 50%
 
 Buradaki *PFN*, *"Page Frame Number"* sözcüklerinden kısaltılmıştır.
 
@@ -2237,33 +2084,9 @@ Bu durumda çekirdek fiziksel sayfa numarası verildiğinde ilgili ``page`` nesn
 
 Bu işlemi şekilsel olarak da aşağıdaki gibi ifade edebiliriz:
 
-.. code-block:: none
-
-   Adım 1: section_nr = pfn >> PFN_SECTION_SHIFT
-           ┌─────────────────────────────────────────────────┐
-           │  PFN'nin üst bitlerini al → bölüm numarası      │
-           └─────────────────────────────────────────────────┘
-
-   Adım 2: sp = __nr_to_section(section_nr)
-           ┌─────────────────────────────────────────────────┐
-           │  mem_sections[] dizisine indeksle               │
-           │  → struct mem_section adresini al               │
-           └─────────────────────────────────────────────────┘
-
-   Adım 3: page_base = sp->section_mem_map  (flag bitleri maskelenir)
-           ┌─────────────────────────────────────────────────┐
-           │ bölüme ilişkin struct page dizisinin başı       │
-           └─────────────────────────────────────────────────┘
-
-   Adım 4: within = pfn & ~PAGE_SECTION_MASK
-           ┌─────────────────────────────────────────────────┐
-           │  PFN'nin alt bitleri → bölüm içi offset         │
-           └─────────────────────────────────────────────────┘
-
-   Adım 5: return page_base + within
-           ┌─────────────────────────────────────────────────┐
-           │  diziye offset ekle → struct page nesnesi       │
-           └─────────────────────────────────────────────────┘
+.. image:: _static/pfn-to-page-steps.png
+   :align: center
+   :width: 50%
 
 Örnek bir erişim görseli de şöyle olabilir:
 
@@ -2276,7 +2099,7 @@ Bu işlemi şekilsel olarak da aşağıdaki gibi ifade edebiliriz:
 
 Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edileceğini şöyle özetleyebiliriz:
 
-.. list-table:: Tercih Edilme Durumları
+.. list-table:: 
    :header-rows: 1
    :widths: 25 75
 
@@ -2293,7 +2116,7 @@ Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edil
 
 Üç konfigürasyon parametresini erişim bakımından da şöyle karşılaştırabiliriz:
 
-.. list-table:: Erişim Karşılaştırması
+.. list-table:: 
    :header-rows: 1
    :widths: 20 40
 
@@ -2306,7 +2129,6 @@ Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edil
        fiziksel sayfa yok
    * - ``CONFIG_SPARSEMEM`` (VMEMMAP'siz)
      - ``mem_sections[pfn >> SHIFT].section_mem_map + pfn`` 
-
 
 page Nesneleri ile İlgili Erişim Makroları ve Fonksiyonları
 -----------------------------------------------------------
@@ -2427,8 +2249,7 @@ kademeliymiş gibi gösteriyoruz):
 
 .. image:: _static/user-kernel-address-space.png
    :align: center
-   :width: 40%
-
+   :width: 35%
 
 64 bit sistemlerde de sayfa tablosu şöyleydi:
 

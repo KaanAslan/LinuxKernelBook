@@ -2898,7 +2898,7 @@ haline getirilmiştir.) Thread çalışma kuyruğundan ``schedule`` fonksiyonu t
 durum 0'dan farklı ise (0 değeri ``TASK_RUNNING`` anlamına gelmektedir) thread çalışma kuyruğundan
 çıkartılmaktadır.
 
-``wake_up_process`` Fonksiyonu
+wake_up_process Fonksiyonu
 -------------------------------
 
 Peki thread yukarıdaki gibi çalışma kuyruğundan çıkartıldığında ancak herhangi bir bekleme kuyruğuna da
