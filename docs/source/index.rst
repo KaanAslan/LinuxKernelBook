@@ -52,6 +52,7 @@ ilişkin temel bilgilere ve becerilere sahip olduğu varsayılmaktadır.
    kernelsync
    waitqueues
    memorymanagement1
+   memorymanagement2
    bibliography
   
 
