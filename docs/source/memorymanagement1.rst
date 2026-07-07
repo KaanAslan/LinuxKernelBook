@@ -2461,3 +2461,134 @@ Aynı karar ağacı güncel çekirdekler için şöyle oluşturulabilir:
             bağlamdan çağrılabilir; LIFO sırayla
             kunmap_local(), task başına en çok 16 iç içe)
 
+Aşağıdaki tabloda bu üç fonksiyonu karşılaştırıyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 32 23 23 22
+
+   * - Özellik
+     - ``kmap``
+     - ``kmap_atomic``
+     - ``kmap_local_page``
+   * - Bölge
+     - pkmap
+     - fixmap
+     - fixmap
+   * - Slot takibi
+     - global dizi
+     - CPU başına
+     - thread başına stack
+   * - Bloke oluşur mu?
+     - Evet
+     - Hayır
+     - Hayır
+   * - Preemption disable
+     - Hayır
+     - Evet
+     - Hayır
+   * - Pagefault disable
+     - Hayır
+     - Evet
+     - Hayır
+   * - Migration disable
+     - Hayır
+     - Evet (örtük)
+     - Evet
+   * - IRQ içinde güvenli
+     - Hayır
+     - Evet
+     - Evet
+   * - Bağlamsal geçiş güvenli
+     - Evet
+     - Hayır
+     - Evet
+   * - Adres paylaşılabilir
+     - Evet
+     - Hayır
+     - Hayır
+   * - Max eşzamanlı slot
+     - 512 (global)
+     - CPU başına 16
+     - görev başına 16
+   * - LOWMEM sayfası için
+     - ``page_address``
+     - ``page_address``
+     - ``page_address``
+   * - Önerilen bağlam
+     - Yalnız adres paylaşımı için
+     - Önerilmiyor (*deprecated*)
+     - Her bağlam (varsayılan)
+   * - Çekirdek versiyonu
+     - 2.x+
+     - 2.x+ (*depr.*)
+     - 5.11+
+
+64 bit sistemlerde ``HIGHMEM`` diye bir bölgenin (*zone*) olmadığına bir kez daha dikkatinizi çekmek istiyoruz.
+Bu nedenle 64 bit sistemlerde yukarıdaki fonksiyonlar ``CONFIG_HIGHMEM`` konfigürasyon parametresi yoluyla
+sayfanın doğrudan sanal bellek adresini döndürecek biçime getirilmektedir. Örneğin 64 bit sistemlerde
+``kmap_local_page`` fonksiyonu şu hale gelmektedir:
+
+.. code-block:: c
+
+   static inline void *kmap_local_page(const struct page *page)
+   {
+       return page_address(page);
+   }
+
+Bir kez daha vurgulamak istiyoruz: Burada açıkladığımız HIGHMEM sorunu ve geçici haritalama yalnızca 32 bit Linux
+sistemlerinde söz konusudur. 64 bit Linux sistemlerinde zaten sayfa tablosunun çekirdek alanındaki kısmı tüm
+fiziksel belleği haritalayabilmektedir. Dolayısıyla ``ZONE_HIGHMEM`` de yalnızca 32 bit sistemlerde bulunan bir
+bölgedir. 64 bit Linux sistemlerinde proseslerin ve çekirdeğin sanal bellek alanı 128 TB olsa da bu sistemler
+şimdilik ancak 64 TB'lik fiziksel belleği kullanabilmektedir. 128 TB'lik çekirdek alanının sayfa tablosunda
+64 TB'lik fiziksel bellek zaten doğrudan haritalanabilmektedir:
+
+.. image:: /_static/32bit-linux-virtual-memory.png
+   :alt: 64 bit Linux sisteminde sanal adres alanının kullanıcı, non-canonical delik ve çekirdek bölümleri
+   :align: center
+   :width: 70%
+
+Doğrudan Haritalanan Fiziksel Belleğe Erişim Makroları ve Fonksiyonları
+-----------------------------------------------------------------------
+
+Linux çekirdeklerinde doğrudan haritalanan bölge için sanal adres ve fiziksel adres dönüştürmelerini
+yapan ``__pa`` ve ``__va`` makroları bulundurulmuştur. Bu makrolar şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define __pa(x)   ((unsigned long)(x) - PAGE_OFFSET)
+    #define __va(x)   ((void *)((unsigned long)(x) + PAGE_OFFSET))
+
+Makroların yerleri mimariye göre değişebilmektedir.
+
+Buradaki ``PAGE_OFFSET`` değeri 32 bit sistemlerle 64 bit sistemlerde farklıdır. Ayrıca 64 bit Intel,
+ARM ve RISC-V mimarisinde de küçük bir farklılık bulunmaktadır:
+
+.. image:: _static/page-offset-table.png
+   :align: center
+   :width: 70%
+
+Bu makroların fonksiyon biçimleri de oluşturulmuştur:
+
+.. code-block:: c
+
+    static inline phys_addr_t virt_to_phys(volatile void *address)
+    {
+        return __pa(address);
+    }
+
+    static inline void *phys_to_virt(phys_addr_t address)
+    {
+        return __va(address);
+    }
+
+``__pa`` ve ``__va`` makroları ve fonksiyonlar platforma bağlı dizinlerde bulunmaktadır (örneğin
+``arch/x86/asm/io.h`` gibi).
+
+.. image:: _static/address-conversion-table.png
+   :align: center
+   :width: 70%
+
+Bu tabloda ``page`` yapısı ile dönüştürme yapan fonksiyonlar da bulunmaktadır. Bu fonksiyonlardan
+izleyen konularda da söz edeceğiz.
+

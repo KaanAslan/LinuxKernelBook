@@ -2,9 +2,6 @@
 Kaynaklar
 =========
 
-Kaynak Listesi
-==============
-
 Linux çekirdeği konusunda yararlanabileceğiniz ek kaynakların listesini aşağıda veriyoruz. Bunların arasında en ayrıntılı
 olanı *Understandibg the Linux Kernel* kitabıdır. Bu kitabın üç baskısı yapılmıştır. Birincisi çekirdeğin 2.2'li versiyonlarına, 
 ikincisi 2.4 versiyonlarına ve üçüncüsü de 2.6'lı versiyonlarına ilişkindir. Ancak 2.6'dan sonra çekirdekte çeşitli alt sistemlerde
