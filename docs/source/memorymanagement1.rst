@@ -1,6 +1,6 @@
-===========================
-Bellek Yönetimi - I. Bölüm
-===========================
+====================================================
+Bellek Yönetimi - I. Bölüm :raw-html:`<br>` Temeller
+====================================================
 
 Bu bölümde Linux çekirdeklerinin *bellek yönetimi (memory management)* alt sistemini inceleyeceğiz.
 Bellek yönetimi modern işletim sistemlerinde oldukça karmaşık ve ayrıntılı bir konudur. Dolayısıyla

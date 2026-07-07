@@ -12,14 +12,15 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
    Kitaptaki içerik belli bir kaynak referans alınarak oluşturulmamıştır ve içeriğin oluşturulmasında yapay zeka araçlarından 
    faydalanılmamıştır. Bu bakımdan içerik tamamen özgündür. 
 
-   Yazarlar konu ile ilgili literatürü uzun bir zaman dilimi içerisinde büyük ölçüde gözden geçirmiştir. Her ne kadar 
+   Yazarlar konu ile ilgili literatürü uzun bir zaman dilimi içerisinde tümden gözden geçirmiştir. Her ne kadar 
    güncelliğini yitiriyor olsa da ***Understanding the Linux Kernel 3. Edition (D. P. Bovet ve M. Cesati)** halen 
    literatürün en önemli yabancı kaynağı durumundadır. Linux çekirdeği ile ilgili önemli tüm kaynaklar *Kaynaklar* bölümünde 
    listelenmiştir. 
    
-   Kitabımızın diğer yabancı kaynaklardan farkları şunlardır:
+   Kitabımızı diğer yabancı kaynaklardan ayıran en önemli farklılıkları şunlardır:
 
    - Daha kapsamlı ve ayrıntılı olması
+   - Daha pedagojik olması
    - Güncel çekirdekleri de dikkate alması
    - Örnek kodlarla desteklenmiş olması
 
@@ -33,7 +34,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
 .. rubric:: Ön Gereksinimler
 
 Okuyucunun C programlama diline hâkim olduğu ve UNIX/Linux sistemlerinin *kullanıcı modu (user mode)* programlamasına 
-ilişkin temel bilgilere ve becerilere sahip olduğı varsayılmaktadır. 
+ilişkin temel bilgilere ve becerilere sahip olduğu varsayılmaktadır. 
 
 ----
 
