@@ -2337,3 +2337,127 @@ sayfa tablosunun *pkmap* ya da *fixmap* alanını geçici olarak değiştirmekte
    :align: center
    :width: 60%
 
+``kmap`` fonksiyonunun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    void *kmap(struct page *page);
+
+Fonksiyon fiziksel sayfayı temsil eden bir ``page`` nesnesini parametre olarak alır. Eğer bu ``page``
+nesnesi ``HIGHMEM`` bölgesine ilişkinse çekirdeğin sayfa tablosunun kmap alanında giriş oluşturarak o
+fiziksel sayfaya erişmekte kullanılan sanal adresi geri döndürür. Eğer fonksiyona verilen ``page``
+nesnesi ``HIGHMEM`` bölgesine ilişkin değilse fonksiyon doğrudan o ``page`` nesnesine ilişkin sanal adresi
+geri döndürmektedir. Fonksiyon güncel çekirdeklerde ```include/linux/highmem-internals.h`` dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static inline void *kmap(struct page *page)
+    {
+        void *addr;
+
+        might_sleep();
+        if (!PageHighMem(page))
+            addr = page_address(page);
+        else
+            addr = kmap_high(page);
+        kmap_flush_tlb((unsigned long)addr);
+        return addr;
+    }
+
+Görüldüğü gibi önce sayfanın ``HIGHMEM`` bölgesinde olup olmadığına bakılmış, sayfa ``HIGHMEM`` bölgesinde
+değilse onun sanal adresi doğrudan verilmiş, sayfa ``HIGHMEM`` bölgesindeyse ``kmap_high`` fonksiyonuyla
+sanal adres oluşturulmuştur.
+
+``kmap`` işlemi sırasında bloke oluşabilir. Ancak blokesiz eşleştirme için çekirdek içerisinde ayrıca
+``kmap_atomic`` ya da bunun daha modern biçimi olan ``kmap_local_page`` fonksiyonu bulundurulmuştur.
+Bu fonksiyonlar tahsisatı *fixmap* alanından yapmaktadır. 
+
+.. code-block:: c
+
+    void *kmap_atomic(const struct page *page);
+    void *kmap_local_page(struct page *page);
+
+Tabii ``kmap``, ``kmağ_atomic``ve ``kmap_local_page`` fonksiyonlarını kullanmak için önceden bir ``page`` 
+nesnesinin bir bölge içerisinde tahsis edilmiş olması gerekir. Biz bu tahsisatın nasıl yapıldığını 
+*ikiz blok tahsisat sistemi (buddy allocator)* kısmında açıklayacağız.
+
+Çekirdeğin 6'lı versiyonlarında ``kmap`` ve ``kmap_atomic`` fonksiyonları *deprecated* yapılmıştır ve
+artık ``kmap_local_page`` fonksiyonunun kullanılması tavsiye edilmektedir. ``kmap`` fonksiyonu eskiden
+tasarımdan dolayı (performansı artırmak için değil) bloke olabiliyordu. Yeni tasarım bu zorunluluğu ortadan
+kaldırmıştır. ``kmap_local_page`` artık hiçbir zaman bloke olmamaktadır. ``kmap()`` "kıt kaynağı adil
+paylaştır, gerekirse beklet" biçiminde tasarlanmıştı. Oysa ``kmap_local_page()`` "kaynağı kıt olmaktan
+çıkar, bekleme diye bir kavram kalmasın" biçiminde tasarlanmıştır. Bu tasarım hem daha hızlıdır hem her
+bağlamdan çağrılabilir.
+
+Bu fonksiyonlarla oluşturulan geçici haritalama aşağıdaki fonksiyonlarla kaldırılabilmektedir:
+
+.. code-block:: c
+
+    void kunmap(const struct page *page);
+
+    #define kunmap_atomic(__addr)                           \
+    do {                                                    \
+        BUILD_BUG_ON(__same_type((__addr), struct page *)); \
+        __kunmap_atomic(__addr);                            \
+    } while (0)
+
+    void kunmap_local(void *addr);
+
+Bir ``page`` nesnesinin ``HIGHMEM`` alanına ilişkin olup olmadığı ``is_highmem_page`` fonksiyonuyla
+kontrol edilebilmektedir:
+
+.. code-block:: c
+
+    bool is_highmem_page(struct page *page);
+
+5.11 öncesi çekirdek versiyonarı için ``HIGHMEM`` bölgesine erişmekte kullanılan ``kmap``, ``kmap_atomic``
+ve ``kmap_local_page`` fonksiyonlarından hangisinin hangi durumda kullanılacağına ilişkin karar ağacını
+aşağıdaki gibi oluşturabiliriz:
+
+.. code-block:: text
+
+    HIGHMEM sayfasına erişmem gerekiyor
+            │
+            ▼
+    Interrupt / IRQ bağlamı içerisinde miyim?
+    ├── Evet ──► kmap_atomic() veya kmap_local_page()
+    │              │
+    │              ▼
+    │         Çok kısa bir erişim mi? (birkaç satır)
+    │         ├── Evet ──► kmap_atomic()
+    │         └── Hayır ─► kmap_local_page() (kernel 5.x+)
+    │
+    └── Hayır ─► Process bağlamı içerisinde miyim?
+                   │
+                   ▼
+              Uzun süreli erişim gerekli mi?
+              ├── Evet ──► kmap()  (proses uyuyabilir)
+              └── Hayır ─► kmap_local_page() tercih et
+
+Aynı karar ağacı güncel çekirdekler için şöyle oluşturulabilir:
+
+.. code-block:: text
+
+    HIGHMEM sayfasına erişmem gerekiyor
+            │
+            ▼
+    Eşlenen adres başka bir task'a/CPU'ya verilecek
+    ya da fonksiyon kapsamı dışında saklanacak mı?
+    │
+    ├── Evet ──► kmap()
+    │            (tek meşru kullanım alanı; process bağlamı
+    │             gerektirir, slot beklerken uyuyabilir)
+    │
+    └── Hayır ─► kmap_local_page()   ◄── varsayılan tercih
+                    │
+                    ▼
+            Eşleştirme sırasında page fault
+            olmaması mı gerekiyor?
+            ├── Evet ──► kmap_local_page() + pagefault_disable()
+            └── Hayır ─► olduğu gibi kullan
+                    │
+                    ▼
+            (IRQ / softirq / spinlock altı dahil her
+            bağlamdan çağrılabilir; LIFO sırayla
+            kunmap_local(), task başına en çok 16 iç içe)
+
