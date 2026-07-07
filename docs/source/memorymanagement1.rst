@@ -2257,3 +2257,83 @@ kademeliymiş gibi gösteriyoruz):
    :align: center
    :width: 50%
 
+Peki çekirdek (ya da aygıt sürücüler) belli bir fiziksel adrese erişmek isterse bunu nasıl yapabiliyor? Çünkü
+çekirdek kodları da yine aynı sayfa tablosunu kullanmaktadır. Yani çekirdek kodları da sayfa tablosu
+dönüştürmesiyle fiziksel belleğe erişmektedir. İşte Linux çekirdeğinde sayfa tablosunun çekirdek alanı fiziksel
+belleğin başından itibaren haritalanmıştır (map edilmiştir). Örneğin 32 bit bir sistemde sayfa tablosunda çekirdek
+alanının ilk sayfası 0 numaralı fiziksel sayfaya, ikinci sayfası 1 numaralı fiziksel sayfaya, üçüncü sayfası 2
+numaralı fiziksel sayfaya ve diğer sayfaları da bu biçimde fiziksel belleğin diğer sayfalarına referans
+etmektedir. Başka bir deyişle örneğin 32 bit Linux sistemlerinde biz çekirdek modunda ``0xC0000000`` sanal
+adresini kullandığımızda aslında fiziksel belleğin 0'ıncı adresine erişmiş oluruz. Bu durumda biz 32 bit bir
+sistemde çekirdek modunda fiziksel belleğin ``paddr`` adresine erişmek için ``0xC0000000 + paddr`` sanal adresini
+kullanırız. Ya da biz çekirdek modunda sanal ``vaddr`` adresinin fiziksel belleğin neresini belirttiğini
+``vaddr - 0xC0000000`` işlemiyle tespit edebiliriz. Çekirdek alanının başlangıcı çekirdek kodlarında
+``PAGE_OFFSET`` sembolik sabitiyle belirtilmektedir. 32 bit Linux sistemlerinde ``PAGE_OFFSET`` değeri tipik
+olarak ``0xC0000000`` biçimindedir. 32 bit Linux sistemlerinde sayfa tablosunun çekirdek kısmını şöyle
+düşünebilirsiniz:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Sanal Sayfa Numarası
+     - Fiziksel Sayfa Numarası
+   * - ...
+     - ...
+   * - ``C0000``
+     - ``00000``
+   * - ``C0001``
+     - ``00001``
+   * - ``C0002``
+     - ``00002``
+   * - ...
+     - ...
+
+32 Bit Sİstemlerde HIGHMEM Alanına Erişim
+-----------------------------------------
+    
+32 bit Linux sistemlerinde *doğrudan haritalama (direct mapping)* konusunda bir sorun vardır. Sayfa
+tablosunda çekirdek alanı için 1 GB yer kaldığına göre ancak bu yolla olsa olsa fiziksel belleğin ilk 1 GB'sine
+doğrudan erişilebilmektedir. Aslında durum tam böyle de değildir. 32 bit Linux çekirdeklerinde sayfa tablosunun
+çekirdek kısmının hepsi değil yalnızca ilk 896 MB'lik kısmı doğrudan haritalama için kullanılmaktadır. Çünkü
+32 bit Linux çekirdekleri geri kalan 128 MB'lik alanı başka yerlere erişmek için yani başka amaçlarla
+kullanmaktadır:
+
+.. image:: /_static/32bit-linux-kernel-direct-map.png
+   :alt: 32 bit Linux sisteminde kullanıcı ve çekirdek alanının doğrudan haritalama ile fiziksel belleğe erişimi
+   :align: center
+   :width: 70%
+
+32 bit Linux sistemlerinde doğrudan haritalamada sanal adres ile fiziksel adres dönüştürmesi şöyle yapılmaktadır:
+
+.. code-block:: none
+
+   VA = PA + PAGE_OFFSET
+   PA = VA − PAGE_OFFSET
+
+Şekilden de gördüğünüz gibi 896 MB'nin yukarısı başka amaçlarla kullanılmaktadır. 32 bit Linux sistemlerinde
+fiziksel bellekteki ilk 896 MB'nin yukarısına *HIGHMEM* denilmektedir. NUMA düğümleri içerisinde (UMA sistemleri
+tek NUMA düğümü varmış gibi ele alınıyordu) ``ZONE_HIGHMEM`` isimli bir bölgenin de var olduğunu anımsayınız.
+Bu bölge yalnızca 32 bit Linux sistemlerinde bulunmaktadır. İzleyen paragraflarda göreceğimiz gibi 64 bit Linux
+sistemlerinde fiziksel belleğin her yeri zaten doğrudan haritalanabilmektedir.
+
+Peki 32 bit Linux sistemlerinde çekirdek ya da aygıt sürücüler *HIGHMEM* fiziksel bellek alanına nasıl
+erişmektedir? İşte bu erişim ancak çekirdeğin sayfa tablosunun belli kısmını belli kısımlarını (buraya *pkmap alanı* 
+ve *fixmap alanı* denilmektedir) geçici biçimde değiştirmesiyle sağlanabilmektedir.
+
+.. image:: /_static/32bit-physmem-virtmem-map.png
+   :alt: 32 bit Linux sisteminde fiziksel RAM ile çekirdek sanal bellek alanının haritalanması
+   :align: center
+   :width: 80%
+
+kmap, kmap_atomic ve kmap_local_page Fonksiyonları
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Geçici eşleştirme için ``kmap``, ``kmap_atomic`` ve ``kmap_local_page`` fonksiyonları kullanılmaktadır. Bu fonksiyonlar 
+sayfa tablosunun *pkmap* ya da *fixmap* alanını geçici olarak değiştirmektedir. 
+
+.. image:: /_static/kernel_virtual_memory_layout.png
+   :alt: 32 bit Linux sisteminde fiziksel RAM ile çekirdek sanal bellek alanının haritalanması
+   :align: center
+   :width: 60%
+
