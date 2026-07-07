@@ -73,3 +73,8 @@ html_meta = {
         "proses yönetimi, çizelgeleme, bekleme kuyrukları"
     )
 }
+
+rst_prolog = """
+.. role:: raw-html(raw)
+   :format: html
+"""

@@ -72,3 +72,16 @@ table.docutils th {
         height: auto !important;
     }
 }
+
+.rst-content h1 {
+    text-align: center;
+}
+
+.rst-content h1 {
+    text-align: center;
+    font-size: 220%;
+}
+
+.wy-breadcrumbs {
+    display: none;
+}

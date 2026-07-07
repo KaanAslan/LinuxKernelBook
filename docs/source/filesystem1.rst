@@ -1,8 +1,8 @@
 .. _dosya-sistemi-1:
 
-=========================
-Dosya Sistemi - I. Bölüm
-=========================
+==================================================
+Dosya Sistemi - I. Bölüm :raw-html:`<br>` Temeller
+==================================================
 
 UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilmektedir. Bu bölümde dikkatimizi dosya sistemine 
 illişkin çekirdek veri yapıları üzerine yönelteceğiz. Dosya sistemi kitabımızda üç bölüm 

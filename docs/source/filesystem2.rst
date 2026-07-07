@@ -1,8 +1,8 @@
 .. _dosya-sistemi-2:
 
-=========================
-Dosya Sistemi - II. Bölüm
-=========================
+=======================================================================================
+Dosya Sistemi - II. Bölüm :raw-html:`<br>` simplefs Dosya Sisteminin Gerçekleştirilmesi
+=======================================================================================
 
 Bu bölümde Linux çekirdeğinin dosya sistemine ilişkin bazı ayrıntıları *simplefs* isimli bir dosya sistemini 
 gerçekleşitrerek açıklayacağız. *simplefs* dosya sistemi **Linux Kernel - İşletim Sistemlerinin Tasatımı ve Gerçekleştirilmesi**
