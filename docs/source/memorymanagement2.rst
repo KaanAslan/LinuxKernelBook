@@ -72,3 +72,13 @@ Başlangıç durumu şöyledir:
    :align: center
    :width: 60%
 
+2'inci düzeyde ve 3'üncü düzeyde boş sayfa bloğu olmadığı için 4'üncü düzeydeki boş sayfa bloklarının
+biri alınıp bölünür. Bölünen bloklar 8 sayfalık olacaktır. Bunlardan biri 3'üncü düzeydeki boş listeye
+eklenir, diğeri bölünmeye devam eder:
+
+.. image:: _static/buddy-split-step1.png
+   :align: center
+   :width: 70%
+   
+
+
