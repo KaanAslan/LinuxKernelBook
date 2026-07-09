@@ -368,7 +368,6 @@ bulunmaktadır. Data bloğun ilk bloğunda kök dizinin içeriğinin bulunduğun
 Bu alanların anlamları aşağıdaki tabloda özetlenmiştir:
 
 .. list-table:: *simplefs* Süper Blok Alanları
-   :widths: 22 10 68
    :header-rows: 1
 
    * - Alan
@@ -450,7 +449,6 @@ Linux'un uyguladığı bitsel organizasyon kullanılmaktadır:
    inode ``mode`` alanının bit organizasyonu
  
 .. list-table:: ``mode`` Alanı Bit Açıklamaları
-   :widths: 12 88
    :header-rows: 1
  
    * - Kısaltma
@@ -1923,7 +1921,7 @@ edilebilirdi:
    #define SIMPLEFS_DISK_INODE_SIZE            sizeof(struct simplefs_disk_inode)
    #define SIMPLEFS_DISK_INODE_PER_BLOCK       (SIMPLEFS_BLOCK_SIZE / SIMPLEFS_DISK_INODE_SIZE)
 
-   block_no     = SIMPLEFS_INODE_TABLE_LOCATION + ino / SIMPLEFS_INODES_PER_BLOCK;
+   block_no = SIMPLEFS_INODE_TABLE_LOCATION + ino / SIMPLEFS_INODES_PER_BLOCK;
    block_offset = (ino % SIMPLEFS_DISK_INODE_PER_BLOCK) * SIMPLEFS_DISK_INODE_SIZE;
 
 ``ino`` numaralı inode elemanının diskimizin hangi bloğunda ve hangi offset'inde olduğunu belirledikten sonra
@@ -3321,7 +3319,6 @@ belirten sembolik sabitler şunlardır:
 
 .. list-table::
    :header-rows: 1
-   :widths: 20 80
 
    * - DT Değeri
      - Anlamı
@@ -4038,7 +4035,6 @@ yazılmıştır. Aşağıda bitmap üzerinde işlemler yapan çekirdek fonksiyon
 
 .. list-table::
    :header-rows: 1
-   :widths: 35 65
 
    * - Fonksiyon Adı
      - Açıklama
@@ -4668,8 +4664,8 @@ fonksiyonunu yazalım. ``inode_operations`` nesnemiz şöyle olacaktır:
 
     static const struct inode_operations simplefs_dir_inode_ops = {
         .lookup = simplefs_lookup,
-        .mkdir  = simplefs_mkdir,
-        .rmdir  = simplefs_rmdir,
+        .mkdir = simplefs_mkdir,
+        .rmdir = simplefs_rmdir,
     };
 
 Bizim dizini silebilmemiz için kabaca şu işlemleri yapmamız gerekir:
@@ -8618,7 +8614,7 @@ seviyeli fonksiyonların bir listesini yapıp işlevlerini özetlemek istiyoruz.
         │ super_block │
         └──────┬──────┘
                │ sb_bread()
-               ↓
+               ▼
         ┌─────────────┐
         │ buffer_head │  ← Blok verisi bellekte
         └─────────────┘

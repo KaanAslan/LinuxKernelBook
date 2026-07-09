@@ -28,9 +28,8 @@ Intel 80386 ile birlikte sayfalama mekanizmasına sahip olmuştur. ARM işlemcil
 profilleri sayfalama mekanizmasına sahiptir. Diğer güçlü işlemcilerin hemen hepsinde sayfalama mekanizması
 bulunmaktadır. Aşağıda sayfalama mekanizmasına sahip önemli işlemciler bir tablo biçiminde verilmektedir:
 
-.. list-table:: Sayfalama Mekanizmasına Sahip Önemli İşlemciler
+.. list-table:: 
    :header-rows: 1
-   :widths: 18 35 47
 
    * - Mimari
      - Öne Çıkan İşlemciler
@@ -575,7 +574,6 @@ Buradaki alanların anlamları da şöyledir:
 
 .. list-table:: 
    :header-rows: 1
-   :widths: 20 80
 
    * - Alan
      - Açıklama
@@ -745,9 +743,8 @@ içerisindeki ``CR3`` yazmacı tarafından gösterilmektedir.
 Buradaki yüksek anlamlı 20 bit sayfa tablosunun fiziksel bellekteki adresini belirtmektedir. (Tabii sayfa tabloları
 4K olduğu için 20 bitin son 12 bitinin 0 olduğu kabul edilmektedir.) Diğer bitlerin anlamları şöyledir:
 
-.. list-table:: Sayfa Dizini Giriş Alanları
+.. list-table:: 
    :header-rows: 1
-   :widths: 12 20 68
 
    * - Bit(ler)
      - Alan
@@ -857,7 +854,7 @@ Intel'deki sayfa tabloları) burada 2⁸ × 2² = 1K yer kaplamaktadır. Sayfala
 Aşağıda 4K sayfa kullanan 32 bit Intel işlemcileri ile ARM işlemcilerinin organizasyon karşılaştırmasını bir
 tablo biçiminde veriyoruz:
 
-.. list-table:: 32-bit Intel ve ARM İşlemcilerinin Sayfa Tablosu Organizasyonu (4 KB Sayfa)
+.. list-table:: 
    :header-rows: 1
    :widths: 40 30 30
 
@@ -892,7 +889,7 @@ kısma ayrılmaktadır:
 fiziksel bellek uzunluğu ise 2⁶⁴ (16 exabyte) değil daha azdır. Modellere göre 64 bit Intel işlemcilerinin
 kullanabildiği fiziksel RAM aşağıdaki tabloda verilmiştir:
 
-.. list-table:: 64-bit Intel İşlemcilerinde Sanal ve Fiziksel Adres Genişlikleri
+.. list-table:: 
    :header-rows: 1
    :widths: 35 32 33
 
@@ -1795,9 +1792,8 @@ fiziksel belleğin aralarında böyle boşlukların bulunduğu durum çekirdekte
 konfigürasyon parametreleriyle belirtilmektedir. Örneğin Intel 32 bit Intel tabanlı masaüstü bilgisayarlarındaki fiziksel 
 bellek delikleri aşağıdaki gibidir:
 
-.. list-table:: Intel Tabanlı PC Fiziksel Adres Haritası
+.. list-table:: 
    :header-rows: 1
-   :widths: 14 14 11 20 25
 
    * - Başlangıç Adresi
      - Bitiş Adresi
@@ -1885,9 +1881,8 @@ mimarisinde fiziksel RAM en fazla 2 GB olabilmektedir ve deliksizdir. Bu mimari 
 konfigüre edilmiştir. Raspberry Pi 5 ve ARM tabanlı Mac bilgisayar mimarileri ise ``CONFIG_SPARSEMEM_VMEMMAP``
 biçiminde konfigüre edilmektedir. Aşağıda üç mimariyi bir tablo eşliğinde karşılaştırıyoruz:
 
-.. list-table:: Farklı Mimarilerde Linux Bellek Modeli Karşılaştırması
+.. list-table:: 
    :header-rows: 1
-   :widths: 24 24 24 24
 
    * - Özellik
      - Intel Masaüstü (x86-64)
@@ -2180,14 +2175,14 @@ tanımlanmıştır:
 
 .. code-block:: c
 
-   #define page_to_pfn __page_to_pfn
+   #define page_to_pfn          __page_to_pfn
    #define __page_to_pfn(page)  ((unsigned long)((page) - mem_map) + ARCH_PFN_OFFSET)
 
 ``CONFIG_SPARSEMEM_VMEMMAP`` durumunda ise şöyle tanımlanmıştır:
 
 .. code-block:: c
 
-   #define page_to_pfn __page_to_pfn
+   #define page_to_pfn          __page_to_pfn
    #define __page_to_pfn(page)  ((unsigned long)((page) - vmemmap))
 
 ``CONFIG_SPARSEMEM`` durumunda ise şöyle tanımlanmıştır:
@@ -2206,13 +2201,13 @@ olarak şöyle yazılmıştır:
 
 .. code-block:: c
 
-   #define page_to_virt(x)  __va(PFN_PHYS(page_to_pfn(x)))
+   #define page_to_virt(x)    __va(PFN_PHYS(page_to_pfn(x)))
 
 Buradaki ``PFN_PHYS`` makrosu aslında değeri sayfa büyüklüğü ile çarpmaktadır:
 
 .. code-block:: c
 
-   #define PFN_PHYS(x)  ((phys_addr_t)(x) << PAGE_SHIFT)
+   #define PFN_PHYS(x)    ((phys_addr_t)(x) << PAGE_SHIFT)
 
 ``virt_to_page`` makrosu da ters işlem yapmaktadır. Yani sanal adresi verilen sayfanın ``page`` nesne adresini
 bize vermektedir. Makro tipik olarak şöyle yazılmıştır:

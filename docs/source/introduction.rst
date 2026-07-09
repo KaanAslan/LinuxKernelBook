@@ -590,9 +590,9 @@ değiştirilmiştir. 2011 yılında 3.0, 2015 yılında 4.0, 2019 yılında 5.0,
 Linux çekirdeklerinin versiyonları ve bu versiyonlarda eklenen önemli özellikler aşağıdaki
 tabloda verilmiştir.
 
-.. list-table:: Linux Çekirdeği Sürüm Geçmişi
+.. list-table::
    :header-rows: 1
-   :widths: 10 18 72
+   :width: 60%
 
    * - Sürüm
      - Tarih

@@ -892,11 +892,11 @@ kodu da hazırlanmıştır.
    static dev_t g_dev;
    static struct cdev g_cdev;
    static struct file_operations g_fops = {
-       .owner          = THIS_MODULE,
-       .open           = test_driver_open,
-       .read           = test_driver_read,
-       .write          = test_driver_write,
-       .release        = test_driver_release,
+       .owner = THIS_MODULE,
+       .open = test_driver_open,
+       .read = test_driver_read,
+       .write = test_driver_write,
+       .release = test_driver_release,
        .unlocked_ioctl = test_driver_ioctl
    };
 
@@ -2562,9 +2562,8 @@ Hash tablosu ile XArray/Radix ağacı arasındaki avantaj ve dezavantajları kar
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 35 35
 
-   * - Kriter
+   * - Ölçüt
      - Hash Tablosu
      - XArray / Radix Ağacı
    * - **Arama karmaşıklığı**

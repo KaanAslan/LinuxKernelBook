@@ -105,3 +105,358 @@ yine adım adım gösterelim. Free işlemi öncesindeki durum şöyledir:
 o düzeyde var mı diye bakar. Eğer varsa onları birleştirip bir yukarıdaki düzeye eklemeye çalışır. Bizim örneğimizde
 onun ikizi 2'inci düzeyde bulunmaktadır:
 
+.. image:: _static/buddy-coalesce.png
+   :align: center
+   :width: 70%
+
+Birleştirme sonucunda şu durum oluşacaktır:
+
+.. image:: _static/buddy-coalesce-lv3.png
+   :align: center
+   :width: 70%
+
+İşte 3'üncü düzeyde de birleştirilmiş bloğun ikizi bulunduğu için o ikiz blok da birleştirilip üst boş blok listesine
+(4'üncü düzeydeki boş blok listesine) yerleştirilecektir:
+
+.. image:: _static/buddy-final-merge.png
+   :align: center
+   :width: 70%
+
+Görüldüğü gibi her şey ters sırada eski haline gelmiştir. 
+
+Linux çekirdeklerinde maksimum düzey ``include/linux/mmzone.h`` dosyasındaki ``MAX_ORDER`` sembolik
+sabitiyle belirtiliyordu. Ancak en son çekirdeklerde (>= 6.8) artık ``MAX_ORDER`` yerine aşağıdaki
+iki sembolik sabit kullanılmaya başlanmıştır:
+
+.. code-block:: c
+
+   #define MAX_PAGE_ORDER    10                       /* en yüksek düzey indeksi  */
+   #define NR_PAGE_ORDERS    (MAX_PAGE_ORDER + 1)     /* listelerin sayısı = 11   */
+
+``MAX_PAGE_ORDER`` maksimum düzeyin indeks numarasını, ``NR_PAGE_ORDERS`` ise bunların sayısını
+belirtmektedir. Linux çekirdeklerinde maksimum düzey 10'dur. (Yani toplam 11 tane düzey listesi
+bulunmaktadır.) 6.1 çekirdeği ve öncesinde ``MAX_ORDER`` toplam liste sayısını belirtirken, daha
+sonra en yüksek düzey indeksini belirtir hale getirilmiştir. Nihayet yukarıda da belirttiğimiz gibi
+6.8 ile birlikte bu sembolik sabitlerin isimleri değiştirilmiştir.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 78
+
+   * - Versiyon
+     - Durum
+   * - ≤ 6.1
+     - ``MAX_ORDER = 11``; maksimum düzey indeksi 10.
+   * - 6.2 – 6.7
+     - ``MAX_ORDER = 10``; anlam düzeltildi (artık indeks numarasını belirtiyor).
+   * - ≥ 6.8
+     - ``MAX_ORDER`` kaldırıldı → ``MAX_PAGE_ORDER = 10``, ``NR_PAGE_ORDERS = 11``.
+
+Linux çekirdeklerinde en yüksek düzey 10 olduğuna göre ve 2\ :sup:`10` = 1024 olduğuna göre, en
+yüksek düzeydeki sayfa blokları 1024 sayfadan oluşmaktadır. 1024 sayfa da 4 MB yer kaplamaktadır.
+
+Bellek Bölgeleri ve Göç Türleri
+-------------------------------
+
+Biz yukarıda ikiz blok tahsisat sisteminin temel algoritmasını açıkladık. Ancak Linux çekirdeğinde ikiz blok
+tahsisat sistemi bir tane değildir. Her NUMA düğümü bellek bölgelerinden (memory zones), her bellek bölgesi
+de göç türlerine (migration types) ilişkin ikiz blok tahsisat sistemlerinden (buddy allocators)
+oluşmaktadır. Yani bir bellek bölgesinde bile birden fazla ikiz blok tahsisat sistemi bulunmaktadır.
+
+.. figure:: _static/numa-buddy-node0.png
+   :alt: NUMA Düğümü 0 — Zone ve göç türü hiyerarşisi
+   :align: center
+   :width: 80%
+
+.. figure:: _static/numa-buddy-node1.png
+   :alt: NUMA Düğümü 1 — Zone ve göç türü hiyerarşisi
+   :align: center
+   :width: 80%
+
+Görüldüğü gibi NUMA düğümleri bellek bölgelerinden, bellek bölgeleri ise göç türlerine göre birden fazla
+ikiz blok tahsisat sisteminden oluşmaktadır.
+
+NUMA düğümleri içerisindeki her bölgenin *zone* isimli bir yapıyla temsil edildiğini belirtmiştik.
+İşte ``zone`` yapısının ``free_area`` elemanı o bölgedeki ikiz blok tahsisat sistemlerini
+tutmaktadır:
+
+.. code-block:: c
+
+   struct zone {
+       /* ... */
+
+       struct free_area  free_area[NR_PAGE_ORDERS];
+       int               nr_zones;
+
+       /* ... */
+   };
+
+Görüldüğü gibi ``free_area`` dizisi *free_area* isimli yapı türündendir ve uzunluğu maksimum düzey
+sayısına eşittir. (Yani dizi 11 elemanlıdır; ilk elemanı 0'ıncı düzeyi, son elemanı 10'uncu düzeyi
+belirtmektedir.)
+
+``free_area`` yapısı şöyle bildirilmiştir:
+
+.. code-block:: c
+
+   struct free_area {
+       struct list_head  free_list[MIGRATE_TYPES];
+       unsigned long     nr_free;
+   };
+
+Görüldüğü gibi ``free_area`` aslında her göç türü için bağlı listelerden oluşmaktadır. Aşağıdaki
+şekil bu veri yapısını daha iyi anlaşılmasına yardımcı olacaktır:
+
+.. code-block:: text
+
+   zone (örn. ZONE_NORMAL):
+   │
+   ├── free_area[0]   (düzey-0, 4 KB bloklar)
+   │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg1] → [pg4] → [pg9] → NULL
+   │   ├── free_list[MIGRATE_MOVABLE]     → [pg2] → [pg7] → NULL
+   │   ├── free_list[MIGRATE_RECLAIMABLE] → [pg3] → NULL
+   │   ├── free_list[MIGRATE_HIGHATOMIC]  → NULL
+   │   ├── free_list[MIGRATE_CMA]         → NULL
+   │   └── free_list[MIGRATE_ISOLATE]     → NULL
+   │
+   ├── free_area[1]   (düzey-1, 8 KB bloklar)
+   │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg16,17] → NULL
+   │   ├── free_list[MIGRATE_MOVABLE]     → [pg32,33] → [pg64,65] → NULL
+   │   └── ...
+   │
+   ├── free_area[2]   (düzey-2, 16 KB bloklar)
+   │   └── ...
+   │
+   ...
+   │
+   └── free_area[10]  (düzey-10, 4 MB bloklar)
+       └── ...
+
+Buradaki ``free_area``'nın düzeylerden oluşan bir dizi olduğuna, dizinin her elemanının her göç türü
+için ayrı listeler barındırdığına dikkat ediniz. ``free_area`` listesinin her elemanı aslında bir
+bağlı liste dizisidir. ``free_area[n]`` bağlı liste dizisi *n*'inci düzeyin her göç türü için bağlı
+listelerini tutmaktadır. (Örneğin ``free_area[0]`` bağlı liste dizisi her göç türü için 0'ıncı
+düzeyin bağlı listelerini, ``free_area[1]`` bağlı liste dizisi her göç türü için 1'inci düzeyin
+bağlı listelerini tutmaktadır.) Göç türlerinin ne amaçla kullanıldığını izleyen paragraflarda
+açıklayacağız.
+
+Güncel çekirdeklerde ``free_area`` nesnelerinin içerisindeki ``free_list`` bağlı listeleri
+``buddy_list`` elemanı yoluyla *page* nesnelerini tutar durumdadır:
+
+.. code-block:: c
+
+   struct page {
+       memdesc_flags_t flags;
+
+       union {
+           struct {
+               union {
+                   /* ... */
+
+                   struct list_head buddy_list;  /* free_list tarafından kullanılan düğüm */
+
+                   /* ... */
+               };
+
+               /* ... */
+           };
+
+           /* ... */
+       }
+   } _struct_page_alignment;
+
+Sayfa Tahsisat Fonksiyonları
+----------------------------
+
+``alloc_pages`` fonksiyonu ikiz blok tahsisat sisteminden sayfa tahsis eden en temel
+fonksiyondur. Fonksiyonun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    struct page *alloc_pages(gfp_t gfp_mask, unsigned int order);
+
+``alloc_pages`` eskiden ``include/linux/gfp.h`` dosyasında ``CONFIG_NUMA`` konfigürasyon
+parametresine göre makro ya da inline fonksiyon biçiminde tanımlanıyordu. Ancak daha sonra
+makro haline getirilmiştir.
+
+``alloc_pages`` fonksiyonun birinci parametresi tahsisatın nereden yapılacağını belirtmektedir.
+İkinci parametresi ise tahsisat için düzey belirtmektedir. (Yani örneğin 1 sayfa tahsis
+edilecekse bu parametre 0, iki sayfa tahsis edilecekse 1, 4 sayfa tahsis edilecekse 2
+girilmelidir.) Fonksiyonun birinci parametresindeki ``gfp_t`` türü tipik olarak ``unsigned int``
+biçiminde typedef edilmektedir. Bu parametreye çeşitli mask bayrakları bit düzeyinde OR işlemine
+sokularak verilmektedir. Mask bayrakları ``include/linux/gfp_types.h`` dosyası içerisinde
+define edilmiştir. Bunları aşağıda bir tablo biçiminde veriyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Bayrak Adı
+     - İşlevi
+   * - ``__GFP_DMA``
+     - Tahsisatı ZONE_DMA'dan yap (eski ISA DMA uyumu için)
+   * - ``__GFP_HIGHMEM``
+     - Tahsisatı ZONE_HIGHMEM'den yap
+   * - ``__GFP_DMA32``
+     - Tahsisatları 32-bit adreslenebilir ZONE_DMA32'den yap
+   * - ``__GFP_MOVABLE``
+     - ZONE_MOVABLE'a izin ver; sayfa göç ile taşınabilir
+   * - ``__GFP_RECLAIMABLE``
+     - Sayfa shrinker'lar aracılığıyla geri alınabilir (dilim için)
+   * - ``__GFP_WRITE``
+     - Sayfa kirletilecek; bölgeler arasında dağıtılır (fair policy)
+   * - ``__GFP_HARDWALL``
+     - cpuset bellek tahsisat politikasını zorla uygula
+   * - ``__GFP_THISNODE``
+     - Yalnızca belirtilen NUMA düğümlerini ayır, fallback yok
+   * - ``__GFP_ACCOUNT``
+     - Tahsisatı kmemcg'ye hesapla (kernel memory cgroup)
+   * - ``__GFP_HIGH``
+     - Yüksek öncelikli; atomic rezervlere erişebilir
+   * - ``__GFP_MEMALLOC``
+     - Tüm belleğe (rezervler dahil) erişime izin ver
+   * - ``__GFP_NOMEMALLOC``
+     - Acil rezervlere erişimi açıkça yasakla
+   * - ``__GFP_IO``
+     - Bellek geri almak için fiziksel I/O başlatabilir
+   * - ``__GFP_FS``
+     - Bellek geri almak için dosya sistemi çağrısı yapabilir
+   * - ``__GFP_DIRECT_RECLAIM``
+     - Çağıran doğrudan geri alıma girebilir
+   * - ``__GFP_KSWAPD_RECLAIM``
+     - Low watermark'ta kswapd'yi uyandırabilir
+   * - ``__GFP_RECLAIM``
+     - ``__GFP_DIRECT_RECLAIM | __GFP_KSWAPD_RECLAIM`` kısayolu
+   * - ``__GFP_RETRY_MAYFAIL``
+     - İlerleme varsa geri alımı tekrar dene; OOM'u tetiklemez
+   * - ``__GFP_NOFAIL``
+     - Sonsuz yineleme; asla başarısız olamaz, bloke olabilir
+   * - ``__GFP_NORETRY``
+     - Yalnızca hafif geri alım dene; "OOM killer" çağrılmaz
+   * - ``__GFP_NOWARN``
+     - Ayırma başarısız olursa çekirdek uyarı mesajını bastır
+   * - ``__GFP_COMP``
+     - Bileşik sayfalar için metadata ekle (büyük sayfa grupları için)
+   * - ``__GFP_ZERO``
+     - Başarılı tahsisatlarda sıfırlanmış sayfa döndür
+   * - ``__GFP_ZEROTAGS``
+     - Bellek sıfırlanırken KASAN HW bellek etiketlerini de sıfırla
+   * - ``__GFP_SKIP_ZERO``
+     - KASAN HW etiket sıfırlamasını atla
+   * - ``__GFP_SKIP_KASAN``
+     - KASAN sayfa zehirleme/çözme kontrollerini atla
+   * - ``__GFP_NOLOCKDEP``
+     - GFP context takibi için lockdep denetimini devre dışı bırak
+
+Linux çekirdek kodlamasında başı ``__`` ile başlayan değişkenlerin "aşağı seviyeli kodlar
+tarafından kullanıldığını" anımsayınız. Yukarıdaki bayraklar ince ayar için kullanılmaktadır.
+Bunların her bileşimi anlamlı değildir. Yani örneğin bazı bayraklar bazı bayraklarla
+kullanılamamaktadır. Aslında çekirdek içerisinde yukarıdaki bayraklar kullanılarak oluşturulmuş
+başı ``__`` ile başlamayan daha yüksek seviyeli bayraklar da vardır. Bunların listesini de
+aşağıdaki tabloda veriyoruz:
+
+.. list-table:: 
+   :width: 70%
+   :header-rows: 1
+  
+   * - Kompozit Bayrak Adı
+     - Bileşen Bayraklar
+   * - ``GFP_ATOMIC``
+     - ``__GFP_HIGH | __GFP_KSWAPD_RECLAIM``
+   * - ``GFP_KERNEL``
+     - ``__GFP_RECLAIM | __GFP_IO | __GFP_FS``
+   * - ``GFP_KERNEL_ACCOUNT``
+     - ``GFP_KERNEL | __GFP_ACCOUNT``
+   * - ``GFP_NOWAIT``
+     - ``__GFP_KSWAPD_RECLAIM``
+   * - ``GFP_NOIO``
+     - ``__GFP_RECLAIM``
+   * - ``GFP_NOFS``
+     - ``__GFP_RECLAIM | __GFP_IO``
+   * - ``GFP_USER``
+     - ``__GFP_RECLAIM | __GFP_IO | __GFP_FS | __GFP_HARDWALL``
+   * - ``GFP_HIGHUSER``
+     - ``GFP_USER | __GFP_HIGHMEM``
+   * - ``GFP_HIGHUSER_MOVABLE``
+     - ``GFP_HIGHUSER | __GFP_MOVABLE | __GFP_SKIP_KASAN``
+   * - ``GFP_DMA``
+     - ``__GFP_DMA``
+   * - ``GFP_DMA32``
+     - ``__GFP_DMA32``
+   * - ``GFP_TRANSHUGE``
+     - ``GFP_HIGHUSER_MOVABLE | __GFP_COMP | __GFP_NOMEMALLOC |``
+       ``__GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM``
+   * - ``GFP_TRANSHUGE_LIGHT``
+     - ``GFP_HIGHUSER_MOVABLE | __GFP_COMP | __GFP_NOMEMALLOC |``
+       ``__GFP_NORETRY | __GFP_NOWARN``
+
+Programcılar genellikle bu yüksek seviyeli bayrakları kullanmaktadır. Örneğin ``GFP_ATOMIC``,
+``GFP_KERNEL``, ``GFP_USER``, ``GFP_DMA``, ``GFP_DMA32`` en çok kullanılan yüksek seviyeli
+bayraklardır. Biz bu bayraklar hakkında izleyen paragraflarda daha fazla bilgi vereceğiz.
+
+``alloc_pages`` fonksiyonu başarı durumunda tahsis edilen sayfaların ilkine ilişkin ``page``
+yapı nesnesinin adresiyle, başarısızlık durumunda ``NULL`` adresle geri dönmektedir.
+Anımsanacağı gibi zaten çekirdek tüm sayfaları doğrudan ya da dolaylı biçimde bir dizi
+içerisinde tutmaktadır. ``alloc_pages`` bize ilgili ``page`` nesnesinin bu dizideki adresini
+vermektedir. Burada bize verilen ``page`` adresini biz ilerleterek ilgili dizinin sonraki
+elemanına erişiriz. İkiz blok tahsisat sisteminde her zaman fiziksel bellekte ardışıl fiziksel
+sayfaların tahsis edildiğini anımsayınız. Tabii ``alloc_pages`` fonksiyonun bize verdiği adres
+sanal adrestir. Anımsanacağı gibi bir ``page`` nesnesinin adresi bilindiğinde bunun fiziksel
+bellekteki kaç numaralı sayfaya ilişkin olduğu ``page_to_pfn`` fonksiyonuyla elde
+edilebilmekteydi.
+
+``alloc_pages`` fonksiyonuyla tahsis edilen sayfaların ``__free_pages`` fonksiyonuyla serbest
+bırakılması gerekir:
+
+.. code-block:: c
+
+    void __free_pages(struct page *page, unsigned int order);
+
+Fonksiyon ``mm/page_alloc.c`` dosyası içerisinde tanımlanmıştır. Fonksiyonun birinci parametresi
+tahsisata ilişkin ilk ``page`` nesnesinin adresini, ikinci parametresi ise düzey bilgisini
+belirtmektedir. Örneğin 2'inci düzeyden 4 sayfa tahsis etmiş olalım. Bu sayfaları serbest
+bırakırken yine düzey bilgisini 2 olarak girmeliyiz. Örneğin:
+
+.. code-block:: c
+
+    struct page *pages;
+
+    pages = alloc_pages(GFP_KERNEL, 2);  /* 2'inci düzeyden 4 ardışıl fiziksel sayfa tahsis ediliyor */
+    if (pages == NULL)
+        return -ENOMEM;
+
+    /* ... */
+
+    __free_pages(pages, 2);              /* 2'inci düzeyden yapılan tahsisat iade ediliyor */
+
+``alloc_pages`` fonksiyonun başında ``__`` yokken yapılan tahsisatı serbest bırakan
+``__free_pages`` fonksiyonun başında ``__`` olması bir uyumsuzluk oluşturmaktadır. Çekirdekte
+aslında ``free_pages`` isimli başka bir fonksiyon da vardır. Bu fonksiyon sayfaları onların
+sanal adreslerini (``page`` adreslerini değil sanal adreslerini) alarak serbest bırakmaktadır.
+
+``alloc_pages`` ile tahsis edilen sayfaları farklı miktarlarda iade etmeye çalışmayınız. Bu
+durumda dilimli tahsisat sistemini bozabilirsiniz:
+
+.. code-block:: c
+
+    __free_pages(pages + 0, 0);  /* dikkat! yanlış kullanım */
+    __free_pages(pages + 1, 0);  /* dikkat! yanlış kullanım */
+    __free_pages(pages + 2, 0);  /* dikkat! yanlış kullanım */
+    __free_pages(pages + 3, 0);  /* dikkat! yanlış kullanım */
+
+``alloc_pages`` ve ``__free_pages`` fonksiyonları export edildiği için aygıt sürücüler
+tarafından da kullanılabilmektedir.
+
+``alloc_pages`` fonksiyonunun bize fiziksel sayfanın sanal adresini vermediğine, o sayfayı
+yönetmekte kullanılan ``page`` nesnesinin adresini verdiğine dikkat ediniz. Biz eğer ilgili
+sayfanın içeriğine erişmek istiyorsak ``page_to_virt`` makrosunu ya da ``page_address``
+fonksiyonunu kullanmalıyız.
+
+Eğer tek sayfalık tahsisat yapılacaksa ``alloc_pages`` yerine ``alloc_page`` makrosu
+kullanılabilir. Bu makro ``include/linux/gfp.h`` dosyasında şöyle yazılmıştır:
+
+.. code-block:: c
+
+    #define alloc_page(gfp_mask)    alloc_pages(gfp_mask, 0)
+
+Yukarıda da belirttiğimiz gibi artık ``alloc_pages`` çekirdeklerde bir süredir makro olarak
+yazılmaktadır. Bu makronun çağırma grafı şöyledir:

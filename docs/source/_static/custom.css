@@ -85,3 +85,14 @@ table.docutils th {
 .wy-breadcrumbs {
     display: none;
 }
+
+.rst-content table.docutils.tight-table {
+    width: auto !important;
+}
+
+.wy-table-responsive table.tight-table td,
+.wy-table-responsive table.tight-table th,
+.rst-content table.docutils.tight-table td,
+.rst-content table.docutils.tight-table th {
+    white-space: normal !important;
+}
