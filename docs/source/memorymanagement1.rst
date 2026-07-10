@@ -2578,12 +2578,15 @@ Bu makroların fonksiyon biçimleri de oluşturulmuştur:
     }
 
 ``__pa`` ve ``__va`` makroları ve fonksiyonlar platforma bağlı dizinlerde bulunmaktadır (örneğin
-``arch/x86/asm/io.h`` gibi).
+``arch/x86/asm/io.h`` gibi). Fiziksel adresle sanal adres yapan makro ve fonksiyonları aşağıda da
+tablo halinde veriyoruz:
 
 .. image:: _static/address-conversion-table.png
    :align: center
    :width: 70%
 
-Bu tabloda ``page`` yapısı ile dönüştürme yapan fonksiyonlar da bulunmaktadır. Bu fonksiyonlardan
-izleyen konularda da söz edeceğiz.
+Son olarak page nesnesi ile ilgili erişim yapan makro ve fonksiyonları da ayrı bir tablo halinde veriyoruz: 
 
+.. image:: _static/page-access-functions.png
+   :align: center
+   :width: 70%
