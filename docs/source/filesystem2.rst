@@ -1168,7 +1168,6 @@ Biz yukarıdaki bazı süreçlerle doldurulacak elemanlar dışında ``simplefs_
        sb->s_maxbytes = SIMPLEFS_BLOCK_SIZE;
        sb->s_op = &simplefs_super_ops;
        sb->s_flags |= SB_NOATIME;
-
        /* ... */
 
        return 0;
@@ -1514,9 +1513,7 @@ amacıyla vermek istiyoruz:
            goto EXIT3;
        }
        sfs_sb->data_bitmap = (unsigned long *) sfs_sb->data_bitmap_bh->b_data;
-
        /* ... */
-
    EXIT3:
        brelse(sfs_sb->inode_bitmap_bh);
    EXIT2:
@@ -2150,14 +2147,12 @@ iki önemli eleman bulunuyordu:
 
    struct inode {
        /* ... */
-
        const struct inode_operations *i_op;
 
        union {
            const struct file_operations  *i_fop;   /* former ->i_op->default_file_ops */
            void (*free_inode)(struct inode *);
        };
-
        /* ... */
    };
 

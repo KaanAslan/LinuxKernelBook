@@ -184,10 +184,8 @@ tutmaktadır:
 
    struct zone {
        /* ... */
-
        struct free_area  free_area[NR_PAGE_ORDERS];
        int               nr_zones;
-
        /* ... */
    };
 
@@ -252,15 +250,11 @@ Güncel çekirdeklerde ``free_area`` nesnelerinin içerisindeki ``free_list`` ba
            struct {
                union {
                    /* ... */
-
                    struct list_head buddy_list;  /* free_list tarafından kullanılan düğüm */
-
                    /* ... */
                };
-
                /* ... */
            };
-
            /* ... */
        }
    } _struct_page_alignment;
@@ -428,6 +422,9 @@ bırakırken yine düzey bilgisini 2 olarak girmeliyiz. Örneğin:
 
     __free_pages(pages, 2);              /* 2'inci düzeyden yapılan tahsisat iade ediliyor */
 
+``alloc_pages`` ve ``__free_pages`` fonksiyonları export edildiği için aygıt sürücüler
+tarafından da kullanılabilmektedir.
+
 ``alloc_pages`` fonksiyonun başında ``__`` yokken yapılan tahsisatı serbest bırakan
 ``__free_pages`` fonksiyonun başında ``__`` olması bir uyumsuzluk oluşturmaktadır. Çekirdekte
 aslında ``free_pages`` isimli başka bir fonksiyon da vardır. Bu fonksiyon sayfaları onların
@@ -443,8 +440,11 @@ durumda dilimli tahsisat sistemini bozabilirsiniz:
     __free_pages(pages + 2, 0);  /* dikkat! yanlış kullanım */
     __free_pages(pages + 3, 0);  /* dikkat! yanlış kullanım */
 
-``alloc_pages`` ve ``__free_pages`` fonksiyonları export edildiği için aygıt sürücüler
-tarafından da kullanılabilmektedir.
+``__get_free_pages`` fonksiyonunun tek sayfayı serbest bırakan ``__get_free_page`` isimli makrosu da bulunmaktadır:
+
+.. code-block:: c
+
+   #define __get_free_page(gfp_mask) __get_free_pages((gfp_mask), 0)
 
 ``alloc_pages`` fonksiyonunun bize fiziksel sayfanın sanal adresini vermediğine, o sayfayı
 yönetmekte kullanılan ``page`` nesnesinin adresini verdiğine dikkat ediniz. Biz eğer ilgili
@@ -458,5 +458,340 @@ kullanılabilir. Bu makro ``include/linux/gfp.h`` dosyasında şöyle yazılmı�
 
     #define alloc_page(gfp_mask)    alloc_pages(gfp_mask, 0)
 
-Yukarıda da belirttiğimiz gibi artık ``alloc_pages`` çekirdeklerde bir süredir makro olarak
-yazılmaktadır. Bu makronun çağırma grafı şöyledir:
+Yukarıda da belirttiğimiz gibi artık ``alloc_pages`` de çekirdeklerde bir süredir makro olarak
+yazılmaktadır. 
+
+Burada çekirdekteki makroların ve ``static inline`` fonksiyonların aygıt sürücülerde kullanımına ilişkin bir
+noktayı belirtmek istiyoruz. Bir makro ya da ``inline`` fonksiyon koda açılmaktadır. Açılan koddaki makrolar da
+yeniden açılmaktadır. Makroların ve ``inline`` fonksiyonların export edilmesi söz konusu değildir. Makroların ve
+``inline`` fonksiyonların çekirdek modülleri ve aygıt sürücüler tarafından kullanılabilmesi için onların açımları
+sonucunda çağrılan fonksiyonların export edilmiş olması gerekir.
+
+Aşağıda ``alloc_pages`` ve ``__free_pages`` fonksiyonlarının kullanımına ilişkin basit bir aygıt sürücü örneği
+verilmiştir. Aygıt sürücünün ``init`` fonksiyonunda sayfa tahsisatı yapılmış ve sayfanın sanal adresi bir global
+değişkende saklanmıştır. ``write`` işleminde bu sayfaya yazma yapılıp, ``read`` işleminde de yazılanlar okunmuştur.
+Aygıt sürücünün ``exit`` fonksiyonunda da tahsis edilen sayfa serbest bırakılmıştır.
+
+Aygıt sürücünün ``init`` fonksiyonunda sayfa tahsisatı şöyle yapılmıştır:
+
+.. code-block:: c
+
+    static void *g_pageaddr;
+
+    static int __init test_driver_init(void)
+    {
+        struct page *page;
+
+        if ((page = alloc_pages(GFP_KERNEL, 0)) == NULL) {
+            printk(KERN_ERR "cannot alloc pages!..\n");
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            return -ENOMEM;
+        }
+
+        g_pageaddr = page_address(page);
+
+        return 0;
+    }
+
+Aygıt sürücünün ``exit`` fonksiyonunda tahsisat şöyle geri alınmıştır:
+
+.. code-block:: c
+
+    static void __exit test_driver_exit(void)
+    {
+        __free_pages(virt_to_page(g_pageaddr), 0);
+
+        /* ... */
+    }
+
+Aygıt sürücünün ``read`` ve ``write`` fonksiyonları da şöyledir:
+
+.. code-block:: c
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        if (copy_to_user(buf, g_pageaddr, size) != 0)
+            return -EFAULT;
+
+        return size;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        if (copy_from_user(g_pageaddr, buf, size) != 0)
+            return -EFAULT;
+
+        return size;
+    }
+
+Aygıt sürücünün tam kaynak kodu aşağıda verilmiştir. Aygıt sürücüyü yükledikten sonra ``test-page.c`` programı
+ile test edebilirsiniz.
+
+``test-driver.c``
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/gfp.h>
+    #include <linux/mm.h>
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
+    };
+    static void *g_pageaddr;
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+        struct page *page;
+
+        printk(KERN_INFO "test-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        if ((page = alloc_pages(GFP_KERNEL, 0)) == NULL) {
+            printk(KERN_ERR "cannot alloc pages!..\n");
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            return -ENOMEM;
+        }
+
+        g_pageaddr = page_address(page);
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        __free_pages(virt_to_page(g_pageaddr), 0);
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        if (copy_to_user(buf, g_pageaddr, size) != 0)
+            return -EFAULT;
+
+        return size;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        if (copy_from_user(g_pageaddr, buf, size) != 0)
+            return -EFAULT;
+
+        return size;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+``makefile``
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``load``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+``unload```
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+
+``page-test.c``
+
+.. code-block:: c
+
+    /* page-test.c */
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+        char wbuf[] = "this is a test";
+        char rbuf[4096 + 1];
+        size_t result;
+
+        if ((fd = open("test-driver", O_RDWR)) == -1)
+            exit_sys("open");
+
+        if (write(fd, wbuf, strlen(wbuf)) == -1)
+            exit_sys("write");
+
+        if ((result = read(fd, rbuf, strlen(wbuf))) == -1)
+            exit_sys("read");
+        rbuf[result] = '\0';
+
+        printf("%s\n", rbuf);
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+
+Çekirdekteki ``__get_free_pages`` fonksiyonu ``alloc_pages`` gibi sayfa tahsisatı yapmakla birlikte bize ``page``
+nesnesinin adresini değil doğrudan tahsis edilen fiziksel sayfanın sanal bellek adresini vermektedir. (Çekirdek
+alanındaki fiziksel sayfaların ardışıl biçimde sanal adrese haritalandığını anımsayınız.) ``__get_free_pages``
+aslında ``include/linux/gfp.h`` dosyasında bir makro olarak yazılmıştır. Biz burada anlatımı kolaylaştırmak için
+ona fonksiyon diyeceğiz. Fonksiyonun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    unsigned long __get_free_pages(gfp_t gfp_mask, unsigned int order);
+
+Fonksiyon tahsis edilen fiziksel sayfaların sanal adresine geri dönmektedir. Geri dönüş değerinin ``unsigned long``
+türünden olması sizi şaşırtmasın. ``__get_free_pages`` fonksiyonu ile tahsis edilen sayfalar ``free_pages``
+fonksiyonu ile serbest bırakılabilir. (Bu fonksiyonu ``__free_pages`` fonksiyonu ile karıştırmayınız.)
+``free_pages`` fonksiyonunun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    void free_pages(unsigned long addr, unsigned int order);
+
+Tabii aslında bu fonksiyon da ``__free_pages`` fonksiyonunu çağırmaktadır. Şöyle yazılmıştır:
+
+.. code-block:: c
+
+    void free_pages(unsigned long addr, unsigned int order)
+    {
+        if (addr != 0) {
+            VM_BUG_ON(!virt_addr_valid((void *)addr));
+            __free_pages(virt_to_page((void *)addr), order);
+        }
+    }
+
+    EXPORT_SYMBOL(free_pages);
+
+Örneğin:
+
+.. code-block:: c
+
+    unsigned long addr;
+    void *buf;
+
+    if ((addr = __get_free_pages(GFP_KERNEL, 1)) != 0)
+        return -ENOMEM;
+
+    buf = (void *)addr;
+    memset(buf, 0, PAGE_SIZE * 2);
+
+    free_pages(addr, 1);
+
+Çekirdekteki ``get_zeroed_page`` fonksiyonu içi sıfırlanmış tek bir sayfanın tahsisatını yapmaktadır. Fonksiyon
+tahsis edilen sayfanın sanal bellek adresiyle geri dönmektedir:
+
+.. code-block:: c
+
+    unsigned long get_zeroed_page(gfp_t gfp_mask);
+
+Çekirdekte ``alloc_pages_exact`` isimli ilginç bir sayfa tahsisat fonksiyonu (aslında bir makro) da vardır.
+Fonksiyonun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    void *alloc_pages_exact(size_t size, gfp_t gfp_mask);
+
+Fonksiyonun birinci parametresi byte cinsinden büyüklük belirtmektedir. Fonksiyon parametresiyle belirtilen
+büyüklüğü kapsayan en küçük sayfa miktarını tahsis eder. Ancak ikiz blok tahsisat sisteminde tahsisatlar 2'nin
+kuvvetlerine göre yapıldığı için artan sayfalar oluşabilecektir. Bunlar fonksiyon tarafından geri bırakılmaktadır.
+Örneğin biz bu fonksiyonun birinci parametresine 25000 değerini girmiş olalım. 25000 byte'ı karşılayabilecek sayfa
+sayısı 6'dır. Ancak ikiz blok tahsisat sisteminde 6 sayfa tahsis edilememektedir, ancak 8 sayfa tahsis
+edilebilmektedir. İşte fonksiyon 8 sayfayı tahsis edip 2 sayfayı geri bırakmaktadır. Fonksiyonun doğrudan sanal
+adresle geri döndüğüne dikkat ediniz.
+
+``alloc_pages_exact`` fonksiyonuyla tahsis edilen sayfalar ``free_pages_exact`` fonksiyonuyla serbest
+bırakılmaktadır:
+
+.. code-block:: c
+
+    void free_pages_exact(void *virt, size_t size);
+
+NUMA mimarisinde ``alloc_pages`` gibi sayfa tahsis eden fonksiyonlar çağrı hangi işlemcideki ya da çekirdekteki
+koddan yapılmışsa o işlemcinin ya da çekirdeğin NUMA düğümünden tahsisatı yapmaya çalışmaktadır. Ancak ilgili
+düğümde boş yer bulunamazsa *fallback* mekanizması devreye sokularak diğer düğümlere de bakılabilmektedir.
+*Fallback* mekanizması izleyen paragraflarda ele alınmaktadır. İşte ayrıca çekirdekte belli NUMA düğümlerinden
+sayfa tahsisatı yapan bir fonksiyon da bulundurulmuştur:
+
+.. code-block:: c
+
+    struct page *alloc_pages_node(int nid, gfp_t gfp_mask, unsigned int order);
+
+Fonksiyonun birinci parametresi NUMA düğümünün indeksini belirtmektedir.

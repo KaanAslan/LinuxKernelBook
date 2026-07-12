@@ -99,7 +99,7 @@ edilmektedir. Bu nedenle gelişmiş çekirdeklerde yapıda aşağıdaki gibi ``#
 
        randomized_struct_fields_start
 
-       void                 *stack;
+       void                  *stack;
        refcount_t            usage;
        unsigned int          flags;
        ...
@@ -429,7 +429,6 @@ Linux'ta thread'lere özgü pid değeri Linux'a özgü *gettid* fonksiyonu ile e
 
    *gettid* fonksiyonunun bir POSIX fonksiyonu olmadığına dikkat ediniz.
 
-
 group_leader Göstericisi
 ------------------------------
 
@@ -522,7 +521,6 @@ listesinde tutulmaktadır.
 
 Ayrıca Linux'ta alt proses listesi ana thread'in ``children`` kök düğümünden hareketle dolaşılmak
 zorundadır. Alt prosesler yaratıldığında yalnızca ana thread'in ``children`` kök düğümü güncellenmektedir.
-
 
 Tüm Proseslerin Listesi: tasks
 ------------------------------------
@@ -638,7 +636,6 @@ tabanlı sistemlerde bunları şöyle yükleyebilirsiniz:
 .. code-block:: bash
 
    $ sudo apt-get install linux-headers-$(uname -r)
-
 
 Derleme ve Yükleme
 --------------------
@@ -1927,11 +1924,11 @@ Aşağıda tüm kodları bütünsel olarak veriyoruz:
     static dev_t g_dev;
     static struct cdev g_cdev;
     static struct file_operations g_fops = {
-        .owner          = THIS_MODULE,
-        .open           = test_driver_open,
-        .read           = test_driver_read,
-        .write          = test_driver_write,
-        .release        = test_driver_release,
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
         .unlocked_ioctl = test_driver_ioctl
     };
 
@@ -2456,8 +2453,7 @@ ve hem pid değerine hem de pid isim alanına birlikte bakmaktadır:
        hlist_for_each_entry_rcu(pnr, elem,
                &pid_hash[pid_hashfn(nr, ns)], pid_chain)
            if (pnr->nr == nr && pnr->ns == ns)
-               return container_of(pnr, struct pid,
-                       numbers[ns->level]);
+               return container_of(pnr, struct pid, numbers[ns->level]);
        return NULL;
    }
 
@@ -2614,20 +2610,20 @@ Güncel ``pid`` yapısı şöyledir:
 .. code-block:: c
 
    struct pid {
-       refcount_t    count;
-       unsigned int  level;
-       spinlock_t    lock;
+       refcount_t count;
+       unsigned int level;
+       spinlock_t lock;
        struct {
-           u64           ino;
+           u64 ino;
            struct rb_node pidfs_node;
            struct dentry *stashed;
            struct pidfs_attr *attr;
        };
-       struct hlist_head   tasks[PIDTYPE_MAX];
-       struct hlist_head   inodes;
-       wait_queue_head_t   wait_pidfd;
-       struct rcu_head     rcu;
-       struct upid         numbers[];   /* isim alanı bilgisi */
+       struct hlist_head tasks[PIDTYPE_MAX];
+       struct hlist_head inodes;
+       wait_queue_head_t wait_pidfd;
+       struct rcu_head rcu;
+       struct upid numbers[];   /* isim alanı bilgisi */
    };
 
 Güncel versiyonlarda ``upid`` yapısı şöyledir (``hlist_node`` bağı kaldırılmış, ns bilgisi korunmuştur):
@@ -2635,7 +2631,7 @@ Güncel versiyonlarda ``upid`` yapısı şöyledir (``hlist_node`` bağı kaldı
 .. code-block:: c
 
    struct upid {
-       int                  nr;
+       int nr;
        struct pid_namespace *ns;
    };
 
@@ -2692,7 +2688,6 @@ XArray ağacında arama yapan *find_pid_ns* fonksiyonu artık son derece sade bi
 
 Ağaçta arama yapan asıl fonksiyon *idr_find* isimli fonksiyondur.
 
-
 XArray Gerçekleştirimi
 ----------------------
 
@@ -2705,7 +2700,7 @@ yapılmıştır. XArray ağacı bu dosyadaki ``xarray`` isimli yapıyla temsil e
        spinlock_t   xa_lock;
        /* private: */
        gfp_t        xa_flags;
-       void __rcu  *xa_head;
+       void __rcu   *xa_head;
    };
 
 Bu ağaç üzerinde işlem yapan ``xa_`` öneki ile başlayan bir grup fonksiyon vardır:
@@ -2724,7 +2719,50 @@ Bu ağaç üzerinde işlem yapan ``xa_`` öneki ile başlayan bir grup fonksiyon
    unsigned int xa_extract(struct xarray *, void **dst, unsigned long start, unsigned long max, unsigned int n, xa_mark_t);
    void xa_destroy(struct xarray *);
 
-Bu fonksiyonların tanımlamaları ``lib/xarray.c`` dosyasında yapılmıştır.
+XArray ağacı üzerinde üzerinde işlemlerinde kullanılan daha ``xas_`` önekli fonksiyonlar da bulunmaktadır. Bunlar 
+xa_state nesneleri ile çalışmaktadır. ``xa_state`` nesneleri ağaca yapılan erişimlerin taşıyıcıları gibi düşünebilirsiniz. 
+Bunların bazıları her XArray ağacında değil bazı XArray ağaçlarında anlamlı bir kullanıma sahiptir:
+
+.. code-block:: c
+
+   void *xas_load(struct xa_state *);
+   void *xas_store(struct xa_state *, void *entry);
+   void *xas_find(struct xa_state *, unsigned long max);
+   void *xas_find_conflict(struct xa_state *);
+   void *xas_find_marked(struct xa_state *, unsigned long max, xa_mark_t);
+
+   bool xas_get_mark(const struct xa_state *, xa_mark_t);
+   void xas_set_mark(const struct xa_state *, xa_mark_t);
+   void xas_clear_mark(const struct xa_state *, xa_mark_t);
+   void xas_init_marks(const struct xa_state *);
+   bool xas_nomem(struct xa_state *, gfp_t);
+   void xas_destroy(struct xa_state *);
+   void xas_pause(struct xa_state *);
+   void xas_create_range(struct xa_state *);
+   int xas_get_order(struct xa_state *xas);
+   void xas_split(struct xa_state *, void *entry, unsigned int order);
+   void xas_split_alloc(struct xa_state *, void *entry, unsigned int order, gfp_t);
+   void xas_try_split(struct xa_state *xas, void *entry, unsigned int order);
+           unsigned int xas_try_split_min_order(unsigned int order);
+   int xas_error(const struct xa_state *xas);
+   void xas_set_err(struct xa_state *xas, long err);
+   bool xas_invalid(const struct xa_state *xas);
+   bool xas_valid(const struct xa_state *xas);
+   bool xas_is_node(const struct xa_state *xas);
+   void xas_reset(struct xa_state *xas);
+   void xas_set(struct xa_state *xas, unsigned long index);
+   void xas_set_order(struct xa_state *xas, unsigned long index, unsigned int order);
+   void xas_advance(struct xa_state *xas, unsigned long index);
+   bool xas_retry(struct xa_state *xas, const void *entry);
+   void *xas_reload(struct xa_state *xas);
+   void *xas_next(struct xa_state *xas);
+   void *xas_prev(struct xa_state *xas);
+   void *xas_next_entry(struct xa_state *xas, unsigned long max);
+   void *xas_next_marked(struct xa_state *xas, unsigned long max, xa_mark_t mark);
+   void xas_set_update(struct xa_state *xas, xa_update_node_t update);
+   void xas_set_lru(struct xa_state *xas, struct list_lru *lru);
+
+Bu fonksiyonların tanımlamaları ``include/linux/xarray.h`` ve ``lib/xarray.c`` dosyalarında yapılmıştır.
 
 Güncel çekirdeklerin yukarıda belirttiğimiz aşağı seviyeli fonksiyonlarının yanı sıra aynı zamanda
 bunları kullanan yüksek seviyeli *IDR* fonksiyonları da bulunmaktadır. Çekirdek kodları incelendiğinde

@@ -1339,7 +1339,6 @@ anımsatmak istiyoruz:
         struct simplefs_super_block *sfs_sb;
         struct simplefs_disk_super_block *sfs_sbd;
         int ino;
-
         /* ... */
 
         spin_lock(&sfs_sb->lock);

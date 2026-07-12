@@ -871,13 +871,13 @@ bildirilmiştir:
        spinlock_t                   f_lock;
        fmode_t                      f_mode;
        const struct file_operations *f_op;
-    struct address_space         *f_mapping;
-       void                        *private_data;
-       struct inode                *f_inode;
+    struct address_space            *f_mapping;
+       void                         *private_data;
+       struct inode                 *f_inode;
        unsigned int                 f_flags;
        unsigned int                 f_iocb_flags;
-       const struct cred           *f_cred;
-       struct fown_struct          *f_owner;
+       const struct cred            *f_cred;
+       struct fown_struct           *f_owner;
        /* --- cacheline 1 boundary (64 bytes) --- */
        struct path                  f_path;
        union {
@@ -886,13 +886,13 @@ bildirilmiştir:
        };
        loff_t                       f_pos;
    #ifdef CONFIG_SECURITY
-       void                        *f_security;
+       void                         *f_security;
    #endif
        /* --- cacheline 2 boundary (128 bytes) --- */
        errseq_t                     f_wb_err;
        errseq_t                     f_sb_err;
    #ifdef CONFIG_EPOLL
-       struct hlist_head           *f_ep;
+       struct hlist_head            *f_ep;
    #endif
        union {
            struct callback_head     f_task_work;
@@ -1128,7 +1128,6 @@ bitmap'ini ``open_fds`` göstericisinin gösterdiği yerde, close-on-exec bayrak
 
    struct files_struct {
        /* ... */
-
        struct file ** fd;          /* current fd array */
        fd_set *close_on_exec;
        fd_set *open_fds;
@@ -1136,7 +1135,6 @@ bitmap'ini ``open_fds`` göstericisinin gösterdiği yerde, close-on-exec bayrak
        fd_set close_on_exec_init;
        fd_set open_fds_init;
        struct file * fd_array[NR_OPEN_DEFAULT];
-
        /* ... */
    };
 
@@ -1786,13 +1784,11 @@ yapının ``f_lock`` elemanı ile belirtilen spinlock nesnesini kullanmaktadır.
 
    struct file {
        /* ... */
-
        spinlock_t      f_lock;
        fmode_t         f_mode;
        unsigned int    f_flags;
        loff_t          f_pos;
        atomic_long_t   f_count;    /* güncel çekirdeklerde: file_ref_t f_ref */
-
        /* ... */
    };
 
@@ -2465,10 +2461,8 @@ tutulmaya başlanmıştır. 2.6 ve sonrasına ilişkin durum şöyledir:
 
     struct file {
         /* ... */
-
         struct path     f_path;
         struct inode    *f_inode;
-
         /* ... */
     };
 
@@ -2549,17 +2543,13 @@ bloğunda yol ifadesi ile değil ``dentry`` nesnesi ile tutulmaktadır. Güncel 
 
     struct task_struct {
         /* ... */
-
         struct fs_struct *fs;
-
         /* ... */
     };
 
     struct fs_struct {
         /* ... */
-
         struct path root, pwd;
-
         /* ... */
     } __randomize_layout;
 
@@ -2884,9 +2874,7 @@ tutulduğunu yeniden anımsatmak istiyoruz:
 
     struct file {
         /* ... */
-
         atomic_long_t   f_count;
-
         /* ... */
     };
 
@@ -4022,7 +4010,6 @@ dentry Yapısının Dentry Önbelleği İle İlgili Elemanları
 
     struct dentry {
         /* ... */
-
         struct qstr d_name;
         union shortname_store d_shortname;
         struct dentry *d_parent;
@@ -4035,7 +4022,6 @@ dentry Yapısının Dentry Önbelleği İle İlgili Elemanları
                                          */
         struct super_block *d_sb;
         struct hlist_bl_node d_hash;    /* lookup hash list */
-
         /* ... */
     };
 
@@ -4466,9 +4452,7 @@ nedenle dentry önbelleği için LRU bağlı listeleri ``include/linux/fs.h`` do
 
     struct super_block {
         /* ... */
-
         struct list_lru s_dentry_lru;
-
         /* ... */
     };
 
@@ -4531,9 +4515,7 @@ tutulmaktadır:
 
     struct dentry {
         /* ... */
-
         struct list_head d_lru;
-
         /* ... */
     };
 
@@ -5173,12 +5155,10 @@ bu eleman şöyle bildirilmiştir:
 
     struct inode {
         /* ... */
-
         union {
             struct hlist_head   i_dentry;
             struct rcu_head     i_rcu;
         };
-
         /* ... */
     };
 
@@ -5245,9 +5225,7 @@ LRU listeleri ``super_block`` yapısı içerisinde ``s_inode_lru`` elemanında t
 
    struct super_block {
        /* ... */
-
        struct list_lru     s_inode_lru;
-
        /* ... */
    };
 
@@ -5272,10 +5250,8 @@ bütün inode nesnelerini de ``s_inodes`` isimli bir bağlı listede tutmaktadı
 
    struct super_block {
        /* ... */
-
        struct list_lru     s_inode_lru;
        struct list_head    s_inodes;        /* all inodes */
-
        /* ... */
    };
 
@@ -6449,9 +6425,7 @@ içerisinde tutulmaktadır:
 
    struct file_system_type {
        /* ... */
-
        struct hlist_head   fs_supers;
-
        /* ... */
    };
 
@@ -6461,9 +6435,7 @@ Bu bağlı listenin düğümlerini ``super_block`` yapısının ``s_list`` elema
 
    struct super_block {
        /* ... */
-
        struct list_head    s_list;
-
        /* ... */
    };
 
@@ -6838,9 +6810,7 @@ Sıfırdan Dosya Sistemi Oluşturma Adımları
 
       struct super_block {
           /* ... */
-
           void    *s_fs_info;     /* Filesystem private info */
-
           /* ... */
       };
 

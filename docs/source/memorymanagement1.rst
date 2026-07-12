@@ -1553,10 +1553,8 @@ yapısının ``nr_zones`` elemanında tutulmaktadır:
 
    typedef struct pglist_data {
        /* ... */
-
        struct zone node_zones[MAX_NR_ZONES];
        int nr_zones;
-
        /* ... */
    } pg_data_t;
 
