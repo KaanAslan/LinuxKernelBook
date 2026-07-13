@@ -1027,3 +1027,52 @@ geçici olarak oluşturmaktadır.
 Başlangıçta tüm göç türlerine ilişkin ikiz blok tahsisat sistemleri dolu olmak zorunda değildir. Zaten
 *fallback* mekanizması "eğer bu liste boşsa başka listeden al" anlamına gelmektedir.
 
+Yukarıda da belirttiğimiz gibi *fallback* mekanizması "burada boş yer bulamazsan şuralara da bak" anlamına
+gelen bir mekanizmadır. *Fallback* mekanizmasının bazı ayrıntıları vardır. Ancak mekanizma temel olarak şöyle
+yürütülmektedir:
+
+1. ``alloc_pages`` gibi bir fonksiyonla sayfa tahsisatı yapılmak istensin.
+2. Tahsisat önce çağrıyı yapan işlemci ya da çekirdeğin NUMA düğümünden hareketle yapılmaya çalışılır.
+3. İlgili NUMA düğümünde GFP bayraklarına bakılarak başlangıç bölgesi (zone) ve göç türü (migration type)
+   belirlenir.
+4. Önce ilgili bölgedeki belirlenen göç türünden tahsisat yapılmaya çalışılır; eğer orada boş yer yoksa
+   belirlenmiş olan (ayrıntıları var) diğer göç türlerine de bakılır.
+5. Eğer ilgili bölgedeki göç türlerinde boş sayfa bulunamazsa bu kez aynı NUMA düğümündeki diğer bölgelere
+   (ayrıntıları var) geçilir. Arama o bölgelerin ilgili göç türlerinde de benzer biçimde yapılır.
+6. Eğer ilgili NUMA düğümünde aranan hiçbir bölgenin göç türünde boş yer bulunamazsa belirlenen diğer NUMA
+   düğümlerine geçilir.
+
+Aşağıda bu süreç şekilsel olarak da gösterilmiştir:
+
+.. figure:: _static/fallback-mechanism.png
+   :alt: Fallback mekanizması akış diyagramı
+   :align: center
+   :width: 70%
+
+Güncel çekirdeklerde göç türlerine ilişkin *fallback* sırası ``mm/page_alloc.c`` dosyasında ``fallbacks`` isimli
+iki boyutlu bir dizide belirtilmiştir. Bu dizi şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static int fallbacks[MIGRATE_PCPTYPES][MIGRATE_PCPTYPES - 1] = {
+        [MIGRATE_UNMOVABLE]   = { MIGRATE_RECLAIMABLE, MIGRATE_MOVABLE   },
+        [MIGRATE_MOVABLE]     = { MIGRATE_RECLAIMABLE, MIGRATE_UNMOVABLE },
+        [MIGRATE_RECLAIMABLE] = { MIGRATE_UNMOVABLE,   MIGRATE_MOVABLE   },
+    };
+
+Matrisin satırları her göç türü için "eğer orada boş sayfa bulunamazsa sırasıyla hangi göç türlerine
+bakılacağını" belirtmektedir. Örneğin ``MIGRATE_UNMOVABLE`` göç türünden tahsisat yapılmak istensin. İşte
+burada boş sayfa bulunamazsa sırasıyla ``MIGRATE_RECLAIMABLE`` ve ``MIGRATE_MOVABLE`` göç türlerine de
+bakılacaktır. Bu *fallback* sırasının statik bir biçimde çekirdek kodlarında belirtildiğine dikkat ediniz.
+
+Burada önemli bir noktayı vurgulamak istiyoruz. Çekirdek belli bir göç türünde boş blok bulamayıp diğer göç
+türüne başvurup oradan boş blok aldığında artık kopardığı blokları hedef göç türüne taşımaktadır. Bu sayfalar
+free hale getirildiğinde alınan yere iade edilmemektedir, taşınan yere iade edilmektedir. Ayrıca önemli bir
+ayrıntı da vardır. Diğer göç türlerinden arama her zaman en yüksek düzeyden (order'dan) başlanarak aşağıya
+doğru yapılmaktadır. (En yüksek düzeyin 10 olduğunu ve 4 MB sayfa bloğu belirttiğini anımsayınız.) Örneğin
+biz 4 sayfa tahsis etmek isteyelim. Ancak *fallback* durumu oluşup bu sayfa başka bir göç türünde aranıyor
+olsun. İşte arama 10'uncu düzeydeki bağlı listeden başlatılıp aşağıya doğru inecektir. Böylece yalnızca 4
+sayfa değil ilgili sayfa bloğunun tüm sayfaları göçe tabi tutulacaktır. Örneğin ilgili göç türünde 10'uncu
+düzeyde boş sayfa bloğu olmasın, 9'uncu düzeyde de olmasın ama 8'inci düzeyde olsun. İşte 8'inci düzeydeki
+1 MB'lik sayfa bloğu göçe tabi tutularak hedefe taşınıp oradan 4 sayfa verilmektedir. Böylece bir göç türünde
+boş sayfa bulunamayınca diğer göç türünden daha büyük bir parçanın alınması sağlanmıştır.
