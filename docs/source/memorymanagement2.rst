@@ -943,3 +943,87 @@ Linux çekirdeğinde kullanılan göç türleri şunlardır:
         MIGRATE_TYPES           /* toplam tür sayısı */
     };
     
+``MIGRATE_UNMOVABLE`` ve ``MIGRATE_MOVABLE`` göç türleri tahsis edilen sayfanın yerinin çekirdek tarafından
+değiştirilip değiştirilmeyeceği anlamına gelmektedir. Çekirdek ikiz blok tahsisat sisteminde ardışıl yeteri
+kadar blok bulunamadığında (yani *fragmentation* durumunda) ardışıl sayfa elde etmek için sayfaların fiziksel
+bellekteki yerlerini değiştirebilmektedir. İşte bu tür sayfalara Linux çekirdeğinde *movable sayfalar*
+denilmektedir. Tabii çekirdek fiziksel sayfanın yerini değiştirdiğinde bu sayfaya referans eden öğelerin
+fiziksel adreslerini de sayfa tablolarında değiştirmektedir. Örneğin ikiz blok tahsisat sisteminde 1 sayfalık
+çok sayıda blok bulunduğu halde yan yana 2 sayfalık hiç blok bulunmasın. İşte çekirdek 1 sayfalık bloğun
+yanındaki ikizinin fiziksel bellekte yerini değiştirerek (yani onu boş sayfalardan birine taşıyarak) yan yana
+iki fiziksel sayfa oluşturabilmektedir. Tabii bu durum oldukça seyrek gerçekleşir. Bir sayfanın taşınabilmesi
+için onun *reversible* özelliklere sahip olması gerekmektedir. İşte ``MIGRATE_MOVABLE`` bayrağı sayfayı
+taşınabilir hale getirmektedir. Görüldüğü gibi çekirdekte taşınabilen sayfalarla, taşınamayan sayfalar ayrı
+ikiz blok tahsisat sisteminde tutulmaktadır. Çekirdekte sayfa taşıma işlemi şu aşamalardan geçilerek
+yapılmaktadır:
+
+.. code-block:: none
+
+    migrate_page(old_page, new_page):
+        1. new_page için fiziksel frame al
+        2. old_page içeriğini new_page'e kopyala
+        3. rmap üzerinden tüm PTE'leri bul
+        4. Her old_page sayfa tablosu girişini new_page'e yönlendir (TLB flush)
+        5. old_page'i iade et
+
+C'deki ``malloc`` fonksiyonu gerektiğinde ``brk`` ya da ``mmap`` sistem fonksiyonlarını çağırarak tahsisatları
+yapmaktadır. Bunlar için tahsis edilen sayfalar ``MIGRATE_MOVABLE`` biçimdedir.
+
+``MIGRATE_RECLAIMABLE`` göç türü fiziksel olarak taşınamaz ancak çekirdek tarafından *swap out* amacıyla
+boşaltılabilen sayfaların bulunduğu ikiz blok sistemini belirtmektedir. Bu göç türünden işlemleri başlatmak
+için ``__GFP_RECLAIMABLE`` bayrağının da eklenmesi gerekmektedir. Dilimli tahsisat sisteminden
+(slab allocator) tahsis edilen sayfalar bu özelliğe sahiptir. Çekirdekteki pek çok nesne zaten dilimli
+tahsisat sistemi ile tahsis edilmektedir. Örneğin:
+
+.. code-block:: none
+
+    kmem_cache_alloc()
+        │
+        ├─► inode          ──┐
+        ├─► dentry         ──┤ ──► Hepsi dilimli tahsisat sistemi ile
+        ├─► vm_area_struct ──┤     MIGRATE_RECLAIMABLE kullanılarak
+        └─► task_struct    ──┘     tahsis ediliyor
+
+Aşağıdaki tabloda ``MIGRATE_UNMOVABLE`` , ``MIGRATE_MOVABLE`` ve ``MIGRATE_RECLAIMABLE`` göç türlerini karşılaştırıyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 22 26 26 26
+
+   * - Özellik
+     - ``MIGRATE_UNMOVABLE``
+     - ``MIGRATE_RECLAIMABLE``
+     - ``MIGRATE_MOVABLE``
+   * - Fiziksel taşıma
+     - Hayır
+     - Hayır
+     - Evet
+   * - Geri alma (reclaim)
+     - Hayır
+     - Evet
+     - Dolaylı
+   * - Compaction katkısı
+     - Hayır
+     - Dolaylı
+     - Doğrudan
+   * - Tipik tahsisat
+     - kmalloc, DMA, modül kodu, IRQ
+     - kmem_cache, page/buffer cache
+     - malloc, mmap, THP, KSM
+
+
+``MIGRATE_HIGHATOMIC`` göç türü yüksek öncelikli, bloke olmaması gereken kodların kullanması amacıyla
+oluşturulmuş özel bir ikiz blok tahsisat sistemidir.
+
+``MIGRATE_CMA`` (*Contiguous Memory Allocator*) göç türü: multimedya SoC'ları (kamera, video codec, GPU)
+büyük fiziksel ardışıl belleklere gereksinim duymaktadır. Bu alanların boot anında rezerve edilmesi israfa
+yol açabilmektedir. CMA göç türü bu bölgeleri normalde ``MIGRATE_MOVABLE`` gibi kullanır; CMA tahsisatı
+gerektiğinde ise bölgedeki taşınabilir sayfaları başka yere taşıyarak ardışıl alan açar.
+
+``MIGRATE_ISOLATE`` göç türü geçici olarak ikiz blok tahsisat sisteminden izole edilmiş sayfaları barındırmak
+için kullanılmaktadır. Buradan hiçbir zaman yeni tahsisat yapılmaz. Çekirdek bu alanı bazı önlemler için
+geçici olarak oluşturmaktadır.
+
+Başlangıçta tüm göç türlerine ilişkin ikiz blok tahsisat sistemleri dolu olmak zorunda değildir. Zaten
+*fallback* mekanizması "eğer bu liste boşsa başka listeden al" anlamına gelmektedir.
+
