@@ -284,7 +284,7 @@ define edilmiştir. Bunları aşağıda bir tablo biçiminde veriyoruz:
 .. list-table:: 
    :header-rows: 1
 
-   * - Bayrak Adı
+   * - Bayraklar
      - İşlevi
    * - ``__GFP_DMA``
      - Tahsisatı ZONE_DMA'dan yap (eski ISA DMA uyumu için)
@@ -352,7 +352,7 @@ aşağıdaki tabloda veriyoruz:
    :width: 70%
    :header-rows: 1
   
-   * - Kompozit Bayrak Adı
+   * - Bileşke Bayraklar
      - Bileşen Bayraklar
    * - ``GFP_ATOMIC``
      - ``__GFP_HIGH | __GFP_KSWAPD_RECLAIM``
@@ -795,3 +795,151 @@ sayfa tahsisatı yapan bir fonksiyon da bulundurulmuştur:
     struct page *alloc_pages_node(int nid, gfp_t gfp_mask, unsigned int order);
 
 Fonksiyonun birinci parametresi NUMA düğümünün indeksini belirtmektedir.
+
+Sayfa Tahsisatlarında Fallback Mekanizması
+------------------------------------------
+
+Şimdi de ikiz blok tahsisat sistemindeki *fallback* mekanizması üzerinde duracağız. (*fallback* Türkçe "yedek
+plan", "B planı" gibi anlamlara gelmektedir.) *Fallback* "belli bir NUMA düğümünde ya da belli bir bölgede ya da
+belli bir göç türünde tahsisat yapılamazsa diğer başka düğümlere, bölgelere ve göç türlerine de bakılması"
+anlamına gelmektedir.
+
+Bellek yönetiminin giriş bölümünde de açıkladığımız gibi Linux çekirdeği fiziksel belleği NUMA düğümlerinden
+(node), NUMA düğümlerini bellek bölgelerinden (zones), bellek bölgelerini de göç türlerinden (migration type)
+oluşan bir sistem biçiminde ele almaktadır. Linux çekirdeğinde her göç türünün ayrı bir ikiz blok tahsisat
+sistemi vardır. Bu tahsisat sisteminin kullandığı veri yapılarını yukarıda açıklamıştık. Yeniden anımsatmak
+istiyoruz:
+
+.. code-block:: c
+
+    typedef struct pglist_data {
+        /* ... */
+        struct zonelist node_zonelists[MAX_ZONELISTS];
+        int nr_zones;
+        /* ... */
+    };
+
+    struct zone {
+        /* ... */
+        struct free_area free_area[NR_PAGE_ORDERS];
+        int nr_zones;
+        /* ... */
+    };
+
+    struct free_area {
+        struct list_head free_list[MIGRATE_TYPES];
+        unsigned long    nr_free;
+    };
+
+.. code-block:: none
+
+    zone (örn. ZONE_NORMAL):
+    │
+    ├── free_area[0]   (düzey-0, 4 KB bloklar)
+    │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg1] → [pg4] → [pg9] → NULL
+    │   ├── free_list[MIGRATE_MOVABLE]     → [pg2] → [pg7] → NULL
+    │   ├── free_list[MIGRATE_RECLAIMABLE] → [pg3] → NULL
+    │   ├── free_list[MIGRATE_HIGHATOMIC]  → NULL
+    │   ├── free_list[MIGRATE_CMA]         → NULL
+    │   └── free_list[MIGRATE_ISOLATE]     → NULL
+    │
+    ├── free_area[1]   (düzey-1, 8 KB bloklar)
+    │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg16,17] → NULL
+    │   ├── free_list[MIGRATE_MOVABLE]     → [pg32,33] → [pg64,65] → NULL
+    │   └── ...
+    │
+    ├── free_area[2]   (düzey-2, 16 KB bloklar)
+    │   └── ...
+    │
+    ...
+    │
+    └── free_area[10]  (düzey-10, 4 MB bloklar)
+        └── ...
+
+Aslında sayfa tahsisatları "belli bir düğümün, belli bir bölgesinin, belli bir göç türünü" hedef alarak süreci
+başlatmaktadır. İşte ``alloc_pages`` gibi fonksiyonların birinci parametresindeki bayraklar bu tespitin
+yapılmasını sağlamaktadır. Aşağıda hangi bayraklar kullanıldığında işlemlerin hangi bölgeden ve hangi göç
+türünden başlatılacağı bilgisi bir tablo halinde verilmiştir:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - GFP Kombinasyonu
+     - Hedef Bölge
+     - Göç Türü
+     - Tipik Kullanım
+   * - ``GFP_KERNEL``
+     - ``ZONE_NORMAL``
+     - ``MIGRATE_UNMOVABLE``
+     - kmalloc, kzalloc, genel kernel
+   * - ``GFP_ATOMIC``
+     - ``ZONE_NORMAL``
+     - ``MIGRATE_UNMOVABLE``
+     - IRQ handler, spinlock tutan kod
+   * - ``GFP_USER``
+     - ``ZONE_NORMAL``
+     - ``MIGRATE_MOVABLE``
+     - kullanıcı alanı tahsisatları
+   * - ``GFP_HIGHUSER_MOVABLE``
+     - ``ZONE_HIGHMEM``
+     - ``MIGRATE_MOVABLE``
+     - anonim kullanıcı sayfaları
+   * - ``GFP_NOFS``
+     - ``ZONE_NORMAL``
+     - ``MIGRATE_UNMOVABLE``
+     - FS kritik yol (deadlock önlemi)
+   * - ``GFP_NOIO``
+     - ``ZONE_NORMAL``
+     - ``MIGRATE_UNMOVABLE``
+     - I/O kritik yol (deadlock önlemi)
+   * - ``GFP_TRANSHUGE_MOVABLE``
+     - ``ZONE_NORMAL``
+     - ``MIGRATE_MOVABLE``
+     - transparent huge page (THP)
+   * - ``GFP_KERNEL | __GFP_RECLAIMABLE``
+     - ``ZONE_NORMAL``
+     - ``MIGRATE_RECLAIMABLE``
+     - slab cache (kmem_cache)
+   * - ``GFP_KERNEL | __GFP_DMA``
+     - ``ZONE_DMA``
+     - ``MIGRATE_UNMOVABLE``
+     - eski ISA/legacy DMA aygıtları
+   * - ``GFP_ATOMIC | __GFP_DMA``
+     - ``ZONE_DMA``
+     - ``MIGRATE_UNMOVABLE``
+     - IRQ ctx'te DMA tamponu
+   * - ``GFP_KERNEL | __GFP_DMA32``
+     - ``ZONE_DMA32``
+     - ``MIGRATE_UNMOVABLE``
+     - 32-bit DMA aygıtları (PCIe vs.)
+   * - ``GFP_ATOMIC | __GFP_DMA32``
+     - ``ZONE_DMA32``
+     - ``MIGRATE_UNMOVABLE``
+     - IRQ ctx'te 32-bit DMA tamponu
+   * - ``GFP_DMA``
+     - ``ZONE_DMA``
+     - ``MIGRATE_UNMOVABLE``
+     - ``GFP_KERNEL | __GFP_DMA`` kısayolu
+   * - ``GFP_DMA32``
+     - ``ZONE_DMA32``
+     - ``MIGRATE_UNMOVABLE``
+     - ``GFP_KERNEL | __GFP_DMA32`` kısayolu
+
+Biz daha önce bellek bölgelerinin anlamlarını açıklamıştık. Ancak göç türleri hakkında ayrıntılı bir açıklama
+yapmamıştık. Önce bölgelerdeki göç türleri üzerinde açıklamalar yapalım.
+
+Linux çekirdeğinde kullanılan göç türleri şunlardır:
+
+.. code-block:: c
+
+    enum migratetype {
+        MIGRATE_UNMOVABLE,      /* 0 — taşınamaz, geri alınamaz */
+        MIGRATE_MOVABLE,        /* 1 — taşınabilir */
+        MIGRATE_RECLAIMABLE,    /* 2 — geri alınabilir */
+        MIGRATE_PCPTYPES,       /* 3 — PCP listelerinin sonu (marker) */
+        MIGRATE_HIGHATOMIC = MIGRATE_PCPTYPES,  /* 3 — acil rezerv */
+        MIGRATE_CMA,            /* 4 — Contiguous Memory Allocator */
+        MIGRATE_ISOLATE,        /* 5 — izole edilmiş, tahsisat yapılmaz */
+        MIGRATE_TYPES           /* toplam tür sayısı */
+    };
+    

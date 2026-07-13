@@ -2295,7 +2295,7 @@ kullanmaktadır:
 .. image:: /_static/32bit-linux-kernel-direct-map.png
    :alt: 32 bit Linux sisteminde kullanıcı ve çekirdek alanının doğrudan haritalama ile fiziksel belleğe erişimi
    :align: center
-   :width: 70%
+   :width: 65%
 
 32 bit Linux sistemlerinde doğrudan haritalamada sanal adres ile fiziksel adres dönüştürmesi şöyle yapılmaktadır:
 
