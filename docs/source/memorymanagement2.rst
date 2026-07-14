@@ -193,7 +193,7 @@ Görüldüğü gibi ``free_area`` dizisi *free_area* isimli yapı türündendir 
 sayısına eşittir. (Yani dizi 11 elemanlıdır; ilk elemanı 0'ıncı düzeyi, son elemanı 10'uncu düzeyi
 belirtmektedir.)
 
-``free_area`` yapısı şöyle bildirilmiştir:
+``free_area`` yapısı şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -666,8 +666,6 @@ ile test edebilirsiniz.
 ``page-test.c``
 
 .. code-block:: c
-
-    /* page-test.c */
 
     #include <stdio.h>
     #include <stdlib.h>

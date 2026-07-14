@@ -212,14 +212,14 @@ değerini vermektedir. Örneğin:
 
     static DEFINE_MUTEX(g_mutex);
 
-Bu makro güncel çekirdeklerde şöyle bildirilmiştir:
+Bu makro güncel çekirdeklerde şöyle tanımlanmıştır:
 
 .. code-block:: c
 
     #define DEFINE_MUTEX(mutexname)                                     \
         struct mutex mutexname = __MUTEX_INITIALIZER(mutexname)
 
-Buradaki ``__MUTEX_INITIALIZER`` makrosu da şöyle bildirilmiştir:
+Buradaki ``__MUTEX_INITIALIZER`` makrosu da şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -614,7 +614,7 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
 Çekirdekteki Mutex Kodları
 --------------------------
 
-Güncel çekirdeklerde mutex yapısı ``linux/mutex_types.h`` dosyası içerisinde şöyle bildirilmiştir:
+Güncel çekirdeklerde mutex yapısı ``linux/mutex_types.h`` dosyası içerisinde şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -691,7 +691,7 @@ yapılmaktadır.
 Çekirdek semaphore nesneleri şöyle kullanılmaktadır:
 
 **1)** Semaphore nesnesi ``semaphore`` isimli bir yapıyla temsil edilmiştir. Güncel çekirdeklerde ``semaphore``
-yapısı şöyle bildirilmiştir:
+yapısı şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1178,7 +1178,7 @@ tanımlanabilir:
     static spinlock_t g_spinlock;
 
 Güncel Linux çekirdeklerinde çok işlemcili ya da çok çekirdekli sistemlerde ``CONFIG_SMP``
-konfigürasyon parametresi ``=y`` yapıldığı için ``spinlock_t`` yapısı şöyle bildirilmiştir:
+konfigürasyon parametresi ``=y`` yapıldığı için ``spinlock_t`` yapısı şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1228,7 +1228,7 @@ dönüşmektedir:
     #define DEFINE_SPINLOCK(x)  spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
 
 Spinlock nesnesine ``spin_lock_init`` makrosuyla da başlangıç değerleri verilebilmektedir. Güncel
-çekirdeklerde bu makro şöyle bildirilmiştir:
+çekirdeklerde bu makro şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1445,7 +1445,7 @@ bir kullanımı yoktur. Bu sistemlerde bu kilit fonksiyonları yalnızca thread'
 açmaktadır. (Yani kritik kod bloğunun kesilmeden çalıştırılmasını sağlamaktadır.)
 
 Okuma yazma kilitleri ``rwlock_t`` türünden bir yapıyla temsil edilmektedir. Bu yapı güncel çekirdeklerde
-şöyle bildirilmiştir:
+şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1459,7 +1459,7 @@ Okuma yazma kilitleri ``rwlock_t`` türünden bir yapıyla temsil edilmektedir. 
 
 Okuma yazma kilit nesnelerinin yaratılması ``DEFINE_RWLOCK`` makrosuyla ya da ``rwlock_init`` fonksiyonuyla
 yapılmaktadır. ``DEFINE_RWLOCK`` makrosu ``include/linux/rwlock_types.h`` dosyası içerisinde aşağıdaki
-gibi bildirilmiştir:
+gibi tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1889,7 +1889,7 @@ de denilmektedir) fonksiyonlar bulunduruyordu. Örneğin atomik işlemler gcc ta
 ``__atomic_xxx`` önekli fonksiyonlar tarafından yapılabilmektedir. Microsoft derleyicileri de aynı amaçla
 ``InterlockedXXX`` fonksiyonlarını bulundurmaktadır.
 
-C++'ta da ``<atomic>`` başlık dosyası içerisinde bildirilmiş olan ``atomic`` isimli sınıf şablonu ile
+C++'ta da ``<atomic>`` başlık dosyası içerisinde tanımlanmış olan ``atomic`` isimli sınıf şablonu ile
 atomik işlemler yapılabilmektedir. Örneğin:
 
 .. code-block:: cpp
@@ -1907,7 +1907,7 @@ Linux Çekirdeğinde Atomik İşlemler
 
 Linux çekirdeklerinde atomik işlemler ``atomic_t``, ``atomic64_t`` ve ``atomic_long_t`` isimli türler
 kullanılarak yapılmaktadır. Bu türler birer yapı belirtir. Bu yapılar ``include/linux/types.h`` içerisinde
-şöyle bildirilmiştir:
+şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1964,7 +1964,7 @@ Atomik türden bir nesneye pratik biçimde ilkdeğer vermek için makrolar bulun
     static atomic_long_t my_platform_counter = ATOMIC_LONG_INIT(-1);
 
 Bu makrolar aslında küme parantezleri oluşturup yapının ``counter`` elemanına değer atanmasını
-sağlamaktadır. Örneğin ``ATOMIC_INIT`` makrosu şöyle bildirilmiştir:
+sağlamaktadır. Örneğin ``ATOMIC_INIT`` makrosu şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1973,7 +1973,7 @@ sağlamaktadır. Örneğin ``ATOMIC_INIT`` makrosu şöyle bildirilmiştir:
 Ancak yerel değişken söz konusu ise bu biçimde ilkdeğer verme atomikliği bozabilmektedir. Çünkü
 derleyiciler yerel değişkenlere de makine komutlarıyla değer atamaktadır. Atomik değişkenlere daha sonra
 değer atamak için ``atomic_set`` fonksiyonu kullanılmaktadır. Güncel çekirdeklerde ``atomic_set``
-fonksiyonu inline biçimde şöyle bildirilmiştir:
+fonksiyonu inline biçimde şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -4632,7 +4632,7 @@ dikkat ediniz:
 Bu durumda sistem programcısının ``call_rcu`` fonksiyonunun ikinci parametresine geri dönüş değeri
 ``void`` olan, parametresi ``struct rcu_head *`` türünden olan bir fonksiyonun adresini geçmesi gerekir.
 ``struct rcu_head`` yapısı çekirdeğin callback mekanizmasının yönetebilmesi için gereken elemanları
-barındırmaktadır. Bu yapı şöyle bildirilmiştir:
+barındırmaktadır. Bu yapı şöyle tanımlanmıştır:
 
 .. code-block:: c
 

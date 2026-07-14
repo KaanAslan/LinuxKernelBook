@@ -1218,7 +1218,7 @@ dönmektedir. Biz ``buffer_head`` yapısını ve organizasyonunu bellek yönetim
 Ancak diskin metadata alanları ile ilgili okuma yazma işlemleri için buffer_head daha uygun bir sistemdir.
 ``buffer_head`` sistemi  çekirdekten atılabilecek bir tasarım değildir. Çünkü pek çok dosya sistemi
 halen bu ``buffer_head`` tasarımını kullanmaktadır. Güncel çekirdeklerde ``buffer_head`` yapısı
-``include/linux/buffer_head.h`` dosyasında şöyle bildirilmiştir:
+``include/linux/buffer_head.h`` dosyasında şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -3232,7 +3232,7 @@ elemanına gireceğimiz fonksiyonun parametrik yapısı şöyle olmalıdır:
 Fonksiyonun birinci parametresi dosya nesnesinin adresini belirtmektedir. Biz bu parametreden hareketle
 dizine ilişkin inode nesnesine erişebiliriz. Fonksiyonun ikinci parametresi ``dir_context`` isimli bir yapı
 türünden nesnenin adresini belirtmektedir. Bu parametrenin gösterdiği nesne çekirdek tarafından tahsis
-edilmiş durumdadır. ``dir_context`` yapısı şöyle bildirilmiştir:
+edilmiş durumdadır. ``dir_context`` yapısı şöyle tanımlanmıştır:
 
 .. code-block:: c
 

@@ -171,7 +171,7 @@ için bulundurulmuştur. ``head`` elemanı ise kök düğümü belirtmektedir.
 
 ``wait_queue_head`` bağlı listesi elemanları ``wait_queue_entry`` türünden olan düğümleri
 tutmaktadır. Başka bir deyişle ``wait_queue_head`` yapısı aslında ``wait_queue_entry`` nesnelerini
-tutan bir bağlı listedir. ``wait_queue_entry`` yapısı şöyle bildirilmiştir:
+tutan bir bağlı listedir. ``wait_queue_entry`` yapısı şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -206,7 +206,7 @@ Bekleme Kuyruklarının Yaratılması
 ---------------------------------
 
 Bir bekleme kuyruğunu boş bir biçimde oluşturmak için ``DECLARE_WAIT_QUEUE_HEAD`` makrosu
-kullanılmaktadır. Bu makro ``include/linux/wait.h`` dosyası içerisinde bildirilmiştir. Makroya
+kullanılmaktadır. Bu makro ``include/linux/wait.h`` dosyası içerisinde tanımlanmıştır. Makroya
 tanımlanacak olan ``wait_queue_head`` yapısı türünden değişkenin ismi verilmektedir. Örneğin:
 
 .. code-block:: c

@@ -1066,7 +1066,7 @@ göreli olarak daha yavaş erişiyordu.
 Linux'un bellek yönetimi hem UMA hem de NUMA mimarilerinde çalışacak biçimde tasarlanmıştır. Bu nedenle daha genel
 veri yapıları oluşturulmuştur. Linux çekirdeklerinde NUMA düğümleri (yani bank'ları) ``pglist_data`` isimli bir yapı
 ile temsil edilmektedir. Bu yapı ``pg_data_t`` ismiyle de typedef edilmiştir. Güncel çekirdeklerde bu yapı
-``include/linux/mmzone.h`` dosyası içerisinde şöyle bildirilmiştir:
+``include/linux/mmzone.h`` dosyası içerisinde şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1263,7 +1263,8 @@ düğümü varmış gibi rapor oluşturmaktadır.
 Çekirdekte her NUMA düğümünün bir indeks numarası vardır. Bir NUMA düğümünün yukarıdaki dizi içerisindeki elemanına
 erişmek için ``NODE_DATA(index)`` makrosu kullanılmaktadır. Örneğin UMA sistemleri tek bir NUMA düğümü varmış gibi
 organize edildiği için UMA sistemlerinde biz bu bilgilere ``NODE_DATA(0)`` makrosuyla erişebiliriz. Aslında
-``CONFIG_NUMA=n`` yapıldığında çekirdek ``#ifdef`` komutlarıyla aşağıdaki bildirimleri devreye sokmaktadır:
+``CONFIG_NUMA=n`` yapıldığında çekirdek ``#ifdef`` komutlarıyla aşağıdaki bildirimleri ve tanımlamaları devreye 
+sokmaktadır:
 
 .. code-block:: c
 
@@ -1313,7 +1314,7 @@ Linux çekirdeğinde kullanılan bölgeler şunlardır:
 - ``ZONE_DEVICE``
 
 Bu bölgelerin hepsi her türlü donanımda bulunmak zorunda değildir. Bölge türleri ``include/linux/mmzone.h`` dosyası
-içerisinde aşağıdaki gibi bir ``enum`` türü ile sembolik sabitler biçiminde bildirilmiştir:
+içerisinde aşağıdaki gibi bir ``enum`` türü ile sembolik sabitler biçiminde tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1354,7 +1355,7 @@ adreslenemeyen ilk 896 MB'lik alanın ötesini belirtmektedir. Çekirdek bu böl
 yaparak erişmektedir.
 
 Yukarıda belirttiğimiz fiziksel bellek bölgelerine ilişkin bilgiler güncel çekirdeklerde ``include/linux/mmzone.h``
-dosyası içerisinde bildirilmiş olan ``zone`` yapısı içerisinde tutulmaktadır:
+dosyası içerisinde tanımlanmış olan ``zone`` yapısı içerisinde tutulmaktadır:
 
 .. code-block:: c
 
@@ -1545,7 +1546,7 @@ Görüldüğü gibi bir bölgeyi temsil eden pek çok bilgi bulunmaktadır. Bu y
 neresinden başladığı ve ne uzunlukta olduğu belirtilmektedir.
 
 Bir NUMA düğümündeki bölgeler düğümü temsil eden ``pglist_data`` yapısının ``node_zones`` elemanında tutulmaktadır.
-Bu eleman ``MAX_NR_ZONES`` uzunluğunda bir dizi biçiminde bildirilmiştir. Ancak buradaki ``MAX_NR_ZONES`` değeri
+Bu eleman ``MAX_NR_ZONES`` uzunluğunda bir dizi biçiminde tanımlanmıştır. Ancak buradaki ``MAX_NR_ZONES`` değeri
 olabilecek en yüksek bölge sayısını belirtmektedir. Bu dizinin dolu olan elemanlarının sayısı ise ``pglist_data``
 yapısının ``nr_zones`` elemanında tutulmaktadır:
 
@@ -1568,7 +1569,7 @@ de sayfalardan oluşuyormuş gibi ele almaktadır. İzleyen paragraflarda ele al
 sistemi (buddy allocator)* bölge temelinde oluşturulmuştur. Ancak çekirdek tüm fiziksel belleğin sayfalarını da
 ayrıca kayıt altında tutup izlemektedir. Linux çekirdeğinde bir fiziksel bellek sayfası ``page`` isimli bir yapıyla
 temsil edilmiştir. Güncel çekirdeklerde ``page`` yapısı ``include/linux/mm_types.h`` dosyası içerisinde aşağıdaki
-gibi bildirilmiştir:
+gibi tanımlanmıştır:
 
 .. code-block:: c
 
@@ -2011,7 +2012,7 @@ betimleyebiliriz:
 Buradaki *PFN*, *"Page Frame Number"* sözcüklerinden kısaltılmıştır.
 
 Bölümler ``mem_section`` isminde bir yapıyla temsil edilmektedir. Bu yapı güncel çekirdeklerde şöyle
-bildirilmiştir:
+tanımlanmıştır:
 
 .. code-block:: c
 
