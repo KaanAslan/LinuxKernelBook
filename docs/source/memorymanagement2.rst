@@ -1359,3 +1359,101 @@ aşağıdaki bağlantıdan erişebilirsiniz:
 
 Dilimli tahsisat sistemi ilk kez Solaris sistemlerinde kullanılmıştır. Bunu FreeBSD sistemleri izlemiştir.
 Sonra da Linux'un 2.2 kararlı sürümüyle çekirdekte yerini almıştır.
+
+Klasik Tahsisat Algoritması: Boş Blokların Bağlı Listede Saklanması
+-------------------------------------------------------------------
+
+Dilimli tahsisat sistemini açıklamadan önce klasik byte düzeyinde tahsisat işleminin (yani ``malloc`` gibi bir
+fonksiyonun) nasıl gerçekleştirildiği üzerinde duralım. Klasik byte düzeyinde tahsisat algoritması oldukça
+basittir. Bellekte bir bölge *heap* olarak ayrılır. Bu bölgedeki "yalnızca boş alanlar" bir bağlı listede
+tutulur. Tahsis edilmiş alanlar için bir kayıt tutulmaz. Tahsisat yapılmak istendiğinde boş blokları tutan
+bağlı liste üzerinde istenilen uzunlukta ilk blokla karşılaşılana kadar (buna İngilizce *first fit* yöntemi
+de denilmektedir) sıralı arama yapılır. Klasik tahsis algoritması D. Ritchie ve B. Kernighan'ın ünlü
+*"The C Programming Language"* kitabında "8.7 Example - A Storage Allocator (Sayfa 163)" başlığı altında
+da açıklanmıştır. Pek çok ``malloc``/``realloc``/``free`` benzeri tahsisat sistemi burada belirtilen
+algoritmayı temel almıştır. Örneğin Windows sistemlerindeki ``HeapAlloc``, ``HeapFree`` gibi API
+fonksiyonlarının temeli de bu algoritmadır. Linux sistemlerinde ``malloc``/``realloc``/``free`` fonksiyonları
+da uzun süre bu klasik algoritmayı kullanmıştır. D. Ritchie ve B. Kernighan tarafından
+*"The C Programming Language"* kitabında verilen örnek ``malloc`` ve ``free`` algoritmaları aşağıda
+verilmiştir.
+
+.. code-block:: c
+
+    #include <stddef.h>
+    #include <unistd.h>
+
+    typedef long Align;  /* alignment for longs */
+
+    union header {
+        struct {
+            union header *ptr;   /* next block if on free list */
+            unsigned size;       /* size of this block */
+        } s;
+        Align x;                 /* force alignment of blocks */
+    };
+
+    typedef union header Header;
+
+    static Header base;              /* empty list to get started */
+    static Header *freep = NULL;     /* start of free list */
+
+    void free(void *ap)
+    {
+        Header *bp, *p;
+
+        bp = (Header *)ap - 1;    /* point to block header */
+
+        for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
+            if (p >= p->s.ptr && (bp > p || bp < p->s.ptr))
+                break;  /* freed block at start or end of arena */
+
+        if (bp + bp->s.size == p->s.ptr) {    /* join to upper nbr */
+            bp->s.size += p->s.ptr->s.size;
+            bp->s.ptr = p->s.ptr->s.ptr;
+        } else
+            bp->s.ptr = p->s.ptr;
+
+        if (p + p->s.size == bp) {            /* join to lower nbr */
+            p->s.size += bp->s.size;
+            p->s.ptr = bp->s.ptr;
+        } else
+            p->s.ptr = bp;
+
+        freep = p;
+    }
+
+    #define NALLOC 1024  /* minimum #units to request */
+
+    static Header *morecore(unsigned nu);
+
+    void *malloc(unsigned nbytes)
+    {
+        Header *p, *prevp;
+        unsigned nunits;
+
+        nunits = (nbytes + sizeof(Header) - 1) / sizeof(Header) + 1;
+
+        if ((prevp = freep) == NULL) {   /* no free list yet */
+            base.s.ptr = freep = prevp = &base;
+            base.s.size = 0;
+        }
+
+        for (p = prevp->s.ptr; ; prevp = p, p = p->s.ptr) {
+            if (p->s.size >= nunits) {       /* big enough */
+                if (p->s.size == nunits)     /* exactly */
+                    prevp->s.ptr = p->s.ptr;
+                else {                       /* allocate tail end */
+                    p->s.size -= nunits;
+                    p += p->s.size;
+                    p->s.size = nunits;
+                }
+                freep = prevp;
+                return (void *)(p + 1);
+            }
+            if (p == freep)                  /* wrapped around free list */
+                if ((p = morecore(nunits)) == NULL)
+                    return NULL;             /* none left */
+        }
+    }
+
+    
