@@ -1543,6 +1543,9 @@ dilimler de nesnelerden oluşmaktadır. Bu sistemi şekille şöyle gösterebili
 Bu şekilde iki NUMA düğümü vardır. Her NUMA düğümünde dilimler bulunmaktadır. Dilimler de tahsis edilecek
 blokları içermektedir.
 
+Dilim Önbelleği ve kmem_cache Yapısı
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Şimdi bu sistemin veri yapısı üzerinde duralım. Dilim önbelleği ``mm/slab.h`` dosyası içerisindeki
 ``kmem_cache`` yapısıyla temsil edilmiştir. Güncel çekirdeklerde bu yapı şöyledir:
 
@@ -1881,4 +1884,68 @@ biti nesne sayısını, yüksek anlamlı 16 biti de düzey değerini tutmaktadı
 .. figure:: _static/oo-bitfield.png
    :alt: kmem_cache_order_objects x alanının bit düzeni
    :align: center
+
+kmem_cache_node Yapısı
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Bir dilim önbelleğinin düğümlerden, düğümlerin dilimlerden ve dilimlerin de nesnelerden oluştuğunu
+söylemiştik. Dilim önbelleğinin düğümleri ``kmem_cache_node`` isimli yapıyla temsil edilmektedir. Bu yapı
+güncel çekirdeklerde ``mm/slab.h`` dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct kmem_cache_node {
+        spinlock_t list_lock;
+
+    #ifdef CONFIG_SLAB
+        struct list_head slabs_partial;  /* partial list first, better asm code */
+        struct list_head slabs_full;
+        struct list_head slabs_free;
+        unsigned long total_slabs;       /* length of all slab lists */
+        unsigned long free_slabs;        /* length of free slab list only */
+        unsigned long free_objects;
+        unsigned int free_limit;
+        unsigned int colour_next;        /* Per-node cache coloring */
+        struct array_cache *shared;      /* shared per node */
+        struct alien_cache **alien;      /* on other nodes */
+        unsigned long next_reap;         /* updated without locking */
+        int free_touched;                /* updated without locking */
+    #endif
+
+    #ifdef CONFIG_SLUB
+        unsigned long nr_partial;
+        struct list_head partial;
+    #ifdef CONFIG_SLUB_DEBUG
+        atomic_long_t nr_slabs;
+        atomic_long_t total_objects;
+        struct list_head full;
+    #endif
+    #endif
+    };
+
+Güncel çekirdekler derlenirken yalnızca ``CONFIG_SLUB`` define edilmiş durumdadır. Eski tip SLAB ve SLOB
+gerçekleştirimlerinin çekirdekten çıkartıldığını belirtmiştik. Dolayısıyla aslında yukarıdaki yapı güncel
+çekirdeklerde aşağıdaki hale gelmektedir:
+
+.. code-block:: c
+
+    struct kmem_cache_node {
+        spinlock_t list_lock;
+
+        /* CONFIG_SLUB */
+        unsigned long nr_partial;
+        struct list_head partial;
+
+    #ifdef CONFIG_SLUB_DEBUG
+        atomic_long_t nr_slabs;
+        atomic_long_t total_objects;
+        struct list_head full;
+    #endif
+    };
+
+Yapının ``partial`` elemanı bu düğümdeki dilimlerin listesini, ``nr_partial`` elemanı ise bunların sayısını
+tutmaktadır. UMA mimarisinde zaten tek bir düğümün olduğunu anımsayınız.
+
+Dilimler ve slab Yapısı
+~~~~~~~~~~~~~~~~~~~~~~~~
 
