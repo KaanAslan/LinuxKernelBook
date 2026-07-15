@@ -1,4 +1,3 @@
-
 ===============================================================
 Bellek Yönetimi - 2. Bölüm :raw-html:`<br>` Tahsisat İşlemleri
 ===============================================================
@@ -15,7 +14,13 @@ Linux çekirdeğinde iki düzeyli tahsisat sistemi vardır:
 
 Linux çekirdeğindeki sayfa düzeyinde tahsisat sistemine *ikiz blok tahsisat sistemi* ya da
 İngilizcesiyle *buddy allocator*, byte düzeyinde tahsisat sistemine ise *dilimli tahsisat sistemi*
-ya da İngilizcesiyle *slab allocator* denilmektedir.
+ya da İngilizcesiyle *slab allocator* denilmektedir.  Dilimli tahsisat sistemi, ikiz blok tahsisat sistemini 
+kullanrarak tahsis ettiği sayfaları byte düzeyinde tahsisatlar için organize etmektedir. Dilimli tahsisat 
+sisteminin ikiz blok tahsisat sisteminin üzerine oturtulduğunu söyleyebiliriz: 
+
+.. image:: _static/buddy-slab-layers.png
+   :alt: Dilimli ve İkiz Blok Tahsisat Sistemi şeması
+   :align: center
 
 İkiz Blok Tahsisat Sistemi (Buddy Allocator)
 ============================================
@@ -1467,7 +1472,413 @@ karmaşıklıkları şöyledir:
    :width: 70%
 
 Zaman içerisinde pek çok sistem kullanıcı modundaki tahsisatlar için bu klasik tahsisat algoritmasının
-iyileştirilmiş varyasyonlarını kullanmaya başlamıştır. Bunları bu kursta incelemeyeceğiz.
+iyileştirilmiş varyasyonlarını kullanmaya başlamıştır. Biz kitabımızda bunları incelemeyeceğiz. 
 
 Dilimli Tahsisat Sisteminin Ana Fikri
 -------------------------------------
+
+Yukarıda açıkladığımız klasik tahsisat sistemindeki bağlı listede tutulan boş bloklar aynı uzunlukta olsaydı
+tahsisat ve serbest bırakma işlemleri O(1) karmaşıklıkta yapılabilirdi. Çünkü boş bağlı listedeki tüm bloklar
+eşit uzunlukta olduğuna göre tahsisat sırasında hemen listenin başındaki blok verilebilirdi. Benzer biçimde
+serbest bırakma işleminde de hemen blok listenin başına O(1) karmaşıklıkta eklenebilirdi. Ancak böyle bir
+yöntemde blok uzunluğunun belirlenmesi sorunlu bir noktayı oluşturmaktadır. Örneğin boş bağlı listedeki
+blokların 64 byte uzunlukta olduğunu düşünelim. Bu durumda biz 100 byte'lık bir tahsisat yapamayız. 30
+byte tahsisat yapmak istediğimizde de bloktaki 34 byte boşa gidecektir. (Blok içerisinde kullanılmayan
+alanların oluşması durumuna "içsel bölünme (internal fragmentation)" dendiğini anımsayınız.) Bu durumda ilk
+akla gelecek yöntem değişik uzunlukta birden fazla boş bağlı liste bulundurmaktır. Böylece tahsisat hangi
+uzunluğa en yakınsa o listeden yapılabilir. Tabii yine "içsel bölünme" kaçınılmazdır ancak daha tolere
+edilebilir bir noktaya indirgenmiştir.
+
+Çekirdekte aynı türden pek çok nesne yaratılmaktadır. Örneğin bir proses yaratıldığında ``task_struct``
+nesnesi, bir dosya açıldığında ``file`` nesnesi, ``dentry`` nesnesi, duruma göre de ``inode`` nesnesi tahsis
+edilmektedir. Bu nesnelerin uzunlukları farklıdır. İşte bu farklı uzunluktaki nesneler için tam o uzunlukta
+farklı boş blok listeleri oluşturulursa hem bu nesnelerin tahsis edilmesi hızlandırılır hem de "içsel
+bölünme" ortadan kaldırılır. Modern işletim sistemlerinin büyük çoğunluğunda bu teknik kullanılmaktadır.
+Dilimli tahsisat sistemi de bu tekniği temel almaktadır.
+
+Linux çekirdeğindeki dilimli tahsisat sistemi zaman içerisinde iyileştirilmiştir. İlk kullanılan
+gerçekleştirimin adı SLAB'dır. Bunun iyileştirilmiş biçimine de SLUB denilmektedir. Bir noktaya kadar
+çekirdek kodlarında her iki gerçekleştirim de bulunuyordu ve hangi gerçekleştirimin kullanılacağı
+konfigürasyon parametreleriyle seçilebiliyordu. Ancak çekirdeğin 6.5 sürümüyle birlikte ilk SLAB
+gerçekleştirimi çekirdek kodlarından atılmıştır. Yani bugünkü sistemler SLUB gerçekleştirimini
+kullanmaktadır. Ayrıca 6.2 sürümüne kadar çekirdekte bir de SLOB gerçekleştirimi bulunuyordu. Bu SLOB
+gerçekleştirimi yukarıda açıkladığımız klasik tahsisat algoritmasını kullanıyordu. Bellek kısıtı olan gömülü
+sistemlerde kullanılmak üzere çekirdekte bulunduruluyordu. Bu SLOB gerçekleştirimi de çekirdek kodlarından
+6.2 sürümüyle çıkartılmıştır. Yani güncel çekirdeklerde artık yalnızca SLUB gerçekleştirimi kullanılmaktadır.
+
+.. figure:: _static/slab-implementations-table.png
+   :alt: SLAB, SLUB ve SLOB gerçekleştirimlerinin karşılaştırması
+   :align: center
+
+Her ne kadar güncel gerçekleştirimin adı SLUB olsa da sisteme genel olarak yine İngilizce *slab allocator*
+denilmektedir. SLUB ismi *"Unqueued SLAB"* sözcüklerinden, SLOB ismi ise *"Simple List Of Blocks"*
+sözcüklerinden çağrışımla uydurulmuştur.
+
+Burada bir noktaya dikkatinizi çekmek istiyoruz. Çekirdek kaynak kodlarında var olan her şey derlemede
+çekirdek imajına yansıtılmamaktadır. Konfigürasyon aşamasında "yalnızca seçilen özellikler" çekirdek imajına
+yansıtılmaktadır. Zaten konfigürasyon işleminin amaçlarından biri de budur.
+
+SLUB gerçekleştirimi oldukça ayrıntılıdır. Biz kursumuzda bu gerçekleştirimin ana hatları üzerinde
+duracağız. Ancak SLUB sözcüğü yerine "dilimli tahsisat sistemi (slab allocator)" ve "dilim (slab)"
+terimlerini kullanacağız.
+
+Dilimli Tahsisat Sistemine İlişkin Veri Yapıları ve Algoritmalar
+----------------------------------------------------------------
+
+Dilimli tahsisat sisteminde üç önemli kavram vardır: Dilim Önbellek (Slab Cache), Dilim (Slab) ve Nesne
+(Object). Dilim önbelleği bu terminolojide tahsisat sistemini belirtmektedir. Dilim önbelleği dilimlerden,
+dilimler de nesnelerden oluşmaktadır. Tahsis edilecek öğeler eşit uzunluktaki nesnelerdir.
+
+Dilimli tahsisat sistemindeki dilim önbelleği (slab cache) ana taşıyıcıdır. Tahsisat sistemi ile ilgili
+önemli bilgiler burada tutulmaktadır. Dilimler (slabs) ardışıl sayfalardan oluşan bellek bloklarıdır.
+Nesneler dilimlerin içerisindedir. Tahsisat sistemi dilimleri dilim önbelleği içerisindeki bir bağlı
+listede tutmaktadır. SLUB gerçekleştiriminde her dilim önbelleği (slab cache) her NUMA düğümü için ayrı
+bir dilim listesi tutmaktadır. Yani aslında dilim önbelleği NUMA düğümlerinden, NUMA düğümleri dilimlerden,
+dilimler de nesnelerden oluşmaktadır. Bu sistemi şekille şöyle gösterebiliriz:
+
+.. figure:: _static/slab-cache-structure.png
+   :alt: Dilim önbelleği hiyerarşisi
+   :align: center
+
+Bu şekilde iki NUMA düğümü vardır. Her NUMA düğümünde dilimler bulunmaktadır. Dilimler de tahsis edilecek
+blokları içermektedir.
+
+Şimdi bu sistemin veri yapısı üzerinde duralım. Dilim önbelleği ``mm/slab.h`` dosyası içerisindeki
+``kmem_cache`` yapısıyla temsil edilmiştir. Güncel çekirdeklerde bu yapı şöyledir:
+
+.. code-block:: c
+
+    struct kmem_cache {
+        struct slub_percpu_sheaves __percpu *cpu_sheaves;
+        /* Used for retrieving partial slabs, etc. */
+        slab_flags_t flags;
+        unsigned long min_partial;
+        unsigned int size;              /* Object size including metadata */
+        unsigned int object_size;       /* Object size without metadata */
+        struct reciprocal_value reciprocal_size;
+        unsigned int offset;            /* Free pointer offset */
+        unsigned int sheaf_capacity;
+        struct kmem_cache_order_objects oo;
+
+        /* Allocation and freeing of slabs */
+        struct kmem_cache_order_objects min;
+        gfp_t allocflags;               /* gfp flags to use on each alloc */
+        int refcount;                   /* Refcount for slab cache destroy */
+        void (*ctor)(void *object);     /* Object constructor */
+        unsigned int inuse;             /* Offset to metadata */
+        unsigned int align;             /* Alignment */
+        unsigned int red_left_pad;      /* Left redzone padding size */
+        const char *name;               /* Name (only for display!) */
+        struct list_head list;          /* List of slab caches */
+    #ifdef CONFIG_SYSFS
+        struct kobject kobj;            /* For sysfs */
+    #endif
+    #ifdef CONFIG_SLAB_FREELIST_HARDENED
+        unsigned long random;
+    #endif
+
+    #ifdef CONFIG_NUMA
+        /*
+         * Defragmentation by allocating from a remote node.
+         */
+        unsigned int remote_node_defrag_ratio;
+    #endif
+
+    #ifdef CONFIG_SLAB_FREELIST_RANDOM
+        unsigned int *random_seq;
+    #endif
+
+    #ifdef CONFIG_KASAN_GENERIC
+        struct kasan_cache kasan_info;
+    #endif
+
+    #ifdef CONFIG_HARDENED_USERCOPY
+        unsigned int useroffset;        /* Usercopy region offset */
+        unsigned int usersize;          /* Usercopy region size */
+    #endif
+
+    #ifdef CONFIG_SLUB_STATS
+        struct kmem_cache_stats __percpu *cpu_stats;
+    #endif
+
+        struct kmem_cache_node *node[MAX_NUMNODES];
+    };
+
+Yapının pek çok elemanının çeşitli konfigürasyon parametreleri seçildiğinde yapıya dahil edildiğine dikkat
+ediniz. Yapının ``object_size`` elemanı dilimlerde tutulan nesnelerin büyüklüğünü belirtmektedir. Ancak
+aslında sistem çeşitli konfigürasyon parametrelerine de bağlı olarak nesneler için metadata bilgileri
+nedeniyle daha büyük yer ayırabilmektedir. Yapının ``size`` elemanı nesneler için dilim içerisinde ayrılan
+gerçek alanı belirtmektedir. Nesneler için kullanılan ek metadata bilgileri şöyledir:
+
+.. figure:: _static/object-layout.png
+   :alt: SLUB nesne bellek düzeni
+   :align: center
+
+Buradaki ``flags`` elemanı tahsisat sırasındaki davranışı belirtmektedir. Bu eleman aşağıdaki bayrakların
+bileşimlerinden oluşabilmektedir:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Flag
+     - Anlamı
+   * - ``SLAB_HWCACHE_ALIGN``
+     - Nesneleri CPU önbelleğine göre hizala
+   * - ``SLAB_PANIC``
+     - Tahsisat başarısız olursa kernel panic yap
+   * - ``SLAB_POISON``
+     - Serbest nesneleri bilinen bir byte ile doldur (debug)
+   * - ``SLAB_RED_ZONE``
+     - Nesne etrafına kırmızı bölge ekle (debug)
+   * - ``SLAB_ACCOUNT``
+     - Tahsisatları cgroup'a say
+   * - ``SLAB_RECLAIM_ACCOUNT``
+     - Dilimleri geri alınabilir (reclaimable) olarak işaretle
+   * - ``SLAB_TYPESAFE_BY_RCU``
+     - RCU grace period'u bitmeden slab'ı serbest bırakma
+
+Yapının ``allocflags`` elemanı ise ``alloc_pages`` fonksiyonuyla tahsisat yapılırken kullanılan bayrakları
+içermektedir. Zaten bu bayraklar izleyen paragraflarda göreceğimiz ``kmem_cache_create`` fonksiyonuna
+argüman olarak verilmektedir. Her dilim önbelleğinin bir ismi vardır. Bu isim yapının ``name`` elemanında
+tutulmaktadır. Biz dilim önbelleğinin düğümlerden, düğümlerin dilimlerden ve dilimlerin de nesnelerden
+oluştuğunu belirtmiştik. İşte dilim önbelleğindeki düğümler yapının ``node`` elemanında tutulmaktadır.
+``node`` elemanının dilim önbelleğindeki düğümleri belirten ``kmem_cache_node`` türünden nesnelerin
+adreslerini tutan bir dizi olduğuna dikkat ediniz:
+
+.. code-block:: c
+
+    struct kmem_cache_node *node[MAX_NUMNODES];
+
+SLUB gerçekleştiriminde her nesneden sonra yukarıda açıkladığımız bazı metadata bilgileri tutulmaktadır.
+Yapının ``inuse`` elemanında nesnelerin metadata alanlarının "hangi offset'ten itibaren başladığı" bilgisi
+bulundurulmaktadır. Aşağıdaki şekli inceleyiniz:
+
+.. figure:: _static/slab-page-layout.png
+   :alt: Dilim için ayrılan sayfa düzeni
+   :align: center
+
+Yapının ``align`` elemanı yukarıdaki şekilden de görüldüğü gibi nesneler için ayrılan alanın kaçın
+katlarına göre hizalanacağını belirtmektedir. Yapının ``min_partial`` elemanı dilimlerin sisteme iadesi
+için gereken minimum dilim sayısını belirtmektedir:
+
+.. code-block:: none
+
+    Dilim önbelleğindeki dilim sayısı >  min_partial  →  boşalan dilimin sayfaları iade edilir
+    Dilim önbelleğindeki dilim sayısı <= min_partial  →  boşalan dilimin sayfaları iade edilmez
+
+``min_partial`` elemanının değeri şöyle tespit edilmektedir:
+
+.. code-block:: c
+
+    #define MIN_PARTIAL  5
+    #define MAX_PARTIAL  10
+
+    static inline unsigned long slub_min_partial(void)
+    {
+        return ilog2(nr_cpu_ids);
+    }
+
+    static void set_min_partial(struct kmem_cache *s, unsigned long min)
+    {
+        if (min < MIN_PARTIAL)
+            min = MIN_PARTIAL;
+        else if (min > MAX_PARTIAL)
+            min = MAX_PARTIAL;
+        s->min_partial = min;
+    }
+
+``min_partial`` bu algoritmaya göre şu değerlerden biri olabilmektedir:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - CPU Sayısı
+     - ilog2(nr_cpus)
+     - min_partial
+   * - 1
+     - 0
+     - 5  (MIN_PARTIAL alt sınırı)
+   * - 2
+     - 1
+     - 5  (MIN_PARTIAL alt sınırı)
+   * - 4
+     - 2
+     - 5  (MIN_PARTIAL alt sınırı)
+   * - 8
+     - 3
+     - 5  (MIN_PARTIAL alt sınırı)
+   * - 16
+     - 4
+     - 5  (MIN_PARTIAL alt sınırı)
+   * - 32
+     - 5
+     - 5  (MIN_PARTIAL alt sınırı)
+   * - 64
+     - 6
+     - 6
+   * - 128
+     - 7
+     - 7
+   * - 256
+     - 8
+     - 8
+   * - 512
+     - 9
+     - 9
+   * - 1024
+     - 10
+     - 10  (MAX_PARTIAL üst sınırı)
+   * - 2048+
+     - 11+
+     - 10  (MAX_PARTIAL üst sınırı)
+
+``min_partial`` elemanının amacı dilim önbelleğinde hazır durumda tutulacak belli miktarda boş dilimlerin
+bulundurulmasını sağlamaktır.
+
+``kmem_cache`` yapısının ``ctor`` elemanında aşağıdaki gibi bir fonksiyon göstericisi tutulmaktadır:
+
+.. code-block:: c
+
+    void (*ctor)(void *object);
+
+Ne zaman sistemden bir nesne tahsis edilmek istense önce o nesne bu ``ctor`` fonksiyonuna verilir. Bu
+fonksiyon nesnenin içerisine ilkdeğerlerini verir; bu işlemden sonra nesne tahsis edene iletilir. Bu
+elemanda ``NULL`` adresi varsa böyle bir işlem yapılmamaktadır. Buraya yerleştirilecek fonksiyon
+``kmem_cache_create`` fonksiyonuna argüman olarak girilmektedir.
+
+Dilimlerin ardışıl fiziksel sayfalardan oluştuğunu söylemiştik. Peki bir dilim ardışıl kaç fiziksel sayfadan
+oluşmaktadır? Soruyu şöyle de sorabiliriz: Bir dilim ikiz blok tahsisat sisteminin hangi düzeyinden
+yapılmaktadır? İşte dilimlerin sayfa büyüklüklerinin belirlenmesinde ``kmem_cache`` yapısının iki elemanı
+etkili olmaktadır:
+
+.. code-block:: c
+
+    struct kmem_cache {
+        /* ... */
+        struct kmem_cache_order_objects oo;   /* optimal order + nesne sayısı */
+        struct kmem_cache_order_objects min;  /* fallback: minimum order + nesne sayısı */
+        /* ... */
+    };
+
+İlk denemede yapının ``oo`` elemanına başvurulmaktadır. Eğer ikiz blok sisteminden ``oo`` elemanında
+belirtilen sayfa düzeyinde (order) tahsisat yapılamazsa bu kez yapının ``min`` elemanına başvurulmaktadır.
+Yapının ``min`` elemanına nesne boyutunu içeren en küçük düzey değeri (genellikle 0) atanmaktadır. Yani
+en az tahsisat değeri 1 sayfadır. ``oo`` elemanına atanacak düzey değeri dilim önbelleği yaratılırken
+``kmem_cache_create`` fonksiyonunun çağrı zincirindeki ``calculate_sizes`` fonksiyonu tarafından
+verilmektedir. Ancak değerin asıl hesaplandığı yer ``calculate_order`` fonksiyonudur. ``calculate_order``
+fonksiyonu ``oo`` için sayfa büyüklüğü değerini şu faktörlere bağlı olarak hesaplar:
+
+- **CPU sayısı:** Çok CPU'lu sistemde aynı nesne boyutu daha büyük düzeye yol açabilmektedir. Ayrıntılara
+  burada girmeyeceğiz. Çekirdek kaynak kodlarına başvurabilirsiniz.
+
+- **Sınırlar:** Elde edilen değer ``slub_min_order`` ile ``slub_max_order`` değişkenlerinin arasına
+  çekilir. Başlangıçta ``slub_min_order = 0`` ve ``slub_max_order = 3`` durumundadır. (Yani en fazla
+  bir dilim 8 sayfadan oluşabilmektedir.)
+
+- **İstisnai Durum:** Nesne boyutu ``slub_max_order``'lık slab'a tek başına bile sığmıyorsa sınır aşılır
+  ve nesnenin boyutuna uygun en küçük düzey kullanılır.
+
+Aşağıda somut "x86-64, 16 CPU" için çeşitli nesne boyutlarına göre ``min`` ve ``oo`` değerlerini
+veriyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 18 13 16 15 12 13
+
+   * - size (bayt)
+     - oo:order
+     - oo:objects
+     - Slab boyutu
+     - İsraf
+     - min:order
+   * - 64
+     - 0
+     - 64
+     - 4 KB
+     - %0.0
+     - 0
+   * - 96
+     - 0
+     - 42
+     - 4 KB
+     - %1.6
+     - 0
+   * - 192
+     - 1
+     - 42
+     - 8 KB
+     - %1.6
+     - 0
+   * - 256
+     - 1
+     - 32
+     - 8 KB
+     - %0.0
+     - 0
+   * - 512
+     - 2
+     - 32
+     - 16 KB
+     - %0.0
+     - 0
+   * - 1024
+     - 3
+     - 32
+     - 32 KB
+     - %0.0
+     - 0
+   * - 2048
+     - 3
+     - 16
+     - 32 KB
+     - %0.0
+     - 0
+   * - 4096
+     - 3
+     - 8
+     - 32 KB
+     - %0.0
+     - 0
+   * - 5000
+     - 3
+     - 6
+     - 32 KB
+     - %8.4
+     - 1
+   * - 8192
+     - 3
+     - 4
+     - 32 KB
+     - %0.0
+     - 1
+   * - 12000
+     - 3
+     - 2
+     - 32 KB
+     - %26.8
+     - 2
+   * - 40960
+     - 4
+     - 1
+     - 64 KB
+     - %37.5
+     - 4
+
+Bu tabloda sütunlarda neden ``oo:order`` ve ``min:order`` yazıldığını merak edebilirsiniz. Aslında ``oo``
+ve ``min`` elemanları yalnızca dilim için yapılacak tahsisatın düzey bilgisini değil aynı zamanda bir
+dilimde kaç nesnenin yer aldığı bilgisini de tutmaktadır. Bu elemanların ``kmem_cache_order_objects``
+türünden olduğuna dikkat ediniz. Bu yapı şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct kmem_cache_order_objects {
+        unsigned int x;
+    };
+
+Görüldüğü gibi yapının ``x`` isminde tek bir elemanı vardır. İşte bu ``x`` elemanının düşük anlamlı 16
+biti nesne sayısını, yüksek anlamlı 16 biti de düzey değerini tutmaktadır.
+
+.. figure:: _static/oo-bitfield.png
+   :alt: kmem_cache_order_objects x alanının bit düzeni
+   :align: center
+
