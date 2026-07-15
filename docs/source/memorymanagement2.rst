@@ -21,6 +21,7 @@ sisteminin ikiz blok tahsisat sisteminin üzerine oturtulduğunu söyleyebiliriz
 .. image:: _static/buddy-slab-layers.png
    :alt: Dilimli ve İkiz Blok Tahsisat Sistemi şeması
    :align: center
+   :width: 40%
 
 İkiz Blok Tahsisat Sistemi (Buddy Allocator)
 ============================================

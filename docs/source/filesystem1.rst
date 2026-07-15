@@ -2498,7 +2498,7 @@ tabii ``open`` fonksiyonuyla bir dosya açıldığında çekirdeğin
 diye bir araştırma yapması gerekmektedir. Bu araştırmayı yapabilmesi için de çekirdeğin bir biçimde
 bütün yaratılmış olan ``dentry`` ve ``inode`` nesnelerini bir yerde tutması gerekir.
 
-dentry ve inode Önbellekleri
+Dentry ve Inode Önbellekleri
 ============================
 
 Çekirdek ``dentry`` ve ``inode`` nesneleri için ayrı önbellek (cache) sistemleri oluşturmaktadır.
