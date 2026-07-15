@@ -1269,8 +1269,10 @@ ARM32 kullanan BeagleBone modelleri için de başlangıç durumu şöyledir:
 Fallback Mekanizmasında NUMA Düğümlerinin Dolaşım Sırası
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Peki bölgelerde *fallback* yapılırken NUMA düğümlerine hangi sırada bakılmaktadır? NUMA mimarisini kullanan
-donanımlar hakkında bazı bilgiler verelim. NUMA mimarisi donanım düzeyinde biraz ayrıntılıdır.
+Peki bölgelerde *fallback* yapılırken NUMA düğümlerine hangi sırada bakılmaktadır? İşte *fallback* işlemlerinde 
+NUMA düğümlerine NUMA uzaklık matrisindeki uzaklık değerleri dikkate alınarak bakılmaktadır. Yani node_zonelists 
+dizisinde NUMA düğümleri NUMA uzaklıklarına göre küçükten büyüğe sort edilmiş durumdadır. Peki NUMA uzaklık 
+matrisi nedir? İzleyen paragraflarda NUMA uzaklık matrisinin ne anlama geldiğini açıklıyoruz. 
 
 Bilgisayar ana kartında CPU'lar için soketler bulunmaktadır. Bu soketlere takılan entegre devrelere
 *paket (package)* denilmektedir. Biz bu paketlere *işlemci paketleri* de diyeceğiz. Bu işlemci paketleri
@@ -1340,7 +1342,7 @@ Tipik bazı NUMA donanımlarındaki gecikmeler nanosaniyeler mertebesinde şöyl
    :align: center
 
 Her soketteki çekirdek o sokete ilişkin RAM bank'ına (yani NUMA düğümüne) daha hızlı erişmektedir. Yukarıdaki
-sistemde her sokette 64 çekirdekli bir işlemci paketi, 2 sokette toplamda 128 çekirdek bulunmaktadır.
+sistemde her sokette 64 çekirdekli bir işlemci paketi, 2 sokette toplamda 128 çekirdek bulunmaktadır. 
 
 Dilimli Tahsisat Sistemi (Slab Allocator)
 =========================================
@@ -1372,9 +1374,9 @@ de denilmektedir) sıralı arama yapılır. Klasik tahsis algoritması D. Ritchi
 *"The C Programming Language"* kitabında "8.7 Example - A Storage Allocator (Sayfa 163)" başlığı altında
 da açıklanmıştır. Pek çok ``malloc``/``realloc``/``free`` benzeri tahsisat sistemi burada belirtilen
 algoritmayı temel almıştır. Örneğin Windows sistemlerindeki ``HeapAlloc``, ``HeapFree`` gibi API
-fonksiyonlarının temeli de bu algoritmadır. Linux sistemlerinde ``malloc``/``realloc``/``free`` fonksiyonları
-da uzun süre bu klasik algoritmayı kullanmıştır. D. Ritchie ve B. Kernighan tarafından
-*"The C Programming Language"* kitabında verilen örnek ``malloc`` ve ``free`` algoritmaları aşağıda
+fonksiyonlarının temeli de bu algoritmadır. Linux sistemlerinde ``malloc``/``realloc``/``free`` fonksiyonlarında
+da uzun süre bu klasik algoritmanın iyileştirilmiş biçimleri kullanılmıştır. D. Ritchie ve B. Kernighan tarafından
+*The C Programming Language* kitabında verilen örnek ``malloc`` ve ``free`` algoritmaları aşağıda
 verilmiştir.
 
 .. code-block:: c
@@ -1456,4 +1458,16 @@ verilmiştir.
         }
     }
 
-    
+*"The C Programming Language"* kitabında belirtilen klasik tahsisat algortimasındaki işlemlerin algoritma
+karmaşıklıkları şöyledir:
+
+.. figure:: _static/malloc-complexity-table.png
+   :alt: Klasik malloc/free algoritması karmaşıklık tablosu
+   :align: center
+   :width: 70%
+
+Zaman içerisinde pek çok sistem kullanıcı modundaki tahsisatlar için bu klasik tahsisat algoritmasının
+iyileştirilmiş varyasyonlarını kullanmaya başlamıştır. Bunları bu kursta incelemeyeceğiz.
+
+Dilimli Tahsisat Sisteminin Ana Fikri
+-------------------------------------
