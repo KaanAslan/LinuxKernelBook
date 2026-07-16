@@ -21,7 +21,9 @@ sisteminin ikiz blok tahsisat sisteminin üzerine oturtulduğunu söyleyebiliriz
 .. image:: _static/buddy-slab-layers.png
    :alt: Dilimli ve İkiz Blok Tahsisat Sistemi şeması
    :align: center
-   :width: 40%
+   :width: 50%
+
+Biz bu bölümde önce ikiz blok tahsisat sistemini sonra da dilimli tahsisat sistemini inceleyeceğiz.
 
 İkiz Blok Tahsisat Sistemi (Buddy Allocator)
 ============================================
@@ -1950,3 +1952,242 @@ tutmaktadır. UMA mimarisinde zaten tek bir düğümün olduğunu anımsayınız
 Dilimler ve slab Yapısı
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
+Güncel çekirdeklerde dilimler ``mm/slab.h`` dosyası içerisindeki ``slab`` isimli yapıyla temsil
+edilmektedir. Ancak bir süre önceye kadar bu yapı yerine doğrudan dilim bilgileri ``page`` nesnelerinin
+içerisinde saklanıyordu. Güncel çekirdeklerdeki (7'li çekirdeklerdeki) ``slab`` yapısı şöyle
+tanımlanmıştır:
+
+.. code-block:: c
+
+    struct slab {
+        memdesc_flags_t flags;
+
+        struct kmem_cache *slab_cache;
+        union {
+            struct {
+                struct list_head slab_list;
+                /* Double-word boundary */
+                struct freelist_counters;
+            };
+            struct rcu_head rcu_head;
+        };
+
+        unsigned int __page_type;
+        atomic_t __page_refcount;
+    #ifdef CONFIG_SLAB_OBJ_EXT
+        unsigned long obj_exts;
+    #endif
+    };
+
+Buradaki elemanları ve işlevlerini aşağıdaki tabloda listeliyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Eleman
+     - Tür
+     - Açıklama
+   * - ``__page_flags``
+     - ``memdesc_flags_t``
+     - Fiziksel sayfa bayrakları. ``struct page`` ile bellekte örtüşür;
+       ``PG_slab`` gibi bayraklar burada tutulur.
+   * - ``slab_cache``
+     - ``struct kmem_cache *``
+     - Bu dilimin ait olduğu önbelleği gösterir.
+   * - ``slab_list``
+     - ``struct list_head``
+     - ``kmem_cache_node.partial`` listesine bağlanan düğüm.
+       (``rcu_head`` ile union içindedir)
+   * - ``rcu_head``
+     - ``struct rcu_head``
+     - Dilim RCU ile serbest bırakılırken kullanılır.
+       (``slab_list`` ile union içindedir)
+   * - ``struct freelist_counters``
+     - ``struct freelist_counters``
+     - 7.x ile ayrı bir yapıya taşınan freelist+counters bloğu.
+       Aşağıdaki alanları içerir.
+   * - ``freelist``
+     - ``void *``
+     - Dilim içindeki boş nesnelerin tek yönlü listesi.
+   * - ``counters``
+     - ``unsigned long``
+     - ``inuse``, ``objects``, ``frozen``'ı tek atomik işlemle
+       güncellemek için hepsini kapsayan birlik alanı.
+   * - ``inuse``
+     - ``unsigned`` (16 bit)
+     - Şu an tahsis edilmiş nesne sayısı.
+   * - ``objects``
+     - ``unsigned`` (15 bit)
+     - Dilimin toplam nesne kapasitesi.
+   * - ``frozen``
+     - ``unsigned`` (1 bit)
+     - 1 → dilim bir CPU'nun per-CPU listesine "dondurulmuş".
+       ``SLUB_DEBUG`` açıksa: slab bozulma göstergesi olarak yeniden kullanılır.
+   * - ``__page_type``
+     - ``unsigned int``
+     - Sayfa tipi bilgisi; ``struct page`` ile örtüşür.
+   * - ``__page_refcount``
+     - ``atomic_t``
+     - Fiziksel sayfanın referans sayacı. Doğrudan erişilmez,
+       page allocator yönetir.
+   * - ``obj_exts``
+     - ``unsigned long``
+     - Nesne uzantılarına gösterici. Yalnızca ``CONFIG_SLAB_OBJ_EXT``
+       ile derlenir; slab profiling ve ``memory_failure`` gibi özellikler
+       için kullanılır.
+
+``slab`` yapısının önemli elemanları ``freelist_counters`` yapısına taşınmıştır. Yani bir süre önceye
+kadar aslında bu ``freelist_counters`` yapısının elemanları ``slab`` yapısının içindeydi. Fakat zaten
+yukarıdaki anonim birlik ve yapı tanımlaması ile sanki bu yapının elemanları ``slab`` yapısının
+içerisindeymiş gibi ele alınmaktadır. Yani elemanlara erişim bakımından bir farklılık oluşmamaktadır.
+6'lı çekirdeklerde ``slab`` yapısı şöyledir:
+
+.. code-block:: c
+
+    struct slab {
+        memdesc_flags_t flags;
+
+        struct kmem_cache *slab_cache;
+        union {
+            struct {
+                union {
+                    struct list_head slab_list;
+                    struct { /* For deferred deactivate_slab() */
+                        struct llist_node llnode;
+                        void *flush_freelist;
+                    };
+    #ifdef CONFIG_SLUB_CPU_PARTIAL
+                    struct {
+                        struct slab *next;
+                        int slabs;  /* Nr of slabs left */
+                    };
+    #endif
+                };
+                /* Double-word boundary */
+                union {
+                    struct {
+                        void *freelist;     /* first free object */
+                        union {
+                            unsigned long counters;
+                            struct {
+                                unsigned inuse:16;
+                                unsigned objects:15;
+                                /*
+                                 * If slab debugging is enabled then the
+                                 * frozen bit can be reused to indicate
+                                 * that the slab was corrupted
+                                 */
+                                unsigned frozen:1;
+                            };
+                        };
+                    };
+    #ifdef system_has_freelist_aba
+                    freelist_aba_t freelist_counter;
+    #endif
+                };
+            };
+            struct rcu_head rcu_head;
+        };
+
+        unsigned int __page_type;
+        atomic_t __page_refcount;
+    #ifdef CONFIG_SLAB_OBJ_EXT
+        unsigned long obj_exts;
+    #endif
+    };
+
+Burada C standartları bağlamında bir noktaya dikkatinizi çekmek istiyoruz. C11'den sonra aşağıdaki gibi
+bir yapı tanımlaması geçerlidir:
+
+.. code-block:: c
+
+    struct Sample {
+        union {
+            struct {
+                int x;
+                int y;
+            };
+            int z;
+        };
+        int k;
+    };
+
+Burada birlik içerisindeki yapının elemanları sanki birliğin elemanları gibi, birliğin elemanları da
+sanki ``Sample`` yapısının elemanları gibi işlem görmektedir. Örneğin:
+
+.. code-block:: c
+
+    struct Sample s;
+
+    s.x = 10;   // geçerli
+
+Ancak yukarıdaki ``slab`` yapısında aşağıdakine benzer bir tanımlama yapılmıştır:
+
+.. code-block:: c
+
+    struct S {
+        int x;
+        int y;
+    };
+
+    struct Sample {
+        union {
+            struct S;       /* C11'de geçersiz, gcc eklentisi */
+            int z;
+        };
+        int k;
+    };
+
+Bu örnekte anonim birliğin içerisinde ``S`` yapısına ilişkin bir değişken ismi belirtilmemiştir. Bu durum
+C11'de geçerli değildir. Ancak gcc'de bir eklenti olarak desteklenmektedir. gcc derleyicileri bu
+tanımlamayla öncekini eşdeğer gibi kabul etmektedir.
+
+Güncel çekirdeklerdeki ``slab`` yapısının ``slab_cache`` elemanı geri doğru bu dilimin içinde bulunduğu
+``kmem_cache`` nesnesini göstermektedir. Yapının ``slab_list`` elemanı dilimleri (yani ``slab`` nesnelerini)
+birbirine bağlayan bağlı liste düğümünü belirtmektedir. ``rcu_head`` elemanı dilim RCU mekanizmasıyla
+serbest bırakılırken kullanılmaktadır. Yukarıda da belirttiğimiz gibi aslında ``slab`` yapısının önemli
+elemanlarının çoğu yapının ``freelist_counters`` elemanına ilişkin yapının içerisindedir. Ancak anonim
+birlik ve yapı kuralları nedeniyle bunlara sanki ``slab`` yapısının elemanlarıymış gibi erişebilmektedir.
+
+``freelist_counters`` yapısı şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct freelist_counters {
+        union {
+            struct {
+                void *freelist;
+                union {
+                    unsigned long counters;
+                    struct {
+                        unsigned inuse:16;
+                        unsigned objects:15;
+                        /*
+                         * If slab debugging is enabled then the
+                         * frozen bit can be reused to indicate
+                         * that the slab was corrupted
+                         */
+                        unsigned frozen:1;
+    #ifdef CONFIG_64BIT
+                        /*
+                         * Some optimizations use free bits in 'counters' field
+                         * to save memory. In case ->stride field is not available,
+                         * such optimizations are disabled.
+                         */
+                        unsigned int stride;
+    #endif
+                    };
+                };
+            };
+    #ifdef system_has_freelist_aba
+            freelist_full_t freelist_counters;
+    #endif
+        };
+    };
+
+Yapının ``freelist`` elemanı o dilimdeki ilk boş nesnenin adresini belirtmektedir. Dilim içerisindeki
+nesneler tek bağlı liste (single linked list) ile birbirine bağlanmıştır. Dolayısıyla dilimden bir nesne
+tahsis edilmek istendiğinde tahsisat fonksiyonu (``kmem_cache_alloc``) hemen bu göstericinin gösterdiği
+yerdeki nesneyi O(1) karmaşıklıkta vermektedir. Yapının ``inuse`` elemanı ilgili dilimdeki tahsis edilmiş
+nesne sayısını belirtmektedir. ``objects`` elemanı ise dilim içerisinde toplam kaç nesne bulunduğunu
+belirtmektedir. Aşağıda ``slab`` veri yapısına ilişkin örnek bir çizim verilmiştir:
