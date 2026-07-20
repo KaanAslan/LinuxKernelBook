@@ -1504,7 +1504,7 @@ gerçekleştirimin adı SLAB'dır. Bunun iyileştirilmiş biçimine de SLUB deni
 çekirdek kodlarında her iki gerçekleştirim de bulunuyordu ve hangi gerçekleştirimin kullanılacağı
 konfigürasyon parametreleriyle seçilebiliyordu. Ancak çekirdeğin 6.5 sürümüyle birlikte ilk SLAB
 gerçekleştirimi çekirdek kodlarından atılmıştır. Yani bugünkü sistemler SLUB gerçekleştirimini
-kullanmaktadır. Ayrıca 6.2 sürümüne kadar çekirdekte bir de SLOB gerçekleştirimi bulunuyordu. Bu SLOB
+kullanmaktadır. Ayrıca 6.2 versiyonuna kadar çekirdekte bir de SLOB gerçekleştirimi bulunuyordu. Bu SLOB
 gerçekleştirimi yukarıda açıkladığımız klasik tahsisat algoritmasını kullanıyordu. Bellek kısıtı olan gömülü
 sistemlerde kullanılmak üzere çekirdekte bulunduruluyordu. Bu SLOB gerçekleştirimi de çekirdek kodlarından
 6.2 sürümüyle çıkartılmıştır. Yani güncel çekirdeklerde artık yalnızca SLUB gerçekleştirimi kullanılmaktadır.
@@ -2227,7 +2227,6 @@ olabilmektedir:
 
 .. list-table:: 
    :header-rows: 1
-   :widths: 40 60
 
    * - Mimari
      - ARCH_KMALLOC_MINALIGN
@@ -2257,7 +2256,7 @@ olabilmektedir:
 
 Eskiden ``kmem_cache_create`` fonksiyonu ``mm/slab.c`` dosyası içerisinde normal bir fonksiyon
 biçiminde tanımlanıyordu. Çekirdeğin 6.12 sürümü ile birlikte artık bu fonksiyon bir makro biçimine
-getirilmiştir. Çekirdeğin 6.10 sürümünde ``kmem_cache_create`` fonksiyonu ``mm/slab_common.c``
+getirilmiştir. Çekirdeğin 6.10 versiyonunda ``kmem_cache_create`` fonksiyonu ``mm/slab_common.c``
 dosyasında şöyle tanımlanmıştı:
 
 .. code-block:: c
@@ -2874,3 +2873,240 @@ Fonksiyon prototipi şöyledir:
 
 Fonksiyonun birinci parametresi dilim önbelleğine ilişkin nesne adresini, ikinci parametresi serbest
 bırakılacak nesnenin adresini almaktadır.
+
+``kmem_cache_alloc_node`` fonksiyonu belli bir NUMA düğümünden tahsisat yapmaktadır. Başka bir deyişle
+tahsisat için ilgili NUMA düğümünün bölgelerini kullanan dilim önbelleklerinden tahsisat yapılmaktadır.
+Ancak fonksiyonda belirtilen NUMA düğümüne ilişkin bölgelerdeki dilim önbelleklerinde boş yer
+bulunamazsa düğüm temelinde *fallback* yapılmamaktadır. Fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+    void *kmem_cache_alloc_node(struct kmem_cache *s, gfp_t gfpflags, int node);
+
+Fonksiyonun birinci parametresi dilim önbelleğine ilişkin ``kmem_cache`` nesnesinin adresini, ikinci
+parametresi tahsisat bayraklarını ve üçüncü parametresi de NUMA düğümünün numarasını almaktadır.
+
+``kmem_cache_alloc_bulk`` fonksiyonu dilim önbelleğinden birden fazla nesne tahsis etmek için
+kullanılmaktadır. Fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+    int kmem_cache_alloc_bulk(struct kmem_cache *s, gfp_t flags, size_t nr, void **p);
+
+Fonksiyonun son iki parametresine dikkat ediniz. Son parametre (``p``) tahsis edilen nesnelerin
+adreslerinin yerleştirileceği gösterici dizisinin adresini almaktadır. Sondan bir önceki parametre
+(``nr``) toplam kaç nesnenin tahsis edileceğini belirtmektedir. Fonksiyon "ya hep ya hiç" biçiminde
+tahsisat yapmaktadır. Yani burada belirtilen sayıdaki tahsisatın hepsi yapılamazsa hiçbir tahsisat
+yapılmamış gibi geri dönmektedir.
+
+kmalloc Fonksiyonu ve Türevleri
+-------------------------------
+
+Dilimli tahsisat sisteminin amacının belli uzunluklardaki nesneleri hızlı bir biçimde tahsis etmek
+olduğunu söylemiştik. Ancak her farklı uzunluktaki nesne için yeni bir dilim önbelleği oluşturmak
+zahmetlidir. Örneğin biz çekirdek kodlamasında 28 byte'lık bir tahsisat yapmak isteyelim. Bunun için
+28 byte'lık nesnelerden oluşan bir dilim önbelleği yaratmak oldukça zahmetlidir. İşte Linux çekirdeğinde
+bu zahmetten kurtulmak için belli uzunluklarda hazır dilim önbellekleri de oluşturulmuştur. Bu hazır
+dilim önbelleklerinin nesne uzunlukları şöyledir:
+
+.. list-table:: Hazır Genel Amaçlı Dilim Önbellekleri
+   :header-rows: 1
+
+   * - #
+     - Nesne Boyutu
+     - ``KMALLOC_NORMAL``
+     - ``KMALLOC_CGROUP``
+     - ``KMALLOC_DMA``
+   * - 1
+     - 8 B
+     - ``kmalloc-8``
+     - ``kmalloc-cg-8``
+     - ``dma-kmalloc-8``
+   * - 2
+     - 16 B
+     - ``kmalloc-16``
+     - ``kmalloc-cg-16``
+     - ``dma-kmalloc-16``
+   * - 3
+     - 32 B
+     - ``kmalloc-32``
+     - ``kmalloc-cg-32``
+     - ``dma-kmalloc-32``
+   * - 4
+     - 64 B
+     - ``kmalloc-64``
+     - ``kmalloc-cg-64``
+     - ``dma-kmalloc-64``
+   * - 5
+     - 96 B  (*)
+     - ``kmalloc-96``
+     - ``kmalloc-cg-96``
+     - ``dma-kmalloc-96``
+   * - 6
+     - 128 B
+     - ``kmalloc-128``
+     - ``kmalloc-cg-128``
+     - ``dma-kmalloc-128``
+   * - 7
+     - 192 B  (*)
+     - ``kmalloc-192``
+     - ``kmalloc-cg-192``
+     - ``dma-kmalloc-192``
+   * - 8
+     - 256 B
+     - ``kmalloc-256``
+     - ``kmalloc-cg-256``
+     - ``dma-kmalloc-256``
+   * - 9
+     - 512 B
+     - ``kmalloc-512``
+     - ``kmalloc-cg-512``
+     - ``dma-kmalloc-512``
+   * - 10
+     - 1024 B (1k)
+     - ``kmalloc-1k``
+     - ``kmalloc-cg-1k``
+     - ``dma-kmalloc-1k``
+   * - 11
+     - 2048 B (2k)
+     - ``kmalloc-2k``
+     - ``kmalloc-cg-2k``
+     - ``dma-kmalloc-2k``
+   * - 12
+     - 4096 B (4k)
+     - ``kmalloc-4k``
+     - ``kmalloc-cg-4k``
+     - ``dma-kmalloc-4k``
+   * - 13
+     - 8192 B (8k)
+     - ``kmalloc-8k``
+     - ``kmalloc-cg-8k``
+     - ``dma-kmalloc-8k``
+
+Burada nesne uzunlukları 2'nin kuvvetine ilişkin olsa da (*) ile gösterilen iki istisna bulunmaktadır.
+Bu dilim önbellekleri çekirdek imajı belleğe yüklenip ilklenirken bellek yönetim işlevlerine ilişkin
+ilk değerlerin verildiği ``mm_init`` fonksiyonu içerisinde yaratılmaktadır:
+
+.. code-block:: none
+
+    start_kernel                            [init/main.c]
+    └─► mm_init
+        └─► kmem_cache_init                 [mm/slub.c]
+
+Tablodaki ``KMALLOC_CGROUP``, *docker* gibi *container* teknolojilerinin kullanımını daha etkin hale
+getirmek için Linux çekirdekine sokulmuş olan "memcg (memory cgroup)" kavramı ile ilgilidir.
+``kmalloc-cg-*`` önbellekleri memcg (memory cgroup) tarafından izlenmesi gereken tahsisatlar için
+bulundurulmuştur. ``KMALLOC_DMA`` ise ``GFP_DMA`` bayrağıyla tahsisat yapıldığında kullanılan dilim
+önbellekleridir.
+
+Örneğin biz hiç yeni bir dilim önbelleği yaratmadan 12 byte tahsisat yapmak isteyelim. Tabloda 12
+byte'lık hazır bir dilim önbelleği olmadığı için tahsisat 16 byte'lık dilim önbelleğinden yapılacaktır.
+Tabii bu durumda 4 byte boşa harcanmış olacaktır. Yani bu hazır dilim önbelleklerini kullanmanın bir
+"içsel bölünme (internal fragmentation)" maliyeti vardır.
+
+Yukarıdaki genel dilim önbelleklerinden tahsisat yapan genel tahsisat fonksiyonları da bulundurulmuştur.
+Şimdi onları açıklayacağız.
+
+``kmalloc`` fonksiyonu özellikle çekirdek modülleri ve aygıt sürücüler tarafından sıkça kullanılmaktadır.
+Bu fonksiyon yukarıdaki hazır dilim önbelleklerinin hangisi talep edilen uzunluk için uygunsa tahsisatı
+oradan yapmaktadır. Dolayısıyla fonksiyonun kullanımı oldukça kolaydır. ``kmalloc`` fonksiyonunu adeta
+C'nin ``malloc`` fonksiyonuna benzetebilirsiniz. Fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+    void *kmalloc(size_t size, gfp_t flags);
+
+Fonksiyonun birinci parametresi tahsis edilecek nesnenin uzunluğunu, ikinci parametre ise yine tahsisat
+bayraklarını belirtmektedir. Bu ikinci parametre ilgili dilim önbelleğinde sayfa bulunamadığında
+``alloc_pages`` fonksiyonu ile ikiz blok tahsisat sisteminden sayfa istenirken kullanılmaktadır. Bu
+ikinci parametreye tipik olarak ``GFP_KERNEL`` geçilmektedir. ``kmalloc`` fonksiyonu başarısızlık
+durumunda ``NULL`` adrese geri dönmektedir. Örneğin:
+
+.. code-block:: c
+
+    if ((obj = kmalloc(12, GFP_KERNEL)) == NULL)
+        return -ENOMEM;
+
+``kmalloc`` fonksiyonun gerçekleştirimi eski çekirdeklerde oldukça basitti. Örneğin çekirdeğin 2.4
+versiyonunda ``kmalloc`` şöyle yazılmıştı:
+
+.. code-block:: c
+
+    void *kmalloc(size_t size, int flags)
+    {
+        cache_sizes_t *csizep = cache_sizes;
+
+        for (; csizep->cs_size; csizep++) {
+            if (size > csizep->cs_size)
+                continue;
+            return __kmem_cache_alloc(flags & GFP_DMA ?
+                csizep->cs_dmacachep : csizep->cs_cachep, flags);
+        }
+        return NULL;
+    }
+
+Bu sürümde tüm dilim önbelleklerinin uzunlukları ``cache_sizes`` isimli bir dizide toplanmıştır. Döngü
+içerisinde talep edilen tahsisata en uygun dilim önbelleğinin tespit edildiğine dikkat ediniz. Sonra da
+``__kmem_cache_alloc`` fonksiyonu ile o dilim önbelleğinden tahsisat yapılmıştır. Güncel çekirdeklerde
+"memcg (memory cgroup)" gibi kavramların çekirdeğe dahil edilmesiyle fonksiyon daha karmaşık bir hale
+gelmiştir. Güncel çekirdeklerdeki ``kmalloc`` çağrı dizgesi şöyledir:
+
+.. code-block:: none
+
+    kmalloc(size, flags)                        [slab.h — makro]
+        │
+        │  alloc_hooks(__kmalloc_noprof(...))
+        │
+        ├─[size > KMALLOC_MAX_CACHE_SIZE (~8 KiB)]
+        │       │
+        │       ▼
+        │   kmalloc_large_noprof()              [slab_common.c]
+        │       │
+        │       ▼
+        │   alloc_pages()                       [Buddy Allocator — SLUB devre dışı]
+        │
+        └─[size ≤ KMALLOC_MAX_CACHE_SIZE]
+                │
+                ▼
+            __do_kmalloc_node()                 [slab_common.c]
+                │
+                ▼
+            kmalloc_slab(size, flags)
+                │  kmalloc_type() → NORMAL / CGROUP / RECLAIM / DMA
+                │  kmalloc_index() → boyuta göre indeks
+                │
+                ▼
+            kmalloc_caches[type][idx]           ── kmem_cache seçildi
+                │
+                ▼
+            slab_alloc_node()                   [slub.c]
+                │
+                ├──────────────────────────────────────┐
+                │                                      │
+                ▼  [HIZLI YOL — lockless]         [YAVAŞ YOL]
+                                                       │
+        c->freelist != NULL                        ___slab_alloc()
+        this_cpu_cmpxchg_double()                      │
+        nesne döner                      ┌─────────────┼──────────────────┐
+                                         │             │                  │
+                                     [1] per-CPU    [2] node         [3] yeni sayfa
+                                     partial        partial          gerekiyor
+                                     listesi        listesi               │
+                                     (c->partial)   (kmem_cache_node      │
+                                         │          ->partial)            │
+                                         │             │              new_slab()
+                                         │             │                  │
+                                         └──────┬──────┘            alloc_pages()
+                                                │                 [Buddy Allocator]
+                                                ▼
+                                            nesne döner ✓
+
+``kmalloc`` ailesinden başka çekirdek fonksiyonları da vardır. ``kzalloc`` fonksiyonu tahsis edilen
+alanı aynı zamanda sıfırlamaktadır. Yani aşağıdaki işlemi yapmaktadır:
+
+.. code-block:: c
+
+    void *kzalloc(size_t size, gfp_t flags)
+    {
+        return kmalloc(size, flags | __GFP_ZERO);
+    }
