@@ -21,7 +21,7 @@ sisteminin ikiz blok tahsisat sisteminin üzerine oturtulduğunu söyleyebiliriz
 .. image:: _static/buddy-slab-layers.png
    :alt: Dilimli ve İkiz Blok Tahsisat Sistemi şeması
    :align: center
-   :width: 50%
+   :width: 45%
 
 Biz bu bölümde önce ikiz blok tahsisat sistemini sonra da dilimli tahsisat sistemini inceleyeceğiz.
 
@@ -2198,8 +2198,8 @@ belirtmektedir. Aşağıda ``slab`` veri yapısına ilişkin örnek bir çizim v
    :width: 60%
 
 
-Dilim Önbelleğinin yaratılması: kmem_cache_create Fonksiyonu
-------------------------------------------------------------
+Dilim Önbelleklerinin Yaratılması
+---------------------------------
 
 Bir dilim önbelleği oluşturmak için yani ``kmem_cache`` türünden bir nesne oluşturmak için
 ``kmem_cache_create`` isimli çekirdek fonksiyonu kullanılmaktadır. ``kmem_cache_create`` fonksiyonunun
@@ -2704,3 +2704,173 @@ Bu nesnelerin yaratıldığı yerlere ilişkin çağrı zincirini de aşağıda 
         ├── blk_mq_init()       → request
         └── ext4_init() vb.     → fs'e özel inode cache
 
+Dilim Önbelleklerinden Tahsisat İşlemleri
+-----------------------------------------
+
+Yaratılmış olan bir dilim önbelleğinden tahsisat yapmak için kullanılan temel fonksiyonlar şunlardır:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Fonksiyon
+     - İşlevi
+   * - ``kmem_cache_alloc``
+     - Standart tekli tahsisat
+   * - ``kmem_cache_zalloc``
+     - Sıfırlanmış tahsisat (``GFP_ZERO``)
+   * - ``kmem_cache_alloc_node``
+     - NUMA düğümüne özgü tahsisat
+   * - ``kmem_cache_alloc_bulk``
+     - Toplu (çok nesne) tahsisat
+
+``kmem_cache_alloc`` ve ``kmem_cache_zalloc`` en çok kullanılan tahsisat fonksiyonlarıdır. Bu
+fonksiyonlar belli bir dilim önbelleğinden nesne tahsis etmektedir. Fonksiyonların prototipleri
+şöyledir:
+
+.. code-block:: c
+
+    void *kmem_cache_alloc(struct kmem_cache *cachep, int flags);
+    void *kmem_cache_zalloc(struct kmem_cache *k, gfp_t flags);
+
+Fonksiyonların birinci parametreleri tahsisatın hangi dilim önbelleğinden yapılacağını belirtmektedir.
+Yani bu parametreye ``kmem_cache_create`` fonksiyonundan elde edilen ``kmem_cache`` nesnesinin adresi
+geçirilmelidir. Fonksiyonların ikinci parametreleri ``alloc_pages`` çağrısı için gereken bayrakları
+belirtmektedir. Yani bu parametre aslında ``alloc_pages`` fonksiyonuna geçirilen birinci parametreyle
+aynıdır. Yukarıda da belirttiğimiz gibi aslında dilimli tahsisat sistemi arka planda ikiz blok tahsisat
+sistemini kullanmaktadır. Yani dilimli tahsisat sistemindeki dilimler ``alloc_pages`` fonksiyonu ile
+ikiz blok tahsisat sisteminden elde edilmektedir. Biz ``alloc_pages`` fonksiyonunu anlatırken bu
+bayrakların anlamlarını açıklamıştık. Bu bayraklar hem "tahsisatın hangi bölgeden (zone)" yapılacağını
+hem de göç türünün fallback mekanizması için nereden başlatılacağını belirtiyordu. En çok kullanılan
+bayrağın ``GFP_KERNEL`` olduğunu anımsayınız. Bu bayrak ``ZONE_NORMAL`` bölgesinden
+``MIGRATE_UNMOVABLE`` göç türünden hareketle sayfa tahsisatını yapmaktadır. Anımsanacağı gibi
+``GFP_ATOMIC`` bayrağı da ``ZONE_NORMAL`` bölgesinden tahsisat yapmaya çalışır. Ancak bu bayrak
+ilgili thread'in uykuya yatırılmasını engellemektedir. Kesme kodlarında ve örneğin ``spinlock``
+nesnelerinin kilitlendiği durumlarda ``GFP_KERNEL`` yerine ``GFP_ATOMIC`` bayrağını tercih
+etmelisiniz. ``kmem_cache_zalloc`` fonksiyonu aynı zamanda tahsis edilen alanı sıfırlamaktadır.
+Aslında bu fonksiyon ``include/linux/slab.h`` dosyasında aşağıdaki gibi bir makro biçiminde
+yazılmıştır:
+
+.. code-block:: c
+
+    #define kmem_cache_zalloc(_k, _flags)   kmem_cache_alloc(_k, (_flags)|__GFP_ZERO)
+
+Anımsayacağınız gibi ``__GFP_ZERO`` bayrağı zaten ikiz blok tahsisat sisteminde tahsis edilen sayfaların
+sıfırlanması için kullanılmaktadır.
+
+Dilimli tahsisat sistemlerindeki tahsisat fonksiyonları başarısızlık durumunda ``NULL`` adresle geri
+dönmektedir. Dilim önbelleğinde nesne kalmadığı zaman ``alloc_pages`` ile ikiz blok tahsisat sisteminden
+sayfa tahsis edilmektedir. İkiz blok tahsis sisteminde *fallback* mekanizmasının da devreye girdiğini
+anımsayınız. Sayfa tahsis edilemediğinde zaten çekirdeğin reclaim yapan thread'leri uyandırıldığı için
+bu fonksiyonların bellek yetersizliğinde başarısız olmaları düşük bir olasılıktır. Ancak bu fonksiyonların
+başarı kontrolleri mutlaka yapılmalıdır. Bu fonksiyonların başarısız olma nedenlerini aşağıdaki tabloda
+açıklıyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 40 25 35
+
+   * - Başarısızlık Nedeni
+     - NULL Döner mi?
+     - Açıklama
+   * - Bellek baskısı (``GFP_KERNEL``)
+     - Bazen
+     - Önce reclaim denenir
+   * - Bellek baskısı (``GFP_ATOMIC``)
+     - Evet, hemen
+     - Reclaim yapılmaz
+   * - NUMA + ``__GFP_THISNODE``
+     - Evet
+     - Fallback yok
+   * - Memcg limit aşımı
+     - Evet
+     - Cgroup zorlaması
+
+Eğer bu fonksiyonlar başka fonksiyonların içerisinde çağrılmışsa başarısızlık durumunda çağrımın
+yapıldığı fonksiyonun ``-ENOMEM`` değeri ile geri döndürülmesi uygun olur.
+
+Güncel çekirdeklerde ``kmem_cache_alloc`` fonksiyonunun çağrı grafı kabaca şöyledir:
+
+.. code-block:: none
+
+    kmem_cache_alloc(cache, gfp_flags)
+    │
+    └── slab_alloc()
+        │   [memcg_slab_pre_alloc hook]
+        │   [trace_kmem_cache_alloc tracepoint]
+        │
+        └── slab_alloc_node()
+            │   [NUMA node seçimi]
+            │
+            ├── [per-CPU freelist dolu?] ──Evet──→ OBJ DÖNER    ← hızlı yol
+            │
+            └── Hayır → __slab_alloc()                          ← yavaş yol
+                        │   [preempt disable]
+                        │
+                        ├── [partial slab var?] ──Evet──→ get_partial()
+                        │                                  │   [kmem_cache_node]
+                        │                                  └──→ OBJ DÖNER
+                        │
+                        └── Hayır → new_slab()
+                                    │
+                                    └── allocate_slab()
+                                        │
+                                        └── alloc_pages(gfp_flags, order)
+                                            │             ← reclaim buradan tetiklenir
+                                            │
+                                            └── __alloc_pages()
+                                                │
+                                                ├── [fast path: watermark OK?] ──Evet──→ sayfa döner
+                                                │
+                                                └── Hayır → __alloc_pages_slowpath()
+                                                            │
+                                                            ├── [GFP_ATOMIC?] ──Evet──→ NULL DÖNER
+                                                            │                           (reclaim yok)
+                                                            │
+                                                            └── Hayır (GFP_KERNEL vs.)
+                                                                │
+                                                                ├── wake_all_kswapd()
+                                                                │   │   [async reclaim başlatılır]
+                                                                │   │   [çağıran thread bloklanmaz]
+                                                                │   │
+                                                                │   └── hızlı tahsisat tekrar denenir
+                                                                │       │
+                                                                │       └── [başarılı?] ──Evet──→ sayfa döner
+                                                                │
+                                                                ├── [hâlâ yetersiz?]
+                                                                │   └── direct reclaim
+                                                                │       (try_to_free_pages)
+                                                                │           [thread bloklanır ← burada]
+                                                                │           [sync, çağıran task temizler]
+                                                                │
+                                                                ├── [hâlâ yetersiz?]
+                                                                │   └── memory compaction
+                                                                │       (compact_zone)
+                                                                │
+                                                                ├── [hâlâ yetersiz?]
+                                                                │   └── OOM killer
+                                                                │       (out_of_memory)
+                                                                │           [kurban seç + öldür]
+                                                                │
+                                                                └── [yine de yok?]
+                                                                    └──→ NULL DÖNER
+                                                                        ← setup_slab() çağrılmaz
+
+Tabii bu çağrı dizgesindeki ayrıntıları bir yana bırakırsak kabaca olanlar şunlardır:
+
+- Nesne tahsis edilmeye çalışılır.
+- Dilimlerde uygun nesne yoksa ikiz blok tahsisat sisteminden dilim tahsis edilmeye çalışılır.
+- İkiz blok tahsisat sisteminde *fallback* mekanizmaları uygulanır.
+- Eğer hâlâ sayfa yoksa *kswapd* çekirdek thread'i uyandırılır.
+- Bir kez daha doğrudan reclaim denenir. Doğrudan reclaim başarısız olursa ve eğer ``GFP_ATOMIC``
+  kullanılmamışsa thread uykuya yatırılır ve reclaim sonrasında uyandırılır.
+- Eğer hâlâ sayfa tahsisatı yapılamıyorsa fonksiyon başarısız olur.
+
+Tahsis edilmiş olan nesne ``kmem_cache_free`` fonksiyonuyla dilim önbelleğine iade edilmektedir.
+Fonksiyon prototipi şöyledir:
+
+.. code-block:: c
+
+    void kmem_cache_free(struct kmem_cache *s, void *x);
+
+Fonksiyonun birinci parametresi dilim önbelleğine ilişkin nesne adresini, ikinci parametresi serbest
+bırakılacak nesnenin adresini almaktadır.
