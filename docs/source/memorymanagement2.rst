@@ -1521,7 +1521,7 @@ Burada bir noktaya dikkatinizi çekmek istiyoruz. Çekirdek kaynak kodlarında v
 çekirdek imajına yansıtılmamaktadır. Konfigürasyon aşamasında "yalnızca seçilen özellikler" çekirdek imajına
 yansıtılmaktadır. Zaten konfigürasyon işleminin amaçlarından biri de budur.
 
-SLUB gerçekleştirimi oldukça ayrıntılıdır. Biz kursumuzda bu gerçekleştirimin ana hatları üzerinde
+SLUB gerçekleştirimi oldukça ayrıntılıdır. Biz kitabmızda bu gerçekleştirimin ana hatları üzerinde
 duracağız. Ancak SLUB sözcüğü yerine "dilimli tahsisat sistemi (slab allocator)" ve "dilim (slab)"
 terimlerini kullanacağız.
 
@@ -1784,12 +1784,11 @@ fonksiyonu ``oo`` için sayfa büyüklüğü değerini şu faktörlere bağlı o
 - **İstisnai Durum:** Nesne boyutu ``slub_max_order``'lık slab'a tek başına bile sığmıyorsa sınır aşılır
   ve nesnenin boyutuna uygun en küçük düzey kullanılır.
 
-Aşağıda somut "x86-64, 16 CPU" için çeşitli nesne boyutlarına göre ``min`` ve ``oo`` değerlerini
+Aşağıda somut *x86-64, 16 CPU* için çeşitli nesne boyutlarına göre ``min`` ve ``oo`` değerlerini
 veriyoruz:
 
 .. list-table:: 
    :header-rows: 1
-   :widths: 18 13 16 15 12 13
 
    * - size (bayt)
      - oo:order
@@ -1982,6 +1981,7 @@ tanımlanmıştır:
 Buradaki elemanları ve işlevlerini aşağıdaki tabloda listeliyoruz:
 
 .. list-table:: 
+   :width: 80%
    :header-rows: 1
 
    * - Eleman
@@ -2191,3 +2191,516 @@ tahsis edilmek istendiğinde tahsisat fonksiyonu (``kmem_cache_alloc``) hemen bu
 yerdeki nesneyi O(1) karmaşıklıkta vermektedir. Yapının ``inuse`` elemanı ilgili dilimdeki tahsis edilmiş
 nesne sayısını belirtmektedir. ``objects`` elemanı ise dilim içerisinde toplam kaç nesne bulunduğunu
 belirtmektedir. Aşağıda ``slab`` veri yapısına ilişkin örnek bir çizim verilmiştir:
+
+.. figure:: _static/slab-struct-diagram.png
+   :alt: Dilim için ayrılan sayfa düzeni
+   :align: center
+   :width: 60%
+
+
+Dilim Önbelleğinin yaratılması: kmem_cache_create Fonksiyonu
+------------------------------------------------------------
+
+Bir dilim önbelleği oluşturmak için yani ``kmem_cache`` türünden bir nesne oluşturmak için
+``kmem_cache_create`` isimli çekirdek fonksiyonu kullanılmaktadır. ``kmem_cache_create`` fonksiyonunun
+parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    struct kmem_cache *kmem_cache_create(
+        const char *name,
+        unsigned int size,
+        unsigned int align,
+        slab_flags_t flags,
+        void (*ctor)(void *)
+    );
+
+Fonksiyonun birinci parametresi (``name``) yaratılacak dilim önbelleğinin ismini, ikinci parametresi
+(``size``) tahsis edilecek nesnenin uzunluğunu belirtmektedir. Üçüncü parametre (``align``) nesnelerin
+hangi değerin katlarına hizalanacağını belirtmektedir. Dördüncü parametre (``flags``) yukarıda
+belirttiğimiz dilim bayraklarına ilişkindir. Son parametre (``ctor``) ise dilimden nesne tahsis
+edildiğinde o nesneye ilkdeğerlerinin verilmesi için kullanılacak fonksiyonun adresini belirtmektedir.
+Fonksiyonun hizalama belirten üçüncü parametresine (``align``) 0 değeri girilebilir. Bu durumda o
+sisteme ilişkin varsayılan hizalama kullanılmaktadır. Çekirdek kodlarında bu varsayılan hizalama
+``ARCH_KMALLOC_MINALIGN`` sembolik sabiti ile belirtilmektedir. Bu sembolik sabit şu değerlerden biri
+olabilmektedir:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Mimari
+     - ARCH_KMALLOC_MINALIGN
+   * - x86_64
+     - 8 byte
+   * - arm64
+     - 8 byte
+   * - x86 (32)
+     - 8 byte
+   * - DMA varsa
+     - 64 byte
+
+``kmem_cache_create`` fonksiyonunun kullanımına şöyle bir örnek verebiliriz:
+
+.. code-block:: c
+
+    struct myobject {
+        int a;
+        int b;
+        char name[64];
+    };
+    /* ... */
+
+    if ((g_myobject_cachep = kmem_cache_create("myobject_cache", sizeof(struct myobject),
+            0, SLAB_HWCACHE_ALIGN, NULL)) == NULL)
+        return -ENOMEM;
+
+Eskiden ``kmem_cache_create`` fonksiyonu ``mm/slab.c`` dosyası içerisinde normal bir fonksiyon
+biçiminde tanımlanıyordu. Çekirdeğin 6.12 sürümü ile birlikte artık bu fonksiyon bir makro biçimine
+getirilmiştir. Çekirdeğin 6.10 sürümünde ``kmem_cache_create`` fonksiyonu ``mm/slab_common.c``
+dosyasında şöyle tanımlanmıştı:
+
+.. code-block:: c
+
+    struct kmem_cache *kmem_cache_create(const char *name, unsigned int size, unsigned int align,
+            slab_flags_t flags, void (*ctor)(void *))
+    {
+        return kmem_cache_create_usercopy(name, size, align, flags, 0, 0, ctor);
+    }
+    EXPORT_SYMBOL(kmem_cache_create);
+
+Buradaki ``kmem_cache_create_usercopy`` fonksiyonu asıl işlemi yapan fonksiyondur. Bu fonksiyon da
+şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct kmem_cache *
+    kmem_cache_create_usercopy(const char *name,
+            unsigned int size, unsigned int align,
+            slab_flags_t flags,
+            unsigned int useroffset, unsigned int usersize,
+            void (*ctor)(void *))
+    {
+        struct kmem_cache *s = NULL;
+        const char *cache_name;
+        int err;
+
+    #ifdef CONFIG_SLUB_DEBUG
+        /*
+         * If no slab_debug was enabled globally, the static key is not yet
+         * enabled by setup_slub_debug(). Enable it if the cache is being
+         * created with any of the debugging flags passed explicitly.
+         * It's also possible that this is the first cache created with
+         * SLAB_STORE_USER and we should init stack_depot for it.
+         */
+        if (flags & SLAB_DEBUG_FLAGS)
+            static_branch_enable(&slub_debug_enabled);
+        if (flags & SLAB_STORE_USER)
+            stack_depot_init();
+    #endif
+
+        mutex_lock(&slab_mutex);
+
+        err = kmem_cache_sanity_check(name, size);
+        if (err) {
+            goto out_unlock;
+        }
+
+        /* Refuse requests with allocator specific flags */
+        if (flags & ~SLAB_FLAGS_PERMITTED) {
+            err = -EINVAL;
+            goto out_unlock;
+        }
+
+        /*
+         * Some allocators will constraint the set of valid flags to a subset
+         * of all flags. We expect them to define CACHE_CREATE_MASK in this
+         * case, and we'll just provide them with a sanitized version of the
+         * passed flags.
+         */
+        flags &= CACHE_CREATE_MASK;
+
+        /* Fail closed on bad usersize of useroffset values. */
+        if (!IS_ENABLED(CONFIG_HARDENED_USERCOPY) ||
+            WARN_ON(!usersize && useroffset) ||
+            WARN_ON(size < usersize || size - usersize < useroffset))
+            usersize = useroffset = 0;
+
+        if (!usersize)
+            s = __kmem_cache_alias(name, size, align, flags, ctor);
+        if (s)
+            goto out_unlock;
+
+        cache_name = kstrdup_const(name, GFP_KERNEL);
+        if (!cache_name) {
+            err = -ENOMEM;
+            goto out_unlock;
+        }
+
+        s = create_cache(cache_name, size,
+                calculate_alignment(flags, align, size),
+                flags, useroffset, usersize, ctor, NULL);
+        if (IS_ERR(s)) {
+            err = PTR_ERR(s);
+            kfree_const(cache_name);
+        }
+
+    out_unlock:
+        mutex_unlock(&slab_mutex);
+
+        if (err) {
+            if (flags & SLAB_PANIC)
+                panic("%s: Failed to create slab '%s'. Error %d\n",
+                    __func__, name, err);
+            else {
+                pr_warn("%s(%s) failed with error %d\n",
+                    __func__, name, err);
+                dump_stack();
+            }
+            return NULL;
+        }
+        return s;
+    }
+    EXPORT_SYMBOL(kmem_cache_create_usercopy);
+
+Burada ``kmem_cache`` nesnesinin asıl yaratımı ``create_cache`` fonksiyonunda yapılmaktadır. Bu
+fonksiyon da şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static struct kmem_cache *create_cache(const char *name,
+            unsigned int object_size, unsigned int align,
+            slab_flags_t flags, unsigned int useroffset,
+            unsigned int usersize, void (*ctor)(void *),
+            struct kmem_cache *root_cache)
+    {
+        struct kmem_cache *s;
+        int err;
+
+        if (WARN_ON(useroffset + usersize > object_size))
+            useroffset = usersize = 0;
+
+        err = -ENOMEM;
+        s = kmem_cache_zalloc(kmem_cache, GFP_KERNEL);
+        if (!s)
+            goto out;
+
+        s->name         = name;
+        s->size         = s->object_size = object_size;
+        s->align        = align;
+        s->ctor         = ctor;
+    #ifdef CONFIG_HARDENED_USERCOPY
+        s->useroffset   = useroffset;
+        s->usersize     = usersize;
+    #endif
+
+        err = __kmem_cache_create(s, flags);
+        if (err)
+            goto out_free_cache;
+
+        s->refcount = 1;
+        list_add(&s->list, &slab_caches);
+        return s;
+
+    out_free_cache:
+        kmem_cache_free(kmem_cache, s);
+    out:
+        return ERR_PTR(err);
+    }
+
+Aşağıda bu sürümdeki ``kmem_cache_create`` fonksiyonunun çağrı zinciri şekilsel olarak verilmiştir:
+
+.. figure:: _static/kmem-cache-create-callchain.png
+   :alt: kmem_cache_create çağrı zinciri
+   :align: center
+   :width: 30%
+
+Peki çekirdek içerisindeki nesne tahsisatları dilimli tahsisat sistemiyle yapıldığına göre
+``kmem_cache_create`` fonksiyonu ``kmem_cache`` nesnesini nasıl tahsis etmektedir? İşte ``kmem_cache``
+nesneleri için de ayrı bir dilim önbelleği oluşturulmuştur:
+
+.. code-block:: c
+
+    s = kmem_cache_zalloc(kmem_cache, GFP_KERNEL);
+
+Burada tahsisat çekirdek tarafından yaratılmış olan ``kmem_cache`` dilim önbelleğinden yapılmaktadır.
+
+6.12 çekirdekleriyle birlikte ``kmem_cache_create`` fonksiyonu ``include/linux/slab.h`` dosyasında bir
+makro biçimine getirilmiştir:
+
+.. code-block:: c
+
+    #define kmem_cache_create(__name, __object_size, __args, ...)           \
+        _Generic((__args),                                                  \
+            struct kmem_cache_args *: __kmem_cache_create_args,             \
+            void *: __kmem_cache_default_args,                              \
+            default: __kmem_cache_create)(__name, __object_size, __args, __VA_ARGS__)
+
+``_Generic`` makrosu bir çeşit *function overloading* mekanizmasının makro düzeyinde sağlanması için
+C11 ile C'ye eklenmiştir. Bu makro bir parametreye sahiptir. Bu parametrenin türüne göre açım yapar.
+Eğer parametrenin türü belirtilen türlerden biri değilse ``default`` ile belirtilen açımı yapmaktadır.
+Örneğin:
+
+.. code-block:: c
+
+    #define abs(x) _Generic((x),      \
+        int:     abs_int,             \
+        long:    abs_long,            \
+        float:   abs_float,           \
+        double:  abs_double,          \
+        default: abs_default          \
+    )(x)
+
+Bu örnekte ``abs`` makrosunu ``int`` türünden bir argümanla çağırmışsak bu durumda aslında ``abs_int``
+açımı yapılacaktır. Dolayısıyla ``abs_int`` çağrılmış olacaktır. Eğer ``abs`` makrosunu ``long`` bir
+parametreyle çağırırsak bu durumda aslında ``abs_long`` fonksiyonu çağrılmış olacaktır. ``abs`` makrosunu
+``int``, ``long``, ``float``, ``double`` türlerinin dışında bir türden argümanla çağırmışsak bu durumda
+``abs_default`` fonksiyonu çağrılacaktır.
+
+Şimdi yukarıdaki ``kmem_cache_create`` makrosuna yeniden dönelim. ``_Generic`` makrosuna aktarılan
+parametre ``__args`` parametresidir. Bu parametre aslında eski biçimdeki ``align`` parametresidir. Biz
+bu ``align`` parametresi için gerçekten hizalama amaçlı ``int`` bir değer girersek (örneğin 0) bu
+durumda ``default`` kısım devreye girecek ve çağrı ``__kmem_cache_create`` haline gelecektir. Güncel
+çekirdeklerde ``__kmem_cache_create`` de yukarıda vermiş olduğumuz 6.10'daki
+``kmem_cache_create_usercopy`` fonksiyonuna benzemektedir.
+  
+Dilim Önbelleklerinin Birleştirilmesi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dilim önbelleği yaratılırken "birleştirme (merge)" denilen bir işlem de yapılabilmektedir. Çekirdek bir
+dilim önbelleği yaratılmak istendiğinde zaten o uzunlukta (bazı ayrıntıları var) daha önce yaratılmış
+olan bir dilim önbelleği varsa gerçekte yeni bir dilim önbelleği yaratmamakta, daha önce yaratılmış
+olanı sanki yeni yaratılmış gibi vermektedir. Birleştirme (merge) işlemi ``kmem_cache_create``
+fonksiyonunun çağırdığı ``find_mergeable`` fonksiyonu tarafından yapılmaktadır. Bu fonksiyonun çağırma
+akışı şöyledir:
+
+.. figure:: _static/find-mergeable-flow.png
+   :alt: find_mergeable çağrı akışı
+   :align: center
+   :width: 60%
+
+Yeni yaratılmak istenen bir dilim önbelleğinin zaten yaratılmış olana referans etmesinin (yani
+birleştirme işleminin) bazı koşulları vardır:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Ölçüt
+     - Açıklama
+   * - Boyut uyumu
+     - Mevcut dilim önbelleğinin ``size`` değeri yeni dilim önbelleğinin normalize edilmiş ``size``
+       değerine eşit ya da küçük bir tolerans payı kadar büyük olmalı.
+   * - Constructor yok
+     - Her iki dilim önbelleğinde de ``ctor == NULL`` olmalı. Constructor olan dilim önbellekleri
+       hiçbir zaman merge edilmez; her nesne farklı başlatma gerektirebilir.
+   * - ``SLAB_MERGE_SAME`` bayrakları
+     - Aşağıdaki bayraklar her iki dilim önbelleğinde de aynı olmalıdır.
+   * - ``SLAB_NEVER_MERGE`` yok
+     - Yeni dilim önbelleğinde birleştirmeyi engelleyen flag olmamalı.
+   * - Hizalama uyumu
+     - Mevcut dilim önbelleğinin ``align`` değeri yeni dilim önbelleğinin ``align`` değerinden küçük
+       olmamalı.
+
+Aşağıdaki bayrakların herhangi biri iki dilim önbelleğinde farklıysa birleştirme yapılmamaktadır:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Bayrak
+     - Neden Birleştirmeyi Engeller
+   * - ``SLAB_RECLAIM_ACCOUNT``
+     - Biri reclaimable diğeri unreclaimable ise birleştirme yapılmaz.
+   * - ``SLAB_CACHE_DMA``
+     - DMA cache ile normal önbellekler birleşemez; farklı zone'lardan tahsis yapılır.
+   * - ``SLAB_CACHE_DMA32``
+     - ``ZONE_DMA32`` ile diğer zone'lar aynı önbelleği paylaşamaz.
+   * - ``SLAB_ACCOUNT``
+     - memcg (memory cgroup) takibi farklıysa hesaplama bozulur.
+
+Birleştirmeyi kesin engelleyen bayraklar da şunlardır:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Bayrak
+     - Neden
+   * - ``SLAB_RED_ZONE``
+     - Nesne layout'u değiştirir; debug baytları başka önbelleğin nesnelerini bozar.
+   * - ``SLAB_POISON``
+     - Poison deseni tüm nesne alanına uygulanır; birleştirilmiş önbellekte yanlış alarmlar üretir.
+   * - ``SLAB_STORE_USER``
+     - Her nesneye stack trace saklanır; layout uyumu bozulur.
+   * - ``SLAB_TRACE``
+     - Her alloc/free için ayrı log tutulur; birleştirilince hangi cache'e ait olduğu belirsiz kalır.
+   * - ``SLAB_TYPESAFE_BY_RCU``
+     - RCU grace period serbest bırakma semantiği tüm önbellek genelinde tutarlı olmalı.
+   * - ``SLAB_NO_MERGE``
+     - Kullanıcının açıkça birleştirmeyi engellediği durum.
+
+Önceden Yaratılmış Dilim Önbellekleri
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Çekirdeğin ``task_struct`` gibi, ``file`` gibi, ``dentry`` gibi, ``inode`` gibi nesneleri tahsis etmekte
+kullandığı önceden yaratılmış dilimli önbellek nesneleri (yani ``kmem_cache`` nesneleri) vardır. Aşağıda
+bunların isimlerini ve bunlara erişmekte kullanılan ``kmem_cache`` türünden göstericilerin isimlerini
+veriyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 28 36 36
+
+   * - Nesne Tipi
+     - ``kmem_cache`` Göstericisi
+     - İsim
+   * - ``struct kmem_cache``
+     - ``kmem_cache``
+     - ``"kmem_cache"``
+   * - ``struct task_struct``
+     - ``task_struct_cachep``
+     - ``"task_struct"``
+   * - ``struct mm_struct``
+     - ``mm_cachep``
+     - ``"mm_struct"``
+   * - ``struct vm_area_struct``
+     - ``vm_area_cachep``
+     - ``"vm_area_struct"``
+   * - ``struct file``
+     - ``filp_cachep``
+     - ``"filp"``
+   * - ``struct dentry``
+     - ``dentry_cache``
+     - ``"dentry"``
+   * - ``struct inode``
+     - (her fs kendi önbelleğini yaratır)
+     - ``"ext4_inode_cache"`` vb.
+   * - ``struct socket``
+     - ``sock_inode_cachep``
+     - ``"sock_inode_cache"``
+   * - ``struct sk_buff``
+     - ``skbuff_head_cache``
+     - ``"skbuff_head_cache"``
+   * - ``struct sk_buff`` (fclone)
+     - ``skbuff_fclone_cache``
+     - ``"skbuff_fclone_cache"``
+   * - ``struct sigqueue``
+     - ``sigqueue_cachep``
+     - ``"sigqueue"``
+   * - ``struct cred``
+     - ``cred_jar``
+     - ``"cred_jar"``
+   * - ``struct pid``
+     - ``pid_cachep``
+     - ``"pid"``
+   * - ``struct fs_struct``
+     - ``fs_cachep``
+     - ``"fs_struct"``
+   * - ``struct files_struct``
+     - ``files_cachep``
+     - ``"files_cache"``
+   * - ``struct nsproxy``
+     - ``nsproxy_cachep``
+     - ``"nsproxy"``
+   * - ``struct signal_struct``
+     - ``signal_cachep``
+     - ``"signal_cache"``
+   * - ``struct sighand_struct``
+     - ``sighand_cachep``
+     - ``"sighand_cache"``
+   * - ``struct bio``
+     - ``bio_slab`` (her queue için)
+     - ``"bio"``
+   * - ``struct request``
+     - ``request_cachep``
+     - ``"blkdev_requests"``
+   * - ``struct buffer_head``
+     - ``bh_cachep``
+     - ``"buffer_head"``
+   * - ``struct anon_vma``
+     - ``anon_vma_cachep``
+     - ``"anon_vma"``
+
+Peki yukarıdaki dilim önbellek nesneleri çekirdekte hangi aşamada yaratılmaktadır? Biz kursumuzda
+çekirdeğin başlatılma sürecini ayrı bir bölümde ele alacağız. Linux çekirdek imajı belleğe
+yüklendiğinde ``start_kernel`` isimli fonksiyon çağrılmaktadır. Bu fonksiyonu çekirdeğin main
+fonksiyonu gibi düşünebilirsiniz. Bu fonksiyon içerisinde pek çok alt sistem ilklendirilmektedir.
+İşte yukarıdaki dilim önbellekleri bu alt sistemlerin ilklendirildiği (initialize edildiği) yerlerde
+yaratılmaktadır. Bunların yaratıldığı yerleri aşağıdaki tablolarda veriyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Nesne Türü
+     - Yaratan Fonksiyon
+   * - ``struct pid``
+     - ``pidmap_init()``
+   * - ``struct anon_vma``
+     - ``anon_vma_init()``
+   * - ``struct buffer_head``
+     - ``buffer_init()``
+   * - ``struct vm_area_struct``
+     - ``mmap_init()`` / ``vma_init()``
+   * - ``struct mm_struct``
+     - ``mm_init()`` → ``mm_cache_init()``
+   * - ``struct fs_struct``
+     - ``proc_caches_init()``
+   * - ``struct files_struct``
+     - ``proc_caches_init()``
+   * - ``struct task_struct``
+     - ``proc_caches_init()`` → ``fork_init()``
+   * - ``struct signal_struct``
+     - ``proc_caches_init()``
+   * - ``struct sighand_struct``
+     - ``proc_caches_init()``
+   * - ``struct nsproxy``
+     - ``nsproxy_cache_init()``
+   * - ``struct cred``
+     - ``cred_init()``
+   * - ``struct sigqueue``
+     - ``signals_init()``
+   * - ``struct dentry``
+     - ``dcache_init()`` (VFS)
+   * - ``struct inode``
+     - ``inode_init()`` (VFS — genel inode cache)
+   * - ``struct file``
+     - ``files_init()`` (VFS)
+   * - ``struct socket`` / ``sock_inode``
+     - ``sock_init()`` (ağ alt sistemi)
+   * - ``struct sk_buff``
+     - ``skb_init()`` (ağ — ``net_dev_init`` içinde)
+   * - ``struct bio``
+     - ``bio_init()`` (blok katmanı)
+   * - ``struct request``
+     - ``blk_mq_init()`` / ``request_cachep`` yaratılır
+   * - ``struct inode`` (fs)
+     - ``ext4_init_inodecache()`` vb. — modül yüklemede
+
+Bu nesnelerin yaratıldığı yerlere ilişkin çağrı zincirini de aşağıda veriyoruz:
+
+.. code-block:: none
+
+    start_kernel()
+    │
+    ├── mm_init()
+    │   └── kmem_cache_init()   → [Aşama 1] kmem_cache
+    │
+    ├── proc_caches_init()      → [Aşama 2] task_struct, mm_struct,
+    │                                       fs_struct, files_struct,
+    │                                       signal, sighand
+    ├── cred_init()             → [Aşama 2] cred
+    ├── fork_init()             → [Aşama 2] task_struct (tamamlanır)
+    ├── signals_init()          → [Aşama 2] sigqueue
+    ├── pidmap_init()           → [Aşama 2] pid
+    ├── anon_vma_init()         → [Aşama 2] anon_vma
+    ├── buffer_init()           → [Aşama 2] buffer_head
+    │
+    └── do_initcalls()          → [Aşama 3]
+        ├── dcache_init()       → dentry
+        ├── inode_init()        → inode (genel)
+        ├── files_init()        → file
+        ├── sock_init()         → socket
+        ├── skb_init()          → sk_buff
+        ├── bio_init()          → bio
+        ├── blk_mq_init()       → request
+        └── ext4_init() vb.     → fs'e özel inode cache
+
