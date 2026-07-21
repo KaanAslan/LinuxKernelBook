@@ -2766,7 +2766,6 @@ açıklıyoruz:
 
 .. list-table:: 
    :header-rows: 1
-   :widths: 40 25 35
 
    * - Başarısızlık Nedeni
      - NULL Döner mi?
@@ -2909,7 +2908,7 @@ zahmetlidir. Örneğin biz çekirdek kodlamasında 28 byte'lık bir tahsisat yap
 bu zahmetten kurtulmak için belli uzunluklarda hazır dilim önbellekleri de oluşturulmuştur. Bu hazır
 dilim önbelleklerinin nesne uzunlukları şöyledir:
 
-.. list-table:: Hazır Genel Amaçlı Dilim Önbellekleri
+.. list-table:: 
    :header-rows: 1
 
    * - #
@@ -2985,7 +2984,7 @@ dilim önbelleklerinin nesne uzunlukları şöyledir:
 
 Burada nesne uzunlukları 2'nin kuvvetine ilişkin olsa da (*) ile gösterilen iki istisna bulunmaktadır.
 Bu dilim önbellekleri çekirdek imajı belleğe yüklenip ilklenirken bellek yönetim işlevlerine ilişkin
-ilk değerlerin verildiği ``mm_init`` fonksiyonu içerisinde yaratılmaktadır:
+ilkdeğerlerin verildiği ``mm_init`` fonksiyonu içerisinde yaratılmaktadır:
 
 .. code-block:: none
 
@@ -3110,3 +3109,240 @@ alanı aynı zamanda sıfırlamaktadır. Yani aşağıdaki işlemi yapmaktadır:
     {
         return kmalloc(size, flags | __GFP_ZERO);
     }
+
+``kmalloc_array`` fonksiyonu iki parametresinin çarpımı kadar alanı tahsis etmektedir. Fonksiyonun
+prototipi şöyledir:
+
+.. code-block:: c
+
+    void *kmalloc_array(size_t n, size_t size, gfp_t flags);
+
+Tabii bu iki parametreyi programcı kendi çarpıp ``kmalloc`` fonksiyonuna verebilir. Ancak bazen ``n``
+ve ``size`` değerleri başka bir yerden, örneğin kullanıcı alanından geliyor olabilir. Bu durumda taşma
+kontrolünün yapılması gerekebilir. (İki büyük işaretsiz tamsayı çarpıldığında taşmadan dolayı küçük
+bir işaretsiz tamsayının elde edilebileceğine dikkat ediniz.)
+
+``kcalloc`` fonksiyonu C'deki ``calloc`` fonksiyonuna benzetilebilir. Bu fonksiyon ``kmalloc_array``
+gibi iki uzunluk parametresi almaktadır ancak tahsis edilen alanı da sıfırlamaktadır. Fonksiyonun
+prototipi şöyledir:
+
+.. code-block:: c
+
+    void *kcalloc(size_t n, size_t size, gfp_t flags);
+
+``krealloc`` fonksiyonu C'nin ``realloc`` fonksiyonu gibi düşünülebilir. Daha önce tahsis edilmiş olan
+bloğu büyütmek ya da küçültmek için kullanılmaktadır. Fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+    void *krealloc(const void *p, size_t new_size, gfp_t flags);
+
+Fonksiyonun birinci parametresi daha önce ``kmalloc`` ve türevleri tarafından tahsis edilmiş olan
+bloğun adresini, ikinci parametresi bu bloğun toplam yeni uzunluğunu ve üçüncü parametresi de tahsisat
+bayraklarını belirtmektedir. Fonksiyon zaten daha önce tahsis edilmiş olan nesnede talep edilen
+büyüklüğü içerecek kadar boş yer varsa ya da blok küçültülüyorsa aynı adresle geri döner. Ancak daha
+önce tahsis edilmiş nesnede talep edilen uzunluk kadar boş yer yoksa bu durumda sanki yeniden
+``kmalloc`` çağrılıyormuş gibi tahsisat daha büyük bir dilim önbelleğinden yapılmaktadır.
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Durum
+     - Davranış
+   * - ``p == NULL``
+     - ``kmalloc(new_size, flags)`` ile eşdeğer
+   * - ``new_size == 0``
+     - ``kfree(p)``; ``ZERO_SIZE_PTR`` döner
+   * - Aynı nesneye sığıyor
+     - Yerinde işlem; yeni tahsis yapmaz
+   * - Farklı önbellek gerekiyor
+     - Yeni tahsis + ``memcpy`` + eski bloğu ``kfree``
+
+``krealloc_array`` fonksiyonu 6.1 çekirdekleriyle eklenmiştir. ``kmalloc_array`` fonksiyonunun
+*realloc* biçimi gibidir:
+
+.. code-block:: c
+
+    void *krealloc_array(void *p, size_t new_n, size_t new_size, gfp_t flags);
+
+``kmalloc`` türevi fonksiyonlarla tahsis edilen alanlar ``kfree`` fonksiyonu ile serbest
+bırakılmaktadır. ``kfree`` fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+    void kfree(const void *objp);
+
+Fonksiyonun yalnızca blok adresini parametre olarak aldığına dikkat ediniz. Peki bu fonksiyon ilgili
+dilim önbelleğini nasıl bulmaktadır? Eskiden eğer bir sayfa dilimli tahsisat sistemi tarafından
+kullanılıyorsa ona ilişkin ``kmem_cache`` nesnesinin adresi de sayfayı temsil eden ``page`` yapısının
+içerisinde tutuluyordu. Böylece eskiden herhangi bir nesnenin içinde bulunduğu sayfaya ilişkin ``page``
+nesnesinden hareketle geriye doğru ``kmem_cache`` nesnesi elde edilebiliyordu. Çekirdeğin 5.17
+versiyonuyla birlikte ayrı bir ``slab`` yapısı oluşturuldu (biz bu yapıyı incelemiştik) ve bu yapı
+``page`` yapısının üstüne bindirildi. ``slab`` yapısının içerisinde de ``kmem_cache`` nesnesinin
+adresinin tutulduğunu belirtmiştik. Yani hem eski çekirdeklerde hem de yeni çekirdeklerde biz nesnenin
+adresini biliyorsak oradan onun bulunduğu ``page`` nesnesine ya da ``slab`` nesnesine, oradan da
+``kmem_cache`` nesnesine erişebiliriz. 5.17 ve sonrasında aslında ``page`` nesnesinin ``slab`` nesnesi
+ile aynı nesne olduğuna dikkat ediniz. Yani yeni çekirdeklerde erişim şu yoldan geçilerek
+yapılmaktadır:
+
+.. code-block:: none
+
+    Nesne adresi (void *obj)
+            │
+            │  virt_to_page(obj)   
+            ▼
+    struct page *page             ← mem_map[] girdisi
+            │
+            │  page_slab(page)
+            │    └─► (struct slab *)page   [cast — aynı bellek]
+            ▼
+    struct slab *slab
+            │
+            │  slab->slab_cache
+            ▼
+    struct kmem_cache *s          ← cache bulundu
+
+Dilim Önbelleklerine İlişkin Bilgilerin proc ve sys Dosya Sistemleri Yoluyla Elde Edilmesi
+------------------------------------------------------------------------------------------
+
+Çalışan bir sistemde ``proc`` ve ``sys`` dosya sistemi yoluyla dilim önbellekleri hakkındaki bilgiler
+aşağıdaki dizin girişlerinden edinilebilmektedir:
+
+.. code-block:: none
+
+    /proc/slabinfo
+    /proc/meminfo          (slab alanları)
+    /sys/kernel/slab/<önbellek-adı>/
+
+``/proc/slabinfo`` dosyası yaratılmış olan tüm dilim önbellekleri (yani ``kmem_cache`` nesneleri)
+hakkında bilgiler bulundurmaktadır. Normal proseslerin bu dosyaya *r* hakkı olmadığı için dosyayı
+ancak ``sudo`` ile görüntüleyebilirsiniz. Dosya aşağıdakine benzer bir içeriğe sahiptir:
+
+.. code-block:: none
+
+    slabinfo - version: 2.1
+    # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> : tunables
+    # <limit> <batchcount> <sharedfactor> : slabdata <active_slabs> <num_slabs> <sharedavail>
+
+    isofs_inode_cache     56     72    664   24    4 : tunables    0    0    0 : slabdata      3      3      0
+    QIPCRTR               56     78    832   39    8 : tunables    0    0    0 : slabdata      2      2      0
+    AF_VSOCK              48     50   1280   25    8 : tunables    0    0    0 : slabdata      2      2      0
+    ext4_groupinfo_4k    960    962    152   26    1 : tunables    0    0    0 : slabdata     37     37      0
+    btrfs_delayed_node     0      0    312   26    2 : tunables    0    0    0 : slabdata      0      0      0
+    btrfs_ordered_extent   0      0    416   39    4 : tunables    0    0    0 : slabdata      0      0      0
+    bio-328               28     42    384   21    2 : tunables    0    0    0 : slabdata      2      2      0
+    bio-392               28     36    448   36    4 : tunables    0    0    0 : slabdata      1      1      0
+    btrfs_extent_buffer    0      0    240   34    2 : tunables    0    0    0 : slabdata      0      0      0
+    bio-408               28     36    448   36    4 : tunables    0    0    0 : slabdata      1      1      0
+    btrfs_inode            0      0   1008   32    8 : tunables    0    0    0 : slabdata      0      0      0
+    bio-424               28     36    448   36    4 : tunables    0    0    0 : slabdata      1      1      0
+    fsverity_info          0      0    272   30    2 : tunables    0    0    0 : slabdata      0      0      0
+    fscrypt_inode_info     0      0    128   32    1 : tunables    0    0    0 : slabdata      0      0      0
+    ...
+
+Buradaki sütunlarda dilim önbelleğinin ismi, oradaki toplam nesne sayısı, nesnelerin uzunlukları gibi
+önemli bilgiler bulunmaktadır. Tabii liste çok uzun olabileceği için ``grep`` yardımıyla ilgili satırı
+görüntüleyebilirsiniz. ``/proc/slabinfo`` dosyasındaki sütunların anlamları şöyledir:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Alan
+     - Kolon
+     - Açıklama
+   * - ``name``
+     - 1
+     - ``kmem_cache->name`` elemanı. Ör: ``"task_struct"``, ``"kmalloc-64"``
+   * - ``active_objs``
+     - 2
+     - Şu an kullanımda olan nesne sayısı
+   * - ``num_objs``
+     - 3
+     - Toplam ayrılmış nesne kapasitesi (kullanımda + boşta)
+   * - ``objsize``
+     - 4
+     - Her nesnenin kullanıcıya sunulan boyutu (bayt). Kırmızı bölge dahil edilmez.
+       ``kmem_cache->object_size`` ile eşleşir.
+   * - ``objperslab``
+     - 5
+     - Her dilimde kaç nesne bulunduğu. SLUB'da ``objs_per_slab`` sysfs alanıyla örtüşür.
+   * - ``pagesperslab``
+     - 6
+     - Her dilimin kaç sayfadan oluştuğu (2^order adet sayfa)
+   * - ``limit``
+     - 7
+     - SLUB'da her zaman 0. Eski SLAB'ın per-CPU cache limiti idi.
+   * - ``batchcount``
+     - 8
+     - SLUB'da her zaman 0. Eski SLAB'ın per-CPU transfer batch sayısı.
+   * - ``sharedfactor``
+     - 9
+     - SLUB'da her zaman 0. Eski SLAB'da shared cache çarpanı.
+   * - ``active_slabs``
+     - 10
+     - En az bir nesnesi kullanımda olan dilimlerin sayısı.
+   * - ``num_slabs``
+     - 11
+     - Toplam dilimlerin sayısı (boş + kısmi + dolu)
+   * - ``sharedavail``
+     - 12
+     - SLUB'da her zaman 0. Eski SLAB'ın shared cache havuzundaki boş nesne sayısı idi.
+
+Örneğin belli bir dilim önbelleğine ilişkin bilgileri şöyle elde edebiliriz:
+
+.. code-block:: bash
+
+    $ sudo cat /proc/slabinfo | grep "myobject_cache"
+    myobject_cache        60     64    128   32    1 : tunables    0    0    0 : slabdata      2      2      0
+
+Buradaki kendi yarattığımız dilim önbelleği için değerleri tablo halinde veriyoruz:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Alan
+     - Değer
+     - Açıklama
+   * - ``name``
+     - ``myobject_cache``
+     - ``kmem_cache->name``. Önbellek bağımsız oluşturulmuş; merge edilmemiş
+       (aksi halde bu isimle görünmezdi).
+   * - ``active_objs``
+     - 60
+     - Şu an ``kmem_cache_alloc`` ile tahsis edilmiş, henüz ``kmem_cache_free``
+       yapılmamış nesne sayısı.
+   * - ``num_objs``
+     - 64
+     - Tüm dilimlerdeki toplam nesne kapasitesi.
+       2 dilim × 32 nesne/slab = 64. ``active_objs`` ≤ ``num_objs``.
+   * - ``objsize``
+     - 128
+     - ``kmem_cache->object_size`` = 128 bayt. ``sizeof(struct myobject)`` = 72 bayt
+       olmasına karşın SLUB bunu 128'e yuvarlıyor.
+   * - ``objperslab``
+     - 32
+     - Her dilimde 32 nesne barınıyor. 1 page = 4096 bayt → 4096 / 128 = 32.
+   * - ``pagesperslab``
+     - 1
+     - Her dilim 1 page'den oluşuyor (order = 0).
+       Slab boyutu = ``PAGE_SIZE`` << 0 = 4096 bayt.
+   * - ``limit``
+     - 0
+     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
+   * - ``batchcount``
+     - 0
+     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
+   * - ``sharedfactor``
+     - 0
+     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
+   * - ``active_slabs``
+     - 2
+     - En az bir nesnesi kullanımda olan slab sayısı.
+       Her iki slab da aktif: 60 nesne 2 slab'a dağılmış.
+   * - ``num_slabs``
+     - 2
+     - Toplam dilim sayısı. ``active_slabs`` = ``num_slabs`` → boş slab yok.
+   * - ``sharedavail``
+     - 0
+     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
+
