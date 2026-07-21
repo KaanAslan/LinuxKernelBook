@@ -3633,3 +3633,133 @@ tahsisat yöntemini birbirleriyle karşılaştırıyoruz:
      - Genel çekirdek yapıları
      - Büyük yazılım tamponları
      - Sayfa tablosu, DMA, dosya sistemi
+
+vmalloc Ailesi Fonksiyonların Gerçekleştirimleri
+________________________________________________
+
+Şimdi de ``vmalloc`` ailesi fonksiyonların gerçekleştirimleri üzerinde duralım. Biz burada anlatımı
+``vmalloc`` üzerinden yapacağız. Ailenin diğer üyelerindeki temel çatı aynıdır. ``vmalloc``
+fonksiyonu her çağrıldığında ``vm_struct`` isimli bir yapı türünden bir nesne tahsis edilmektedir.
+Güncel çekirdeklerde ``vm_struct`` yapısı ``include/linux/vmalloc.h`` içerisinde şöyle
+tanımlanmıştır:
+
+.. code-block:: c
+
+    struct vm_struct {
+        union {
+            struct vm_struct *next;   /* Early registration of vm_areas. */
+            struct llist_node llnode; /* Asynchronous freeing on error paths. */
+        };
+
+        void            *addr;
+        unsigned long    size;
+        unsigned long    flags;
+        struct page    **pages;
+    #ifdef CONFIG_HAVE_ARCH_HUGE_VMALLOC
+        unsigned int     page_order;
+    #endif
+        unsigned int     nr_pages;
+        phys_addr_t      phys_addr;
+        const void      *caller;
+        unsigned long    requested_size;
+    };
+
+Bu nesne için çekirdek tarafından oluşturulmuş bir dilim önbelleği yoktur. Çünkü zaten bu yapı 64
+byte uzunluktadır ve ``kmalloc`` ailesi için 64 byte'lık bir dilim önbelleği bulunmaktadır.
+
+``vm_struct`` yapısı tahsis edilen alana ilişkin bilgileri barındırmaktadır. Yapının önemli
+elemanlarını açıklayalım:
+
+Yapının ``addr`` elemanı tahsis edilen bloğun başlangıç sanal adresini tutmaktadır. Bu adres zaten
+``vmalloc`` tarafından geri döndürülen adrestir.
+
+Yapının ``size`` elemanı tahsis edilen alanın uzunluğunu tutmaktadır. Aslında tahsisat yapılırken
+eğer ``VM_NO_GUARD`` bayrağı set edilmemişse (varsayılan durumda set edilmez) tahsis edilen alanın
+sonuna bir sayfalık daha sanal bellek tahsisatı yapılır. Buna "koruma sayfası (guard page)"
+denilmektedir. Bu koruma sayfası yanlışlıkla tahsis edilen alanın dışına taşan erişimler
+yapıldığında *page fault* oluşturmak için bulundurulmaktadır. Buradaki ``size`` değeri bu koruma
+sayfası dahil edilmiş biçimde uzunluk belirtmektedir. Tabii koruma sayfası yalnızca sayfa tablosunda
+tahsis edilmektedir. Fiziksel bellekte bunun için bir sayfanın tahsis edilmesine gerek yoktur.
+
+Yapının ``flags`` elemanı tahsisatın hangi amaçla ve özelliklerle yapıldığı bilgisini tutmaktadır.
+Örneğin tahsisat ``vmalloc`` fonksiyonuyla yapılmışsa ``VM_ALLOC`` bayrağı, ``vmap`` fonksiyonuyla
+yapılmışsa ``VM_MAP`` bayrağı set edilmektedir. Koruma sayfasının tahsis edilip edilmeyeceği de yine
+bu ``flags`` elemanında ``VM_NO_GUARD`` bayrağı ile belirtilmektedir. Buradaki bayraklar çekirdek
+fonksiyonlarını kullanan kişiler tarafından set edilmezler. Çekirdek bu bayrakları kendisi set edip
+kendisi kullanmaktadır. Örneğin ``VM_NO_GUARD`` bayrağını çekirdek modülleri içerisinde set etmenin
+bir yolu yoktur. Bunun için ancak çekirdek kodlarının değiştirilip yeniden derlenmesi gerekir.
+
+Yapının ``pages`` elemanı tahsis edilen fiziksel sayfalara ilişkin ``page`` nesnelerinin adreslerini
+tutmaktadır:
+
+.. code-block:: none
+
+    pages ──► Gösterici Dizisi
+                 ──► page nesnesi
+                 ──► page nesnesi
+                 ──► page nesnesi
+                 ...
+
+``pages`` elemanının göstericiyi gösteren gösterici olduğuna, yani gösterici dizisini gösterdiğine
+dikkat ediniz.
+
+Yapının ``nr_pages`` elemanı tahsis edilen sayfaların sayısını, başka bir deyişle ``pages``
+göstericisinin gösterdiği yerdeki dizinin uzunluğunu tutmaktadır. Yapının ``requested_size`` elemanı
+tahsisat için istenen uzunluğu tutmaktadır.
+
+Aşağıda yapı elemanlarını bir tablo halinde veriyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 18 22 60
+
+   * - Alan
+     - Tür
+     - Açıklama
+   * - ``next`` / ``llnode``
+     - ``struct vm_struct *`` / ``struct llist_node``
+     - İki amaçlı birleşim: ``next`` erken önyükleme sırasında bağlı listedeki bir sonraki
+       ``vm_struct``'ı gösterir; ``llnode`` hata yollarında asenkron serbest bırakma için
+       kilit gerektirmeyen listeye bağlanır.
+   * - ``addr``
+     - ``void *``
+     - Tahsis edilen alanın sanal adresi; ``vmalloc`` çağrısının döndürdüğü adresin kendisidir
+       (``VMALLOC_START`` – ``VMALLOC_END`` aralığında).
+   * - ``size``
+     - ``unsigned long``
+     - ``PAGE_ALIGN`` ile hizalanmış tahsisat boyutu; ``VM_NO_GUARD`` yoksa bir koruma sayfası
+       dahildir, gerçek kullanılabilir alan ``size - PAGE_SIZE`` kadardır.
+   * - ``flags``
+     - ``unsigned long``
+     - Tahsisat türünü ve özelliklerini kodlayan bit maskesi; başlıca değerler: ``VM_ALLOC``
+       (vmalloc), ``VM_IOREMAP`` (ioremap), ``VM_MAP`` (vmap), ``VM_NO_GUARD``,
+       ``VM_ALLOW_HUGE_VMAP`` vb.
+   * - ``pages``
+     - ``struct page **``
+     - Fiziksel sayfalara ilişkin ``struct page *`` göstericilerinden oluşan dizi; ioremap
+       yolunda ``NULL`` olabilir çünkü ioremap fiziksel adresi ``phys_addr`` üzerinden doğrudan
+       eşler.
+   * - ``page_order``
+     - ``unsigned int``
+     - ``CONFIG_HAVE_ARCH_HUGE_VMALLOC`` ile derleme koşullu; büyük sayfa (huge page)
+       tahsisatlarında her fiziksel tahsisatın sayfa sırası (order); 0 ise normal 4K sayfa.
+   * - ``nr_pages``
+     - ``unsigned int``
+     - ``pages`` dizisindeki eleman sayısı; normal sayfada ``nr_pages == size >> PAGE_SHIFT``,
+       büyük sayfada farklı hesaplanır.
+   * - ``phys_addr``
+     - ``phys_addr_t``
+     - Yalnızca ioremap ailesi tarafından kullanılır; eşlenecek fiziksel adresi tutar; normal
+       ``vmalloc`` tahsisatlarında 0'dır.
+   * - ``caller``
+     - ``const void *``
+     - Tahsisatı yapan fonksiyonun geri dönüş adresi; ``__builtin_return_address(0)`` ile
+       yakalanır; ``/proc/vmallocinfo`` çıktısında "çağıran" sütunu olarak görünür.
+   * - ``requested_size``
+     - ``unsigned long``
+     - ``PAGE_ALIGN`` öncesindeki orijinal istek boyutu; ``size`` alanı her zaman hizalıdır,
+       bu alan ham isteği korur; ``/proc/vmallocinfo`` ve hata ayıklama için kullanılır.
+
+``vmalloc`` fonksiyonu ``VMALLOC_START`` ve ``VMALLOC_END`` sembolik sabitleriyle belirtilen sanal
+adres aralığında tahsisatlar yapmaktadır. ``VMALLOC_START`` ve ``VMALLOC_END`` bölgesinin yeri ve
+büyüklüğü x86 ve ARM işlemcilerinde tipik olarak aşağıdaki gibidir:
