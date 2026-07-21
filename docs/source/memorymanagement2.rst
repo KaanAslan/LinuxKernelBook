@@ -3346,3 +3346,290 @@ Buradaki kendi yarattığımız dilim önbelleği için değerleri tablo halinde
      - 0
      - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
 
+``/proc/meminfo`` dosyası aslında bellek kullanımı hakkında genel bilgi veren bir dosyadır. Bu dosyanın
+içeriği aşağıdakine benzer biçimdedir:
+
+.. code-block:: bash
+
+    $ cat /proc/meminfo
+    MemTotal:        8081824 kB
+    MemFree:         2802508 kB
+    MemAvailable:    6072932 kB
+    Buffers:          372700 kB
+    Cached:          3021924 kB
+    SwapCached:            0 kB
+    Active:          3296008 kB
+    Inactive:        1342872 kB
+    Active(anon):    1292996 kB
+    Inactive(anon):        0 kB
+    Active(file):    2003012 kB
+    Inactive(file):  1342872 kB
+    Unevictable:          64 kB
+    Mlocked:              64 kB
+    SwapTotal:       3991548 kB
+    SwapFree:        3991548 kB
+    Zswap:                 0 kB
+    Zswapped:              0 kB
+    Dirty:               132 kB
+    Writeback:             0 kB
+    AnonPages:       1244544 kB
+    Mapped:           452140 kB
+    Shmem:             48732 kB
+    KReclaimable:     229804 kB
+    Slab:             398272 kB
+    SReclaimable:     229804 kB
+    SUnreclaim:       168468 kB
+    ...
+
+Buradaki ``Slab`` satırı dilimli tahsisat sistemlerinin toplamda fiziksel RAM'de ne kadar yer
+kapladığını belirtmektedir. ``SReclaimable`` çekirdek tarafından geri alınabilen dilim önbelleklerinin
+büyüklüğünü, ``SUnreclaim`` ise geri alınamayan dilim önbelleklerinin büyüklüğünü belirtmektedir.
+
+``sys`` dosya sistemindeki ``/sys/kernel/slab/<cache-adı>/`` dizini belli bir dilim önbelleğine
+ilişkin bilgileri daha yapısal bir biçimde vermektedir. Bu dizinin içeriği şöyledir:
+
+.. code-block:: bash
+
+    $ ls /sys/kernel/slab/myobject_cache/
+    aliases      ctor            object_size      poison                    sheaf_capacity     slab_size      validate
+    align        destroy_by_rcu  objects_partial  reclaim_account           shrink             store_user
+    cache_dma    hwcache_align   objs_per_slab    red_zone                  skip_kfence        total_objects
+    cpu_partial  min_partial     order            remote_node_defrag_ratio  slabs              trace
+    cpu_slabs    objects         partial          sanity_checks             slabs_cpu_partial  usersize
+
+Bu dosyaların içerdiği bilgileri aşağıdaki tabloda veriyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Dosya
+     - Açıklama
+   * - ``object_size``
+     - Kullanıcıya sunulan nesne boyutu (bayt). ``kmem_cache->object_size`` ile birebir eşleşir.
+   * - ``slab_size``
+     - Dilimli tahsisat sisteminin dahili olarak her nesne için ayırdığı gerçek alan
+       (hizalama + red zone dahil). ``kmem_cache->size`` ile eşleşir.
+   * - ``align``
+     - Nesne hizalaması (bayt cinsinden). ``kmem_cache->align`` alanından okunur.
+   * - ``order``
+     - Bir dilimi oluşturan page bloğunun düzey değeri. Dilim boyutu = ``PAGE_SIZE`` << order.
+   * - ``objs_per_slab``
+     - Her dilimde kaç nesne barınabileceği.
+   * - ``objects``
+     - Şu an dilim önbelleğinde yaşayan toplam nesne sayısı
+       (NUMA node'larına göre ``N0=x`` şeklinde de gösterilir).
+   * - ``total_objects``
+     - Tüm dilimlerdeki toplam nesne kapasitesi. ``objects`` ≤ ``total_objects`` olmalıdır.
+   * - ``objects_partial``
+     - Kısmi dilimlerde (partial list) bulunan nesne sayısı.
+   * - ``slabs``
+     - Toplam dilim sayısı. NUMA bilgisi ``N0=x`` formatında eklenir.
+   * - ``partial``
+     - Partial listesindeki dilim sayısı. ``kmem_cache_node->nr_partial`` ile eşleşir.
+   * - ``cpu_slabs``
+     - Şu an per-CPU yapısı (``kmem_cache_cpu->page``) tarafından tutturulan aktif dilim sayısı
+       (per-CPU kırılımıyla).
+   * - ``aliases``
+     - Bu dilim önbelleğinin kaç isimle takma ad (alias) verildiği.
+       ``kmem_cache_create_usercopy()`` ile birleştirme yapıldıysa > 0 olur.
+   * - ``ctor``
+     - Dilim önbelleği bir constructor ile oluşturulduysa fonksiyon adresi burada görünür;
+       yoksa boştur.
+   * - ``usersize``
+     - Kullanıcıya "kopyalanabilir" olarak işaretlenen bayt sayısı.
+       ``kmem_cache_create_usercopy()`` ile belirlenir; ``copy_to_user`` güvenlik
+       kontrollerinde kullanılır.
+   * - ``slabs_cpu_partial``
+     - Per-CPU partial listesindeki dilim ve nesne sayısı.
+       Format: ``"dilim_sayısı(toplam_nesne_sayısı)"``
+
+Fiziksel Bellekte Ardışıl Olmayan Tahsisatlar
+=============================================
+
+Biz şimdiye kadar fiziksel bellekte ardışıl olan tahsisat üzerinde durduk. Çekirdeğin sayfa
+düzeyinde tahsisat yapan *ikiz blok tahsisat sistemi (buddy allocator)* fiziksel bellekte ardışıl
+sayfaları tahsis ediyordu. Dilimli tahsisat sistemi de arka planda ikiz blok tahsisat sistemini
+kullanıyordu. Ancak fiziksel bellekte ardışıl sayfa tahsisatları fiziksel belleğin bölünmesine
+(fragmente olmasına) yol açabilmektedir. İşte bazı durumlarda fiziksel bellekte ardışıl olmayabilen
+ancak sanal adres alanında (yani sayfa tablosunda) ardışıl olan tahsisatların da yapılması
+gerekebilmektedir. Linux çekirdeğinde fiziksel bellekte ardışıl olmayan ancak sanal adres alanında
+ardışıl olan tahsisatlar ``vmalloc`` ailesi fonksiyonlarla yapılmaktadır. Biz önce çekirdekteki
+``vmalloc`` ailesi fonksiyonları ele alacağız, sonra da bu fonksiyonların tahsisatları nasıl yaptığı
+üzerinde duracağız.
+
+vmalloc Ailesi Fonksiyonlar
+---------------------------
+
+Güncel çekirdeklerde ``vmalloc`` ailesi fonksiyonlar makrolar yoluyla oluşturulmuştur. Ancak biz
+burada fonksiyonun anlaşılabilir parametrik yapısı için eski çekirdeklerdeki gibi prototipleri
+kullanacağız.
+
+``vmalloc`` fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+    void *vmalloc(unsigned long size);
+
+Görüldüğü gibi fonksiyon tıpkı C'nin ``malloc`` fonksiyonunda olduğu gibi byte cinsinden tahsis
+edilecek bellek miktarını parametre olarak almaktadır. Tahsis edilen alanın sanal bellek adresiyle
+geri dönmektedir. ``vmalloc`` ile tahsis edilen alan ``vfree`` ve ``vfree_atomic`` fonksiyonlarıyla
+serbest bırakılmaktadır:
+
+.. code-block:: c
+
+    void vfree(const void *addr);
+    void vfree_atomic(const void *addr);        /* Linux 4.3'den itibaren */
+
+``vfree_atomic`` fonksiyonu kesme kodlarından da çağrılabilmektedir.
+
+``vzalloc`` fonksiyonu tahsis edilen alanı aynı zamanda sıfırlamaktadır. Tabii bu sıfırlama işlemi
+aslında ikiz blok tahsisat sisteminde ``__GFP_ZERO`` bayrağı kullanılarak yapılmaktadır:
+
+.. code-block:: c
+
+    void *vzalloc(unsigned long size);
+
+``vmalloc_node`` fonksiyonu belli bir NUMA düğümünü hedef alarak tahsisatı yapmaktadır:
+
+.. code-block:: c
+
+    void *vmalloc_node(unsigned long size, int node);
+
+Ancak bu tahsisatlara ilişkin sayfaların hepsi *fallback* nedeniyle istenilen NUMA düğümünden
+karşılanmak zorunda değildir. (Düğümler arasında *fallback* işleminin engellenmesi için
+``alloc_pages`` gibi sayfa tahsisat fonksiyonlarında ``__GFP_THISNODE`` özel bayrağı
+kullanılabilmektedir.)
+
+``vmalloc_user`` fonksiyonu kullanıcı alanına haritalanabilen (map edilebilen) tahsisatlar
+yapmaktadır. Bu konuyu ileride ele alacağız.
+
+Yukarıda da belirttiğimiz gibi ``vmalloc`` ailesi fonksiyonlar arka planda ikiz blok tahsisat
+sistemini kullanmaktadır. Aşağıdaki tabloda fonksiyonların ikiz blok tahsisat sisteminden sayfa
+tahsis ederken hangi bayrakları kullandığı belirtilmektedir:
+
+.. list-table:: ``vmalloc`` Ailesi Fonksiyonların Kullandığı GFP Bayrakları
+   :header-rows: 1
+   :widths: 30 70
+
+   * - vmalloc Türevi
+     - Kullanılan GFP Bayrakları
+   * - ``vmalloc()``
+     - ``GFP_KERNEL | __GFP_HIGHMEM``
+   * - ``vzalloc()``
+     - ``GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO``
+   * - ``vmalloc_user()``
+     - ``GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO``
+   * - ``vmalloc_node()``
+     - ``GFP_KERNEL | __GFP_HIGHMEM`` (+ NUMA node kısıtı)
+
+``vmalloc`` ailesi fonksiyonlar tahsisatları arka planda *ikiz blok tahsisat sistemini (buddy
+allocator)* kullanarak sayfa düzeyinde yapmaktadır. Dolayısıyla bu fonksiyonlar tarafından yapılan
+tahsisatlar her zaman sayfa katları büyüklüğünde olur. Örneğin biz ``vmalloc`` ile 1000 byte tahsis
+etmek isteyelim. Aslında fonksiyon arka planda 4096 byte'lık (1 sayfalık) bir tahsisat yapacaktır.
+Dolayısıyla ``vmalloc`` ailesi fonksiyonlarda sayfa katlarından küçük olan tahsisat yapmanın bir
+anlamı yoktur.
+
+Peki ne zaman dilim önbelleği yolu ile (örneğin ``kmalloc`` ile), ne zaman ``vmalloc`` ile ve ne
+zaman sayfa düzeyinde (örneğin ``alloc_pages`` ile) tahsisat yapmalıyız? ``vmalloc`` ailesi
+fonksiyonlar ile fiziksel bellekte çok büyük alanlar tahsis edilebilmektedir. Çünkü ``vmalloc``
+ailesi sayfaların fiziksel bellekte ardışıl bulunmasını zorunlu tutmamaktadır. ``alloc_pages``
+fonksiyonuyla en fazla 8 MB (order 11) kadar tahsisatın tek hamlede yapılabildiğini anımsayınız.
+Öte yandan dilimli tahsisat sistemi de temel olarak küçük miktardaki byte tahsisatları için
+düşünülmüştür. Ancak ``vmalloc`` ailesi fonksiyonlar toplamda daha fazla meta data kullanma
+eğilimindedir. İzleyen paragraflarda açıklayacağımız gibi her ``vmalloc`` çağrısında çekirdek
+tahsis edilen alanı yönetmek için ayrı bir nesne oluşturmaktadır. ``vmalloc`` ailesi çağrılar bir
+döngü içerisinde sürekli olarak 0'ıncı düzeyde (order 0) sayfa tahsisatlarıyla sağlanmaktadır. Bu
+işlem de göreli bir zaman kaybına yol açmaktadır. Aynı zamanda ``vmalloc`` ailesi fonksiyonlar sayfa
+tablosunda da güncelleme yapmaktadır. Bu da ek bir maliyete yol açmaktadır. Aşağıdaki tabloda üç
+tahsisat yöntemini birbirleriyle karşılaştırıyoruz:
+
+.. list-table:: 
+   :header-rows: 1
+   :widths: 28 24 24 24
+
+   * - Özellik
+     - ``kmalloc``
+     - ``vmalloc``
+     - ``alloc_pages``
+   * - Fiziksel ardışıllık
+     - Garantili
+     - Garantisiz (dağınık olabilir)
+     - Garantili (2^order ardışık sayfa)
+   * - Sanal ardışıllık
+     - Evet (physmap üzerinden)
+     - Evet (vmalloc bölgesi)
+     - Evet (physmap'te fiziksel ardışıklık sanal ardışıklığa da yansır)
+   * - Döndürülen değer
+     - ``void*`` (sanal adres)
+     - ``void*`` (sanal adres)
+     - ``struct page*`` (sayfa tanımlayıcısı)
+   * - Sanal adres edinme
+     - Doğrudan
+     - Doğrudan
+     - ``page_address``: physmap aritmetiği ``PAGE_OFFSET + pfn<<PAGE_SHIFT``;
+       yeni PTE/TLB işlemi gerekmez (64-bit; ``kmap()`` 32-bit HIGHMEM'e özgüdür,
+       64-bit'te ``page_address``'e indirgenir)
+   * - DMA uyumluluğu
+     - Evet (``GFP_DMA`` ile)
+     - Hayır (genel vmalloc)
+     - Evet (``GFP_DMA`` / ``GFP_DMA32`` ile)
+   * - Maksimum boyut
+     - ~8 MB (order 11)
+     - Yüzlerce GB
+     - ``MAX_ORDER``'a bağlı (~4 MB / ~8 MB)
+   * - Tahsisat birimi
+     - Byte (dilim hizalamasıyla)
+     - Byte, ``PAGE_SIZE`` katına yuvarlanır
+     - 2^order sayfa (4 KB çarpanı)
+   * - İç tahsisat mekanizması
+     - SLUB → buddy (büyükse)
+     - Buddy (order-0 döngüsü)
+     - Buddy (doğrudan)
+   * - TLB etkisi
+     - Minimal (physmap PTE mevcut)
+     - Yüksek (vmalloc fault mümkün)
+     - Yok (PTE yoktur; kmap gerekirse var)
+   * - Tahsisat hızı
+     - Hızlı
+     - Yavaş (RB tree + PTE yazımı)
+     - Orta (buddy doğrudan; PTE yok)
+   * - Atomik bağlamda kullanım
+     - ``GFP_ATOMIC`` ile mümkün
+     - Mümkün değil
+     - ``GFP_ATOMIC`` ile mümkün
+   * - Parçalanmaya duyarlılık
+     - Yüksek (fiziksel bitişiklik)
+     - Düşük (sanal esneklik)
+     - Çok yüksek (2^order ardışık şart)
+   * - NUMA node kontrolü
+     - ``kmalloc_node`` ile
+     - ``vmalloc_node`` ile (tercih)
+     - ``alloc_pages_node`` ile (tercih)
+   * - ``__GFP_THISNODE`` desteği
+     - Evet
+     - Manuel (``__vmalloc_node`` ile)
+     - Evet
+   * - Başka düğümden fallback
+     - Evet (varsayılan)
+     - Evet (varsayılan)
+     - Evet (varsayılan)
+   * - Bellek bölgesi esnekliği
+     - ``ZONE_NORMAL`` / DMA
+     - Herhangi bir bölge
+     - Herhangi bir bölge (GFP ile seçilir)
+   * - Serbest bırakma
+     - ``kfree``
+     - ``vfree``
+     - ``__free_pages`` / ``put_page``
+   * - Guard page
+     - Hayır (SLUB redzone var)
+     - Evet (varsayılan 1 sayfa)
+     - Hayır
+   * - Hata ayıklama desteği
+     - KASAN, SLUB debug
+     - KASAN, vmalloc_debug
+     - KASAN (page çözünürlüğünde)
+   * - Tipik kullanım yeri
+     - Genel çekirdek yapıları
+     - Büyük yazılım tamponları
+     - Sayfa tablosu, DMA, dosya sistemi
