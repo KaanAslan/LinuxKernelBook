@@ -3692,13 +3692,11 @@ bir yolu yoktur. Bunun için ancak çekirdek kodlarının değiştirilip yeniden
 Yapının ``pages`` elemanı tahsis edilen fiziksel sayfalara ilişkin ``page`` nesnelerinin adreslerini
 tutmaktadır:
 
-.. code-block:: none
+.. figure:: _static/pages-pointer-array.png
+   :alt: pages gösterici dizisi
+   :align: center
+   :width: 50%
 
-    pages ──► Gösterici Dizisi
-                 ──► page nesnesi
-                 ──► page nesnesi
-                 ──► page nesnesi
-                 ...
 
 ``pages`` elemanının göstericiyi gösteren gösterici olduğuna, yani gösterici dizisini gösterdiğine
 dikkat ediniz.
@@ -3763,3 +3761,69 @@ Aşağıda yapı elemanlarını bir tablo halinde veriyoruz:
 ``vmalloc`` fonksiyonu ``VMALLOC_START`` ve ``VMALLOC_END`` sembolik sabitleriyle belirtilen sanal
 adres aralığında tahsisatlar yapmaktadır. ``VMALLOC_START`` ve ``VMALLOC_END`` bölgesinin yeri ve
 büyüklüğü x86 ve ARM işlemcilerinde tipik olarak aşağıdaki gibidir:
+
+.. list-table:: 
+   :header-rows: 1
+
+   * - Mimari
+     - ``VMALLOC_START``
+     - ``VMALLOC_END``
+     - Uzunluk
+   * - x86 (32-bit), 3G/1G bölünmesi, ``PAGE_OFFSET=0xC0000000``
+     - ``high_memory + VMALLOC_OFFSET`` (8 MiB boşluk);
+       dinamiktir: fiziksel bellek arttıkça START yükselir, alan daralır
+     - ``0xFF800000`` (sabit)
+     - en az 240 MiB (fiziksel belleğe göre değişir)
+   * - ARM32, 3G/1G bölünmesi, ``PAGE_OFFSET=0xC0000000``
+     - ``high_memory + VMALLOC_OFFSET`` (8 MiB boşluk);
+       tipik: ``0xF0000000`` (760 MiB lowmem ile)
+     - ``0xFF800000`` (sabit)
+     - en az 240 MiB (tipik 240 MiB)
+   * - x86_64 (64-bit), 4-seviye sayfa tablosu (48-bit VA)
+     - ``0xffffc90000000000`` (-55 TiB)
+     - ``0xffffe8ffffffffff`` (-23 TiB - 1)
+     - 32 TiB
+   * - x86_64 (64-bit), 5-seviye sayfa tablosu (57-bit VA)
+     - ``0xffa0000000000000`` (-24 PiB)
+     - ``0xffd1ffffffffffff`` (-11.5 PiB - 1)
+     - 12.5 PiB
+   * - ARM64 / AArch64, 4-seviye sayfa tablosu (48-bit VA, 4 KiB sayfa)
+     - ``0xffff800080000000`` (modules bölgesinin hemen ardından)
+     - ``0xfffffbffefffffff``
+     - ~124 TiB
+   * - ARM64 / AArch64, 3-seviye sayfa tablosu (52-bit VA, 64 KiB sayfa, ARMv8.2-LVA gerektirir)
+     - ``0xffffa00010000000`` (modules bölgesinin hemen ardından)
+     - ``0xfffff81ffffeffff``
+     - ~88 TiB
+
+``vmalloc`` fonksiyonu çağrıldığında fonksiyonun boş bir sanal adres verebilmesi için çekirdeğin
+sanal adres alanı içerisindeki tahsisatları bir biçimde izlemesi gerekir. İşte ``vmalloc`` tarafından
+sanal adres alanındaki tahsisatlar için ``vmap_area`` isimli bir yapı kullanılmaktadır. Her sanal
+adres alanındaki ``VMALLOC_START`` - ``VMALLOC_END`` arasındaki tahsisatta ``vm_struct`` nesnesinin
+yanı sıra bir ``vmap_area`` nesnesi de yaratılmaktadır. Böylece çekirdek hangi sanal adres alanının
+boş olup olmadığını izleyen paragraflarda açıklayacağımız biçimde izleyebilmektedir. Burada iki yapıyı
+karıştırmayınız. ``vm_struct`` yapısı ``vmalloc`` tarafından tahsis edilen fiziksel sayfalara ilişkin
+bilgileri tutarken, ``vmap_area`` yapısı sanal adres tahsisatlarını tutmaktadır. ``vmap_area`` yapısı
+güncel çekirdeklerde ``include/linux/vmalloc.h`` dosyası içerisinde aşağıdaki gibi tanımlanmıştır:
+
+.. code-block:: c
+
+    struct vmap_area {
+        unsigned long va_start;
+        unsigned long va_end;
+
+        struct rb_node rb_node;         /* address sorted rbtree */
+        struct list_head list;          /* address sorted list */
+
+        /*
+         * The following two variables can be packed, because
+         * a vmap_area object can be either:
+         *    1) in "free" tree (root is free_vmap_area_root)
+         *    2) or "busy" tree (root is vmap_area_root)
+         */
+        union {
+            unsigned long subtree_max_size; /* in "free" tree */
+            struct vm_struct *vm;           /* in "busy" tree */
+        };
+        unsigned long flags;            /* mark type of vm_map_ram area */
+    };
