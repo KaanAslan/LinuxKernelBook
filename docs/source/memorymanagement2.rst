@@ -3507,7 +3507,7 @@ Yukarıda da belirttiğimiz gibi ``vmalloc`` ailesi fonksiyonlar arka planda iki
 sistemini kullanmaktadır. Aşağıdaki tabloda fonksiyonların ikiz blok tahsisat sisteminden sayfa
 tahsis ederken hangi bayrakları kullandığı belirtilmektedir:
 
-.. list-table:: ``vmalloc`` Ailesi Fonksiyonların Kullandığı GFP Bayrakları
+.. list-table:: 
    :header-rows: 1
    :widths: 30 70
 
