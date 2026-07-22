@@ -1,5 +1,5 @@
 ===============================================================
-Bellek Yönetimi - 2. Bölüm :raw-html:`<br>` Tahsisat İşlemleri
+Bellek Yönetimi - II. Bölüm :raw-html:`<br>` Tahsisat İşlemleri
 ===============================================================
 
 Bu bölümde Linux çekirdeğinin sayfa düzeyindeki ve byte düzeyindeki tahsisat mekanizmalarını ele
