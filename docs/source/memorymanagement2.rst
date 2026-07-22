@@ -2908,89 +2908,18 @@ zahmetlidir. Örneğin biz çekirdek kodlamasında 28 byte'lık bir tahsisat yap
 bu zahmetten kurtulmak için belli uzunluklarda hazır dilim önbellekleri de oluşturulmuştur. Bu hazır
 dilim önbelleklerinin nesne uzunlukları şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - #
-     - Nesne Boyutu
-     - ``KMALLOC_NORMAL``
-     - ``KMALLOC_CGROUP``
-     - ``KMALLOC_DMA``
-   * - 1
-     - 8 B
-     - ``kmalloc-8``
-     - ``kmalloc-cg-8``
-     - ``dma-kmalloc-8``
-   * - 2
-     - 16 B
-     - ``kmalloc-16``
-     - ``kmalloc-cg-16``
-     - ``dma-kmalloc-16``
-   * - 3
-     - 32 B
-     - ``kmalloc-32``
-     - ``kmalloc-cg-32``
-     - ``dma-kmalloc-32``
-   * - 4
-     - 64 B
-     - ``kmalloc-64``
-     - ``kmalloc-cg-64``
-     - ``dma-kmalloc-64``
-   * - 5
-     - 96 B  (*)
-     - ``kmalloc-96``
-     - ``kmalloc-cg-96``
-     - ``dma-kmalloc-96``
-   * - 6
-     - 128 B
-     - ``kmalloc-128``
-     - ``kmalloc-cg-128``
-     - ``dma-kmalloc-128``
-   * - 7
-     - 192 B  (*)
-     - ``kmalloc-192``
-     - ``kmalloc-cg-192``
-     - ``dma-kmalloc-192``
-   * - 8
-     - 256 B
-     - ``kmalloc-256``
-     - ``kmalloc-cg-256``
-     - ``dma-kmalloc-256``
-   * - 9
-     - 512 B
-     - ``kmalloc-512``
-     - ``kmalloc-cg-512``
-     - ``dma-kmalloc-512``
-   * - 10
-     - 1024 B (1k)
-     - ``kmalloc-1k``
-     - ``kmalloc-cg-1k``
-     - ``dma-kmalloc-1k``
-   * - 11
-     - 2048 B (2k)
-     - ``kmalloc-2k``
-     - ``kmalloc-cg-2k``
-     - ``dma-kmalloc-2k``
-   * - 12
-     - 4096 B (4k)
-     - ``kmalloc-4k``
-     - ``kmalloc-cg-4k``
-     - ``dma-kmalloc-4k``
-   * - 13
-     - 8192 B (8k)
-     - ``kmalloc-8k``
-     - ``kmalloc-cg-8k``
-     - ``dma-kmalloc-8k``
+.. figure:: _static/kmalloc-caches-table.png
+   :alt: Hazır genel amaçlı dilim önbellekleri
+   :align: center
+   :width: 60%
 
 Burada nesne uzunlukları 2'nin kuvvetine ilişkin olsa da (*) ile gösterilen iki istisna bulunmaktadır.
 Bu dilim önbellekleri çekirdek imajı belleğe yüklenip ilklenirken bellek yönetim işlevlerine ilişkin
 ilkdeğerlerin verildiği ``mm_init`` fonksiyonu içerisinde yaratılmaktadır:
 
-.. code-block:: none
-
-    start_kernel                            [init/main.c]
-    └─► mm_init
-        └─► kmem_cache_init                 [mm/slub.c]
+.. figure:: _static/kmem-cache-init-chain.png
+   :alt: kmem_cache_init çağrı zinciri
+   :align: center
 
 Tablodaki ``KMALLOC_CGROUP``, *docker* gibi *container* teknolojilerinin kullanımını daha etkin hale
 getirmek için Linux çekirdekine sokulmuş olan "memcg (memory cgroup)" kavramı ile ilgilidir.
@@ -3050,55 +2979,9 @@ içerisinde talep edilen tahsisata en uygun dilim önbelleğinin tespit edildiğ
 "memcg (memory cgroup)" gibi kavramların çekirdeğe dahil edilmesiyle fonksiyon daha karmaşık bir hale
 gelmiştir. Güncel çekirdeklerdeki ``kmalloc`` çağrı dizgesi şöyledir:
 
-.. code-block:: none
-
-    kmalloc(size, flags)                        [slab.h — makro]
-        │
-        │  alloc_hooks(__kmalloc_noprof(...))
-        │
-        ├─[size > KMALLOC_MAX_CACHE_SIZE (~8 KiB)]
-        │       │
-        │       ▼
-        │   kmalloc_large_noprof()              [slab_common.c]
-        │       │
-        │       ▼
-        │   alloc_pages()                       [Buddy Allocator — SLUB devre dışı]
-        │
-        └─[size ≤ KMALLOC_MAX_CACHE_SIZE]
-                │
-                ▼
-            __do_kmalloc_node()                 [slab_common.c]
-                │
-                ▼
-            kmalloc_slab(size, flags)
-                │  kmalloc_type() → NORMAL / CGROUP / RECLAIM / DMA
-                │  kmalloc_index() → boyuta göre indeks
-                │
-                ▼
-            kmalloc_caches[type][idx]           ── kmem_cache seçildi
-                │
-                ▼
-            slab_alloc_node()                   [slub.c]
-                │
-                ├──────────────────────────────────────┐
-                │                                      │
-                ▼  [HIZLI YOL — lockless]         [YAVAŞ YOL]
-                                                       │
-        c->freelist != NULL                        ___slab_alloc()
-        this_cpu_cmpxchg_double()                      │
-        nesne döner                      ┌─────────────┼──────────────────┐
-                                         │             │                  │
-                                     [1] per-CPU    [2] node         [3] yeni sayfa
-                                     partial        partial          gerekiyor
-                                     listesi        listesi               │
-                                     (c->partial)   (kmem_cache_node      │
-                                         │          ->partial)            │
-                                         │             │              new_slab()
-                                         │             │                  │
-                                         └──────┬──────┘            alloc_pages()
-                                                │                 [Buddy Allocator]
-                                                ▼
-                                            nesne döner ✓
+.. figure:: _static/kmalloc-callchain.png
+   :alt: kmalloc çağrı zinciri
+   :align: center
 
 ``kmalloc`` ailesinden başka çekirdek fonksiyonları da vardır. ``kzalloc`` fonksiyonu tahsis edilen
 alanı aynı zamanda sıfırlamaktadır. Yani aşağıdaki işlemi yapmaktadır:
@@ -3144,19 +3027,9 @@ büyüklüğü içerecek kadar boş yer varsa ya da blok küçültülüyorsa ayn
 önce tahsis edilmiş nesnede talep edilen uzunluk kadar boş yer yoksa bu durumda sanki yeniden
 ``kmalloc`` çağrılıyormuş gibi tahsisat daha büyük bir dilim önbelleğinden yapılmaktadır.
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Durum
-     - Davranış
-   * - ``p == NULL``
-     - ``kmalloc(new_size, flags)`` ile eşdeğer
-   * - ``new_size == 0``
-     - ``kfree(p)``; ``ZERO_SIZE_PTR`` döner
-   * - Aynı nesneye sığıyor
-     - Yerinde işlem; yeni tahsis yapmaz
-   * - Farklı önbellek gerekiyor
-     - Yeni tahsis + ``memcpy`` + eski bloğu ``kfree``
+.. figure:: _static/krealloc-behavior-table.png
+   :alt: krealloc davranış tablosu
+   :align: center
 
 ``krealloc_array`` fonksiyonu 6.1 çekirdekleriyle eklenmiştir. ``kmalloc_array`` fonksiyonunun
 *realloc* biçimi gibidir:
@@ -3185,22 +3058,9 @@ adresini biliyorsak oradan onun bulunduğu ``page`` nesnesine ya da ``slab`` nes
 ile aynı nesne olduğuna dikkat ediniz. Yani yeni çekirdeklerde erişim şu yoldan geçilerek
 yapılmaktadır:
 
-.. code-block:: none
-
-    Nesne adresi (void *obj)
-            │
-            │  virt_to_page(obj)   
-            ▼
-    struct page *page             ← mem_map[] girdisi
-            │
-            │  page_slab(page)
-            │    └─► (struct slab *)page   [cast — aynı bellek]
-            ▼
-    struct slab *slab
-            │
-            │  slab->slab_cache
-            ▼
-    struct kmem_cache *s          ← cache bulundu
+.. figure:: _static/obj-to-kmem-cache-chain.png
+   :alt: Nesne adresinden kmem_cache nesnesine erişim zinciri
+   :align: center
 
 Dilim Önbelleklerine İlişkin Bilgilerin proc ve sys Dosya Sistemleri Yoluyla Elde Edilmesi
 ------------------------------------------------------------------------------------------
