@@ -2708,19 +2708,10 @@ Dilim Önbelleklerinden Tahsisat İşlemleri
 
 Yaratılmış olan bir dilim önbelleğinden tahsisat yapmak için kullanılan temel fonksiyonlar şunlardır:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Fonksiyon
-     - İşlevi
-   * - ``kmem_cache_alloc``
-     - Standart tekli tahsisat
-   * - ``kmem_cache_zalloc``
-     - Sıfırlanmış tahsisat (``GFP_ZERO``)
-   * - ``kmem_cache_alloc_node``
-     - NUMA düğümüne özgü tahsisat
-   * - ``kmem_cache_alloc_bulk``
-     - Toplu (çok nesne) tahsisat
+.. figure:: _static/kmem-cache-alloc-functions.png
+   :alt: Dilim önbelleği tahsisat fonksiyonları
+   :align: center
+   :width: 40%
 
 ``kmem_cache_alloc`` ve ``kmem_cache_zalloc`` en çok kullanılan tahsisat fonksiyonlarıdır. Bu
 fonksiyonlar belli bir dilim önbelleğinden nesne tahsis etmektedir. Fonksiyonların prototipleri
@@ -2764,24 +2755,9 @@ bu fonksiyonların bellek yetersizliğinde başarısız olmaları düşük bir o
 başarı kontrolleri mutlaka yapılmalıdır. Bu fonksiyonların başarısız olma nedenlerini aşağıdaki tabloda
 açıklıyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Başarısızlık Nedeni
-     - NULL Döner mi?
-     - Açıklama
-   * - Bellek baskısı (``GFP_KERNEL``)
-     - Bazen
-     - Önce reclaim denenir
-   * - Bellek baskısı (``GFP_ATOMIC``)
-     - Evet, hemen
-     - Reclaim yapılmaz
-   * - NUMA + ``__GFP_THISNODE``
-     - Evet
-     - Fallback yok
-   * - Memcg limit aşımı
-     - Evet
-     - Cgroup zorlaması
+.. figure:: _static/kmem-cache-alloc-failures.png
+   :alt: kmem_cache_alloc başarısızlık nedenleri
+   :align: center
 
 Eğer bu fonksiyonlar başka fonksiyonların içerisinde çağrılmışsa başarısızlık durumunda çağrımın
 yapıldığı fonksiyonun ``-ENOMEM`` değeri ile geri döndürülmesi uygun olur.
@@ -3107,6 +3083,7 @@ görüntüleyebilirsiniz. ``/proc/slabinfo`` dosyasındaki sütunların anlamlar
 .. figure:: _static/slabinfo-columns-table.png
    :alt: /proc/slabinfo sütun açıklamaları
    :align: center
+   :width: 70%
 
 Örneğin belli bir dilim önbelleğine ilişkin bilgileri şöyle elde edebiliriz:
 
@@ -3175,8 +3152,9 @@ ilişkin bilgileri daha yapısal bir biçimde vermektedir. Bu dizinin içeriği 
 Bu dosyaların içerdiği bilgileri aşağıdaki tabloda veriyoruz:
 
 .. figure:: _static/sysfs-slab-files-table.png
-   :alt: /sys/kernel/slab/ dosyaları
-   :align: center
+  :alt: /sys/kernel/slab/ dosyaları
+  :align: center
+  :width: 70%
 
 Fiziksel Bellekte Ardışıl Olmayan Tahsisatlar
 =============================================
@@ -3354,6 +3332,7 @@ büyüklüğü x86 ve ARM işlemcilerinde tipik olarak aşağıdaki gibidir:
 .. figure:: _static/vmalloc-regions-table.png
    :alt: Mimariye göre VMALLOC_START ve VMALLOC_END bölgeleri
    :align: center
+   :width: 70%
 
 ``vmalloc`` fonksiyonu çağrıldığında fonksiyonun boş bir sanal adres verebilmesi için çekirdeğin
 sanal adres alanı içerisindeki tahsisatları bir biçimde izlemesi gerekir. İşte ``vmalloc`` tarafından
@@ -3387,4 +3366,28 @@ güncel çekirdeklerde ``include/linux/vmalloc.h`` dosyası içerisinde aşağı
         unsigned long flags;            /* mark type of vm_map_ram area */
     };
 
+Yapının ``va_start`` ve ``va_end`` elemanları tahsis edilen alanın sanal bellekteki başlangıç ve bitiş
+adreslerini belirtmektedir. Bu elemanların ``void *`` türünden olmayıp ``unsigned long`` türünden
+olduğuna dikkat ediniz. Çekirdek bu adreslerle ilgili daha kolay aritmetik işlemler yapabilmek için
+bunları ``unsigned long`` türünden almıştır.
 
+Yapının ``rb_node`` elemanı izleyen paragraflarda açıklayacağımız gibi "kırmızı-siyah ağacının
+(red-black tree)" düğümünü tutmaktadır. Aynı zamanda çekirdek tüm ``vmap_area`` tahsisatlarını sıralı
+bir biçimde bir bağlı listede de tutmaktadır.
+
+Yapının ``list`` elemanı bu bağlı listenin düğümünü belirtmektedir.
+
+Yapıdaki anonim birliğe dikkat ediniz. Yukarıda açıkladığımız ``vm_struct`` nesnesinin adresi aslında
+``vmap_area`` nesnesinin içerisinde tutulmaktadır. İşte birliğin ``vm`` elemanı eğer ilgili blok tahsis
+edilmiş durumdaysa bu adresi tutar; ancak ilgili blok tahsis edilmemişse yani boş durumdaysa
+``subtree_max_size`` elemanı kırmızı-siyah ağacının alt düğümlerindeki en büyük boş alanı tutmaktadır.
+
+Yapının ``flags`` elemanı tahsis edilen alanın türünü tutmaktadır.
+
+``vmap_area`` nesneleri için ``vmap_area_cachep`` isimli bir dilim önbelleği kullanılmaktadır. Yani bu
+nesnelerin tahsisatları bu önbellekten yapılmaktadır.
+
+İzleyen paragraflarda açıklayacağımız gibi eskiden (çekirdeğin 5.15 versiyonundan önce) boş alanlarla dolu
+alanlar farklı "kırmızı-siyah ağaçlarında" tutuluyordu. Bu iki ağacın kök düğümü ``vmap_area_root`` ve
+``free_vmap_cache`` ismindeydi. Ancak 5.15 çekirdeği ile birlikte ağaç teke indirilmiştir. Ağacın kök
+düğümü ``free_vmap_area_root`` değişkeninde tutulmaktadır.
