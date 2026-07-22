@@ -1577,12 +1577,12 @@ Bugün çok işlemcili ya da çok çekirdekli sistemlerde işlemci ile bellek ar
 olduğunda iki mimari kullanılmaktadır: *SMP (Symmetric Multiprocessor) Mimarisi* ve *NUMA (Non-Unified
 Memory Access) Mimarisi*.
 
-SMP Mimarisi
+UMA Mimarisi
 ------------
 
 UMA mimarisinde tüm işlemci ya da çekirdekler aynı fiziksel RAM'e bağlıdır. Dolayısıyla bir işlemci ya da
 çekirdek RAM'e erişirken diğeri o erişim bitene kadar beklemektedir. Tabii bu senkronizasyon donanım
-tarafından sağlanmaktadır. SMP mimarisindeki RAM erişimini aşağıdaki şekille betimleyebiliriz:
+tarafından sağlanmaktadır. UMA mimarisindeki RAM erişimini aşağıdaki şekille betimleyebiliriz:
 
 .. image:: _static/smp-architecture.png
    :alt: UMA Mimarisi
