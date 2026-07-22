@@ -3244,49 +3244,9 @@ Buradaki sütunlarda dilim önbelleğinin ismi, oradaki toplam nesne sayısı, n
 önemli bilgiler bulunmaktadır. Tabii liste çok uzun olabileceği için ``grep`` yardımıyla ilgili satırı
 görüntüleyebilirsiniz. ``/proc/slabinfo`` dosyasındaki sütunların anlamları şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Alan
-     - Kolon
-     - Açıklama
-   * - ``name``
-     - 1
-     - ``kmem_cache->name`` elemanı. Ör: ``"task_struct"``, ``"kmalloc-64"``
-   * - ``active_objs``
-     - 2
-     - Şu an kullanımda olan nesne sayısı
-   * - ``num_objs``
-     - 3
-     - Toplam ayrılmış nesne kapasitesi (kullanımda + boşta)
-   * - ``objsize``
-     - 4
-     - Her nesnenin kullanıcıya sunulan boyutu (bayt). Kırmızı bölge dahil edilmez.
-       ``kmem_cache->object_size`` ile eşleşir.
-   * - ``objperslab``
-     - 5
-     - Her dilimde kaç nesne bulunduğu. SLUB'da ``objs_per_slab`` sysfs alanıyla örtüşür.
-   * - ``pagesperslab``
-     - 6
-     - Her dilimin kaç sayfadan oluştuğu (2^order adet sayfa)
-   * - ``limit``
-     - 7
-     - SLUB'da her zaman 0. Eski SLAB'ın per-CPU cache limiti idi.
-   * - ``batchcount``
-     - 8
-     - SLUB'da her zaman 0. Eski SLAB'ın per-CPU transfer batch sayısı.
-   * - ``sharedfactor``
-     - 9
-     - SLUB'da her zaman 0. Eski SLAB'da shared cache çarpanı.
-   * - ``active_slabs``
-     - 10
-     - En az bir nesnesi kullanımda olan dilimlerin sayısı.
-   * - ``num_slabs``
-     - 11
-     - Toplam dilimlerin sayısı (boş + kısmi + dolu)
-   * - ``sharedavail``
-     - 12
-     - SLUB'da her zaman 0. Eski SLAB'ın shared cache havuzundaki boş nesne sayısı idi.
+.. figure:: _static/slabinfo-columns-table.png
+   :alt: /proc/slabinfo sütun açıklamaları
+   :align: center
 
 Örneğin belli bir dilim önbelleğine ilişkin bilgileri şöyle elde edebiliriz:
 
@@ -3297,54 +3257,9 @@ görüntüleyebilirsiniz. ``/proc/slabinfo`` dosyasındaki sütunların anlamlar
 
 Buradaki kendi yarattığımız dilim önbelleği için değerleri tablo halinde veriyoruz:
 
-.. list-table::
-   :header-rows: 1
-
-   * - Alan
-     - Değer
-     - Açıklama
-   * - ``name``
-     - ``myobject_cache``
-     - ``kmem_cache->name``. Önbellek bağımsız oluşturulmuş; merge edilmemiş
-       (aksi halde bu isimle görünmezdi).
-   * - ``active_objs``
-     - 60
-     - Şu an ``kmem_cache_alloc`` ile tahsis edilmiş, henüz ``kmem_cache_free``
-       yapılmamış nesne sayısı.
-   * - ``num_objs``
-     - 64
-     - Tüm dilimlerdeki toplam nesne kapasitesi.
-       2 dilim × 32 nesne/slab = 64. ``active_objs`` ≤ ``num_objs``.
-   * - ``objsize``
-     - 128
-     - ``kmem_cache->object_size`` = 128 bayt. ``sizeof(struct myobject)`` = 72 bayt
-       olmasına karşın SLUB bunu 128'e yuvarlıyor.
-   * - ``objperslab``
-     - 32
-     - Her dilimde 32 nesne barınıyor. 1 page = 4096 bayt → 4096 / 128 = 32.
-   * - ``pagesperslab``
-     - 1
-     - Her dilim 1 page'den oluşuyor (order = 0).
-       Slab boyutu = ``PAGE_SIZE`` << 0 = 4096 bayt.
-   * - ``limit``
-     - 0
-     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
-   * - ``batchcount``
-     - 0
-     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
-   * - ``sharedfactor``
-     - 0
-     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
-   * - ``active_slabs``
-     - 2
-     - En az bir nesnesi kullanımda olan slab sayısı.
-       Her iki slab da aktif: 60 nesne 2 slab'a dağılmış.
-   * - ``num_slabs``
-     - 2
-     - Toplam dilim sayısı. ``active_slabs`` = ``num_slabs`` → boş slab yok.
-   * - ``sharedavail``
-     - 0
-     - SLUB'da kullanılmaz. SLAB uyumluluğu için 0.
+.. figure:: _static/slabinfo-myobject-table.png
+   :alt: myobject_cache slabinfo değerleri
+   :align: center
 
 ``/proc/meminfo`` dosyası aslında bellek kullanımı hakkında genel bilgi veren bir dosyadır. Bu dosyanın
 içeriği aşağıdakine benzer biçimdedir:
@@ -3399,49 +3314,9 @@ ilişkin bilgileri daha yapısal bir biçimde vermektedir. Bu dizinin içeriği 
 
 Bu dosyaların içerdiği bilgileri aşağıdaki tabloda veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Dosya
-     - Açıklama
-   * - ``object_size``
-     - Kullanıcıya sunulan nesne boyutu (bayt). ``kmem_cache->object_size`` ile birebir eşleşir.
-   * - ``slab_size``
-     - Dilimli tahsisat sisteminin dahili olarak her nesne için ayırdığı gerçek alan
-       (hizalama + red zone dahil). ``kmem_cache->size`` ile eşleşir.
-   * - ``align``
-     - Nesne hizalaması (bayt cinsinden). ``kmem_cache->align`` alanından okunur.
-   * - ``order``
-     - Bir dilimi oluşturan page bloğunun düzey değeri. Dilim boyutu = ``PAGE_SIZE`` << order.
-   * - ``objs_per_slab``
-     - Her dilimde kaç nesne barınabileceği.
-   * - ``objects``
-     - Şu an dilim önbelleğinde yaşayan toplam nesne sayısı
-       (NUMA node'larına göre ``N0=x`` şeklinde de gösterilir).
-   * - ``total_objects``
-     - Tüm dilimlerdeki toplam nesne kapasitesi. ``objects`` ≤ ``total_objects`` olmalıdır.
-   * - ``objects_partial``
-     - Kısmi dilimlerde (partial list) bulunan nesne sayısı.
-   * - ``slabs``
-     - Toplam dilim sayısı. NUMA bilgisi ``N0=x`` formatında eklenir.
-   * - ``partial``
-     - Partial listesindeki dilim sayısı. ``kmem_cache_node->nr_partial`` ile eşleşir.
-   * - ``cpu_slabs``
-     - Şu an per-CPU yapısı (``kmem_cache_cpu->page``) tarafından tutturulan aktif dilim sayısı
-       (per-CPU kırılımıyla).
-   * - ``aliases``
-     - Bu dilim önbelleğinin kaç isimle takma ad (alias) verildiği.
-       ``kmem_cache_create_usercopy()`` ile birleştirme yapıldıysa > 0 olur.
-   * - ``ctor``
-     - Dilim önbelleği bir constructor ile oluşturulduysa fonksiyon adresi burada görünür;
-       yoksa boştur.
-   * - ``usersize``
-     - Kullanıcıya "kopyalanabilir" olarak işaretlenen bayt sayısı.
-       ``kmem_cache_create_usercopy()`` ile belirlenir; ``copy_to_user`` güvenlik
-       kontrollerinde kullanılır.
-   * - ``slabs_cpu_partial``
-     - Per-CPU partial listesindeki dilim ve nesne sayısı.
-       Format: ``"dilim_sayısı(toplam_nesne_sayısı)"``
+.. figure:: _static/sysfs-slab-files-table.png
+   :alt: /sys/kernel/slab/ dosyaları
+   :align: center
 
 Fiziksel Bellekte Ardışıl Olmayan Tahsisatlar
 =============================================
@@ -3507,20 +3382,9 @@ Yukarıda da belirttiğimiz gibi ``vmalloc`` ailesi fonksiyonlar arka planda iki
 sistemini kullanmaktadır. Aşağıdaki tabloda fonksiyonların ikiz blok tahsisat sisteminden sayfa
 tahsis ederken hangi bayrakları kullandığı belirtilmektedir:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 30 70
-
-   * - vmalloc Türevi
-     - Kullanılan GFP Bayrakları
-   * - ``vmalloc()``
-     - ``GFP_KERNEL | __GFP_HIGHMEM``
-   * - ``vzalloc()``
-     - ``GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO``
-   * - ``vmalloc_user()``
-     - ``GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO``
-   * - ``vmalloc_node()``
-     - ``GFP_KERNEL | __GFP_HIGHMEM`` (+ NUMA node kısıtı)
+.. figure:: _static/vmalloc-gfp-table.png
+   :alt: vmalloc ailesi GFP bayrakları
+   :align: center
 
 ``vmalloc`` ailesi fonksiyonlar tahsisatları arka planda *ikiz blok tahsisat sistemini (buddy
 allocator)* kullanarak sayfa düzeyinde yapmaktadır. Dolayısıyla bu fonksiyonlar tarafından yapılan
@@ -3543,99 +3407,12 @@ işlem de göreli bir zaman kaybına yol açmaktadır. Aynı zamanda ``vmalloc``
 tablosunda da güncelleme yapmaktadır. Bu da ek bir maliyete yol açmaktadır. Aşağıdaki tabloda üç
 tahsisat yöntemini birbirleriyle karşılaştırıyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 28 24 24 24
-
-   * - Özellik
-     - ``kmalloc``
-     - ``vmalloc``
-     - ``alloc_pages``
-   * - Fiziksel ardışıllık
-     - Garantili
-     - Garantisiz (dağınık olabilir)
-     - Garantili (2^order ardışık sayfa)
-   * - Sanal ardışıllık
-     - Evet (physmap üzerinden)
-     - Evet (vmalloc bölgesi)
-     - Evet (physmap'te fiziksel ardışıklık sanal ardışıklığa da yansır)
-   * - Döndürülen değer
-     - ``void*`` (sanal adres)
-     - ``void*`` (sanal adres)
-     - ``struct page*`` (sayfa tanımlayıcısı)
-   * - Sanal adres edinme
-     - Doğrudan
-     - Doğrudan
-     - ``page_address``: physmap aritmetiği ``PAGE_OFFSET + pfn<<PAGE_SHIFT``;
-       yeni PTE/TLB işlemi gerekmez (64-bit; ``kmap()`` 32-bit HIGHMEM'e özgüdür,
-       64-bit'te ``page_address``'e indirgenir)
-   * - DMA uyumluluğu
-     - Evet (``GFP_DMA`` ile)
-     - Hayır (genel vmalloc)
-     - Evet (``GFP_DMA`` / ``GFP_DMA32`` ile)
-   * - Maksimum boyut
-     - ~8 MB (order 11)
-     - Yüzlerce GB
-     - ``MAX_ORDER``'a bağlı (~4 MB / ~8 MB)
-   * - Tahsisat birimi
-     - Byte (dilim hizalamasıyla)
-     - Byte, ``PAGE_SIZE`` katına yuvarlanır
-     - 2^order sayfa (4 KB çarpanı)
-   * - İç tahsisat mekanizması
-     - SLUB → buddy (büyükse)
-     - Buddy (order-0 döngüsü)
-     - Buddy (doğrudan)
-   * - TLB etkisi
-     - Minimal (physmap PTE mevcut)
-     - Yüksek (vmalloc fault mümkün)
-     - Yok (PTE yoktur; kmap gerekirse var)
-   * - Tahsisat hızı
-     - Hızlı
-     - Yavaş (RB tree + PTE yazımı)
-     - Orta (buddy doğrudan; PTE yok)
-   * - Atomik bağlamda kullanım
-     - ``GFP_ATOMIC`` ile mümkün
-     - Mümkün değil
-     - ``GFP_ATOMIC`` ile mümkün
-   * - Parçalanmaya duyarlılık
-     - Yüksek (fiziksel bitişiklik)
-     - Düşük (sanal esneklik)
-     - Çok yüksek (2^order ardışık şart)
-   * - NUMA node kontrolü
-     - ``kmalloc_node`` ile
-     - ``vmalloc_node`` ile (tercih)
-     - ``alloc_pages_node`` ile (tercih)
-   * - ``__GFP_THISNODE`` desteği
-     - Evet
-     - Manuel (``__vmalloc_node`` ile)
-     - Evet
-   * - Başka düğümden fallback
-     - Evet (varsayılan)
-     - Evet (varsayılan)
-     - Evet (varsayılan)
-   * - Bellek bölgesi esnekliği
-     - ``ZONE_NORMAL`` / DMA
-     - Herhangi bir bölge
-     - Herhangi bir bölge (GFP ile seçilir)
-   * - Serbest bırakma
-     - ``kfree``
-     - ``vfree``
-     - ``__free_pages`` / ``put_page``
-   * - Guard page
-     - Hayır (SLUB redzone var)
-     - Evet (varsayılan 1 sayfa)
-     - Hayır
-   * - Hata ayıklama desteği
-     - KASAN, SLUB debug
-     - KASAN, vmalloc_debug
-     - KASAN (page çözünürlüğünde)
-   * - Tipik kullanım yeri
-     - Genel çekirdek yapıları
-     - Büyük yazılım tamponları
-     - Sayfa tablosu, DMA, dosya sistemi
+.. figure:: _static/alloc-comparison-table.png
+   :alt: kmalloc, vmalloc ve alloc_pages karşılaştırması
+   :align: center
 
 vmalloc Ailesi Fonksiyonların Gerçekleştirimleri
-________________________________________________
+------------------------------------------------
 
 Şimdi de ``vmalloc`` ailesi fonksiyonların gerçekleştirimleri üzerinde duralım. Biz burada anlatımı
 ``vmalloc`` üzerinden yapacağız. Ailenin diğer üyelerindeki temel çatı aynıdır. ``vmalloc``
@@ -3697,7 +3474,6 @@ tutmaktadır:
    :align: center
    :width: 50%
 
-
 ``pages`` elemanının göstericiyi gösteren gösterici olduğuna, yani gösterici dizisini gösterdiğine
 dikkat ediniz.
 
@@ -3707,94 +3483,17 @@ tahsisat için istenen uzunluğu tutmaktadır.
 
 Aşağıda yapı elemanlarını bir tablo halinde veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 18 22 60
-
-   * - Alan
-     - Tür
-     - Açıklama
-   * - ``next`` / ``llnode``
-     - ``struct vm_struct *`` / ``struct llist_node``
-     - İki amaçlı birleşim: ``next`` erken önyükleme sırasında bağlı listedeki bir sonraki
-       ``vm_struct``'ı gösterir; ``llnode`` hata yollarında asenkron serbest bırakma için
-       kilit gerektirmeyen listeye bağlanır.
-   * - ``addr``
-     - ``void *``
-     - Tahsis edilen alanın sanal adresi; ``vmalloc`` çağrısının döndürdüğü adresin kendisidir
-       (``VMALLOC_START`` – ``VMALLOC_END`` aralığında).
-   * - ``size``
-     - ``unsigned long``
-     - ``PAGE_ALIGN`` ile hizalanmış tahsisat boyutu; ``VM_NO_GUARD`` yoksa bir koruma sayfası
-       dahildir, gerçek kullanılabilir alan ``size - PAGE_SIZE`` kadardır.
-   * - ``flags``
-     - ``unsigned long``
-     - Tahsisat türünü ve özelliklerini kodlayan bit maskesi; başlıca değerler: ``VM_ALLOC``
-       (vmalloc), ``VM_IOREMAP`` (ioremap), ``VM_MAP`` (vmap), ``VM_NO_GUARD``,
-       ``VM_ALLOW_HUGE_VMAP`` vb.
-   * - ``pages``
-     - ``struct page **``
-     - Fiziksel sayfalara ilişkin ``struct page *`` göstericilerinden oluşan dizi; ioremap
-       yolunda ``NULL`` olabilir çünkü ioremap fiziksel adresi ``phys_addr`` üzerinden doğrudan
-       eşler.
-   * - ``page_order``
-     - ``unsigned int``
-     - ``CONFIG_HAVE_ARCH_HUGE_VMALLOC`` ile derleme koşullu; büyük sayfa (huge page)
-       tahsisatlarında her fiziksel tahsisatın sayfa sırası (order); 0 ise normal 4K sayfa.
-   * - ``nr_pages``
-     - ``unsigned int``
-     - ``pages`` dizisindeki eleman sayısı; normal sayfada ``nr_pages == size >> PAGE_SHIFT``,
-       büyük sayfada farklı hesaplanır.
-   * - ``phys_addr``
-     - ``phys_addr_t``
-     - Yalnızca ioremap ailesi tarafından kullanılır; eşlenecek fiziksel adresi tutar; normal
-       ``vmalloc`` tahsisatlarında 0'dır.
-   * - ``caller``
-     - ``const void *``
-     - Tahsisatı yapan fonksiyonun geri dönüş adresi; ``__builtin_return_address(0)`` ile
-       yakalanır; ``/proc/vmallocinfo`` çıktısında "çağıran" sütunu olarak görünür.
-   * - ``requested_size``
-     - ``unsigned long``
-     - ``PAGE_ALIGN`` öncesindeki orijinal istek boyutu; ``size`` alanı her zaman hizalıdır,
-       bu alan ham isteği korur; ``/proc/vmallocinfo`` ve hata ayıklama için kullanılır.
+.. figure:: _static/vm-struct-fields-table.png
+   :alt: vm_struct yapısı elemanları
+   :align: center
 
 ``vmalloc`` fonksiyonu ``VMALLOC_START`` ve ``VMALLOC_END`` sembolik sabitleriyle belirtilen sanal
 adres aralığında tahsisatlar yapmaktadır. ``VMALLOC_START`` ve ``VMALLOC_END`` bölgesinin yeri ve
 büyüklüğü x86 ve ARM işlemcilerinde tipik olarak aşağıdaki gibidir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Mimari
-     - ``VMALLOC_START``
-     - ``VMALLOC_END``
-     - Uzunluk
-   * - x86 (32-bit), 3G/1G bölünmesi, ``PAGE_OFFSET=0xC0000000``
-     - ``high_memory + VMALLOC_OFFSET`` (8 MiB boşluk);
-       dinamiktir: fiziksel bellek arttıkça START yükselir, alan daralır
-     - ``0xFF800000`` (sabit)
-     - en az 240 MiB (fiziksel belleğe göre değişir)
-   * - ARM32, 3G/1G bölünmesi, ``PAGE_OFFSET=0xC0000000``
-     - ``high_memory + VMALLOC_OFFSET`` (8 MiB boşluk);
-       tipik: ``0xF0000000`` (760 MiB lowmem ile)
-     - ``0xFF800000`` (sabit)
-     - en az 240 MiB (tipik 240 MiB)
-   * - x86_64 (64-bit), 4-seviye sayfa tablosu (48-bit VA)
-     - ``0xffffc90000000000`` (-55 TiB)
-     - ``0xffffe8ffffffffff`` (-23 TiB - 1)
-     - 32 TiB
-   * - x86_64 (64-bit), 5-seviye sayfa tablosu (57-bit VA)
-     - ``0xffa0000000000000`` (-24 PiB)
-     - ``0xffd1ffffffffffff`` (-11.5 PiB - 1)
-     - 12.5 PiB
-   * - ARM64 / AArch64, 4-seviye sayfa tablosu (48-bit VA, 4 KiB sayfa)
-     - ``0xffff800080000000`` (modules bölgesinin hemen ardından)
-     - ``0xfffffbffefffffff``
-     - ~124 TiB
-   * - ARM64 / AArch64, 3-seviye sayfa tablosu (52-bit VA, 64 KiB sayfa, ARMv8.2-LVA gerektirir)
-     - ``0xffffa00010000000`` (modules bölgesinin hemen ardından)
-     - ``0xfffff81ffffeffff``
-     - ~88 TiB
+.. figure:: _static/vmalloc-regions-table.png
+   :alt: Mimariye göre VMALLOC_START ve VMALLOC_END bölgeleri
+   :align: center
 
 ``vmalloc`` fonksiyonu çağrıldığında fonksiyonun boş bir sanal adres verebilmesi için çekirdeğin
 sanal adres alanı içerisindeki tahsisatları bir biçimde izlemesi gerekir. İşte ``vmalloc`` tarafından
@@ -3827,3 +3526,5 @@ güncel çekirdeklerde ``include/linux/vmalloc.h`` dosyası içerisinde aşağı
         };
         unsigned long flags;            /* mark type of vm_map_ram area */
     };
+
+
