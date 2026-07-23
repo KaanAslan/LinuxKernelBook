@@ -2028,32 +2028,9 @@ yaratılmaktadır. Bunların yaratıldığı yerleri aşağıdaki tablolarda ver
 
 Bu nesnelerin yaratıldığı yerlere ilişkin çağrı zincirini de aşağıda veriyoruz:
 
-.. code-block:: none
-
-    start_kernel()
-    │
-    ├── mm_init()
-    │   └── kmem_cache_init()   → [Aşama 1] kmem_cache
-    │
-    ├── proc_caches_init()      → [Aşama 2] task_struct, mm_struct,
-    │                                       fs_struct, files_struct,
-    │                                       signal, sighand
-    ├── cred_init()             → [Aşama 2] cred
-    ├── fork_init()             → [Aşama 2] task_struct (tamamlanır)
-    ├── signals_init()          → [Aşama 2] sigqueue
-    ├── pidmap_init()           → [Aşama 2] pid
-    ├── anon_vma_init()         → [Aşama 2] anon_vma
-    ├── buffer_init()           → [Aşama 2] buffer_head
-    │
-    └── do_initcalls()          → [Aşama 3]
-        ├── dcache_init()       → dentry
-        ├── inode_init()        → inode (genel)
-        ├── files_init()        → file
-        ├── sock_init()         → socket
-        ├── skb_init()          → sk_buff
-        ├── bio_init()          → bio
-        ├── blk_mq_init()       → request
-        └── ext4_init() vb.     → fs'e özel inode cache
+.. image:: _static/kmem-cache-init-boot-sequence.png
+   :align: center
+   :width: 65%
 
 Dilim Önbelleklerinden Tahsisat İşlemleri
 -----------------------------------------
@@ -2110,76 +2087,16 @@ açıklıyoruz:
 .. figure:: _static/kmem-cache-alloc-failures.png
    :alt: kmem_cache_alloc başarısızlık nedenleri
    :align: center
+   :width: 50%
 
 Eğer bu fonksiyonlar başka fonksiyonların içerisinde çağrılmışsa başarısızlık durumunda çağrımın
 yapıldığı fonksiyonun ``-ENOMEM`` değeri ile geri döndürülmesi uygun olur.
 
 Güncel çekirdeklerde ``kmem_cache_alloc`` fonksiyonunun çağrı grafı kabaca şöyledir:
 
-.. code-block:: none
-
-    kmem_cache_alloc(cache, gfp_flags)
-    │
-    └── slab_alloc()
-        │   [memcg_slab_pre_alloc hook]
-        │   [trace_kmem_cache_alloc tracepoint]
-        │
-        └── slab_alloc_node()
-            │   [NUMA node seçimi]
-            │
-            ├── [per-CPU freelist dolu?] ──Evet──→ OBJ DÖNER    ← hızlı yol
-            │
-            └── Hayır → __slab_alloc()                          ← yavaş yol
-                        │   [preempt disable]
-                        │
-                        ├── [partial slab var?] ──Evet──→ get_partial()
-                        │                                  │   [kmem_cache_node]
-                        │                                  └──→ OBJ DÖNER
-                        │
-                        └── Hayır → new_slab()
-                                    │
-                                    └── allocate_slab()
-                                        │
-                                        └── alloc_pages(gfp_flags, order)
-                                            │             ← reclaim buradan tetiklenir
-                                            │
-                                            └── __alloc_pages()
-                                                │
-                                                ├── [fast path: watermark OK?] ──Evet──→ sayfa döner
-                                                │
-                                                └── Hayır → __alloc_pages_slowpath()
-                                                            │
-                                                            ├── [GFP_ATOMIC?] ──Evet──→ NULL DÖNER
-                                                            │                           (reclaim yok)
-                                                            │
-                                                            └── Hayır (GFP_KERNEL vs.)
-                                                                │
-                                                                ├── wake_all_kswapd()
-                                                                │   │   [async reclaim başlatılır]
-                                                                │   │   [çağıran thread bloklanmaz]
-                                                                │   │
-                                                                │   └── hızlı tahsisat tekrar denenir
-                                                                │       │
-                                                                │       └── [başarılı?] ──Evet──→ sayfa döner
-                                                                │
-                                                                ├── [hâlâ yetersiz?]
-                                                                │   └── direct reclaim
-                                                                │       (try_to_free_pages)
-                                                                │           [thread bloklanır ← burada]
-                                                                │           [sync, çağıran task temizler]
-                                                                │
-                                                                ├── [hâlâ yetersiz?]
-                                                                │   └── memory compaction
-                                                                │       (compact_zone)
-                                                                │
-                                                                ├── [hâlâ yetersiz?]
-                                                                │   └── OOM killer
-                                                                │       (out_of_memory)
-                                                                │           [kurban seç + öldür]
-                                                                │
-                                                                └── [yine de yok?]
-                                                                    └──→ NULL DÖNER
-                                                                        ← setup_slab() çağrılmaz
+.. image:: _static/slab-alloc-slowpath-tree-noparens.png
+   :align: center
+   :width: 80%
 
 Tabii bu çağrı dizgesindeki ayrıntıları bir yana bırakırsak kabaca olanlar şunlardır:
 
@@ -2248,6 +2165,7 @@ ilkdeğerlerin verildiği ``mm_init`` fonksiyonu içerisinde yaratılmaktadır:
 .. figure:: _static/kmem-cache-init-chain.png
    :alt: kmem_cache_init çağrı zinciri
    :align: center
+   :width: 35%
 
 Tablodaki ``KMALLOC_CGROUP``, *docker* gibi *container* teknolojilerinin kullanımını daha etkin hale
 getirmek için Linux çekirdekine sokulmuş olan "memcg (memory cgroup)" kavramı ile ilgilidir.
