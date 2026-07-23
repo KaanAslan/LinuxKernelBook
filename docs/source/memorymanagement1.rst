@@ -136,28 +136,9 @@ tek kademeymiş gibi ele alacağız. Sonra bu kademeli yapı hakkında bilgi ver
 32 bit bir sistemdeki sayfa tablosunun işlevini kolay anlayabilmek için onun şöyle bir yapıda olduğunu
 düşünebiliriz (buradaki değerler hex sistemdedir):
 
-.. list-table::
-   :header-rows: 1
-   :widths: 50 50
-
-   * - Sanal Sayfa No
-     - Fiziksel Sayfa No
-   * - 00000
-     - 01000
-   * - 00001
-     - 10401
-   * - 00002
-     - 11301
-   * - ...
-     - ...
-   * - 1A400
-     - 10045
-   * - 1A401
-     - 3F17A
-   * - 1A402
-     - 2417B
-   * - ...
-     - ...
+.. figure:: _static/virtual-physical-page-mapping-table.png
+   :align: center
+   :width: 35%
 
 32 bit işlemcinin program içerisindeki sanal adresi nasıl fiziksel adrese dönüştürdüğünü açıklayalım. Örneğin
 işlemci aşağıdaki gibi bir makine komutuyla karşılaşmış olsun:
@@ -231,30 +212,9 @@ sayfa tablosunda eşleştirmektedir. Prosesin diğer sanal sayfalarını fizikse
 yapıldığını izleyen paragraflarda göreceğiz. Örneğin bir proses yüklendiğinde onun sayfa tablosu aşağıdaki gibi
 olabilir:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 50 50
-
-   * - Sanal Sayfa No
-     - Fiziksel Sayfa No
-   * - 00000
-     - \-
-   * - 00001
-     - \-
-   * - 00002
-     - \-
-   * - ...
-     - ...
-   * - 1A400
-     - 10045
-   * - 1A401
-     - \-
-   * - 1A402
-     - 2417B
-   * - 1A403
-     - \-
-   * - ...
-     - ...
+.. figure:: _static/virtual-physical-page-mapping-table-unmapped.png
+   :align: center
+   :width: 35%
 
 Burada ``-`` olan girişler sanal sayfanın fiziksel sayfaya eşleştirilmediğini belirtmektedir. Örneğin ``1A400`` sanal
 sayfası fiziksel sayfaya eşleştirilmiştir, ancak ``1A401`` sanal sayfası fiziksel sayfaya eşleştirilmemiştir. Peki
@@ -330,57 +290,15 @@ Sayfalama ve sanal bellek mekanizmaları sayesinde prosesler arasında tam bir b
 Yani bu mekanizma sayesinde bir proses istese bile diğer bir prosesin bellek alanına erişememektedir. Örneğin P1
 prosesinin sayfa tablosu aşağıdaki gibi olsun:
 
-.. list-table:: P1 Prosesinin Sayfa Tablosu
-   :header-rows: 1
-   :widths: 50 50
-
-   * - Sanal Sayfa No
-     - Fiziksel Sayfa No
-   * - 00000
-     - \-
-   * - 00001
-     - \-
-   * - 00002
-     - \-
-   * - ...
-     - ...
-   * - 1A400
-     - 10045
-   * - 1A401
-     - \-
-   * - 1A402
-     - 2417B
-   * - 1A403
-     - 281BC
-   * - ...
-     - ...
+.. image:: _static/p1-page-table.png
+   :align: center
+   :width: 35%
 
 P2 prosesinin de sayfa tablosu şöyle olsun:
 
-.. list-table:: P2 Prosesinin Sayfa Tablosu
-   :header-rows: 1
-   :widths: 50 50
-
-   * - Sanal Sayfa No
-     - Fiziksel Sayfa No
-   * - 00000
-     - \-
-   * - 00001
-     - \-
-   * - 00002
-     - \-
-   * - ...
-     - ...
-   * - 1A400
-     - 4A1C2
-   * - 1A401
-     - 2116C
-   * - 1A402
-     - 23170
-   * - 1A403
-     - 4621A
-   * - ...
-     - ...
+.. image:: _static/p2-page-table.png
+   :align: center
+   :width: 35%
 
 Sayfa tablolarını işletim sisteminin oluşturduğunu anımsayınız. İşletim sistemi proseslerin fiziksel sayfa numaralarını
 özel bazı durumlar dışında zaten çakıştırmaz. Bu durumda bir proses asla diğerinin fiziksel bellekteki alanına erişemez.
@@ -418,63 +336,24 @@ tablosu girişlerinin (page table entry)* formatı şöyledir:
 
 Buradaki alanların anlamları da şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Alan
-     - Açıklama
-   * - Bit 31..12 (PPN)
-     - Fiziksel sayfa adresi — ``PPN << 12 | offset`` = fiziksel adres
-   * - Bit 11..9 (IGN)
-     - CPU tarafından yok sayılır; işletim sistemi serbest kullanabilir
-   * - Bit 8 (G)
-     - *Global* — CR3 değişiminde TLB'den silinmez (çekirdek sayfaları)
-   * - Bit 7 (PS)
-     - *Page Size* — PTE'de daima 0; PDE'de 1 ise 4 MB büyük sayfa
-   * - Bit 6 (D)
-     - *Dirty* — CPU, sayfaya yazma yapılınca otomatik set eder
-   * - Bit 5 (A)
-     - *Accessed* — CPU, sayfaya erişilince otomatik set eder
-   * - Bit 4 (CD)
-     - *Cache Disable* — 1 ise bu sayfa için önbellek devre dışı
-   * - Bit 3 (WT)
-     - *Write-Through* — 1: write-through, 0: write-back
-   * - Bit 2 (U/S)
-     - *User/Supervisor* — 0: yalnızca çekirdek (ring 0), 1: kullanıcı modundan erişebilir
-   * - Bit 1 (R/W)
-     - *Read/Write* — 0: salt okunur, 1: okuma + yazma
-   * - Bit 0 (P)
-     - *Present* — 0: page fault, 1: sayfa fiziksel bellekte mevcut
+.. figure:: _static/pte-bit-fields-table.png
+   :align: center
+   :alt: 32-bit sayfa tablosu girişinin bit alanları
+   :width: 70%
 
 Görüldüğü gibi sayfa tablosunun bir elemanı (yani bir sayfa girişi) 4 byte uzunluktadır. Bu 4 byte'ın yüksek anlamlı
 20 biti ([31-12] bitleri) fiziksel sayfa numarasını tutmaktadır. Ancak kalan 12 bitte o sayfaya ilişkin başka bilgiler
 vardır. 3 bitlik IGN alanı kullanılmamaktadır. Sayfa tablosu da aşağıdaki gibi dörder byte'lık girişlerden oluşmaktadır:
 
-.. list-table::
-   :widths: 70 
-
-   * - 0 Numaralı Sayfa Tablosu Girişi
-   * - 1 Numaralı Sayfa Tablosu Girişi
-   * - 2 Numaralı Sayfa Tablosu Girişi
-   * - ...
-   * - Son Sayfa Tablosu Girişi
-
+.. figure:: _static/page-table-entries-list.png
+   :align: center
+   :width: 30%
 
 Sayfa tablosu girişlerini şöyle de temsil edebiliriz:
 
-.. list-table::
-   :widths: 50 50
-
-   * - Fiziksel Adres
-     - Sayfa Özellikleri
-   * - Fiziksel Adres
-     - Sayfa Özellikleri
-   * - Fiziksel Adres
-     - Sayfa Özellikleri
-   * - ...
-     - ...
-   * - Fiziksel Adres
-     - Sayfa Özellikleri
+.. figure:: _static/page-table-entry-structure.png
+   :align: center
+   :width: 30%  
 
 32 bit Intel işlemcilerindeki 4K'lık sayfaların sayfa özelliklerinin bazılarını açıklamak istiyoruz.
 
@@ -517,25 +396,9 @@ Sayfa tablosu girişlerini şöyle de temsil edebiliriz:
   yapılır; okuma işlemlerinde ise CPU'nun önbelleğine başvurulmaktadır. Tabii bu bit ``CD`` biti 1 ise işlev
   görmemektedir. Bu iki biti birlikte şöyle de ele alabiliriz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 10 10 80
-
-   * - CD
-     - WT
-     - Önbellek Davranışı
-   * - 0
-     - 0
-     - *Write-back* — normal RAM sayfaları
-   * - 0
-     - 1
-     - *Write-through* — yazma önbellekten geçer ama doğrudan RAM'e de iletilir
-   * - 1
-     - 0
-     - Önbellek tamamen devre dışı (MMIO)
-   * - 1
-     - 1
-     - Önbellek tamamen devre dışı (WT biti CD=1 durumunda anlamsız)
+.. image:: _static/cd-wt-cache-behaviour-table.png
+   :align: center
+   :width: 65%
 
 - Sayfa girişindeki ``G`` (*Global*) biti ilgili sayfa girişinin izleyen paragraflarda ele alacağımız gibi
   *TLB (Translation Lookaside Buffer)* içerisinde kalmasını sağlamaktadır.
