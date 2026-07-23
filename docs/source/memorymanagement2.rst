@@ -1021,13 +1021,9 @@ olabilmektedir:
 
 NUMA uzaklık matrisi aşağıdaki gibi temsil edilebilir:
 
-.. code-block:: none
-
-             Node0  Node1  Node2  Node3
-    Soket0  [  10     21     31     41  ]
-    Soket1  [  21     10     21     31  ]
-    Soket2  [  31     21     10     21  ]
-    Soket3  [  41     31     21     10  ]
+.. image:: _static/numa-distance-matrix.png
+   :align: center
+   :width: 40%
 
 Tipik bazı NUMA donanımlarındaki gecikmeler nanosaniyeler mertebesinde şöyledir:
 
@@ -1324,29 +1320,14 @@ gerçek alanı belirtmektedir. Nesneler için kullanılan ek metadata bilgileri 
 .. figure:: _static/object-layout.png
    :alt: SLUB nesne bellek düzeni
    :align: center
+   :width: 60%
 
 Buradaki ``flags`` elemanı tahsisat sırasındaki davranışı belirtmektedir. Bu eleman aşağıdaki bayrakların
 bileşimlerinden oluşabilmektedir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Flag
-     - Anlamı
-   * - ``SLAB_HWCACHE_ALIGN``
-     - Nesneleri CPU önbelleğine göre hizala
-   * - ``SLAB_PANIC``
-     - Tahsisat başarısız olursa kernel panic yap
-   * - ``SLAB_POISON``
-     - Serbest nesneleri bilinen bir byte ile doldur (debug)
-   * - ``SLAB_RED_ZONE``
-     - Nesne etrafına kırmızı bölge ekle (debug)
-   * - ``SLAB_ACCOUNT``
-     - Tahsisatları cgroup'a say
-   * - ``SLAB_RECLAIM_ACCOUNT``
-     - Dilimleri geri alınabilir (reclaimable) olarak işaretle
-   * - ``SLAB_TYPESAFE_BY_RCU``
-     - RCU grace period'u bitmeden slab'ı serbest bırakma
+.. image:: _static/slab-flags-table.png
+   :align: center
+   :width: 60%
 
 Yapının ``allocflags`` elemanı ise ``alloc_pages`` fonksiyonuyla tahsisat yapılırken kullanılan bayrakları
 içermektedir. Zaten bu bayraklar izleyen paragraflarda göreceğimiz ``kmem_cache_create`` fonksiyonuna
@@ -1400,48 +1381,9 @@ için gereken minimum dilim sayısını belirtmektedir:
 
 ``min_partial`` bu algoritmaya göre şu değerlerden biri olabilmektedir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - CPU Sayısı
-     - ilog2(nr_cpus)
-     - min_partial
-   * - 1
-     - 0
-     - 5  (MIN_PARTIAL alt sınırı)
-   * - 2
-     - 1
-     - 5  (MIN_PARTIAL alt sınırı)
-   * - 4
-     - 2
-     - 5  (MIN_PARTIAL alt sınırı)
-   * - 8
-     - 3
-     - 5  (MIN_PARTIAL alt sınırı)
-   * - 16
-     - 4
-     - 5  (MIN_PARTIAL alt sınırı)
-   * - 32
-     - 5
-     - 5  (MIN_PARTIAL alt sınırı)
-   * - 64
-     - 6
-     - 6
-   * - 128
-     - 7
-     - 7
-   * - 256
-     - 8
-     - 8
-   * - 512
-     - 9
-     - 9
-   * - 1024
-     - 10
-     - 10  (MAX_PARTIAL üst sınırı)
-   * - 2048+
-     - 11+
-     - 10  (MAX_PARTIAL üst sınırı)
+.. image:: _static/slub-min-partial-table.png
+   :align: center
+   :width: 50%
 
 ``min_partial`` elemanının amacı dilim önbelleğinde hazır durumda tutulacak belli miktarda boş dilimlerin
 bulundurulmasını sağlamaktır.
@@ -1492,87 +1434,9 @@ fonksiyonu ``oo`` için sayfa büyüklüğü değerini şu faktörlere bağlı o
 Aşağıda somut *x86-64, 16 CPU* için çeşitli nesne boyutlarına göre ``min`` ve ``oo`` değerlerini
 veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - size (bayt)
-     - oo:order
-     - oo:objects
-     - Slab boyutu
-     - İsraf
-     - min:order
-   * - 64
-     - 0
-     - 64
-     - 4 KB
-     - %0.0
-     - 0
-   * - 96
-     - 0
-     - 42
-     - 4 KB
-     - %1.6
-     - 0
-   * - 192
-     - 1
-     - 42
-     - 8 KB
-     - %1.6
-     - 0
-   * - 256
-     - 1
-     - 32
-     - 8 KB
-     - %0.0
-     - 0
-   * - 512
-     - 2
-     - 32
-     - 16 KB
-     - %0.0
-     - 0
-   * - 1024
-     - 3
-     - 32
-     - 32 KB
-     - %0.0
-     - 0
-   * - 2048
-     - 3
-     - 16
-     - 32 KB
-     - %0.0
-     - 0
-   * - 4096
-     - 3
-     - 8
-     - 32 KB
-     - %0.0
-     - 0
-   * - 5000
-     - 3
-     - 6
-     - 32 KB
-     - %8.4
-     - 1
-   * - 8192
-     - 3
-     - 4
-     - 32 KB
-     - %0.0
-     - 1
-   * - 12000
-     - 3
-     - 2
-     - 32 KB
-     - %26.8
-     - 2
-   * - 40960
-     - 4
-     - 1
-     - 64 KB
-     - %37.5
-     - 4
+.. image:: _static/slub-oo-order-table.png
+   :align: center
+   :width: 70%
 
 Bu tabloda sütunlarda neden ``oo:order`` ve ``min:order`` yazıldığını merak edebilirsiniz. Aslında ``oo``
 ve ``min`` elemanları yalnızca dilim için yapılacak tahsisatın düzey bilgisini değil aynı zamanda bir
@@ -1685,61 +1549,9 @@ tanımlanmıştır:
 
 Buradaki elemanları ve işlevlerini aşağıdaki tabloda listeliyoruz:
 
-.. list-table:: 
+.. image:: _static/struct-slab-fields-table.png
+   :align: center
    :width: 80%
-   :header-rows: 1
-
-   * - Eleman
-     - Tür
-     - Açıklama
-   * - ``__page_flags``
-     - ``memdesc_flags_t``
-     - Fiziksel sayfa bayrakları. ``struct page`` ile bellekte örtüşür;
-       ``PG_slab`` gibi bayraklar burada tutulur.
-   * - ``slab_cache``
-     - ``struct kmem_cache *``
-     - Bu dilimin ait olduğu önbelleği gösterir.
-   * - ``slab_list``
-     - ``struct list_head``
-     - ``kmem_cache_node.partial`` listesine bağlanan düğüm.
-       (``rcu_head`` ile union içindedir)
-   * - ``rcu_head``
-     - ``struct rcu_head``
-     - Dilim RCU ile serbest bırakılırken kullanılır.
-       (``slab_list`` ile union içindedir)
-   * - ``struct freelist_counters``
-     - ``struct freelist_counters``
-     - 7.x ile ayrı bir yapıya taşınan freelist+counters bloğu.
-       Aşağıdaki alanları içerir.
-   * - ``freelist``
-     - ``void *``
-     - Dilim içindeki boş nesnelerin tek yönlü listesi.
-   * - ``counters``
-     - ``unsigned long``
-     - ``inuse``, ``objects``, ``frozen``'ı tek atomik işlemle
-       güncellemek için hepsini kapsayan birlik alanı.
-   * - ``inuse``
-     - ``unsigned`` (16 bit)
-     - Şu an tahsis edilmiş nesne sayısı.
-   * - ``objects``
-     - ``unsigned`` (15 bit)
-     - Dilimin toplam nesne kapasitesi.
-   * - ``frozen``
-     - ``unsigned`` (1 bit)
-     - 1 → dilim bir CPU'nun per-CPU listesine "dondurulmuş".
-       ``SLUB_DEBUG`` açıksa: slab bozulma göstergesi olarak yeniden kullanılır.
-   * - ``__page_type``
-     - ``unsigned int``
-     - Sayfa tipi bilgisi; ``struct page`` ile örtüşür.
-   * - ``__page_refcount``
-     - ``atomic_t``
-     - Fiziksel sayfanın referans sayacı. Doğrudan erişilmez,
-       page allocator yönetir.
-   * - ``obj_exts``
-     - ``unsigned long``
-     - Nesne uzantılarına gösterici. Yalnızca ``CONFIG_SLAB_OBJ_EXT``
-       ile derlenir; slab profiling ve ``memory_failure`` gibi özellikler
-       için kullanılır.
 
 ``slab`` yapısının önemli elemanları ``freelist_counters`` yapısına taşınmıştır. Yani bir süre önceye
 kadar aslında bu ``freelist_counters`` yapısının elemanları ``slab`` yapısının içindeydi. Fakat zaten
@@ -1902,7 +1714,6 @@ belirtmektedir. Aşağıda ``slab`` veri yapısına ilişkin örnek bir çizim v
    :align: center
    :width: 60%
 
-
 Dilim Önbelleklerinin Yaratılması
 ---------------------------------
 
@@ -1930,19 +1741,9 @@ sisteme ilişkin varsayılan hizalama kullanılmaktadır. Çekirdek kodlarında 
 ``ARCH_KMALLOC_MINALIGN`` sembolik sabiti ile belirtilmektedir. Bu sembolik sabit şu değerlerden biri
 olabilmektedir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Mimari
-     - ARCH_KMALLOC_MINALIGN
-   * - x86_64
-     - 8 byte
-   * - arm64
-     - 8 byte
-   * - x86 (32)
-     - 8 byte
-   * - DMA varsa
-     - 64 byte
+.. image:: _static/kmalloc-minalign-table.png
+   :align: center
+   :width: 50%
 
 ``kmem_cache_create`` fonksiyonunun kullanımına şöyle bir örnek verebiliriz:
 
@@ -2186,61 +1987,21 @@ akışı şöyledir:
 Yeni yaratılmak istenen bir dilim önbelleğinin zaten yaratılmış olana referans etmesinin (yani
 birleştirme işleminin) bazı koşulları vardır:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Ölçüt
-     - Açıklama
-   * - Boyut uyumu
-     - Mevcut dilim önbelleğinin ``size`` değeri yeni dilim önbelleğinin normalize edilmiş ``size``
-       değerine eşit ya da küçük bir tolerans payı kadar büyük olmalı.
-   * - Constructor yok
-     - Her iki dilim önbelleğinde de ``ctor == NULL`` olmalı. Constructor olan dilim önbellekleri
-       hiçbir zaman merge edilmez; her nesne farklı başlatma gerektirebilir.
-   * - ``SLAB_MERGE_SAME`` bayrakları
-     - Aşağıdaki bayraklar her iki dilim önbelleğinde de aynı olmalıdır.
-   * - ``SLAB_NEVER_MERGE`` yok
-     - Yeni dilim önbelleğinde birleştirmeyi engelleyen flag olmamalı.
-   * - Hizalama uyumu
-     - Mevcut dilim önbelleğinin ``align`` değeri yeni dilim önbelleğinin ``align`` değerinden küçük
-       olmamalı.
+.. image:: _static/slab-merge-criteria-table.png
+   :align: center
+   :width: 70%
 
 Aşağıdaki bayrakların herhangi biri iki dilim önbelleğinde farklıysa birleştirme yapılmamaktadır:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Bayrak
-     - Neden Birleştirmeyi Engeller
-   * - ``SLAB_RECLAIM_ACCOUNT``
-     - Biri reclaimable diğeri unreclaimable ise birleştirme yapılmaz.
-   * - ``SLAB_CACHE_DMA``
-     - DMA cache ile normal önbellekler birleşemez; farklı zone'lardan tahsis yapılır.
-   * - ``SLAB_CACHE_DMA32``
-     - ``ZONE_DMA32`` ile diğer zone'lar aynı önbelleği paylaşamaz.
-   * - ``SLAB_ACCOUNT``
-     - memcg (memory cgroup) takibi farklıysa hesaplama bozulur.
+.. image:: _static/slab-never-merge-flags-table.png
+   :align: center
+   :width: 70%
 
 Birleştirmeyi kesin engelleyen bayraklar da şunlardır:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 30 70
-
-   * - Bayrak
-     - Neden
-   * - ``SLAB_RED_ZONE``
-     - Nesne layout'u değiştirir; debug baytları başka önbelleğin nesnelerini bozar.
-   * - ``SLAB_POISON``
-     - Poison deseni tüm nesne alanına uygulanır; birleştirilmiş önbellekte yanlış alarmlar üretir.
-   * - ``SLAB_STORE_USER``
-     - Her nesneye stack trace saklanır; layout uyumu bozulur.
-   * - ``SLAB_TRACE``
-     - Her alloc/free için ayrı log tutulur; birleştirilince hangi cache'e ait olduğu belirsiz kalır.
-   * - ``SLAB_TYPESAFE_BY_RCU``
-     - RCU grace period serbest bırakma semantiği tüm önbellek genelinde tutarlı olmalı.
-   * - ``SLAB_NO_MERGE``
-     - Kullanıcının açıkça birleştirmeyi engellediği durum.
+.. image:: _static/slab-debug-never-merge-table.png
+   :align: center
+   :width: 70%
 
 Önceden Yaratılmış Dilim Önbellekleri
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2250,79 +2011,9 @@ kullandığı önceden yaratılmış dilimli önbellek nesneleri (yani ``kmem_ca
 bunların isimlerini ve bunlara erişmekte kullanılan ``kmem_cache`` türünden göstericilerin isimlerini
 veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 28 36 36
-
-   * - Nesne Tipi
-     - ``kmem_cache`` Göstericisi
-     - İsim
-   * - ``struct kmem_cache``
-     - ``kmem_cache``
-     - ``"kmem_cache"``
-   * - ``struct task_struct``
-     - ``task_struct_cachep``
-     - ``"task_struct"``
-   * - ``struct mm_struct``
-     - ``mm_cachep``
-     - ``"mm_struct"``
-   * - ``struct vm_area_struct``
-     - ``vm_area_cachep``
-     - ``"vm_area_struct"``
-   * - ``struct file``
-     - ``filp_cachep``
-     - ``"filp"``
-   * - ``struct dentry``
-     - ``dentry_cache``
-     - ``"dentry"``
-   * - ``struct inode``
-     - (her fs kendi önbelleğini yaratır)
-     - ``"ext4_inode_cache"`` vb.
-   * - ``struct socket``
-     - ``sock_inode_cachep``
-     - ``"sock_inode_cache"``
-   * - ``struct sk_buff``
-     - ``skbuff_head_cache``
-     - ``"skbuff_head_cache"``
-   * - ``struct sk_buff`` (fclone)
-     - ``skbuff_fclone_cache``
-     - ``"skbuff_fclone_cache"``
-   * - ``struct sigqueue``
-     - ``sigqueue_cachep``
-     - ``"sigqueue"``
-   * - ``struct cred``
-     - ``cred_jar``
-     - ``"cred_jar"``
-   * - ``struct pid``
-     - ``pid_cachep``
-     - ``"pid"``
-   * - ``struct fs_struct``
-     - ``fs_cachep``
-     - ``"fs_struct"``
-   * - ``struct files_struct``
-     - ``files_cachep``
-     - ``"files_cache"``
-   * - ``struct nsproxy``
-     - ``nsproxy_cachep``
-     - ``"nsproxy"``
-   * - ``struct signal_struct``
-     - ``signal_cachep``
-     - ``"signal_cache"``
-   * - ``struct sighand_struct``
-     - ``sighand_cachep``
-     - ``"sighand_cache"``
-   * - ``struct bio``
-     - ``bio_slab`` (her queue için)
-     - ``"bio"``
-   * - ``struct request``
-     - ``request_cachep``
-     - ``"blkdev_requests"``
-   * - ``struct buffer_head``
-     - ``bh_cachep``
-     - ``"buffer_head"``
-   * - ``struct anon_vma``
-     - ``anon_vma_cachep``
-     - ``"anon_vma"``
+.. image:: _static/wellknown-kmem-caches-table.png
+   :align: center
+   :width: 65%
 
 Peki yukarıdaki dilim önbellek nesneleri çekirdekte hangi aşamada yaratılmaktadır? Biz kursumuzda
 çekirdeğin başlatılma sürecini ayrı bir bölümde ele alacağız. Linux çekirdek imajı belleğe
@@ -2331,53 +2022,9 @@ fonksiyonu gibi düşünebilirsiniz. Bu fonksiyon içerisinde pek çok alt siste
 İşte yukarıdaki dilim önbellekleri bu alt sistemlerin ilklendirildiği (initialize edildiği) yerlerde
 yaratılmaktadır. Bunların yaratıldığı yerleri aşağıdaki tablolarda veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Nesne Türü
-     - Yaratan Fonksiyon
-   * - ``struct pid``
-     - ``pidmap_init()``
-   * - ``struct anon_vma``
-     - ``anon_vma_init()``
-   * - ``struct buffer_head``
-     - ``buffer_init()``
-   * - ``struct vm_area_struct``
-     - ``mmap_init()`` / ``vma_init()``
-   * - ``struct mm_struct``
-     - ``mm_init()`` → ``mm_cache_init()``
-   * - ``struct fs_struct``
-     - ``proc_caches_init()``
-   * - ``struct files_struct``
-     - ``proc_caches_init()``
-   * - ``struct task_struct``
-     - ``proc_caches_init()`` → ``fork_init()``
-   * - ``struct signal_struct``
-     - ``proc_caches_init()``
-   * - ``struct sighand_struct``
-     - ``proc_caches_init()``
-   * - ``struct nsproxy``
-     - ``nsproxy_cache_init()``
-   * - ``struct cred``
-     - ``cred_init()``
-   * - ``struct sigqueue``
-     - ``signals_init()``
-   * - ``struct dentry``
-     - ``dcache_init()`` (VFS)
-   * - ``struct inode``
-     - ``inode_init()`` (VFS — genel inode cache)
-   * - ``struct file``
-     - ``files_init()`` (VFS)
-   * - ``struct socket`` / ``sock_inode``
-     - ``sock_init()`` (ağ alt sistemi)
-   * - ``struct sk_buff``
-     - ``skb_init()`` (ağ — ``net_dev_init`` içinde)
-   * - ``struct bio``
-     - ``bio_init()`` (blok katmanı)
-   * - ``struct request``
-     - ``blk_mq_init()`` / ``request_cachep`` yaratılır
-   * - ``struct inode`` (fs)
-     - ``ext4_init_inodecache()`` vb. — modül yüklemede
+.. image:: _static/kmem-cache-init-functions-table.png
+   :align: center
+   :width: 65%
 
 Bu nesnelerin yaratıldığı yerlere ilişkin çağrı zincirini de aşağıda veriyoruz:
 
