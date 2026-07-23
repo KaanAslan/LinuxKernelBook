@@ -28,51 +28,9 @@ Intel 80386 ile birlikte sayfalama mekanizmasına sahip olmuştur. ARM işlemcil
 profilleri sayfalama mekanizmasına sahiptir. Diğer güçlü işlemcilerin hemen hepsinde sayfalama mekanizması
 bulunmaktadır. Aşağıda sayfalama mekanizmasına sahip önemli işlemciler bir tablo biçiminde verilmektedir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Mimari
-     - Öne Çıkan İşlemciler
-     - Notlar
-   * - x86 / x86-64
-     - Intel 80386+, AMD64, Core, Xeon
-     - 80286'da segmentasyon, 80386'da sayfalama eklendi
-   * - ARM (A-profil)
-     - Cortex-A5/7/8/9/15/53/55/72/76, ARM11, ARM926EJ-S
-     - M-profil (Cortex-M) MMU içermez; A-profil içerir
-   * - AArch64
-     - Cortex-A35/A55/A72/A78, Apple M1/M2/M3, Qualcomm Snapdragon
-     - ARMv8-A ve üzeri; 4 seviyeli sayfa tablosu (4K/16K/64K)
-   * - MIPS
-     - MIPS32/64, Loongson
-     - TLB tabanlı yazılım destekli MMU (donanım page-walk yoktur)
-   * - PowerPC / POWER
-     - POWER8/9/10, e500, e600, Freescale MPC serisi
-     - Hash tabanlı ve radix tabanlı iki farklı MMU modeli mevcuttur
-   * - SPARC
-     - SPARC V8, UltraSPARC T1/T2/T3, LEON3/4 (Gaisler)
-     - Sun-4u MMU; Solaris ve Linux tarafından kullanılır
-   * - RISC-V (G/S)
-     - SiFive U54/U74, StarFive JH7110, Milk-V Pioneer
-     - Sv32 (32-bit), Sv39/Sv48/Sv57 (64-bit) sayfalama şemaları
-   * - LoongArch
-     - Loongson 3A5000/3A6000
-     - Çin yapımı; MIPS'ten türedi; Linux 5.19'dan itibaren destekli
-   * - s390 / z
-     - IBM z13/z14/z15/z16
-     - Segment + sayfa tablosu; 5 seviyeye kadar destekler
-   * - Alpha
-     - DEC Alpha 21064/21164/21264
-     - Tarihi; 64-bit öncü mimari; Linux 5.18'de kaldırıldı
-   * - PA-RISC
-     - HP PA-7000, PA-8000 serisi
-     - HP-UX ve Linux (parisc) destekli
-   * - Itanium (IA-64)
-     - Intel Itanium 2
-     - VHPT (Virtual Hash Page Table); Linux 6.7'de kaldırıldı
-   * - m68k (020+)
-     - Motorola 68020/30/40/60
-     - 68000/08/10 MMU içermez; 68020 ve üzeri içerir
+.. image:: _static/mmu-architectures-table.png
+   :align: center
+   :width: 75%
 
 Bu tablodaki işlemcilerin hepsinde işlemci reset edildiğinde sayfalama mekanizması *kapalı (disabled)*
 durumdadır. Sayfalama mekanizmasını çalışır hale getirmek genellikle işlemcinin belli bir kontrol yazmaçındaki
@@ -122,131 +80,36 @@ miktarları arttıkça daha büyük sayfalar daha uygun hale gelmeye başlayabil
 
 32 Bit Intel işlemcileri tarafından desteklenen sayfa büyüklükleri şunlardır:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 30 50
-
-   * - Sayfa Büyüklüğü
-     - Kullanım Alanı
-   * - 4 KB
-     - Standart bellek yönetimi
-   * - 4 MB
-     - Büyük çekirdek eşlemeleri
-   * - 2 MB
-     - 4 GB üzeri fiziksel RAM
+.. image:: _static/page-size-usage-table.png
+   :align: center
+   :width: 45%
 
 64 Bit Intel işlemcileri tarafından desteklenen sayfa büyüklükleri şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 30 50
-
-   * - Sayfa Büyüklüğü
-     - Kullanım Alanı
-   * - 4 KB
-     - Standart bellek yönetimi
-   * - 2 MB
-     - Büyük çekirdek eşlemeleri, hugepages (TLB verimliliği)
-   * - 1 GB
-     - Büyük veri tabanları, HPC iş yükleri
-   * - 4 KB / 2 MB / 1 GB
-     - 57-bit sanal adres alanı, çok büyük bellek sunucuları
+.. image:: _static/page-size-usage-table-x86-64.png
+   :align: center
+   :width: 55%
 
 32 Bit ARM işlemcileri tarafından desteklenen sayfa büyüklükleri şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 30 50
-
-   * - Sayfa Büyüklüğü
-     - Kullanım Alanı
-   * - 4 KB
-     - Standart bellek yönetimi, Linux varsayılan sayfası
-   * - 64 KB
-     - Gömülü sistemler, DMA tampon bölgeleri
-   * - 1 MB
-     - Çekirdek doğrudan eşleme, bootloader bellek haritası
-   * - 16 MB
-     - Büyük fiziksel bellek bloklarının eşlenmesi
+.. image:: _static/page-size-usage-table-arm.png
+   :align: center
+   :width: 55%
 
 64 Bit ARM işlemcileri tarafından desteklenen sayfa büyüklükleri ise şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 30 50
-
-   * - Sayfa Büyüklüğü
-     - Kullanım Alanı
-   * - 4 KB
-     - Standart bellek yönetimi
-   * - 2 MB
-     - Büyük çekirdek eşlemeleri, hugepages, TLB verimliliği
-   * - 1 GB
-     - Büyük veri tabanları, HPC iş yükleri
-   * - 16 KB
-     - Apple Silicon (macOS/iOS), özel çekirdek yapılandırması
-   * - 32 MB
-     - Apple Silicon büyük bellek eşlemeleri
-   * - 64 KB
-     - Gömülü sistemler, DMA, büyük TLB entry verimliliği
-   * - 512 MB
-     - Büyük fiziksel bellek bloklarının eşlenmesi
+.. image:: _static/page-size-usage-table-aarch64.png
+   :align: center
+   :width: 55%
 
 Buradan da görüldüğü gibi 32 bit, 64 bit Intel ve ARM işlemcileri 4K sayfa büyüklüklerini desteklemektedir.
 Linux tarafından bu işlemcilerde temel olarak 4K büyüklüğünde sayfalar kullanılmaktadır.
 
 Son olarak yaygın tüm işlemcilerin desteklediği sayfa büyüklüklerini de aşağıdaki tabloda veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 20 40 
-
-   * - İşlemci
-     - Sayfa Büyüklükleri
-   * - Intel IA-32 (x86)
-     - 4 KB, 4 MB, 2 MB (PAE modunda)
-   * - Intel/AMD x86-64
-     - 4 KB, 2 MB, 1 GB
-   * - ARM (AArch32)
-     - 4 KB, 64 KB, 1 MB, 16 MB
-   * - ARM (AArch64)
-     - 4 KB, 16 KB, 64 KB, 2 MB, 32 MB, 512 MB, 1 GB
-   * - RISC-V (Sv32)
-     - 4 KB, 4 MB
-   * - RISC-V (Sv39)
-     - 4 KB, 2 MB, 1 GB
-   * - RISC-V (Sv48)
-     - 4 KB, 2 MB, 1 GB, 512 GB
-   * - RISC-V (Sv57)
-     - 4 KB, 2 MB, 1 GB, 512 GB, 256 TB
-   * - PowerPC (32-bit)
-     - 4 KB, 256 KB, 512 KB, 1 MB, 2 MB, 4 MB, 8 MB, 16 MB
-   * - PowerPC / POWER (64-bit)
-     - 4 KB, 64 KB, 16 MB, 16 GB
-   * - IBM S/390 / z/Arch
-     - 4 KB, 1 MB, 2 GB
-   * - Alpha (AXP)
-     - 8 KB, 64 KB, 512 KB, 4 MB
-   * - SPARC (32-bit)
-     - 4 KB, 256 KB, 16 MB
-   * - SPARC64 / UltraSPARC
-     - 8 KB, 64 KB, 512 KB, 4 MB, 32 MB, 256 MB, 2 GB
-   * - MIPS (32-bit)
-     - 4 KB, 16 KB, 64 KB, 256 KB, 1 MB, 4 MB, 16 MB, 64 MB
-   * - MIPS (64-bit)
-     - 4 KB, 16 KB, 64 KB, 256 KB, 1 MB, 4 MB, 16 MB, 64 MB
-   * - IA-64 (Itanium)
-     - 4 KB, 8 KB, 16 KB, 64 KB, 256 KB, 1 MB, 4 MB, 16 MB, 64 MB, 256 MB
-   * - PA-RISC (HP)
-     - 4 KB, 16 KB, 64 KB, 256 KB, 1 MB, 4 MB, 16 MB, 64 MB
-   * - m68k (Motorola)
-     - 4 KB
-   * - OpenRISC
-     - 8 KB
-   * - LoongArch
-     - 4 KB, 16 KB, 64 KB, 2 MB, 1 GB
-   * - Xtensa
-     - 4 KB, 16 KB, 64 KB, 256 KB, 1 MB, 4 MB
+.. image:: _static/page-sizes-by-architecture-table.png
+   :align: center
+   :width: 65%
 
 Biz anlatımlarımızda sayfa büyüklüğünün 4K olduğunu varsayacağız.
 
@@ -255,26 +118,9 @@ bir sayfa numarası karşılık getirmektedir. Örneğin 32 bit Intel ya da ARM 
 kullanıldığında fiziksel belleğin ilk 4K'lık bölgesi 0'ıncı sayfa ikinci 4K'lık bölgesi 1'inci sayfa
 biçiminde numaralandırılmaktadır:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 50 50
-
-   * - Fiziksel Adres Alanı
-     - Sayfa No
-   * - 00000000  -  00000FFF
-     - 0
-   * - 00001000  -  00001FFF
-     - 1
-   * - 00002000  -  00002FFF
-     - 2
-   * - 00003000  -  00003FFF
-     - 3
-   * - ...
-     - ...
-   * - FFFFE000  -  FFFFEFFF
-     - 1048574
-   * - FFFFF000  -  FFFFFFFF
-     - 1048575
+.. image:: _static/physical-address-page-number-table.png
+   :align: center
+   :width: 45%
 
 32 bit bir sistemde sayfa büyüklükleri 4K olduğunda toplam 2³² ÷ 2¹² = 2²⁰ = 1.048.576 = 1048576 sayfanın
 bulunduğuna dikkat ediniz.
@@ -720,7 +566,7 @@ işlemcileri iki kademeli sayfa tablolarına sahiptir ve bu işlemcilerde sanal 
 
 .. image:: _static/two-level-page-table-address-split.png
    :align: center
-   :width: 60%
+   :width: 55%
 
 Görüldüğü gibi 4K sayfa kullanan 32 bit Intel işlemcilerinde sanal adres üç kısma ayrılmaktadır: 10 bitlik
 *PGD (Page Directory)* alanı, 10 bitlik *PTE (Page Table Entry)* alanı ve 12 bitlik *Page Offset* alanı. Bu
@@ -826,7 +672,7 @@ bit Intel işlemcileri sanal adresi iki kısma ayırmaktadır:
 
 .. image:: _static/pse-4mb-address-split.png
    :align: center
-   :width: 60%
+   :width: 55%
 
 Burada artık tek kademeli bir dönüştürmenin olduğuna dikkat ediniz. Bu durumda işlemci yüksek anlamlı 10 bitten
 sayfa dizininin indeksini elde edip sayfa dizininin o indeksine başvurarak 4 MB'lik sayfanın yerini tespit
@@ -844,7 +690,7 @@ farklıdır:
 
 .. image:: _static/l1-l2-page-table-address-split.png
    :align: center
-   :width: 60%
+   :width: 55%
 
 Buradaki sanal adresin parçalarının uzunluklarına dikkat ediniz. L1 tablosunun (Intel'deki sayfa dizini) indeksi
 12 bittir. Yani bu tablo fiziksel bellekte 2¹² × 2² = 16K yer kaplamaktadır. Ancak L2 tabloları (yani
@@ -883,7 +729,7 @@ kısma ayrılmaktadır:
 
 .. image:: _static/64bit-address-split-pgd-pte.png
    :align: center
-   :width: 70%
+   :width: 60%
 
 64 bit Intel işlemcileri aslında 48 bit ya da 57 bitlik sanal adresler kullanmaktadır. Bu işlemcilerin adresleyebildiği teorik
 fiziksel bellek uzunluğu ise 2⁶⁴ (16 exabyte) değil daha azdır. Modellere göre 64 bit Intel işlemcilerinin
@@ -913,7 +759,7 @@ kullanılmamaktadır, her zaman 0'dır. Sanal adres dönüştürmesi yapılırke
 
 .. image:: _static/four-level-page-table-walk.png
    :align: center
-   :width: 70%
+   :width: 60%
 
 Burada toplamda dört kademe tablo vardır:
 
@@ -1023,8 +869,7 @@ haritalanmıştır. 32 bit Linux sistemlerinde bir prosesin sanal bellek alanı 
 
 .. image:: _static/user-kernel-address-space.png
    :align: center
-   :width: 40%
-
+   :width: 35%
 
 Buradan da görüldüğü gibi 32 bit Linux sistemlerinde kullanıcı alanı (yani prosesin sanal bellekte kapladığı maksimum
 alan) 3 GB, çekirdek alanı da 1 GB'dir. Her proseste çekirdek alanı o prosesin sanal belleğinin aynı yerine
@@ -1034,13 +879,13 @@ kolaylaştırmaktadır. Buradaki alanların içeriklerini biraz daha ayrıntıla
 
 .. image:: _static/process-virtual-address-space-32bit.png
    :align: center
-   :width: 70%
+   :width: 60%
 
 64 bit Linux sistemlerinde ise prosesin sanal bellek alanı şöyledir:
 
 .. image:: _static/user-kernel-address-space-64bit.png
    :align: center
-   :width: 50%
+   :width: 45%
 
 64 bit Linux sistemlerinde prosesin sanal bellek alanının 256 TB büyüklüğünde olduğuna dikkat ediniz. Bu sistemlerde
 sanal adreslerin 48 bit olduğunu ve sanal adreslerin yüksek anlamlı 16 bitinin 47'inci bit ile aynı olmak zorunda
@@ -1052,7 +897,7 @@ proseste çekirdek alanı aynı yere haritalanmıştır. Buradaki şekli biraz d
 
 .. image:: _static/process-virtual-address-space-64bit.png
    :align: center
-   :width: 70%
+   :width: 60%
 
 NUMA Düğümlerinin Çekirdek Temsili
 ==================================
