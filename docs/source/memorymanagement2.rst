@@ -147,18 +147,8 @@ bulunmaktadır.) 6.1 çekirdeği ve öncesinde ``MAX_ORDER`` toplam liste sayıs
 sonra en yüksek düzey indeksini belirtir hale getirilmiştir. Nihayet yukarıda da belirttiğimiz gibi
 6.8 ile birlikte bu sembolik sabitlerin isimleri değiştirilmiştir.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 22 78
-
-   * - Versiyon
-     - Durum
-   * - ≤ 6.1
-     - ``MAX_ORDER = 11``; maksimum düzey indeksi 10.
-   * - 6.2 – 6.7
-     - ``MAX_ORDER = 10``; anlam düzeltildi (artık indeks numarasını belirtiyor).
-   * - ≥ 6.8
-     - ``MAX_ORDER`` kaldırıldı → ``MAX_PAGE_ORDER = 10``, ``NR_PAGE_ORDERS = 11``.
+.. image:: _static/max-order-version-table-list.png
+   :align: center
 
 Linux çekirdeklerinde en yüksek düzey 10 olduğuna göre ve 2\ :sup:`10` = 1024 olduğuna göre, en
 yüksek düzeydeki sayfa blokları 1024 sayfadan oluşmaktadır. 1024 sayfa da 4 MB yer kaplamaktadır.
@@ -213,30 +203,8 @@ belirtmektedir.)
 Görüldüğü gibi ``free_area`` aslında her göç türü için bağlı listelerden oluşmaktadır. Aşağıdaki
 şekil bu veri yapısını daha iyi anlaşılmasına yardımcı olacaktır:
 
-.. code-block:: text
-
-   zone (örn. ZONE_NORMAL):
-   │
-   ├── free_area[0]   (düzey-0, 4 KB bloklar)
-   │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg1] → [pg4] → [pg9] → NULL
-   │   ├── free_list[MIGRATE_MOVABLE]     → [pg2] → [pg7] → NULL
-   │   ├── free_list[MIGRATE_RECLAIMABLE] → [pg3] → NULL
-   │   ├── free_list[MIGRATE_HIGHATOMIC]  → NULL
-   │   ├── free_list[MIGRATE_CMA]         → NULL
-   │   └── free_list[MIGRATE_ISOLATE]     → NULL
-   │
-   ├── free_area[1]   (düzey-1, 8 KB bloklar)
-   │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg16,17] → NULL
-   │   ├── free_list[MIGRATE_MOVABLE]     → [pg32,33] → [pg64,65] → NULL
-   │   └── ...
-   │
-   ├── free_area[2]   (düzey-2, 16 KB bloklar)
-   │   └── ...
-   │
-   ...
-   │
-   └── free_area[10]  (düzey-10, 4 MB bloklar)
-       └── ...
+.. image:: _static/zone-free-area-tree.png
+   :align: center
 
 Buradaki ``free_area``'nın düzeylerden oluşan bir dizi olduğuna, dizinin her elemanının her göç türü
 için ayrı listeler barındırdığına dikkat ediniz. ``free_area`` listesinin her elemanı aslında bir
@@ -289,65 +257,9 @@ biçiminde typedef edilmektedir. Bu parametreye çeşitli mask bayrakları bit d
 sokularak verilmektedir. Mask bayrakları ``include/linux/gfp_types.h`` dosyası içerisinde
 define edilmiştir. Bunları aşağıda bir tablo biçiminde veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Bayraklar
-     - İşlevi
-   * - ``__GFP_DMA``
-     - Tahsisatı ZONE_DMA'dan yap (eski ISA DMA uyumu için)
-   * - ``__GFP_HIGHMEM``
-     - Tahsisatı ZONE_HIGHMEM'den yap
-   * - ``__GFP_DMA32``
-     - Tahsisatları 32-bit adreslenebilir ZONE_DMA32'den yap
-   * - ``__GFP_MOVABLE``
-     - ZONE_MOVABLE'a izin ver; sayfa göç ile taşınabilir
-   * - ``__GFP_RECLAIMABLE``
-     - Sayfa shrinker'lar aracılığıyla geri alınabilir (dilim için)
-   * - ``__GFP_WRITE``
-     - Sayfa kirletilecek; bölgeler arasında dağıtılır (fair policy)
-   * - ``__GFP_HARDWALL``
-     - cpuset bellek tahsisat politikasını zorla uygula
-   * - ``__GFP_THISNODE``
-     - Yalnızca belirtilen NUMA düğümlerini ayır, fallback yok
-   * - ``__GFP_ACCOUNT``
-     - Tahsisatı kmemcg'ye hesapla (kernel memory cgroup)
-   * - ``__GFP_HIGH``
-     - Yüksek öncelikli; atomic rezervlere erişebilir
-   * - ``__GFP_MEMALLOC``
-     - Tüm belleğe (rezervler dahil) erişime izin ver
-   * - ``__GFP_NOMEMALLOC``
-     - Acil rezervlere erişimi açıkça yasakla
-   * - ``__GFP_IO``
-     - Bellek geri almak için fiziksel I/O başlatabilir
-   * - ``__GFP_FS``
-     - Bellek geri almak için dosya sistemi çağrısı yapabilir
-   * - ``__GFP_DIRECT_RECLAIM``
-     - Çağıran doğrudan geri alıma girebilir
-   * - ``__GFP_KSWAPD_RECLAIM``
-     - Low watermark'ta kswapd'yi uyandırabilir
-   * - ``__GFP_RECLAIM``
-     - ``__GFP_DIRECT_RECLAIM | __GFP_KSWAPD_RECLAIM`` kısayolu
-   * - ``__GFP_RETRY_MAYFAIL``
-     - İlerleme varsa geri alımı tekrar dene; OOM'u tetiklemez
-   * - ``__GFP_NOFAIL``
-     - Sonsuz yineleme; asla başarısız olamaz, bloke olabilir
-   * - ``__GFP_NORETRY``
-     - Yalnızca hafif geri alım dene; "OOM killer" çağrılmaz
-   * - ``__GFP_NOWARN``
-     - Ayırma başarısız olursa çekirdek uyarı mesajını bastır
-   * - ``__GFP_COMP``
-     - Bileşik sayfalar için metadata ekle (büyük sayfa grupları için)
-   * - ``__GFP_ZERO``
-     - Başarılı tahsisatlarda sıfırlanmış sayfa döndür
-   * - ``__GFP_ZEROTAGS``
-     - Bellek sıfırlanırken KASAN HW bellek etiketlerini de sıfırla
-   * - ``__GFP_SKIP_ZERO``
-     - KASAN HW etiket sıfırlamasını atla
-   * - ``__GFP_SKIP_KASAN``
-     - KASAN sayfa zehirleme/çözme kontrollerini atla
-   * - ``__GFP_NOLOCKDEP``
-     - GFP context takibi için lockdep denetimini devre dışı bırak
+.. image:: _static/gfp-flags-table.png
+   :align: center
+   :width: 65%
 
 Linux çekirdek kodlamasında başı ``__`` ile başlayan değişkenlerin "aşağı seviyeli kodlar
 tarafından kullanıldığını" anımsayınız. Yukarıdaki bayraklar ince ayar için kullanılmaktadır.
@@ -356,40 +268,9 @@ kullanılamamaktadır. Aslında çekirdek içerisinde yukarıdaki bayraklar kull
 başı ``__`` ile başlamayan daha yüksek seviyeli bayraklar da vardır. Bunların listesini de
 aşağıdaki tabloda veriyoruz:
 
-.. list-table:: 
-   :width: 70%
-   :header-rows: 1
-  
-   * - Bileşke Bayraklar
-     - Bileşen Bayraklar
-   * - ``GFP_ATOMIC``
-     - ``__GFP_HIGH | __GFP_KSWAPD_RECLAIM``
-   * - ``GFP_KERNEL``
-     - ``__GFP_RECLAIM | __GFP_IO | __GFP_FS``
-   * - ``GFP_KERNEL_ACCOUNT``
-     - ``GFP_KERNEL | __GFP_ACCOUNT``
-   * - ``GFP_NOWAIT``
-     - ``__GFP_KSWAPD_RECLAIM``
-   * - ``GFP_NOIO``
-     - ``__GFP_RECLAIM``
-   * - ``GFP_NOFS``
-     - ``__GFP_RECLAIM | __GFP_IO``
-   * - ``GFP_USER``
-     - ``__GFP_RECLAIM | __GFP_IO | __GFP_FS | __GFP_HARDWALL``
-   * - ``GFP_HIGHUSER``
-     - ``GFP_USER | __GFP_HIGHMEM``
-   * - ``GFP_HIGHUSER_MOVABLE``
-     - ``GFP_HIGHUSER | __GFP_MOVABLE | __GFP_SKIP_KASAN``
-   * - ``GFP_DMA``
-     - ``__GFP_DMA``
-   * - ``GFP_DMA32``
-     - ``__GFP_DMA32``
-   * - ``GFP_TRANSHUGE``
-     - ``GFP_HIGHUSER_MOVABLE | __GFP_COMP | __GFP_NOMEMALLOC |``
-       ``__GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM``
-   * - ``GFP_TRANSHUGE_LIGHT``
-     - ``GFP_HIGHUSER_MOVABLE | __GFP_COMP | __GFP_NOMEMALLOC |``
-       ``__GFP_NORETRY | __GFP_NOWARN``
+.. image:: _static/gfp-composite-flags-table.png
+   :align: center
+   :width: 65%
 
 Programcılar genellikle bu yüksek seviyeli bayrakları kullanmaktadır. Örneğin ``GFP_ATOMIC``,
 ``GFP_KERNEL``, ``GFP_USER``, ``GFP_DMA``, ``GFP_DMA32`` en çok kullanılan yüksek seviyeli
@@ -837,99 +718,17 @@ istiyoruz:
         unsigned long    nr_free;
     };
 
-.. code-block:: none
-
-    zone (örn. ZONE_NORMAL):
-    │
-    ├── free_area[0]   (düzey-0, 4 KB bloklar)
-    │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg1] → [pg4] → [pg9] → NULL
-    │   ├── free_list[MIGRATE_MOVABLE]     → [pg2] → [pg7] → NULL
-    │   ├── free_list[MIGRATE_RECLAIMABLE] → [pg3] → NULL
-    │   ├── free_list[MIGRATE_HIGHATOMIC]  → NULL
-    │   ├── free_list[MIGRATE_CMA]         → NULL
-    │   └── free_list[MIGRATE_ISOLATE]     → NULL
-    │
-    ├── free_area[1]   (düzey-1, 8 KB bloklar)
-    │   ├── free_list[MIGRATE_UNMOVABLE]   → [pg16,17] → NULL
-    │   ├── free_list[MIGRATE_MOVABLE]     → [pg32,33] → [pg64,65] → NULL
-    │   └── ...
-    │
-    ├── free_area[2]   (düzey-2, 16 KB bloklar)
-    │   └── ...
-    │
-    ...
-    │
-    └── free_area[10]  (düzey-10, 4 MB bloklar)
-        └── ...
+.. image:: _static/zone-free-area-tree.png
+   :align: center
 
 Aslında sayfa tahsisatları "belli bir düğümün, belli bir bölgesinin, belli bir göç türünü" hedef alarak süreci
 başlatmaktadır. İşte ``alloc_pages`` gibi fonksiyonların birinci parametresindeki bayraklar bu tespitin
 yapılmasını sağlamaktadır. Aşağıda hangi bayraklar kullanıldığında işlemlerin hangi bölgeden ve hangi göç
 türünden başlatılacağı bilgisi bir tablo halinde verilmiştir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - GFP Kombinasyonu
-     - Hedef Bölge
-     - Göç Türü
-     - Tipik Kullanım
-   * - ``GFP_KERNEL``
-     - ``ZONE_NORMAL``
-     - ``MIGRATE_UNMOVABLE``
-     - kmalloc, kzalloc, genel kernel
-   * - ``GFP_ATOMIC``
-     - ``ZONE_NORMAL``
-     - ``MIGRATE_UNMOVABLE``
-     - IRQ handler, spinlock tutan kod
-   * - ``GFP_USER``
-     - ``ZONE_NORMAL``
-     - ``MIGRATE_MOVABLE``
-     - kullanıcı alanı tahsisatları
-   * - ``GFP_HIGHUSER_MOVABLE``
-     - ``ZONE_HIGHMEM``
-     - ``MIGRATE_MOVABLE``
-     - anonim kullanıcı sayfaları
-   * - ``GFP_NOFS``
-     - ``ZONE_NORMAL``
-     - ``MIGRATE_UNMOVABLE``
-     - FS kritik yol (deadlock önlemi)
-   * - ``GFP_NOIO``
-     - ``ZONE_NORMAL``
-     - ``MIGRATE_UNMOVABLE``
-     - I/O kritik yol (deadlock önlemi)
-   * - ``GFP_TRANSHUGE_MOVABLE``
-     - ``ZONE_NORMAL``
-     - ``MIGRATE_MOVABLE``
-     - transparent huge page (THP)
-   * - ``GFP_KERNEL | __GFP_RECLAIMABLE``
-     - ``ZONE_NORMAL``
-     - ``MIGRATE_RECLAIMABLE``
-     - slab cache (kmem_cache)
-   * - ``GFP_KERNEL | __GFP_DMA``
-     - ``ZONE_DMA``
-     - ``MIGRATE_UNMOVABLE``
-     - eski ISA/legacy DMA aygıtları
-   * - ``GFP_ATOMIC | __GFP_DMA``
-     - ``ZONE_DMA``
-     - ``MIGRATE_UNMOVABLE``
-     - IRQ ctx'te DMA tamponu
-   * - ``GFP_KERNEL | __GFP_DMA32``
-     - ``ZONE_DMA32``
-     - ``MIGRATE_UNMOVABLE``
-     - 32-bit DMA aygıtları (PCIe vs.)
-   * - ``GFP_ATOMIC | __GFP_DMA32``
-     - ``ZONE_DMA32``
-     - ``MIGRATE_UNMOVABLE``
-     - IRQ ctx'te 32-bit DMA tamponu
-   * - ``GFP_DMA``
-     - ``ZONE_DMA``
-     - ``MIGRATE_UNMOVABLE``
-     - ``GFP_KERNEL | __GFP_DMA`` kısayolu
-   * - ``GFP_DMA32``
-     - ``ZONE_DMA32``
-     - ``MIGRATE_UNMOVABLE``
-     - ``GFP_KERNEL | __GFP_DMA32`` kısayolu
+.. image:: _static/gfp-zone-migrate-table.png
+   :align: center
+   :width: 75%
 
 Biz daha önce bellek bölgelerinin anlamlarını açıklamıştık. Ancak göç türleri hakkında ayrıntılı bir açıklama
 yapmamıştık. Önce bölgelerdeki göç türleri üzerinde açıklamalar yapalım.
@@ -981,42 +780,15 @@ için ``__GFP_RECLAIMABLE`` bayrağının da eklenmesi gerekmektedir. Dilimli ta
 (slab allocator) tahsis edilen sayfalar bu özelliğe sahiptir. Çekirdekteki pek çok nesne zaten dilimli
 tahsisat sistemi ile tahsis edilmektedir. Örneğin:
 
-.. code-block:: none
-
-    kmem_cache_alloc()
-        │
-        ├─► inode          ──┐
-        ├─► dentry         ──┤ ──► Hepsi dilimli tahsisat sistemi ile
-        ├─► vm_area_struct ──┤     MIGRATE_RECLAIMABLE kullanılarak
-        └─► task_struct    ──┘     tahsis ediliyor
+.. image:: _static/kmem-cache-alloc-reclaimable.png
+   :align: center
+   :width: 70%
 
 Aşağıdaki tabloda ``MIGRATE_UNMOVABLE`` , ``MIGRATE_MOVABLE`` ve ``MIGRATE_RECLAIMABLE`` göç türlerini karşılaştırıyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 22 26 26 26
-
-   * - Özellik
-     - ``MIGRATE_UNMOVABLE``
-     - ``MIGRATE_RECLAIMABLE``
-     - ``MIGRATE_MOVABLE``
-   * - Fiziksel taşıma
-     - Hayır
-     - Hayır
-     - Evet
-   * - Geri alma (reclaim)
-     - Hayır
-     - Evet
-     - Dolaylı
-   * - Compaction katkısı
-     - Hayır
-     - Dolaylı
-     - Doğrudan
-   * - Tipik tahsisat
-     - kmalloc, DMA, modül kodu, IRQ
-     - kmem_cache, page/buffer cache
-     - malloc, mmap, THP, KSM
-
+.. image:: _static/migrate-type-comparison-table.png
+   :align: center
+   :width: 80%
 
 ``MIGRATE_HIGHATOMIC`` göç türü yüksek öncelikli, bloke olmaması gereken kodların kullanması amacıyla
 oluşturulmuş özel bir ikiz blok tahsisat sistemidir.
@@ -1170,26 +942,9 @@ Burada önemli bir noktayı belirtmek istiyoruz. ``node_zonelists`` elemanının
 (``ZONELIST_FALLBACK``) bölge dizisi aslında yalnızca o NUMA düğümünün bölgelerini belirtmemektedir; diğer
 NUMA düğümlerinin bölgeleri de bu dizi içerisindedir. ``node_zonelists`` dizisinin temsili görüntüsü şöyledir:
 
-.. code-block:: none
-
-    pg_data_t (Node 0)
-    ├── node_zonelists[0]  ← ZONELIST_FALLBACK
-    │   └── _zonerefs[]
-    │         [0]: zone=&node0.zone[NORMAL],  zone_idx=ZONE_NORMAL
-    │         [1]: zone=&node0.zone[DMA32],   zone_idx=ZONE_DMA32
-    │         [2]: zone=&node0.zone[DMA],     zone_idx=ZONE_DMA
-    │         [3]: zone=&node1.zone[NORMAL],  zone_idx=ZONE_NORMAL  ← komşu node
-    │         [4]: zone=&node1.zone[DMA32],   zone_idx=ZONE_DMA32
-    │         [5]: zone=&node2.zone[NORMAL],  zone_idx=ZONE_NORMAL  ← uzak node
-    │         [6]: zone=&node3.zone[NORMAL],  zone_idx=ZONE_NORMAL  ← en uzak
-    │         [7]: zone=NULL                                         ← LİSTE SONU
-    │
-    └── node_zonelists[1]  ← ZONELIST_NOFALLBACK (__GFP_THISNODE için)
-        └── _zonerefs[]
-            [0]: zone=&node0.zone[NORMAL],  zone_idx=ZONE_NORMAL
-            [1]: zone=&node0.zone[DMA32],   zone_idx=ZONE_DMA32
-            [2]: zone=&node0.zone[DMA],     zone_idx=ZONE_DMA
-            [3]: zone=NULL
+.. image:: _static/pgdat-zonelists.png
+   :align: center
+   :width: 70%
 
 Bu temsili çizimde örnek olarak 0'ıncı NUMA düğümünün ``node_zonelists`` dizisi gösterilmiştir. Görüldüğü
 gibi bu dizinin 0'ıncı elemanı bölgelerden oluşmaktadır; ancak bölgeler yalnızca 0'ıncı düğümün bölgelerini
