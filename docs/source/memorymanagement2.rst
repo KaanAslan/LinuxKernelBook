@@ -952,26 +952,10 @@ içermemektedir, diğer düğümlerin bölgelerini de içermektedir. Örneğin 0
 ile ``ZONE_DMA32`` bölgesinden ``MIGRATE_UNMOVABLE`` tahsisatı yapılmak istensin. İşte bölge listesinin
 dolaşılmasına 0'ıncı düğümdeki DMA32'den başlatılacaktır:
 
-.. code-block:: none
-
-    pg_data_t (Node 0)
-    ├── node_zonelists[0]  ← ZONELIST_FALLBACK
-    │   └── _zonerefs[]
-    │         [0]: zone=&node0.zone[NORMAL],  zone_idx=ZONE_NORMAL
-    │  Bölge araması buradan başlatılacak ──► [1]: zone=&node0.zone[DMA32],   zone_idx=ZONE_DMA32
-    │         [2]: zone=&node0.zone[DMA],     zone_idx=ZONE_DMA
-    │         [3]: zone=&node1.zone[NORMAL],  zone_idx=ZONE_NORMAL  ← komşu node
-    │         [4]: zone=&node1.zone[DMA32],   zone_idx=ZONE_DMA32
-    │         [5]: zone=&node2.zone[NORMAL],  zone_idx=ZONE_NORMAL  ← uzak node
-    │         [6]: zone=&node3.zone[NORMAL],  zone_idx=ZONE_NORMAL  ← en uzak
-    │         [7]: zone=NULL                                         ← LİSTE SONU
-    │
-    └── node_zonelists[1]  ← ZONELIST_NOFALLBACK (__GFP_THISNODE için)
-        └── _zonerefs[]
-            [0]: zone=&node0.zone[NORMAL],  zone_idx=ZONE_NORMAL
-            [1]: zone=&node0.zone[DMA32],   zone_idx=ZONE_DMA32
-            [2]: zone=&node0.zone[DMA],     zone_idx=ZONE_DMA
-            [3]: zone=NULL
+.. figure:: _static/pgdat-zonelists-search-start.png
+   :align: center
+   :alt: pg_data_t zonelist yapısı
+   :width: 90%
 
 Eğer bu bölgenin göç *fallback* listesinin hiçbir yerinde talep edilen miktarda boş sayfa bulunamazsa bundan
 sonra arama 0'ıncı düğümün ``ZONE_DMA`` bölgesinden devam edecek, orada da bulunamazsa 1'inci düğümün
@@ -991,43 +975,22 @@ Bölgelerdeki Boş sayfa Listelerinin Başlangıç Durumu
 Başlangıçta her sayfa kendi bellek bölgesinin en yüksek düzeyli ``MIGRATE_MOVABLE`` göç türüne ilişkin ikiz
 blok tahsisat sistemindedir. Örneğin UMA x86-64 mimarisindeki başlangıç durumu şöyledir:
 
-.. code-block:: none
-
-    node 0 (pgdat)
-    ├── ZONE_DMA      (0–16MB)
-    │     free_area[10].free_list[MIGRATE_MOVABLE]  → ~birkaç adet 4MB blok
-    │     (diğer tüm göç listeleri boş)
-    │
-    ├── ZONE_DMA32    (16MB–4GB)
-    │     free_area[10].free_list[MIGRATE_MOVABLE]  → ~binlerce sayfa
-    │     (diğer tüm göç listeleri boş)
-    │
-    └── ZONE_NORMAL   (4GB–16GB)
-          free_area[10].free_list[MIGRATE_MOVABLE]  → belleğin ana gövdesi
-          (diğer tüm göç listeleri boş)
+.. figure:: _static/node-zone-free-area-movable.png
+   :align: center
+   :alt: Açılış anındaki serbest blok dağılımı
+   :width: 60%
 
 Örneğin ARM64 kullanılan Raspberry Pi modelleri için başlangıç durumu şöyledir:
 
-.. code-block:: none
-
-    node 0 (pgdat) — RPi, UMA
-    ├── ZONE_DMA      (0 – 1GB)
-    │     free_area[10].free_list[MIGRATE_MOVABLE]  → ~1GB'ın boş kısmı, çoğu 4MB'lık blok
-    │     (diğer tüm göç listeleri boş)
-    ├── ZONE_DMA32    (1GB – 4GB)
-    │     free_area[10].free_list[MIGRATE_MOVABLE]  → ~3GB
-    │     (diğer tüm göç listeleri boş)
-    └── ZONE_NORMAL   (4GB – 8GB)
-          free_area[10].free_list[MIGRATE_MOVABLE]  → ~4GB
-          (diğer tüm göç listeleri boş)
+.. image:: _static/rpi-node-zone-free-area.png
+   :align: center
+   :width: 75 %
 
 ARM32 kullanan BeagleBone modelleri için de başlangıç durumu şöyledir:
 
-.. code-block:: none
-
-    node 0 (pgdat) — BBB, UMA
-    └── ZONE_NORMAL   (0x80000000 – 0x9FFFFFFF, 512MB)
-          free_area[10].free_list[MIGRATE_MOVABLE]  → tüm boş bellek burada, çoğu 4MB'lık blok
+.. image:: _static/bbb-node-zone-free-area.png
+   :align: center
+   :width: 80%
 
 Fallback Mekanizmasında NUMA Düğümlerinin Dolaşım Sırası
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1052,22 +1015,9 @@ sistemlerde ACPI tablosundan elde etmektedir. NUMA uzaklık matrisindeki değerl
 değil göreli bir değer belirtmektedir. Örneğin soketlerin NUMA düğümlerine uzaklıkları aşağıdakine benzer
 olabilmektedir:
 
-.. list-table:: NUMA Erişim Türlerine Göre Tipik Uzaklık Skorları
-   :header-rows: 1
-   :widths: 60 40
-
-   * - Erişim Türü
-     - Tipik Skor Aralığı
-   * - Kendi düğümü (local)
-     - 10
-   * - Aynı soket, farklı die (SNC modu)
-     - 12–16
-   * - Farklı soket, doğrudan bağlı
-     - 20–22
-   * - Farklı soket, 2 hop
-     - 30–32
-   * - Farklı kasa (multi-chassis)
-     - 40–100+
+.. figure:: _static/numa-distance-scores-table.png
+   :align: center
+   :width: 40%
 
 NUMA uzaklık matrisi aşağıdaki gibi temsil edilebilir:
 
