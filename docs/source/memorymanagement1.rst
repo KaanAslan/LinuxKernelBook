@@ -452,49 +452,10 @@ içerisindeki ``CR3`` yazmacı tarafından gösterilmektedir.
 Buradaki yüksek anlamlı 20 bit sayfa tablosunun fiziksel bellekteki adresini belirtmektedir. (Tabii sayfa tabloları
 4K olduğu için 20 bitin son 12 bitinin 0 olduğu kabul edilmektedir.) Diğer bitlerin anlamları şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Bit(ler)
-     - Alan
-     - Açıklama
-   * - 31–12
-     - Page Table Base Addr.
-     - Alt sayfa tablosunun fiziksel taban adresi. 4 KB hizalı olduğundan alt 12 bit sıfırdır,
-       yalnızca üst 20 bit saklanır.
-   * - 11–9
-     - AVL
-     - *Available* — işletim sistemi tarafından serbestçe kullanılabilir, donanım bu bitleri yok sayar.
-   * - 8
-     - —
-     - Ayrılmış, 0 olmalı.
-   * - 7
-     - PS
-     - *Page Size* — 0 ise alt tablo 4 KB sayfaları gösterir; 1 ise (PSE etkinse) bu giriş doğrudan
-       4 MB'lık büyük sayfayı gösterir.
-   * - 6
-     - —
-     - Ayrılmış, 0 olmalı.
-   * - 5
-     - A
-     - *Accessed* — MMU bu girişe erişildiğinde 1 yapar; işletim sistemi LRU takibi için kullanır.
-   * - 4
-     - PCD
-     - *Page Cache Disable* — 1 ise bu tablonun işaret ettiği sayfa önbelleklenmez.
-   * - 3
-     - PWT
-     - *Page Write-Through* — 1 ise write-through önbellek politikası uygulanır.
-   * - 2
-     - U/S
-     - *User/Supervisor* — 0 ise yalnızca kernel (CPL 0–2) erişebilir; 1 ise kullanıcı alanı da
-       (CPL 3) erişebilir.
-   * - 1
-     - R/W
-     - *Read/Write* — 0 ise sayfa salt okunur; 1 ise yazılabilir.
-   * - 0
-     - P
-     - *Present* — 0 ise giriş geçersizdir ve MMU sayfa hatası (#PF) üretir; 1 ise geçerlidir.
-       Linux, P=0 girişlerde swap bilgisi saklar.
+.. figure:: _static/pde-bit-fields-table.png
+   :align: center
+   :alt: Sayfa dizini girişinin bit alanları
+   :width: 70%
 
 Sayfa dizini girişlerinin formatının yukarıda ele almış olduğumuz sayfa tablosu girişi formatına oldukça benzediğine
 dikkat ediniz. Sayfa dizini girişlerinin yine en düşük anlamlı biti ``P`` bitidir. Eğer bu bit 0 ise daha sayfa
@@ -535,7 +496,7 @@ bit Intel işlemcileri sanal adresi iki kısma ayırmaktadır:
 
 .. image:: _static/pse-4mb-address-split.png
    :align: center
-   :width: 55%
+   :width: 50%
 
 Burada artık tek kademeli bir dönüştürmenin olduğuna dikkat ediniz. Bu durumda işlemci yüksek anlamlı 10 bitten
 sayfa dizininin indeksini elde edip sayfa dizininin o indeksine başvurarak 4 MB'lik sayfanın yerini tespit
@@ -553,7 +514,7 @@ farklıdır:
 
 .. image:: _static/l1-l2-page-table-address-split.png
    :align: center
-   :width: 55%
+   :width: 50%
 
 Buradaki sanal adresin parçalarının uzunluklarına dikkat ediniz. L1 tablosunun (Intel'deki sayfa dizini) indeksi
 12 bittir. Yani bu tablo fiziksel bellekte 2¹² × 2² = 16K yer kaplamaktadır. Ancak L2 tabloları (yani
@@ -563,28 +524,9 @@ Intel'deki sayfa tabloları) burada 2⁸ × 2² = 1K yer kaplamaktadır. Sayfala
 Aşağıda 4K sayfa kullanan 32 bit Intel işlemcileri ile ARM işlemcilerinin organizasyon karşılaştırmasını bir
 tablo biçiminde veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 40 30 30
-
-   * - Ölçüt
-     - Intel 32-bit (4 KB sayfa)
-     - ARM 32-bit (4 KB sayfa)
-   * - L1 giriş sayısı
-     - 1024
-     - 4096
-   * - L1 tablo boyutu
-     - 4 KB
-     - 16 KB
-   * - L2 giriş sayısı
-     - 1024
-     - 256
-   * - Tek L2 tablo boyutu
-     - 4 KB
-     - 1 KB
-   * - Toplam L2 (max)
-     - 4 MB
-     - 4 MB
+.. image:: _static/intel-arm-page-table-comparison.png
+   :align: center
+   :width: 60%
 
 4K'lık sayfa kullanan 64 bit işlemcilerdeki sayfa tabloları genellikle 3 kademelidir. Çünkü 64 bitlik adres alanı
 16 exabyte gibi çok yüksek bir değerdedir. Örneğin 64 bitlik Intel işlemcilerindeki sanal adres aşağıdaki gibi 4
@@ -598,22 +540,9 @@ kısma ayrılmaktadır:
 fiziksel bellek uzunluğu ise 2⁶⁴ (16 exabyte) değil daha azdır. Modellere göre 64 bit Intel işlemcilerinin
 kullanabildiği fiziksel RAM aşağıdaki tabloda verilmiştir:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 35 32 33
-
-   * - Ölçüt
-     - Sanal Adres
-     - Fiziksel Adres
-   * - 4 Kademeli (LA48)
-     - 48 bit → 256 TB
-     - 46–52 bit (nesle göre)
-   * - 5 Kademeli (LA57)
-     - 57 bit → 128 PB
-     - 52 bit → 4 PB
-   * - Teorik maksimum
-     - 57 bit → 128 PB
-     - 52 bit → 4 PB
+.. image:: _static/la48-la57-address-limits.png
+   :align: center
+   :width: 55%
 
 Fiziksel RAM'in sanal adres alanından fazla olması bir sorun yaratmamaktadır.
 
@@ -652,34 +581,9 @@ mekanizmaları biraz farklı olsa da 64 bit ARM işlemcilerinde de sanal adresin
 ile aynı olmazsa dönüştürme sırasında exception (translation fault) oluşmaktadır. 64 bit Intel işlemcileri ile 64 
 bit ARM işlemcilerinin sayfalama aşamalarını aşağıdaki tabloyla karşılaştırıyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 36 32 32
-
-   * - Ölçüt
-     - x86-64 (LA48)
-     - AArch64 (48-bit)
-   * - Kullanılan bit
-     - 48 bit
-     - 48 bit
-   * - Kademe sayısı
-     - 4
-     - 4
-   * - Her kademedeki giriş
-     - 512
-     - 512
-   * - Tablo boyutu
-     - 4 KB
-     - 4 KB
-   * - Sayfa boyutu
-     - 4 KB
-     - 4 KB
-   * - Taban adresi yazmacı
-     - ``CR3``
-     - ``TTBR0`` / ``TTBR1``
-   * - Kullanıcı/Çekirdek ayrımı
-     - Canonical bits
-     - ``TTBR0`` / ``TTBR1`` ayrımı
+.. image:: _static/x86-64-aarch64-paging-comparison.png
+   :align: center
+   :width: 55%
 
 Translation Lookaside Buffer (TLB)
 ----------------------------------
@@ -696,26 +600,9 @@ gerçekleştirilmektedir. Eğer dönüştürülecek sanal adrese ilişkin dönü
 çok hızlı bir biçimde erişimi yapar. Aşağıda bir fikir verebilmek amacıyla 32 bit ve 64 bit Intel işlemcilerinin
 TLB önbelleğinin kaç girişi tutabildiğini gösteren bir tablo veriyoruz:
 
-.. list-table:: Intel İşlemcilerinde TLB Önbellek Girişleri
-   :header-rows: 1
-   :widths: 22 30 30 18
-
-   * - Mimari
-     - L1 ITLB
-     - L1 DTLB
-     - L2 TLB (STLB)
-   * - Core 2 (32-bit)
-     - 128 giriş (4K), 4-yollu
-     - 16 giriş (yalnız load)
-     - 256 giriş
-   * - Nehalem (64-bit)
-     - 128 giriş (4K), 7 giriş (2M/4M)
-     - 64 giriş (4K), 32 giriş (2M/4M)
-     - 512 giriş (4K), 4-yollu
-   * - Sandy Bridge
-     - 64 giriş/thread (4K), 4-yollu
-     - 64 giriş (4K), 4-yollu
-     - 1024 giriş, 4-yollu
+.. image:: _static/intel-tlb-entries-table.png
+   :align: center
+   :width: 70%
 
 Proseslerin Sanal Adres Alanları
 ================================
@@ -1499,84 +1386,9 @@ fiziksel belleğin aralarında böyle boşlukların bulunduğu durum çekirdekte
 konfigürasyon parametreleriyle belirtilmektedir. Örneğin Intel 32 bit Intel tabanlı masaüstü bilgisayarlarındaki fiziksel 
 bellek delikleri aşağıdaki gibidir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Başlangıç Adresi
-     - Bitiş Adresi
-     - Boyut
-     - Tür
-     - Açıklama
-   * - ``0x00000000``
-     - ``0x0009FFFF``
-     - 640 KB
-     - Kullanılabilir RAM
-     - Conventional (Low) Memory
-   * - ``0x000A0000``
-     - ``0x000BFFFF``
-     - 128 KB
-     - DELİK
-     - VGA Frame Buffer
-   * - ``0x000C0000``
-     - ``0x000DFFFF``
-     - 128 KB
-     - DELİK
-     - Option ROM
-   * - ``0x000E0000``
-     - ``0x000EFFFF``
-     - 64 KB
-     - DELİK
-     - Genişletilmiş Sistem BIOS
-   * - ``0x000F0000``
-     - ``0x000FFFFF``
-     - 64 KB
-     - DELİK
-     - Sistem BIOS ROM
-   * - ``0x00100000``
-     - ``0xBFFFFFFF``
-     - ~3067 MB
-     - Kullanılabilir RAM
-     - Extended Memory
-   * - ``0xC0000000``
-     - ``0xDFFFFFFF``
-     - 512 MB
-     - DELİK
-     - PCI/PCIe BAR, GPU aperture
-   * - ``0xE0000000``
-     - ``0xEFFFFFFF``
-     - 256 MB
-     - DELİK
-     - MMCONFIG / PCIe ECAM
-   * - ``0xF0000000``
-     - ``0xFEBFFFFF``
-     - ~236 MB
-     - DELİK / REZERVE
-     - Ek chipset rezerve alanı
-   * - ``0xFEC00000``
-     - ``0xFEC00FFF``
-     - 4 KB
-     - DELİK
-     - I/O APIC
-   * - ``0xFED00000``
-     - ``0xFED003FF``
-     - 1 KB
-     - DELİK
-     - HPET
-   * - ``0xFEE00000``
-     - ``0xFEE00FFF``
-     - 4 KB
-     - DELİK
-     - Local APIC
-   * - ``0xFF000000``
-     - ``0xFFFFFFFF``
-     - 16 MB
-     - DELİK
-     - Firmware / BIOS Flash
-   * - ``0x100000000``
-     - Değişken
-     - Değişken
-     - Kullanılabilir RAM
-     - 4 GB Üzeri Remap Edilen RAM
+.. figure:: _static/physical-memory-map-table.png
+   :align: center
+   :width: 70%
 
 Buradaki deliklerin bir kusurdan kaynaklanmadığına, bir tasarım biçiminden kaynaklandığına dikkat ediniz. Fiziksel
 bellekte deliklerin bulunması durumunda deliklerdeki sayfalar için ``page`` nesneleri sayfa tabloları yoluyla daha
@@ -1588,57 +1400,9 @@ mimarisinde fiziksel RAM en fazla 2 GB olabilmektedir ve deliksizdir. Bu mimari 
 konfigüre edilmiştir. Raspberry Pi 5 ve ARM tabanlı Mac bilgisayar mimarileri ise ``CONFIG_SPARSEMEM_VMEMMAP``
 biçiminde konfigüre edilmektedir. Aşağıda üç mimariyi bir tablo eşliğinde karşılaştırıyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Özellik
-     - Intel Masaüstü (x86-64)
-     - Beaglebone Black (AM335x/ARMv7)
-     - Raspberry Pi 5 (BCM2712/ARM64)
-   * - İşletim Sistemi (tipik)
-     - Linux
-     - Linux
-     - Linux
-   * - CPU Çekirdeği
-     - Çeşitli (Alder Lake vb.)
-     - Cortex-A8
-     - Cortex-A76 (quad-core)
-   * - ISA
-     - x86-64 (64-bit)
-     - ARMv7 (32-bit)
-     - ARMv8.2 (64-bit)
-   * - Max RAM
-     - TB mertebesi
-     - 512 MB – 2 GB
-     - 4/8/16 GB
-   * - Linux çekirdeği kullanıyor mu?
-     - Evet
-     - Evet
-     - Evet
-   * - Linux Bellek Modeli
-     - ``SPARSEMEM_VMEMMAP``
-     - ``FLATMEM``
-     - ``SPARSEMEM_VMEMMAP``
-   * - Model değiştirilebilir mi?
-     - Hayır (tek seçenek)
-     - Evet (``SPARSEMEM`` de seçilebilir)
-     - Hayır (2021'den beri tek seçenek)
-   * - Sayfa Boyutu
-     - 4 KB
-     - 4 KB
-     - 4 KB
-   * - NUMA Desteği
-     - Evet (Xeon)
-     - Hayır
-     - Hayır
-   * - RAM Hot-plug
-     - Desteklenir
-     - Desteklenmez
-     - Desteklenmez
-   * - Fiziksel adres alanının yapısı
-     - Çok sayıda büyük delik
-     - Tek sürekli blok (``0x80000000``'dan)
-     - GPU MMIO + RP1 PCIe deliği
+.. figure:: _static/platform-memory-model-comparison.png
+   :align: center
+   :width: 70%
 
 CONFIG_FLATMEM Organizasyonu
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1765,7 +1529,7 @@ Bu sistemlerde çekirdek için fiziksel sayfa numarası iki bileşenden oluşmak
 
 .. image:: _static/pfn-section-bit-split.png
    :align: center
-   :width: 60%
+   :width: 55%
 
 Bu bileşenleri veren makrolar vardır:
 
@@ -1801,36 +1565,15 @@ Bu işlemi şekilsel olarak da aşağıdaki gibi ifade edebiliriz:
 
 Yukarıda açıkladığımız üç konfigürasyonun hangi durumlarda tercih edileceğini şöyle özetleyebiliriz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 25 75
-
-   * - Konfigürasyon
-     - Tercih Edilme Durumu
-   * - ``FLATMEM``
-     - Bellek haritasında hiç delik olmayan, küçük ya da orta ölçekli UMA sistemler.
-   * - ``SPARSEMEM``
-     - Fiziksel bellekte büyük boşluklar olan veya bellek yapısının çalışma anında
-       değiştiği (*hotplug*) sistemler.
-   * - ``SPARSEMEM_VMEMMAP``
-     - Modern, büyük ölçekli ve yüksek performans gerektiren tüm x86-64 ve ARM64
-       sistemler.
+.. figure:: _static/memory-model-selection-table.png
+   :align: center
+   :width: 60%
 
 Üç konfigürasyon parametresini erişim bakımından da şöyle karşılaştırabiliriz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 20 40
-
-   * - Konfigürasyon
-     - ``pfn_to_page()`` yöntemi
-   * - ``CONFIG_FLATMEM``
-     - ``mem_map + (pfn - ARCH_PFN_OFFSET)`` → tek global dizi, tek toplama
-   * - ``CONFIG_SPARSEMEM_VMEMMAP``
-     - ``vmemmap + pfn`` → ``FLATMEM`` kadar hızlı, tek toplama; ama delikler için
-       fiziksel sayfa yok
-   * - ``CONFIG_SPARSEMEM`` (VMEMMAP'siz)
-     - ``mem_sections[pfn >> SHIFT].section_mem_map + pfn`` 
+.. figure:: _static/pfn-to-page-by-config-table.png
+   :align: center
+   :width: 70%
 
 page Nesneleri ile İlgili Erişim Makroları ve Fonksiyonları
 -----------------------------------------------------------
@@ -1974,22 +1717,9 @@ kullanırız. Ya da biz çekirdek modunda sanal ``vaddr`` adresinin fiziksel bel
 olarak ``0xC0000000`` biçimindedir. 32 bit Linux sistemlerinde sayfa tablosunun çekirdek kısmını şöyle
 düşünebilirsiniz:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 50 50
-
-   * - Sanal Sayfa Numarası
-     - Fiziksel Sayfa Numarası
-   * - ...
-     - ...
-   * - ``C0000``
-     - ``00000``
-   * - ``C0001``
-     - ``00001``
-   * - ``C0002``
-     - ``00002``
-   * - ...
-     - ...
+.. image:: _static/kernel-identity-mapping-table.png
+   :align: center
+   :width: 45%
 
 32 Bit Sİstemlerde HIGHMEM Alanına Erişim
 -----------------------------------------
