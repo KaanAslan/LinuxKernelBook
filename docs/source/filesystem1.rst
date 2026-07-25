@@ -5,7 +5,7 @@ Dosya Sistemi - I. Bölüm :raw-html:`<br>` Temeller
 ==================================================
 
 UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilmektedir. Bu bölümde dikkatimizi dosya sistemine 
-illişkin çekirdek veri yapıları üzerine yönelteceğiz. Dosya sistemi kitabımızda üç bölüm 
+illişkin çekirdek veri yapıları üzerine yönelteceğiz. Dosya sistemini kitabımızda üç bölüm 
 halinde ele alacağız. Birinci bölümde belli bir derinliğe kadar çekirdeğin dosya işlemleri için oluşturduğu 
 organizasyon üzerinde duracağız. Bu bölümü izleyen ikinci bölümde basit bir dosya sisteminin gerçekleştirimi eşliğinde 
 dosya sisteminin diğer önemli özelliklerini açıklayacağız. Dosya sistemine ilişkin diğer ayrıntıları ise başka konuları gördükten sonra 
