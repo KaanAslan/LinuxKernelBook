@@ -1767,7 +1767,7 @@ sayfa tablosunun *pkmap* ya da *fixmap* alanını geçici olarak değiştirmekte
 .. image:: /_static/kernel_virtual_memory_layout.png
    :alt: 32 bit Linux sisteminde fiziksel RAM ile çekirdek sanal bellek alanının haritalanması
    :align: center
-   :width: 60%
+   :width: 50%
 
 ``kmap`` fonksiyonunun parametrik yapısı şöyledir:
 
@@ -1779,7 +1779,8 @@ Fonksiyon fiziksel sayfayı temsil eden bir ``page`` nesnesini parametre olarak 
 nesnesi ``HIGHMEM`` bölgesine ilişkinse çekirdeğin sayfa tablosunun kmap alanında giriş oluşturarak o
 fiziksel sayfaya erişmekte kullanılan sanal adresi geri döndürür. Eğer fonksiyona verilen ``page``
 nesnesi ``HIGHMEM`` bölgesine ilişkin değilse fonksiyon doğrudan o ``page`` nesnesine ilişkin sanal adresi
-geri döndürmektedir. Fonksiyon güncel çekirdeklerde ```include/linux/highmem-internals.h`` dosyası içerisinde şöyle tanımlanmıştır:
+geri döndürmektedir. Fonksiyon güncel çekirdeklerde ```include/linux/highmem-internals.h`` dosyası içerisinde 
+şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -1846,115 +1847,21 @@ kontrol edilebilmektedir:
 ve ``kmap_local_page`` fonksiyonlarından hangisinin hangi durumda kullanılacağına ilişkin karar ağacını
 aşağıdaki gibi oluşturabiliriz:
 
-.. code-block:: text
-
-    HIGHMEM sayfasına erişmem gerekiyor
-            │
-            ▼
-    Interrupt / IRQ bağlamı içerisinde miyim?
-    ├── Evet ──► kmap_atomic() veya kmap_local_page()
-    │              │
-    │              ▼
-    │         Çok kısa bir erişim mi? (birkaç satır)
-    │         ├── Evet ──► kmap_atomic()
-    │         └── Hayır ─► kmap_local_page() (kernel 5.x+)
-    │
-    └── Hayır ─► Process bağlamı içerisinde miyim?
-                   │
-                   ▼
-              Uzun süreli erişim gerekli mi?
-              ├── Evet ──► kmap()  (proses uyuyabilir)
-              └── Hayır ─► kmap_local_page() tercih et
+.. figure:: _static/highmem-kmap-decision-tree.png
+   :align: center
+   :width: 50%
 
 Aynı karar ağacı güncel çekirdekler için şöyle oluşturulabilir:
 
-.. code-block:: text
-
-    HIGHMEM sayfasına erişmem gerekiyor
-            │
-            ▼
-    Eşlenen adres başka bir task'a/CPU'ya verilecek
-    ya da fonksiyon kapsamı dışında saklanacak mı?
-    │
-    ├── Evet ──► kmap()
-    │            (tek meşru kullanım alanı; process bağlamı
-    │             gerektirir, slot beklerken uyuyabilir)
-    │
-    └── Hayır ─► kmap_local_page()   ◄── varsayılan tercih
-                    │
-                    ▼
-            Eşleştirme sırasında page fault
-            olmaması mı gerekiyor?
-            ├── Evet ──► kmap_local_page() + pagefault_disable()
-            └── Hayır ─► olduğu gibi kullan
-                    │
-                    ▼
-            (IRQ / softirq / spinlock altı dahil her
-            bağlamdan çağrılabilir; LIFO sırayla
-            kunmap_local(), task başına en çok 16 iç içe)
+.. figure:: _static/kmap-local-decision-tree.png
+   :align: center
+   :width: 50%
 
 Aşağıdaki tabloda bu üç fonksiyonu karşılaştırıyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :widths: 32 23 23 22
-
-   * - Özellik
-     - ``kmap``
-     - ``kmap_atomic``
-     - ``kmap_local_page``
-   * - Bölge
-     - pkmap
-     - fixmap
-     - fixmap
-   * - Slot takibi
-     - global dizi
-     - CPU başına
-     - thread başına stack
-   * - Bloke oluşur mu?
-     - Evet
-     - Hayır
-     - Hayır
-   * - Preemption disable
-     - Hayır
-     - Evet
-     - Hayır
-   * - Pagefault disable
-     - Hayır
-     - Evet
-     - Hayır
-   * - Migration disable
-     - Hayır
-     - Evet (örtük)
-     - Evet
-   * - IRQ içinde güvenli
-     - Hayır
-     - Evet
-     - Evet
-   * - Bağlamsal geçiş güvenli
-     - Evet
-     - Hayır
-     - Evet
-   * - Adres paylaşılabilir
-     - Evet
-     - Hayır
-     - Hayır
-   * - Max eşzamanlı slot
-     - 512 (global)
-     - CPU başına 16
-     - görev başına 16
-   * - LOWMEM sayfası için
-     - ``page_address``
-     - ``page_address``
-     - ``page_address``
-   * - Önerilen bağlam
-     - Yalnız adres paylaşımı için
-     - Önerilmiyor (*deprecated*)
-     - Her bağlam (varsayılan)
-   * - Çekirdek versiyonu
-     - 2.x+
-     - 2.x+ (*depr.*)
-     - 5.11+
+.. image:: _static/kmap-variants-comparison-table.png
+   :align: center
+   :width: 80%
 
 64 bit sistemlerde ``HIGHMEM`` diye bir bölgenin (*zone*) olmadığına bir kez daha dikkatinizi çekmek istiyoruz.
 Bu nedenle 64 bit sistemlerde yukarıdaki fonksiyonlar ``CONFIG_HIGHMEM`` konfigürasyon parametresi yoluyla
