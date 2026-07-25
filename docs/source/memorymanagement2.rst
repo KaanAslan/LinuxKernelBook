@@ -944,7 +944,7 @@ NUMA düğümlerinin bölgeleri de bu dizi içerisindedir. ``node_zonelists`` di
 
 .. image:: _static/pgdat-zonelists.png
    :align: center
-   :width: 70%
+   :width: 75%
 
 Bu temsili çizimde örnek olarak 0'ıncı NUMA düğümünün ``node_zonelists`` dizisi gösterilmiştir. Görüldüğü
 gibi bu dizinin 0'ıncı elemanı bölgelerden oluşmaktadır; ancak bölgeler yalnızca 0'ıncı düğümün bölgelerini
@@ -955,7 +955,7 @@ dolaşılmasına 0'ıncı düğümdeki DMA32'den başlatılacaktır:
 .. figure:: _static/pgdat-zonelists-search-start.png
    :align: center
    :alt: pg_data_t zonelist yapısı
-   :width: 90%
+   :width: 95%
 
 Eğer bu bölgenin göç *fallback* listesinin hiçbir yerinde talep edilen miktarda boş sayfa bulunamazsa bundan
 sonra arama 0'ıncı düğümün ``ZONE_DMA`` bölgesinden devam edecek, orada da bulunamazsa 1'inci düğümün
