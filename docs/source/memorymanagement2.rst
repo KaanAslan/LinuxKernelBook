@@ -944,7 +944,7 @@ NUMA düğümlerinin bölgeleri de bu dizi içerisindedir. ``node_zonelists`` di
 
 .. image:: _static/pgdat-zonelists.png
    :align: center
-   :width: 75%
+   :width: 80%
 
 Bu temsili çizimde örnek olarak 0'ıncı NUMA düğümünün ``node_zonelists`` dizisi gösterilmiştir. Görüldüğü
 gibi bu dizinin 0'ıncı elemanı bölgelerden oluşmaktadır; ancak bölgeler yalnızca 0'ıncı düğümün bölgelerini
@@ -978,19 +978,19 @@ blok tahsisat sistemindedir. Örneğin UMA x86-64 mimarisindeki başlangıç dur
 .. figure:: _static/node-zone-free-area-movable.png
    :align: center
    :alt: Açılış anındaki serbest blok dağılımı
-   :width: 60%
+   :width: 75%
 
 Örneğin ARM64 kullanılan Raspberry Pi modelleri için başlangıç durumu şöyledir:
 
 .. image:: _static/rpi-node-zone-free-area.png
    :align: center
-   :width: 75 %
+   :width: 90 %
 
 ARM32 kullanan BeagleBone modelleri için de başlangıç durumu şöyledir:
 
 .. image:: _static/bbb-node-zone-free-area.png
    :align: center
-   :width: 80%
+   :width: 90%
 
 Fallback Mekanizmasında NUMA Düğümlerinin Dolaşım Sırası
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
