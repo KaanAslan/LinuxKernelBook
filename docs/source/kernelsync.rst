@@ -1382,10 +1382,9 @@ blokeye yol açabilecek senkronizasyon nesneleri kullanılmamalıdır. Bu tür d
 kullanılmalıdır. Aşağıdaki tabloda spinlock kullanımı ile mutex kullanımı çeşitli bakımlardan
 karşılaştırılmıştır.
 
-.. image:: _static/spinlock-mutex-comparison.png
-   :alt: Spinlock ile Mutex Karşılaştırması
+.. figure:: _static/spinlock-mutex-comparison-table.png
    :align: center
-   :width: 80%
+   :width: 70%
 
 Okuma Yazma Kilitleri 
 =====================
@@ -2674,8 +2673,8 @@ Bu makine komutlarının içsel işleyişleri farklı olabilmektedir. ``test_and
 fonksiyonu ise belli bir bitin durumunu atomik bir biçimde elde etmek için kullanılmaktadır. Aşağıda bu
 fonksiyonların işlevleri tablo biçiminde verilmiştir:
 
-.. image:: _static/atomic-bit-ops.png
-   :alt: Atomik Bit Fonksiyonları
+.. figure:: _static/bit-operations-table.png
+   :alt: Atomik Bit İşlem Fonksiyonları
    :align: center
    :width: 70%
 
@@ -3004,7 +3003,7 @@ ayrılarak yukarıda belirttiğimiz gibi kendi içlerinde pipeline mekanizması 
 
 Konuyu derinleştirmeden önce bazı önemli terimlerin ne anlam ifade ettiğini açıklayalım:
 
-.. image:: _static/memory-ordering-terms.png
+.. figure:: _static/memory-ordering-terms-table.png
    :alt: Bellek Sıralaması ile İlgili Terimler
    :align: center
    :width: 70%
@@ -3041,7 +3040,7 @@ Store/Load.
 .. image:: _static/reordering-types.png
    :alt: Dört Temel Yeniden Sıralama Türü
    :align: center
-   :width: 70%
+   :width: 75%
 
 Yukarıdaki dört yer değiştirme her türlü işlemci tarafından uygulanmamaktadır. Örneğin Intel işlemcileri
 yalnızca Store/Load işlemlerinin yerlerini değiştirebilmektedir. Diğer işlemlerde yer değiştirme
@@ -3812,120 +3811,30 @@ olmadığı ``__STDC_NO_ATOMICS__`` makrosuyla belirlenebilmektedir. C11 ile ekl
 fonksiyonları ve bunların yaklaşık Linux çekirdeğindeki karşılıklarını aşağıda tablo biçiminde
 veriyoruz:
 
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-|                              C11                               |             Linux Çekirdeği             |             Açıklama             |
-+================================================================+=========================================+==================================+
-| atomic_load_explicit(…, acquire)                               | smp_load_acquire                        | Acquire load, normal değişken    |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_load_explicit(…, acquire)                               | atomic_read_acquire                     | Acquire load, atomic_t           |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_store_explicit(…, release)                              | smp_store_release                       | Release store, normal değişken   |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_store_explicit(…, release)                              | atomic_set_release                      | Release store, atomic_t          |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_exchange_explicit(…, acq_rel)                           | xchg + barrier                          | Exchange, her iki yön            |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_compare_exchange_strong_explicit(…, acquire, relaxed)   | cmpxchg_acquire                         | CAS, acquire                     |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_compare_exchange_strong_explicit(…, release, relaxed)   | cmpxchg_release                         | CAS, release                     |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_compare_exchange_strong_explicit(…, acq_rel, relaxed)   | cmpxchg                                 | CAS, tam barrier                 |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_fetch_add_explicit(…, acquire)                          | atomic_fetch_add_acquire                | Add + acquire load               |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_fetch_add_explicit(…, release)                          | atomic_fetch_add_release                | Add + release store              |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_thread_fence(acquire)                                   | smp_rmb / smp_acquire__after_ctrl_dep   | Acquire fence                    |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_thread_fence(release)                                   | smp_wmb                                 | Release fence                    |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_thread_fence(seq_cst)                                   | smp_mb                                  | Full barrier                     |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_load_explicit(…, relaxed)                               | READ_ONCE                               | Barrier yok, compiler fence      |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_store_explicit(…, relaxed)                              | WRITE_ONCE                              | Barrier yok, compiler fence      |
-+----------------------------------------------------------------+-----------------------------------------+----------------------------------+
+.. figure:: _static/c11-kernel-atomics-table.png
+   :alt: C11 ve Linux Çekirdeği Atomik İşlem Karşılıkları
+   :align: center
+   :width: 80%
 
 Bu fonksiyonların ayrıntıları için C standartlarına başvurabilirsiniz. Tabii daha önceden de
 belirttiğimiz gibi hiçbir zaman Linux çekirdeğinde derleyicinin sunduğu bu tür fonksiyonlar
 kullanılmamaktadır. C++'a da C++11 ile birlikte bariyer ve acquire/release fonksiyonları sınıfsal
 bir temsille eklenmiştir:
 
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-|                                           C++11                                           |             Linux Çekirdeği             |             Açıklama             |
-+===========================================================================================+=========================================+==================================+
-| atomic<T>.load(memory_order_acquire)                                                      | smp_load_acquire                        | Acquire load, normal değişken    |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.load(memory_order_acquire)                                                      | atomic_read_acquire                     | Acquire load, atomic_t           |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.store(val, memory_order_release)                                                | smp_store_release                       | Release store, normal değişken   |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.store(val, memory_order_release)                                                | atomic_set_release                      | Release store, atomic_t          |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.exchange(val, memory_order_acq_rel)                                             | xchg + barrier                          | Exchange, her iki yön            |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.compare_exchange_strong(exp, des, memory_order_acquire, memory_order_relaxed)   | cmpxchg_acquire                         | CAS, acquire                     |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.compare_exchange_strong(exp, des, memory_order_release, memory_order_relaxed)   | cmpxchg_release                         | CAS, release                     |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.compare_exchange_strong(exp, des, memory_order_acq_rel, memory_order_relaxed)   | cmpxchg                                 | CAS, tam barrier                 |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.fetch_add(val, memory_order_acquire)                                            | atomic_fetch_add_acquire                | Add + acquire load               |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.fetch_add(val, memory_order_release)                                            | atomic_fetch_add_release                | Add + release store              |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_thread_fence(memory_order_acquire)                                                 | smp_rmb / smp_acquire__after_ctrl_dep   | Acquire fence                    |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_thread_fence(memory_order_release)                                                 | smp_wmb                                 | Release fence                    |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic_thread_fence(memory_order_seq_cst)                                                 | smp_mb                                  | Full barrier                     |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.load(memory_order_relaxed)                                                      | READ_ONCE                               | Barrier yok, compiler fence      |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
-| atomic<T>.store(val, memory_order_relaxed)                                                | WRITE_ONCE                              | Barrier yok, compiler fence      |
-+-------------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------+
+.. figure:: _static/cpp11-kernel-atomics-table.png
+   :alt: C++11 ve Linux Çekirdeği Atomik İşlem Karşılıkları
+   :align: center
+   :width: 80%
 
 Bu sınıfların ayrıntıları için de C++ standartlarına başvurabilirsiniz.
 
 Ayrıca daha önceden de belirttiğimiz gibi bariyerler ve acquire/release mekanizması için gcc'de
 built-in fonksiyonlar da bulunmaktadır. Bunların listesini de aşağıda tablo biçiminde veriyoruz:
 
-+-----------------------------------------------+------------------------+------------------------------------------------+
-|              GCC __sync Built-in              |      Linux Kernel      |                    Açıklama                    |
-+===============================================+========================+================================================+
-| __sync_fetch_and_add(ptr, val)                | atomic_fetch_add       | Add, full barrier, eski değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_fetch_and_sub(ptr, val)                | atomic_fetch_sub       | Sub, full barrier, eski değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_fetch_and_and(ptr, val)                | atomic_fetch_and       | AND, full barrier, eski değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_fetch_and_or(ptr, val)                 | atomic_fetch_or        | OR, full barrier, eski değeri döndürür         |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_fetch_and_xor(ptr, val)                | atomic_fetch_xor       | XOR, full barrier, eski değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_fetch_and_nand(ptr, val)               | —                      | NAND, full barrier, kernel karşılığı yok       |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_add_and_fetch(ptr, val)                | atomic_add_return      | Add, full barrier, yeni değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_sub_and_fetch(ptr, val)                | atomic_sub_return      | Sub, full barrier, yeni değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_and_and_fetch(ptr, val)                | —                      | AND, full barrier, yeni değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_or_and_fetch(ptr, val)                 | —                      | OR, full barrier, yeni değeri döndürür         |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_xor_and_fetch(ptr, val)                | —                      | XOR, full barrier, yeni değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_bool_compare_and_swap(ptr, old, new)   | cmpxchg (bool sonuç)   | CAS, full barrier, başarı/başarısız döndürür   |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_val_compare_and_swap(ptr, old, new)    | cmpxchg (eski değer)   | CAS, full barrier, eski değeri döndürür        |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_lock_test_and_set(ptr, val)            | xchg                   | Exchange, yalnızca acquire barrier             |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_lock_release(ptr)                      | smp_store_release      | Sıfırlama, yalnızca release barrier            |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-| __sync_synchronize()                          | smp_mb                 | Full memory barrier                            |
-+-----------------------------------------------+------------------------+------------------------------------------------+
-
+.. figure:: _static/gcc-sync-kernel-atomics-table.png
+   :alt: GCC __sync Built-in Fonksiyonları ve Linux Çekirdeği Karşılıkları,
+   :align: center
+   :width: 80%
 
 RCU (Read-Copy-Update) Mekanizması
 ==================================
@@ -3990,7 +3899,7 @@ RCU mekanizmasında paylaşılan nesne yani veri yapısı bir gösterici ile gö
 .. image:: _static/rcu-state1.png
    :alt: RCU — Başlangıç durumu
    :align: center
-   :width: 40%
+   :width: 45%
 
 Okuma yapan akışlar ``ptr`` göstericisinin gösterdiği yerdeki paylaşılan alana hiç kilit almadan
 erişirler. Ancak yazma yapan akışlar bu veri yapısının bir kopyasını oluşturup yazmayı bu kopya
@@ -3999,7 +3908,7 @@ erişirler. Ancak yazma yapan akışlar bu veri yapısının bir kopyasını olu
 .. image:: _static/rcu-state2.png
    :alt: RCU — Kopya oluşturma aşaması
    :align: center
-   :width: 40%
+   :width: 45%
 
 Yazma yapan akışlar yazma işlemini kopya üzerinde yaptıktan sonra ``ptr`` göstericisini bu kopyayı
 gösterecek biçimde güncellerler:
@@ -4007,7 +3916,7 @@ gösterecek biçimde güncellerler:
 .. image:: _static/rcu-state3.png
    :alt: RCU — Gösterici güncellemesi sonrası
    :align: center
-   :width: 40%
+   :width: 45%
 
 Burada önemli bir sorun eski veri yapısının ne zaman, nasıl ve kim tarafından yok edileceğidir. İlk
 akla gelen yöntem en son okuma yapan akışın bu veri yapısını silmesidir. Ancak bu yöntemin genel bir
@@ -5141,7 +5050,7 @@ vardır. pthread kütüphanesinin senkronizasyon fonksiyonları bu *futex* siste
 
 .. image:: _static/futex-arch.png
    :align: center
-   :width: 70%
+   :width: 75%
 
 *futex* sistem fonksiyonu için bir POSIX sarma fonksiyonu olmadığı gibi *libc* kütüphanesinde de bir sarma
 fonksiyon bulunmamaktadır. Ancak anımsanacağı gibi sistem fonksiyonları kullanıcı modundan *libc* kütüphanesinin

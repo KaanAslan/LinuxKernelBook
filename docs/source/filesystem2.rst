@@ -367,42 +367,10 @@ bulunmaktadır. Data bloğun ilk bloğunda kök dizinin içeriğinin bulunduğun
 
 Bu alanların anlamları aşağıdaki tabloda özetlenmiştir:
 
-.. list-table:: *simplefs* Süper Blok Alanları
-   :header-rows: 1
-
-   * - Alan
-     - Tür
-     - Açıklama
-   * - ``magic``
-     - ``__le32``
-     - ``0x53494D46`` — sihirli sayı ("SIMF")
-   * - ``block_size``
-     - ``__le32``
-     - Her zaman 4096 byte
-   * - ``inode_count``
-     - ``__le32``
-     - Format sırasında belirlenir
-   * - ``block_count``
-     - ``__le32``
-     - Aygıt boyutu / 4096
-   * - ``free_inodes``
-     - ``__le32``
-     - Dinamik güncellenir
-   * - ``free_blocks``
-     - ``__le32``
-     - Dinamik güncellenir
-   * - ``inode_table_block``
-     - ``__le32``
-     - Her zaman 3
-   * - ``inode_table_size``
-     - ``__le32``
-     - ``(inode_count + 63) / 64`` — yukarı yuvarlanır
-   * - ``data_block_start``
-     - ``__le32``
-     - ``3 + inode_table_size + 1``
-   * - ``padding[4060]``
-     - ``__u8[]``
-     - Bloğu 4096 byte'a tamamlamak için dolgu
+.. figure:: _static/simplefs-superblock-table.png
+   :alt: simplefs Süper Blok Alanları
+   :align: center
+   :width: 60%
 
 İzleyen paragraflarda da göreceğimiz gibi bir inode elemanı inode blokta 64 byte yer kaplamaktadır.
 Dolayısıyla bir blokta 64 inode elemanı bulunmaktadır. Yukarıdaki tabloda ``inode_table_size``
@@ -444,34 +412,8 @@ Linux'un uyguladığı bitsel organizasyon kullanılmaktadır:
 .. figure:: _static/simplefs-mode-bits.png
    :align: center
    :alt: inode mode alanı bit organizasyonu
-   :width: 90%
- 
-   inode ``mode`` alanının bit organizasyonu
- 
-.. list-table:: ``mode`` Alanı Bit Açıklamaları
-   :header-rows: 1
- 
-   * - Kısaltma
-     - Açıklama
-   * - ``UID``
-     - setuid biti
-   * - ``GID``
-     - setgid biti
-   * - ``STK``
-     - sticky bit
-   * - ``UR``
-     - Kullanıcı okuma (*user read*)
-   * - ``UW``
-     - Kullanıcı yazma (*user write*)
-   * - ``UX``
-     - Kullanıcı çalıştırma (*user execute*)
-   * - ``GR``
-     - Grup okuma (*group read*)
-   * - ``GW``
-     - Grup yazma (*group write*)
-   * - ``GX``
-     - Grup çalıştırma (*group execute*)
- 
+   :width: 85%
+
 Inode elemanının ``uid`` ve ``gid`` alanları dosyaya ilişkin kullanıcı ve grup kimliklerini
 belirtmektedir. ``size`` alanı dosyanın uzunluğunu, ``nlink`` alanı hard link sayacını
 belirtmektedir. *simplefs* sistemimizde dosyalar en fazla bir blok yer kapladığından yalnızca tek
@@ -1150,7 +1092,7 @@ Buradaki ``super_block`` yapısının ``s_fs_info`` elemanı için oluşan durum
 .. image:: _static/superblock-fsinfo.png
    :alt: super_block → simplefs_super_block → simplefs_disk_super_block gösterici zinciri
    :align: center
-   :width: 80%
+   :width: 85%
 
 Artık çekirdek bize ``super_block`` nesnesini verdiğinde biz kendi sistemimize ilişkin tüm süper blok bilgilerine
 erişiyor olacağız. ``simplefs_super_block`` yapısının ``sbd`` dışındaki diğer elemanlarını izleyen paragraflarda
@@ -1768,14 +1710,10 @@ inode nesnemize erişebiliriz. Dosya sistemimize ilişkin ``simplefs_inode`` yap
 nesnesinin yanı sıra aynı zamanda ilgili inode elemanının diskteki hangi blokta tutulduğu bilgisinin de
 bulunduğuna dikkat ediniz:
 
-.. code-block:: none
-
-   simplefs_inode
-   ┌────────────┐
-   │  block_no  │
-   ├────────────┤ ──────────▶ fonksiyonun döndürdüğü adres
-   │ vfs_inode  │
-   └────────────┘
+.. figure:: _static/simplefs-inode-return-address.png
+   :alt: simplefs_inode yapısı ve döndürülen adres
+   :align: center
+   :width: 60%
 
 Pekiyi biz ``alloc_inode`` fonksiyonumuz içerisinde ``simplefs_inode`` nesnesini nasıl tahsis edeceğiz? İşte
 aslında bu konu ileride alacağımız *dilimli tahsisat sistemi (slab allocator)* denilen çekirdek tahsisat
@@ -1793,7 +1731,8 @@ burada bu işlemi yapan fonksiyon çağrısını vermekle yetineceğiz:
    static struct kmem_cache *simplefs_inode_cachep;
    /* ... */
 
-   simplefs_inode_cachep = kmem_cache_create("simplefs_inode_cache", sizeof(struct simplefs_inode), 0, SLAB_HWCACHE_ALIGN, NULL);
+   simplefs_inode_cachep = kmem_cache_create("simplefs_inode_cache", 
+            sizeof(struct simplefs_inode), 0, SLAB_HWCACHE_ALIGN, NULL);
 
 Fonksiyon başarı durumunda dilimli tahsisat sistemine ilişkin bilgilerin saklandığı ``kmem_cache`` türünden
 yapı nesnesinin adresine, başarısızlık durumunda NULL adrese geri dönmektedir. Başarısızlık durumunda modülün
@@ -1882,7 +1821,7 @@ yapan fonksiyonumuzun parametrik yapısı şöyledir:
 .. code-block:: c
 
    static struct simplefs_disk_inode *simplefs_get_inode_disk(struct super_block *sb,
-               unsigned long ino, struct buffer_head **bhpp)
+            unsigned long ino, struct buffer_head **bhpp)
    {
        /* ... */
    }
@@ -2174,40 +2113,27 @@ barındırmaktadır. Biz daha önce bu operations yapılarından kısaca bahsetm
        const char * (*get_link) (struct dentry *, struct inode *, struct delayed_call *);
        int (*permission) (struct mnt_idmap *, struct inode *, int);
        struct posix_acl * (*get_inode_acl)(struct inode *, int, bool);
-
        int (*readlink) (struct dentry *, char __user *,int);
-
-       int (*create) (struct mnt_idmap *, struct inode *,struct dentry *,
-               umode_t, bool);
+       int (*create) (struct mnt_idmap *, struct inode *,struct dentry *, umode_t, bool);
        int (*link) (struct dentry *,struct inode *,struct dentry *);
        int (*unlink) (struct inode *,struct dentry *);
-       int (*symlink) (struct mnt_idmap *, struct inode *,struct dentry *,
-               const char *);
-       struct dentry *(*mkdir) (struct mnt_idmap *, struct inode *,
-                   struct dentry *, umode_t);
+       int (*symlink) (struct mnt_idmap *, struct inode *,struct dentry *, const char *);
+       struct dentry *(*mkdir) (struct mnt_idmap *, struct inode *, struct dentry *, umode_t);
        int (*rmdir) (struct inode *,struct dentry *);
-       int (*mknod) (struct mnt_idmap *, struct inode *,struct dentry *,
-               umode_t,dev_t);
+       int (*mknod) (struct mnt_idmap *, struct inode *,struct dentry *, umode_t,dev_t);
        int (*rename) (struct mnt_idmap *, struct inode *, struct dentry *,
                struct inode *, struct dentry *, unsigned int);
        int (*setattr) (struct mnt_idmap *, struct dentry *, struct iattr *);
-       int (*getattr) (struct mnt_idmap *, const struct path *,
-               struct kstat *, u32, unsigned int);
+       int (*getattr) (struct mnt_idmap *, const struct path *, struct kstat *, u32, unsigned int);
        ssize_t (*listxattr) (struct dentry *, char *, size_t);
-       int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
-               u64 len);
+       int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start, u64 len);
        int (*update_time)(struct inode *, int);
-       int (*atomic_open)(struct inode *, struct dentry *,
-               struct file *, unsigned open_flag,
-               umode_t create_mode);
-       int (*tmpfile) (struct mnt_idmap *, struct inode *,
-               struct file *, umode_t);
-       struct posix_acl *(*get_acl)(struct mnt_idmap *, struct dentry *,
-                       int);
-       int (*set_acl)(struct mnt_idmap *, struct dentry *,
-               struct posix_acl *, int);
-       int (*fileattr_set)(struct mnt_idmap *idmap,
-                   struct dentry *dentry, struct file_kattr *fa);
+       int (*atomic_open)(struct inode *, struct dentry *, 
+               struct file *, unsigned open_flag, umode_t create_mode);
+       int (*tmpfile) (struct mnt_idmap *, struct inode *, struct file *, umode_t);
+       struct posix_acl *(*get_acl)(struct mnt_idmap *, struct dentry *, int);
+       int (*set_acl)(struct mnt_idmap *, struct dentry *, struct posix_acl *, int);
+       int (*fileattr_set)(struct mnt_idmap *idmap, struct dentry *dentry, struct file_kattr *fa);
        int (*fileattr_get)(struct dentry *dentry, struct file_kattr *fa);
        struct offset_ctx *(*get_offset_ctx)(struct inode *inode);
    } ____cacheline_aligned;
@@ -2251,9 +2177,9 @@ aşağıdaki fonksiyonları yazmamız gerekir:
    static const struct inode_operations simplefs_dir_inode_ops = {
        .lookup = simplefs_lookup,
        .create = simplefs_create,
-       .mkdir  = simplefs_mkdir,
+       .mkdir = simplefs_mkdir,
        .unlink = simplefs_unlink,
-       .rmdir  = simplefs_rmdir,
+       .rmdir = simplefs_rmdir,
    };
 
 ``lookup`` fonksiyonu bizim dosya sistemimize ilişkin yol ifadeleri çözümlenirken, ``create`` fonksiyonu ilgili 
@@ -2295,8 +2221,8 @@ gerekir. Dosya sistemimizin disk tarafındaki dizin girişleri şöyle organize 
    #define SIMPLEFS_FILENAME_MAXLEN    32
 
    struct simplefs_disk_dentry {
-       __le32 inode;                           /* inode number */
-       char name[SIMPLEFS_FILENAME_MAXLEN];    /* File name */
+       __le32 inode;                            /* inode number */
+       char name[SIMPLEFS_FILENAME_MAXLEN];     /* File name */
    };
 
 Daha önceden de belirttiğimiz gibi aslında dizinler birer dosya gibidir. Dizin dosyalarının içerisinde dosya
@@ -3161,20 +3087,10 @@ tampona kopyalamaktadır. İşte ``sys_getdents64`` fonksiyonu bu işlemlerin ya
 ``file_operations`` yapısının ``iterate`` ya da ``iterate_shared`` fonksiyonunu çağırarak dosya sistemine
 havale etmektedir. Yeni çekirdeklerdeki bu çağırma silsilesi şöyledir:
 
-.. code-block:: none
-
-   SYSCALL_DEFINE3(getdents64, ...)            [fs/readdir.c]
-   │
-   └─→ iterate_dir(file, ctx)                  [fs/readdir.c]
-           │
-           ├─→ down_read(&inode->i_rwsem)      [Okuma kilidi]
-           │
-           ├─→ file->f_op->iterate_shared(file, ctx)  [Dosya sistemi callback]
-           │       │
-           │       └─→ ext4_readdir()                 [fs/ext4/dir.c]
-           │       └─→ simplefs_readdir()             [Sizin implementasyonunuz]
-           │
-           └─→ up_read(&inode->i_rwsem)        [Kilidi serbest bırak]
+.. figure:: _static/getdents64-call-graph.png
+   :alt: getdents64 çağrı grafı
+   :align: center
+   :width: 70% 
 
 ``sys_getdents64`` fonksiyonunun parametrik yapısı şöyledir:
 
@@ -3312,27 +3228,10 @@ değerine geri dönmektedir. ``dir_emit`` fonksiyonu herhangi bir errno koduna g
 ``dir_emit`` fonksiyonunun son parametresi iletilen dizin girişinin türünü belirtmektedir. Önemli tür
 belirten sembolik sabitler şunlardır:
 
-.. list-table::
-   :header-rows: 1
-
-   * - DT Değeri
-     - Anlamı
-   * - ``DT_DIR``
-     - Directory (Dizin)
-   * - ``DT_REG``
-     - Regular File (Normal dosya)
-   * - ``DT_LNK``
-     - Symbolic Link
-   * - ``DT_CHR``
-     - Character Device
-   * - ``DT_BLK``
-     - Block Device
-   * - ``DT_FIFO``
-     - FIFO / Named Pipe
-   * - ``DT_SOCK``
-     - Socket
-   * - ``DT_UNKNOWN``
-     - Type Unknown
+.. figure:: _static/dt-values-table.png
+   :alt: DT Değerleri ve Anlamları
+   :align: center
+   :width: 30%
 
 Biz örneğimizde bu parametre için ``DT_UNKNOWN`` değerini argüman olarak geçtik. Bu durumda dosyanın türü
 daha ileri aşamalarda tespit edilmektedir.
@@ -4028,91 +3927,10 @@ bitin indeksi elde edilmiştir. Bitmap üzerinde işlem yapan hazır çekirdek f
 fonksiyonlar bir döngü içerisinde işlemcilerin bit düzeyinde işlemler yapan makine komutları kullanılarak
 yazılmıştır. Aşağıda bitmap üzerinde işlemler yapan çekirdek fonksiyonlarının listesi verilmiştir:
 
-.. list-table::
-   :header-rows: 1
-
-   * - Fonksiyon Adı
-     - Açıklama
-   * - ``set_bit()``
-     - Belirtilen biti 1 olarak ayarlar (atomik)
-   * - ``clear_bit()``
-     - Belirtilen biti 0 olarak ayarlar (atomik)
-   * - ``change_bit()``
-     - Belirtilen bitin değerini tersine çevirir (atomik)
-   * - ``test_and_set_bit()``
-     - Biti test eder, 1 yapar ve eski değeri döndürür (atomik)
-   * - ``test_and_clear_bit()``
-     - Biti test eder, 0 yapar ve eski değeri döndürür (atomik)
-   * - ``test_and_change_bit()``
-     - Biti test eder, tersine çevirir ve eski değeri döndürür
-   * - ``test_bit()``
-     - Belirtilen bitin değerini test eder
-   * - ``__set_bit()``
-     - ``set_bit()`` fonksiyonunun atomik olmayan versiyonu
-   * - ``__clear_bit()``
-     - ``clear_bit()`` fonksiyonunun atomik olmayan versiyonu
-   * - ``__change_bit()``
-     - ``change_bit()`` fonksiyonunun atomik olmayan versiyonu
-   * - ``__test_and_set_bit()``
-     - ``test_and_set_bit()`` atomik olmayan versiyonu
-   * - ``__test_and_clear_bit()``
-     - ``test_and_clear_bit()`` atomik olmayan versiyonu
-   * - ``__test_and_change_bit()``
-     - ``test_and_change_bit()`` atomik olmayan versiyonu
-   * - ``find_first_bit()``
-     - Bitmap'te 1 olan ilk biti bulur
-   * - ``find_first_zero_bit()``
-     - Bitmap'te 0 olan ilk biti bulur
-   * - ``find_next_bit()``
-     - Belirtilen pozisyondan sonraki 1 olan biti bulur
-   * - ``find_next_zero_bit()``
-     - Belirtilen pozisyondan sonraki 0 olan biti bulur
-   * - ``find_last_bit()``
-     - Bitmap'te 1 olan son biti bulur
-   * - ``for_each_set_bit()``
-     - Bitmap'teki tüm 1 bitler üzerinde döngü yapar (makro)
-   * - ``for_each_clear_bit()``
-     - Bitmap'teki tüm 0 bitler üzerinde döngü yapar (makro)
-   * - ``bitmap_zero()``
-     - Bitmap'in tüm bitlerini 0 yapar
-   * - ``bitmap_fill()``
-     - Bitmap'in tüm bitlerini 1 yapar
-   * - ``bitmap_copy()``
-     - Bir bitmap'i diğerine kopyalar
-   * - ``bitmap_and()``
-     - İki bitmap arasında AND işlemi yapar
-   * - ``bitmap_or()``
-     - İki bitmap arasında OR işlemi yapar
-   * - ``bitmap_xor()``
-     - İki bitmap arasında XOR işlemi yapar
-   * - ``bitmap_andnot()``
-     - İki bitmap arasında AND-NOT işlemi yapar
-   * - ``bitmap_complement()``
-     - Bitmap'in tümleyenini alır (NOT işlemi)
-   * - ``bitmap_equal()``
-     - İki bitmap'in eşit olup olmadığını kontrol eder
-   * - ``bitmap_intersects()``
-     - İki bitmap'in kesişip kesişmediğini kontrol eder
-   * - ``bitmap_subset()``
-     - Bir bitmap'in diğerinin alt kümesi olup olmadığını kontrol eder
-   * - ``bitmap_empty()``
-     - Bitmap'in tüm bitlerinin 0 olup olmadığını kontrol eder
-   * - ``bitmap_full()``
-     - Bitmap'in tüm bitlerinin 1 olup olmadığını kontrol eder
-   * - ``bitmap_weight()``
-     - Bitmap'teki 1 olan bitlerin sayısını döndürür
-   * - ``bitmap_shift_right()``
-     - Bitmap'i sağa kaydırır
-   * - ``bitmap_shift_left()``
-     - Bitmap'i sola kaydırır
-   * - ``bitmap_parse()``
-     - String'den bitmap oluşturur
-   * - ``bitmap_print_to_pagebuf()``
-     - Bitmap'i string formatında yazdırır
-   * - ``BITMAP_FIRST_WORD_MASK()``
-     - İlk kelime için maske oluşturur (makro)
-   * - ``BITMAP_LAST_WORD_MASK()``
-     - Son kelime için maske oluşturur (makro)
+.. figure:: _static/bitmap-functions-table.png
+   :alt: Bit ve Bitmap İşlem Fonksiyonları
+   :align: center
+   :width: 60%
 
 Biz ``simplefs_alloc_inode_num`` fonksiyonumuzda ``find_first_zero_bit`` fonksiyonunu kullandık. Bu
 fonksiyon belli bir adresten itibaren belli bir bit uzunluğuna kadar olan bitler arasında ilk 0 olan bitin

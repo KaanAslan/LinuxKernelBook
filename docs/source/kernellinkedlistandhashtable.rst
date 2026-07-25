@@ -827,7 +827,6 @@ ağırlıklı olarak bu stratejiler tercih edilmektedir.
    Linux çekirdeklerindeki tüm hash tablolarında *ayrı zincir oluşturma (separate
    chaining)* alt yöntemi tercih edilmiştir.
 
-
 Ayrı Zincir Oluşturma (Separate Chaining)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

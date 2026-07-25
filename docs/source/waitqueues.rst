@@ -39,7 +39,7 @@ bölümde açıklayacağız. Aşağıda güncel çekirdeklerdeki çizelgeleme i�
 .. image:: _static/scheduler-run-queue.png
    :alt: Çizelgeleyici ve Çalışma Kuyruğu
    :align: center
-   :width: 80%
+   :width: 90%
 
 Çalışma kuyruğundaki bir thread'e çalışma sırası geldiğinde o thread CPU'ya atanıp belli bir süre
 çalıştırılır. Bu süre dolduğunda bir sonraki turda kalınan yerden çalışmaya devam edebilmesi için
@@ -96,7 +96,7 @@ Bir thread'in yaşam döngüsü yalın bir biçimde şöyle betimlenebilir:
 .. image:: _static/thread-lifecycle.png
    :alt: Thread Yaşam Döngüsü
    :align: center
-   :width: 75%
+   :width: 80%
 
 Buradaki *Running* thread'in CPU'ya atanmış ve çalışmakta olduğu, *Ready* ise thread'in çalışma kuyruğunda 
 bulunduğunu ve sonraki quantum'u beklediği anlamına gelmektedir. Thread dışsal bir olay nedeniyle bloke olduğunda 
@@ -195,7 +195,7 @@ göstermektedir.
 .. image:: _static/wait-queue-list.png
    :alt: Bekleme Kuyruğu Bağlı Listesi
    :align: center
-   :width: 80%
+   :width: 90%
 
 Çekirdek içerisinde thread'i bekleme kuyruklarına bir düğüm olarak yerleştiren ve oradan çıkartarak
 yine çalışma kuyruklarına yerleştiren daha yüksek seviyeli çekirdek fonksiyonları oluşturulmuştur.
@@ -959,9 +959,9 @@ ayrıntı da ele alınmıştır.
 Bekleme kuyruklarında bazı thread'ler ``wait_event`` fonksiyonlarının exclusive versiyonlarıyla
 kuyruğa yerleştirilmiş olabilir. Örneğin:
 
-.. code-block:: none
-
-    T1 ---> T2 ---> T3 ---> T4(E) ---> T5 ---> T6(E) ---> T7 ---> T8(E) ---> NULL
+.. image:: _static/thread-linked-list.png
+   :align: center
+   :width: 80%
 
 Burada exclusive bekleyen thread'ler (E) ile belirtilmiştir. Bir thread'in exclusive bekleyip
 beklemediği yukarıda da belirttiğimiz gibi ``wait_queue_entry`` yapısının ``flags`` elemanından
@@ -2648,39 +2648,9 @@ Linux çekirdeğinde sahte uyandırmalara neden olan çeşitli durumlar vardır.
 
 Sahte uyanmaların nedenleri aşağıdaki tabloda özetlenmektedir:
 
-+---------------------------+------------------------------------------+-------------------------+
-|          Kaynak           |              Mekanizma                   | Etkilenen Thread Durumu |
-+===========================+==========================================+=========================+
-| ARM WFE / SEV             | Başka bir core'dan gelen SEV talimatı    | INTERRUPTIBLE +         |
-|                           | tüm WFE bekleyen core'ları uyandırır     | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
-| ARM Hypervisor / EL2      | Hypervisor inject ettiği sanal           | INTERRUPTIBLE +         |
-|                           | interrupt'ı guest'e iletmeyebilir        | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
-| ARM Donanım Errata        | Cortex-A57/A72 gibi çekirdeklerde        | INTERRUPTIBLE +         |
-|                           | WFI belirli koşullarda erken döner       | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
-| POWER Thermal Event       | Sıcaklık eşiği aşılınca donanım          | INTERRUPTIBLE +         |
-|                           | CPU'yu yazılımdan bağımsız uyandırır     | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
-| POWER HMT State Rollback  | Hiper-threading güç durumu değişikliği   | INTERRUPTIBLE +         |
-|                           | uyku durumunu iptal edebilir             | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
-| TIF_SIGPENDING            | signal_wake_up → wake_up_state ile       | Sadece                  |
-| (schedule öncesi)         | task uyandırılır, koşul değişmemiştir    | INTERRUPTIBLE           |
-+---------------------------+------------------------------------------+-------------------------+
-| TIF_SIGPENDING            | Task uykudayken sinyal gelir,            | Sadece                  |
-| (schedule sonrası)        | schedule döner ama koşul false           | INTERRUPTIBLE           |
-+---------------------------+------------------------------------------+-------------------------+
-| kthread_stop.             | wake_up_process ile thread uyandırılır,  | INTERRUPTIBLE +         |
-|                           | beklenen koşulla ilgisi yok              | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
-| hrtimer / Timeout         | Süre dolunca wake_up_process çağrılır;   | INTERRUPTIBLE +         |
-|                           | koşul üretici henüz sağlamamış olabilir  | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
-| ptrace / Debugger         | ptrace_resume → wake_up_process;         | INTERRUPTIBLE +         |
-|                           | tracee koşul olmadan devam ettirilir     | UNINTERRUPTIBLE         |
-+---------------------------+------------------------------------------+-------------------------+
+.. figure:: _static/spurious-wakeup-sources-table.png
+   :align: center
+   :width: 70%
 
 prepare_to_wait ve finish_wait Fonksiyonları
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2843,33 +2813,9 @@ aynıdır:
 
 İki fonksiyon arasındaki farklar aşağıdaki tabloda özetlenmektedir:
 
-+------------------+--------------------------------------------+--------------------------------------------+
-|     Özellik      |          prepare_to_wait_event             |             prepare_to_wait                |
-+==================+============================================+============================================+
-| Tanım / Amaç     | Bekleme kuyruğuna girmeden önce koşulu     | Süreci wait queue'ya ekler, durumunu       |
-|                  | atomik olarak kontrol eder                 | TASK_INTERRUPTIBLE vb. yapar               |
-+------------------+--------------------------------------------+--------------------------------------------+
-| Dönüş Değeri     | wait_queue_entry_t * döner;                | void — doğrudan dönüş değeri yoktur        |
-|                  | sonraki aşamada kullanılır                 |                                            |
-+------------------+--------------------------------------------+--------------------------------------------+
-| Kilit /          | wq_head->lock spinlock kilidini alır;      | Spinock gerektirmez;                       |
-| Senkronizasyon   | çağrılan sırada queue kilidi tutulur       | set_current_state() çağırarak state        |
-|                  |                                            | değiştirir                                 |
-+------------------+--------------------------------------------+--------------------------------------------+
-| Kullanım Sırası  | 1. adım: prepare_to_wait_event çağrılır,   | Basit döngülerde doğrudan çağrılır:        |
-|                  | koşul test edilir, schedule ile uyutulur   | add → schedule → finish_wait.              |
-+------------------+--------------------------------------------+--------------------------------------------+
-| Koşul Kontrolü   | Atomik kontrol dahili — condition true ise | Koşul kontrolü dışarıda; çağıran kodun     |
-|                  | queue'ya girmeden döner                    | döngüsü sorumludur                         |
-+------------------+--------------------------------------------+--------------------------------------------+
-| Spurious Wakeup  | Yerleşik koruma sağlar; sahte uyanmada     | Koruma yoktur; döngü while(condition) ile  |
-|                  | koşul yeniden test edilir                  | manuel yazılmalıdır                        |
-+------------------+--------------------------------------------+--------------------------------------------+
-| Exclusive Destek | WQ_FLAG_EXCLUSIVE bayrağı ile exclusive    | prepare_to_wait_exclusive kardeş           |
-|                  | uyuma desteklenir                          | fonksiyonla sağlanır                       |
-+------------------+--------------------------------------------+--------------------------------------------+
-| Üst Düzey Makro  | wait_event_* makroları bu çağrıyı sarar    | wait_event_* makroları bu çağrıyı sarar    |
-+------------------+--------------------------------------------+--------------------------------------------+
+.. image:: _static/prepare-to-wait-comparison-table.png
+   :align: center
+   :width: 75%
 
 Bekleme Kuyrukları Kullanılmadan Thread'lerin Uykuya Yatırılması ve Uyandırılması
 =================================================================================
