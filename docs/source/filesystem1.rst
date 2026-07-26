@@ -64,24 +64,12 @@ faydalanılmaktadır. Yani sistem programcıları ya da işletim sistemlerini ya
 denetleyicisini programlar, disk denetleyicisi isteği elektriksel olarak disk birimine iletir,
 okuma yazma işlemleri de disk birimi tarafından yapılır:
 
-.. graphviz::
-
-   digraph disk_hierarchy {
-       rankdir=TB;
-       node [shape=box, style="rounded,filled", fillcolor="#D6E8FA",
-             fontname="DejaVu Sans", margin="0.3,0.2"];
-       edge [color="#555555"];
-
-       OS         [label="İşletim Sistemi"];
-       CPU        [label="CPU / RAM"];
-       Controller [label="Disk Denetleyicisi\n(Disk Controller)"];
-       Disk       [label="Disk\n(HDD / SSD)", fillcolor="#D5F5D5"];
-
-       OS -> CPU -> Controller -> Disk;
-   }
+.. figure:: _static/disk-hierarchy.png
+   :alt: Disk erişim hiyerarşisi
+   :align: center
+   :width: 20%
 
 Bugünkü masaüstü bilgisayarlarımızda *SATA* ve *NVMe* en çok kullanılan disk denetleyicileridir.
-
 
 DMA (Direct Memory Access)
 --------------------------
@@ -118,67 +106,10 @@ Yani disk ile RAM arasındaki aktarım işlemleri tipik olarak şöyle yapılmak
 
 Bu süreci aşağıdaki diyagram özetlemektedir:
 
-.. graphviz::
-
-   digraph dma_flow {
-       rankdir=TB;
-       graph [splines=ortho, fontname="DejaVu Sans",
-              nodesep=0.8, ranksep=0.9];
-       node  [shape=box, style="rounded,filled", fontname="DejaVu Sans",
-              margin="0.32,0.20", fontsize=11];
-       edge  [fontname="DejaVu Sans", fontsize=9, color="#444444"];
-
-       /* IRQ yayını üstten yönlendiren görünmez köprü */
-       IRQ_kpr [label="", shape=point, style=invis,
-                width=0.01, height=0.01, fixedsize=true];
-
-       /* Üst katman: yazılım zinciri */
-       App        [label="Uygulama\nI/O çağrısı",
-                   fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
-       CPU        [label="OS / CPU\nKesmeyi alır",
-                   fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
-       Driver     [label="Aygıt Sürücüsü\nKomut hazırlar",
-                   fillcolor="#EEEDFE", color="#534AB7", fontcolor="#3C3489"];
-       Controller [label="Denetleyici\nIRQ tetikler",
-                   fillcolor="#FAEEDA", color="#854F0B", fontcolor="#633806"];
-
-       /* Alt katman: DMA donanımı */
-       Memory     [label="Bellek (RAM)\nDMA hedefi",
-                   fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
-       DMA        [label="DMA Motoru\nCPU'dan bağımsız",
-                   fillcolor="#E1F5EE", color="#0F6E56", fontcolor="#085041"];
-       Disk       [label="Disk Donanımı\nHDD / SSD / FTL",
-                   fillcolor="#EAF3DE", color="#3B6D11", fontcolor="#27500A"];
-
-       /* Sıra düzeni */
-       { rank=source; IRQ_kpr; }
-       { rank=same;   App; CPU; Driver; Controller; }
-       { rank=same;   Memory; DMA; Disk; }
-
-       /* 1. Komut zinciri */
-       App    -> CPU        [label="read()/write()"];
-       CPU    -> Driver     [label="I/O isteği"];
-       Driver -> Controller [label="komutu gönder"];
-
-       /* 2. Donanım komutları */
-       Controller -> Disk [label="komut gönder"];
-       Controller -> DMA  [label="DMA tablo ayarı",
-                            style=dashed, color="#888780",
-                            fontcolor="#5F5E5A"];
-
-       /* 3. Veri akışı (DMA, CPU katılmadan) */
-       Disk -> DMA    [label="veri aktarır",
-                        style=dashed, color="#1D9E75", fontcolor="#0F6E56"];
-       DMA  -> Memory [label="RAM'e yazar",
-                        style=dashed, color="#1D9E75", fontcolor="#0F6E56"];
-
-       /* 4. Kesme — IRQ_kpr üzerinden üstten kıvrılarak CPU'ya */
-       Controller -> IRQ_kpr [color="#E24B4A", penwidth=2.0,
-                               arrowhead=none, weight=0];
-       IRQ_kpr    -> CPU     [color="#E24B4A", penwidth=2.0,
-                               label="Transfer tamamlandı → Kesme (IRQ)",
-                               fontcolor="#E24B4A", weight=0];
-   }
+.. figure:: _static/dma-flow.png
+   :alt: DMA veri akışı
+   :align: center
+   :width: 85%
 
 Eskiden Intel tabanlı PC mimarisinde ISA bus kullanıldığı zamanlarda tek bir merkezi DMA
 denetleyicisi (Intel 8237) vardı. Ancak daha sonra PCI bus kullanılmaya başlanmasıyla birlikte
@@ -400,7 +331,7 @@ Buradaki süreci aşağıdaki şekille özetleyebiliriz:
 
 .. image:: _static/delayed-write-flow.png
    :align: center
-   :width: 100%
+   :width: 40%
 
 Peki işletim sistemi transfer işlemlerini ne kadar süre bekletmektedir? Eğer transfer çok uzun süre bekletilirse 
 elektrik kesilmesi gibi durumlarda kayıplar fazlalaşır. İşte modern işletim sistemlerinde kirlenmiş sayfaların 
@@ -421,30 +352,10 @@ vermek amacıyla modern Linux sistemleri için bu sürenin ortalama 5 saniye civ
 Ancak bu değerler de değiştirilebilmektedir. flush thread'lerinin parametreleri hakkında aşağıda tabloda özet bir 
 bilgi veriyoruz:
 
-.. rst-class:: centered-headers
-
-.. list-table::
-   :header-rows: 1
-   :widths: 28 18 60
-
-   * - Parametre
-     - Varsayılan Değer
-     - Anlamı
-   * - ``dirty_writeback_centisecs``
-     - 500
-     - Flusher thread'in periyodik olarak çalıştığı aralık (santi saniye
-       cinsinden). 500 cs = 5 saniye. Bu aralıkta çekirdek *dirty* sayfaları
-       kontrol eder.
-   * - ``dirty_expire_centisecs``
-     - 3000
-     - Bir *dirty* sayfa en fazla bu kadar süre (santi saniye cinsinden)
-       RAM'de kalabilir. 3000 cs = 30 saniye sonra *süresi dolmuş* sayılır
-       ve flush edilir.
-   * - ``dirty_ratio`` / ``dirty_background_ratio``
-     - %20 / %10 civarı
-     - RAM'in ne kadarı *dirty* sayfalarla dolarsa flush işleminin
-       başlatılacağını belirler (bellek baskısı durumunda
-       zaman beklenmez).
+.. figure:: _static/dirty-writeback-params-table.png
+   :alt: Dirty Sayfa Yazım Parametreleri
+   :align: center
+   :width: 70%
        
 Bu değerler proc dosya sisteminden görüntülenebilmektedir:
 
@@ -1932,39 +1843,10 @@ Nesne üzerindeki işlemlerde senkronizasyon sağlamak için yapının ``i_lock`
 sistemine ilişkin nesnelerin içerisinde tutulmaktadır. Aşağıda ``inode`` yapısının önemli elemanlarını bir
 tablo halinde veriyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Eleman
-     - Açıklama
-   * - ``i_lock``
-     - Nesneye erişimde kullanılan senkronşzasyon nesnesi
-   * - ``i_sb->s_dev``
-     - Dosyanın yaşadığı aygıtın numarası
-   * - ``i_ino``
-     - Inode numarası
-   * - ``i_mode``
-     - (S_IFMT) + izin bitleri (rwx)
-   * - ``i_nlink``
-     - Hard link sayısı
-   * - ``i_uid``
-     - Kullanıcı id'si
-   * - ``i_gid``
-     - Grup id'si
-   * - ``i_rdev``
-     - Aygıt dosyalarında major:minor numarası
-   * - ``i_size``
-     - Dosya içeriğinin bayt cinsinden boyutu
-   * - ``i_sb->s_blocksize``
-     - I/O blok uzunluğu
-   * - ``i_blocks``
-     - 512-baytlık birimde tahsisli blok sayısı
-   * - ``i_atime_sec`` + ``i_atime_nsec``
-     - Son erişim zamanı
-   * - ``i_mtime_sec`` + ``i_mtime_nsec``
-     - Son içerik değişiklik zamanı
-   * - ``i_ctime_sec`` + ``i_ctime_nsec``
-     - Son inode değişiklik zamanı
+.. figure:: _static/inode-fields-table.png
+   :alt: inode Yapısının Elemanları
+   :align: center
+   :width: 60%
 
 ``stat`` fonksiyonu (``sys_stat`` sistem fonksiyonu), ``fstat`` fonksiyonu (``sys_fstat`` sistem fonksiyonu)
 ve ``lstat`` fonksiyonu (``sys_lstat`` sistem fonksiyonu) dosya bilgilerini dosyaya ilişkin ``inode``
@@ -2365,28 +2247,9 @@ paragraflarda da açıklayacağımız üzere ``dentry`` nesneleri bir önbellek 
 Bu önbellek yönetimi için gereken bilgiler de ``dentry`` nesnelerinin içerisinde tutulmaktadır. Biz
 aşağıda bir tablo biçiminde güncel çekirdeklerdeki ``dentry`` yapısının önemli elemanlarını listeliyoruz:
 
-.. list-table:: 
-   :header-rows: 1
-   :width: 65%
-
-   * - Eleman
-     - Açıklama
-   * - ``d_flags``
-     - Dentry durum bayrakları. RCU lookup sırasında kontrol edilir, ``d_lock`` ile korunur.
-   * - ``d_hash``
-     - Global dcache hash tablosundaki bucket zinciri (``hlist_bl_node``, bit-lock korumalı).
-       ``__d_lookup_rcu()`` bu zinciri tarar.
-   * - ``d_parent``
-     - Üst dizin ``dentry``'sini gösterir. Lookup sırasında path bileşeni doğrulamasında
-       kullanılır.
-   * - ``d_name`` / ``__d_name``
-     - Bileşen adı (``struct qstr``: hash + len + name gösterici). Hash karşılaştırması
-       lookup'un ilk hızlı eleme adımıdır.
-   * - ``d_inode``
-     - Lookup sonucunda döndürülen ``inode``.
-   * - ``d_sb``
-     - Kök superblock işaretçisi. Lookup sırasında ``dentry``'nin doğru mount noktasına
-       ait olup olmadığı bu alan üzerinden doğrulanır.
+.. image:: _static/dentry-fields-table.png
+   :align: center
+   :width: 70%
 
 Dizin girişinin isminin ``d_name`` elemanında ``qstr`` olarak tutulduğuna dikkat ediniz. ``qstr``
 yapısı güncel çekirdeklerde *include/linux/dcache.h* dosyası içerisinde şöyle tanımlanmıştır:
@@ -2410,17 +2273,10 @@ file, inode ve dentry Nesneleri Arasındaki İlişki
 
 Şimdi dosya sistemine ilişkin nesnelerin birbirleriyle ilişkisi hakkında bir özet yapalım:
 
-.. list-table::
-   :header-rows: 1
-
-   * - Nesne
-     - Açıklama
-   * - Dosya Nesnesi (``struct file``)
-     - Açılmış dosyalar üzerinde işlem yapmak için gereken tüm bilgilerin tutulduğu nesne.
-   * - Inode Nesnesi (``struct inode``)
-     - Dosyanın diskteki metadata bilgilerini tutan nesne.
-   * - Dentry Nesnesi (``struct dentry``)
-     - Dosyanın dosya sistemi üzerinde yerini ve buna ilişkin bazı bilgileri tutan nesne.
+.. figure:: _static/vfs-objects-table.png
+   :align: center
+   :alt: VFS temel nesneleri
+   :width: 70%
 
 Peki dosyanın ilişkin olduğu ``inode`` nesnesine ve ``dentry`` nesnesine dosya nesnesi yoluyla
 nasıl erişilmektedir? Uzunca bir süre (2.6'ya kadar ve 2.6'lı versiyonlar da dahil olmak üzere)
@@ -2722,17 +2578,8 @@ sayacının gereksiz artırılıp eksiltilmesinin önüne geçmek için bulundur
 eksiltilmesine de gerek yoktur. Bu fonksiyonlar bu bilgiyi ``flags`` olarak kodlayıp işlemin daha
 etkin yapılmasını sağlamaktadır. Bu işlemleri şekilsel olarak şöyle ifade edebiliriz:
 
-.. code-block:: none
-
-    fdget(fd)
-    └── __fdget(fd)
-            ├── files->count == 1  →  FDPUT_FPUT = 0
-            └── files->count  > 1  →  FDPUT_FPUT = 1
-
-    fdput(f)
-    └── FDPUT_FPUT set edilmiş mi?
-            ├── Evet   →  fput() çağır
-            └── Hayır  →  hiçbir şey yapma
+.. image:: _static/fdget-fdput-flow.png
+   :width: 50%
 
 En yeni çekirdeklerde dosya nesnesine erişim için yalnızca ``fdget`` değil ``fd_file`` fonksiyonun da
 kullanılması gerekmektedir. ``fd_file`` fonksiyonu ``fd`` yapısını parametre olarak alıp onun
@@ -3473,15 +3320,13 @@ moduna kopyalayarak çekirdek bir yapıya yerleştirmektedir. Bundan sonra yukar
 ``open`` fonksiyonunun dosya betimleyici tablosundaki ilk boş betimleyiciyi vermek zorunda olduğuna dikkat
 ediniz.) Bundan sonra bütün geri kalan önemli işlemler ``do_filp_open`` fonksiyonu tarafından yapılmaktadır.
 ``do_sys_open`` ve ``do_sys_openat2`` fonksiyonları aygıt sürücüler için export edilmemiştir. Ancak
-``do_filp_open`` fonksiyonu export edilmiş bir fonksiyondur. Güncel çekirdeklerdeki bu çağrı silsilesini şöyle
+``do_filp_open`` fonksiyonu export edilmiş bir fonksiyondur. Güncel çekirdeklerdeki bu çağrı zincirini şöyle
 gösterebiliriz:
 
 .. figure:: _static/sysopen-chain.png
    :align: center
    :alt: sys_open çağrı zinciri
    :width: 20%
-
-   ``sys_open`` → ``do_filp_open`` çağrı zinciri
 
 Akış ``do_filp_open`` fonksiyonuna geldiğinde artık dosya betimleyici tablosunda boş betimleyici bulunmuştur.
 *filp* sözcüğü Linux çekirdeklerinde dosya nesnesini (yani ``struct file`` nesnesi) gösteren göstericiler için
@@ -4560,65 +4405,9 @@ edildiği diğer bazı durumlar şunlardır:
 Aşağıda güncel çekirdeklerde bellek baskısı oluştuğunda çağrılan fonksiyonları özet olarak veriyoruz.
 Bu konuyu ileride bellek yönetimini ele aldığımız bölümde açıklayacağız:
 
-.. code-block:: text
-
-            .....
-            shrink_slab()  ← Tüm slab cache'ler için shrinker'ları çağırır
-                    ↓
-     ┌──────────────────────────────┐
-     │   DENTRY SHRINKER ÇAĞRISI    │
-     └──────────────────────────────┘
-                    ↓
-        super_cache_scan()  ← dentry cache shrinker
-                    ↓
-        prune_dcache_sb(sb, sc->nr_to_scan)
-                    ↓
-                    ├─> freed = list_lru_shrink_walk(
-                    │       &sb->s_dentry_lru,
-                    │       sc,
-                    │       dentry_lru_isolate,  ← Callback fonksiyon
-                    │       &dispose)
-                    │
-                    └─> LRU listesini tara
-                            ↓
-        ┌───────────────────────────────────────┐
-        │   HER DENTRY İÇİN ÇAĞRILIR            │
-        └───────────────────────────────────────┘
-                            ↓
-        dentry_lru_isolate(item, lru, lru_lock, &dispose)
-                            ↓
-        ┌───────────────────────────────────────┐
-        │  DCACHE_REFERENCED KONTROLÜ BURADA!   │
-        └───────────────────────────────────────┘
-                            ↓
-            spin_lock(&dentry->d_lock)
-                            ↓
-            if (d_flags & DCACHE_REFERENCED) {
-                d_flags &= ~DCACHE_REFERENCED;  ← Bit temizle
-                return LRU_ROTATE;              ← Başa döndür, silme!
-            }
-                            ↓
-            d_lru_shrink_move(lru, dentry, &dispose);
-            return LRU_REMOVED;  ← Silinecekler listesine ekle
-                            │
-        ┌───────────────────┘
-        │
-        └─> shrink_dentry_list(&dispose)        ← Seçilmiş dentry'leri sil
-                    ↓
-            while (!list_empty(&dispose)) {
-                dentry = list_entry(...)
-                    ↓
-                lock_for_kill(dentry)            ← Güvenli kilitleme
-                    ↓
-                shrink_kill(dentry)
-                    ↓
-                __dentry_kill(dentry)
-                    ↓
-                dentry_unlink_inode()           ← inode ilişkisini kes
-                    ↓
-                __d_free()                      ← Belleği serbest bırak
-            }
-            .....
+.. figure:: _static/dentry-shrinker-flow.png
+   :alt: Dentry shrinker akışı
+   :width: 70%
 
 Son olarak dentry önbellek sistemi için bir özet yapmak istiyoruz:
 
@@ -4648,23 +4437,8 @@ bulunmaktadır. Bu dosyanın içeriği aşağıdakine benzer biçimdedir:
 
 Buradaki bilgiler şöyledir:
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Alan Adı
-     - Açıklama
-   * - ``nr_dentry``
-     - Toplam dentry sayısı
-   * - ``nr_unused``
-     - Kullanılmayan (LRU listesinde) dentry sayısı
-   * - ``age_limit``
-     - Yaşlandırma eşiği (saniye)
-   * - ``want_pages``
-     - Reclaim sırasında istenen sayfa sayısı
-   * - ``shrink_list_len``
-     - Shrinker listesi uzunluğu
-   * - ``unused_ratio``
-     - Kullanılmayan oran (bazı sürümlerde)
+.. image:: _static/dentry-stat-fields-table.png
+   :width: 50%
 
 Buradaki ``nr_dentry`` alanında dentry önbelleğindeki toplam dentry nesne sayısı belirtilmektedir. ``nr_unused``
 alanında LRU listesindeki toplam nesne sayısı (yani referans sayacı 0 olan) belirtilmektedir. Buradaki
@@ -5014,14 +4788,10 @@ hızlandırmak için zamanla dosyanın hangi türden olduğu bilgisini dizin gir
 başlamıştır.) Bir dizini siz "dizin girişlerinden (directory entries)" oluşan bir dosya gibi
 düşünebilirsiniz. Bir dizinin içeriği temsili olarak şöyledir:
 
-.. code-block:: text
-
-    Dizin Dosyasının İçeriği
-    ─────────────────────────
-    dizin_girişi
-    dizin_girişi
-    dizin_girişi
-    .....
+.. figure:: _static/directory-file-entries-boxes.png
+   :alt: Dizin dosyasının içeriği
+   :align: center
+   :width: 25%
 
 Biz bu bağlamda dizinlerin de birer dosya gibi organize edildiğini vurgulamak için "dizin" yerine
 *dizin dosyası* terimini de kullanacağız. (UNIX/Linux dünyasında *dizin dosyası* biçiminde bir terim
@@ -5031,20 +4801,10 @@ düşünülmüştür. Tabii dizin girişleri eşit uzunlukta olmadığı için g
 ancak sıralı biçimde erişilebilmektedir. Zaten dizin girişlerinde indeksli erişimin gerektiği bir
 durum yoktur. Örneğin ext2, ext3 ve ext4 dosya sistemlerindeki dizin girişlerinin formatı şöyledir:
 
-.. list-table::
-   :widths: 14 10 10 12 30
-   :header-rows: 1
-
-   * - inode
-     - rec_len
-     - name_len
-     - file_type
-     - name[]
-   * - (4 byte)
-     - (2 byte)
-     - (1 byte)
-     - (1 byte)
-     - (değişken uzunluk)
+.. figure:: _static/ext-dir-entry-layout.png
+   :align: center
+   :alt: ext dizin girişinin bellek düzeni
+   :width: 60%
 
 Bu format ``fs/ext4/ext4.h`` dosyasında aşağıdaki yapıyla da temsil edilmiştir:
 
@@ -5076,36 +4836,10 @@ yerden başlamak zorunda değildir. Arada hizalama boşlukları (padding) bulund
 dosya sistemleri dizin girişlerini 4 byte'a hizalamaktadır.) Dosya türü ``file_type`` alanında
 aşağıdaki değerlerle tutulmaktadır.
 
-.. list-table:: 
-   :header-rows: 1
-
-   * - Değer
-     - Binary
-     - Tür
-   * - 0
-     - 0000 0000
-     - Bilinmiyor
-   * - 1
-     - 0000 0001
-     - Normal dosya (regular file)
-   * - 2
-     - 0000 0010
-     - Dizin
-   * - 3
-     - 0000 0011
-     - Character device
-   * - 4
-     - 0000 0100
-     - Block device
-   * - 5
-     - 0000 0101
-     - FIFO (named pipe)
-   * - 6
-     - 0000 0110
-     - Socket
-   * - 7
-     - 0000 0111
-     - Symlink
+.. figure:: _static/dir-entry-file-types-table.png
+   :align: center
+   :alt: Dizin girişindeki file_type değerleri
+   :width: 40%
 
 UNIX/Linux sistemlerinde birden fazla dizin girişinde aynı inode numarası varsa bu duruma bu
 sistemlerde *hard link* denilmektedir. Hard link sayesinde farklı dizin girişleri aslında aynı dosyayı
@@ -5941,8 +5675,6 @@ düğümün yerini tutmaktadır.
    :align: center
    :alt: file_systems bağlı listesi
 
-   ``file_systems`` bağlı listesinin genel yapısı
-
 Linux çekirdeğinde çok uzun süredir dosya sistemleri ``fs/filesystem.c`` dosyası içerisinde
 ``register_filesystem`` isimli fonksiyonla kaydettirilmektedir. Güncel çekirdeklerde bu fonksiyon şöyle
 yazılmıştır:
@@ -6460,8 +6192,6 @@ gerçekleştirildiğine ilişkin özet bir görünüm sunmaktadır:
    :alt: mount işlemi tam çağrı zinciri
    :width: 35%
 
-   ``sys_mount`` çağrısından ``fill_super``'a uzanan tam çağrı zinciri
-
 Biz yukarıdaki aşamalarda yalnızca bir dosya sisteminin mount edilebilmesi için gerekli olan minimal işlemleri
 açıkladık. Peki ya mount işleminden sonra mount edilen kök dizine geçilip burada dosya ya da dizi yaratılmak 
 istense yeni gerçekleştirilen dosya sistemi bu işlemleri nasıl yapabilecektir? İşte bu tür işlemler hep çekirdeğin 
@@ -6586,8 +6316,7 @@ Güncel çekirdeklerde ``super_operations`` yapısı şöyle tanımlanmıştır:
        int (*link) (struct dentry *, struct inode *, struct dentry *);
        int (*unlink) (struct inode *, struct dentry *);
        int (*symlink) (struct mnt_idmap *, struct inode *, struct dentry *, const char *);
-       struct dentry *(*mkdir) (struct mnt_idmap *, struct inode *,
-                   struct dentry *, umode_t);
+       struct dentry *(*mkdir) (struct mnt_idmap *, struct inode *, struct dentry *, umode_t);
        int (*rmdir) (struct inode *, struct dentry *);
        int (*mknod) (struct mnt_idmap *, struct inode *, struct dentry *, umode_t, dev_t);
        int (*rename) (struct mnt_idmap *, struct inode *, struct dentry *,
@@ -6603,8 +6332,7 @@ Güncel çekirdeklerde ``super_operations`` yapısı şöyle tanımlanmıştır:
        int (*tmpfile) (struct mnt_idmap *, struct inode *, struct file *, umode_t);
        struct posix_acl *(*get_acl)(struct mnt_idmap *, struct dentry *, int);
        int (*set_acl)(struct mnt_idmap *, struct dentry *, struct posix_acl *, int);
-       int (*fileattr_set)(struct mnt_idmap *idmap,
-                   struct dentry *dentry, struct fileattr *fa);
+       int (*fileattr_set)(struct mnt_idmap *idmap, struct dentry *dentry, struct fileattr *fa);
        int (*fileattr_get)(struct dentry *dentry, struct fileattr *fa);
        struct offset_ctx *(*get_offset_ctx)(struct inode *inode);
    } ____cacheline_aligned;
@@ -6615,11 +6343,11 @@ Güncel çekirdeklerde ``super_operations`` yapısı şöyle tanımlanmıştır:
 
    struct dentry_operations {
        int (*d_revalidate)(struct inode *, const struct qstr *,
-                   struct dentry *, unsigned int);
+                struct dentry *, unsigned int);
        int (*d_weak_revalidate)(struct dentry *, unsigned int);
        int (*d_hash)(const struct dentry *, struct qstr *);
-       int (*d_compare)(const struct dentry *,
-               unsigned int, const char *, const struct qstr *);
+       int (*d_compare)(const struct dentry *, unsigned int, 
+                const char *, const struct qstr *);
        int (*d_delete)(const struct dentry *);
        int (*d_init)(struct dentry *);
        void (*d_release)(struct dentry *);
@@ -6662,9 +6390,9 @@ Güncel çekirdeklerde ``super_operations`` yapısı şöyle tanımlanmıştır:
        int (*check_flags)(int);
        int (*flock) (struct file *, int, struct file_lock *);
        ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *,
-                   size_t, unsigned int);
+                size_t, unsigned int);
        ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *,
-                   size_t, unsigned int);
+                size_t, unsigned int);
        void (*splice_eof)(struct file *file);
        int (*setlease)(struct file *, int, struct file_lease **, void **);
        long (*fallocate)(struct file *file, int mode, loff_t offset, loff_t len);
@@ -6675,12 +6403,12 @@ Güncel çekirdeklerde ``super_operations`` yapısı şöyle tanımlanmıştır:
        ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
                loff_t, size_t, unsigned int);
        loff_t (*remap_file_range)(struct file *file_in, loff_t pos_in,
-                   struct file *file_out, loff_t pos_out,
-                   loff_t len, unsigned int remap_flags);
+                struct file *file_out, loff_t pos_out,
+                loff_t len, unsigned int remap_flags);
        int (*fadvise)(struct file *, loff_t, loff_t, int);
        int (*uring_cmd)(struct io_uring_cmd *ioucmd, unsigned int issue_flags);
        int (*uring_cmd_iopoll)(struct io_uring_cmd *, struct io_comp_batch *,
-                   unsigned int poll_flags);
+                unsigned int poll_flags);
        int (*mmap_prepare)(struct vm_area_desc *);
    } __randomize_layout;
 
