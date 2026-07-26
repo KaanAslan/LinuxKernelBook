@@ -1256,14 +1256,14 @@ Dosya sistemini kodlarken ne zaman okuduğumuz bir blok üzerinde değişiklik y
 
 .. figure:: _static/mark-buffer-dirty-call-tree.png
    :alt: mark_buffer_dirty çağrı zinciri
-   :width: 65%
+   :width: 60%
 
 Blok kirli olarak işaretlendikten sonra çekirdeğin ``bdi_writeback`` thread'i onu aşağıdaki çağrı
 zinciriyle flush etmektedir:
 
 .. figure:: _static/writeback-call-chain.png
    :alt: mark_buffer_dirty çağrı zinciri
-   :width: 75%
+   :width: 70%
 
 En sonunda ilgili bloğun yazım için blok aygıt sürücüsüne iletildiğini görüyorsunuz.
 
@@ -1273,21 +1273,15 @@ fonksiyonunun çağrı zinciri şöyledir:
 
 .. figure:: _static/mark-inode-dirty-chain.png
    :alt: mark_inode_dirty çağrı zinciri
+   :width: 65%
 
 Kirli inode nesneleri de yine çekirdeğin ``bdi_writeback`` thread'i tarafından dosya sisteminin
 ``super_operations`` nesnesinde belirtilen ``write_inode`` fonksiyonu çağrılarak diske yazılmaktadır.
 Buradaki akışı şöyle açıklayabiliriz:
 
-.. code-block:: none
-
-   wb_workfn()                                  ← kworker thread
-    └─ wb_do_writeback()
-         └─ wb_writeback()
-              ├─ writeback_sb_inodes()
-              │    └─ __writeback_single_inode()
-              │         ├─ do_writepages()      ← sayfa verisi
-              │         └─ write_inode()        ← inode metadata
-              └─ inode_io_list_del()            ← listeden çıkar
+.. figure:: _static/wb-workfn-chain.png
+   :alt: wb_workfn çağrı zinciri
+   :width: 65%
 
 Biz sayfa önbelleği ve tampon (buffer) yönetimi konularını kitabımızın "Sayfa Önbelleği" bölümünde ayrıntılarıyla 
 açıklayacağız.
@@ -3069,7 +3063,6 @@ havale etmektedir. Yeni çekirdeklerdeki bu çağırma silsilesi şöyledir:
 
 .. figure:: _static/getdents64-call-graph.png
    :alt: getdents64 çağrı grafı
-   :align: center
    :width: 70% 
 
 ``sys_getdents64`` fonksiyonunun parametrik yapısı şöyledir:
@@ -5536,8 +5529,8 @@ devretmektedir. O halde bizim *simplefs* dosya sistemimiz için bu fonksiyonu
 
     static const struct inode_operations simplefs_dir_inode_ops = {
         .lookup = simplefs_lookup,
-        .mkdir  = simplefs_mkdir,
-        .rmdir  = simplefs_rmdir,
+        .mkdir = simplefs_mkdir,
+        .rmdir = simplefs_rmdir,
         .create = simplefs_create,
     };
 
@@ -5907,8 +5900,8 @@ hali bir bütün olarak verilmiştir.
 
     static const struct inode_operations simplefs_dir_inode_ops = {
         .lookup = simplefs_lookup,
-        .mkdir  = simplefs_mkdir,
-        .rmdir  = simplefs_rmdir,
+        .mkdir = simplefs_mkdir,
+        .rmdir = simplefs_rmdir,
         .create = simplefs_create,
         .unlink = simplefs_unlink,
     };

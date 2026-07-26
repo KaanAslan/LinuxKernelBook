@@ -204,7 +204,7 @@ Görüldüğü gibi ``free_area`` aslında her göç türü için bağlı listel
 şekil bu veri yapısını daha iyi anlaşılmasına yardımcı olacaktır:
 
 .. image:: _static/zone-free-area-tree.png
-   :align: center
+   :width: 65%
 
 Buradaki ``free_area``'nın düzeylerden oluşan bir dizi olduğuna, dizinin her elemanının her göç türü
 için ayrı listeler barındırdığına dikkat ediniz. ``free_area`` listesinin her elemanı aslında bir
@@ -719,7 +719,7 @@ istiyoruz:
     };
 
 .. image:: _static/zone-free-area-tree.png
-   :align: center
+   :width: 70% 
 
 Aslında sayfa tahsisatları "belli bir düğümün, belli bir bölgesinin, belli bir göç türünü" hedef alarak süreci
 başlatmaktadır. İşte ``alloc_pages`` gibi fonksiyonların birinci parametresindeki bayraklar bu tespitin
@@ -781,14 +781,13 @@ için ``__GFP_RECLAIMABLE`` bayrağının da eklenmesi gerekmektedir. Dilimli ta
 tahsisat sistemi ile tahsis edilmektedir. Örneğin:
 
 .. image:: _static/kmem-cache-alloc-reclaimable.png
-   :align: center
    :width: 70%
 
 Aşağıdaki tabloda ``MIGRATE_UNMOVABLE`` , ``MIGRATE_MOVABLE`` ve ``MIGRATE_RECLAIMABLE`` göç türlerini karşılaştırıyoruz:
 
 .. image:: _static/migrate-type-comparison-table.png
    :align: center
-   :width: 80%
+   :width: 85%
 
 ``MIGRATE_HIGHATOMIC`` göç türü yüksek öncelikli, bloke olmaması gereken kodların kullanması amacıyla
 oluşturulmuş özel bir ikiz blok tahsisat sistemidir.
@@ -943,7 +942,6 @@ Burada önemli bir noktayı belirtmek istiyoruz. ``node_zonelists`` elemanının
 NUMA düğümlerinin bölgeleri de bu dizi içerisindedir. ``node_zonelists`` dizisinin temsili görüntüsü şöyledir:
 
 .. image:: _static/pgdat-zonelists.png
-   :align: center
    :width: 80%
 
 Bu temsili çizimde örnek olarak 0'ıncı NUMA düğümünün ``node_zonelists`` dizisi gösterilmiştir. Görüldüğü
@@ -953,7 +951,6 @@ ile ``ZONE_DMA32`` bölgesinden ``MIGRATE_UNMOVABLE`` tahsisatı yapılmak isten
 dolaşılmasına 0'ıncı düğümdeki DMA32'den başlatılacaktır:
 
 .. figure:: _static/pgdat-zonelists-search-start.png
-   :align: center
    :alt: pg_data_t zonelist yapısı
    :width: 95%
 
@@ -976,20 +973,17 @@ Başlangıçta her sayfa kendi bellek bölgesinin en yüksek düzeyli ``MIGRATE_
 blok tahsisat sistemindedir. Örneğin UMA x86-64 mimarisindeki başlangıç durumu şöyledir:
 
 .. figure:: _static/node-zone-free-area-movable.png
-   :align: center
    :alt: Açılış anındaki serbest blok dağılımı
-   :width: 80%
+   :width: 75%
 
 Örneğin ARM64 kullanılan Raspberry Pi modelleri için başlangıç durumu şöyledir:
 
 .. image:: _static/rpi-node-zone-free-area.png
-   :align: center
-   :width: 90 %
+   :width: 85 %
 
 ARM32 kullanan BeagleBone modelleri için de başlangıç durumu şöyledir:
 
 .. image:: _static/bbb-node-zone-free-area.png
-   :align: center
    :width: 90%
 
 Fallback Mekanizmasında NUMA Düğümlerinin Dolaşım Sırası
@@ -1348,6 +1342,7 @@ bulundurulmaktadır. Aşağıdaki şekli inceleyiniz:
 .. figure:: _static/slab-page-layout.png
    :alt: Dilim için ayrılan sayfa düzeni
    :align: center
+   :width: 55%
 
 Yapının ``align`` elemanı yukarıdaki şekilden de görüldüğü gibi nesneler için ayrılan alanın kaçın
 katlarına göre hizalanacağını belirtmektedir. Yapının ``min_partial`` elemanı dilimlerin sisteme iadesi
@@ -2095,8 +2090,7 @@ yapıldığı fonksiyonun ``-ENOMEM`` değeri ile geri döndürülmesi uygun olu
 Güncel çekirdeklerde ``kmem_cache_alloc`` fonksiyonunun çağrı grafı kabaca şöyledir:
 
 .. image:: _static/slab-alloc-slowpath-tree-noparens.png
-   :align: center
-   :width: 80%
+   :width: 85%
 
 Tabii bu çağrı dizgesindeki ayrıntıları bir yana bırakırsak kabaca olanlar şunlardır:
 

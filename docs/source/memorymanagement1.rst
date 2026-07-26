@@ -1402,7 +1402,7 @@ biçiminde konfigüre edilmektedir. Aşağıda üç mimariyi bir tablo eşliğin
 
 .. figure:: _static/platform-memory-model-comparison.png
    :align: center
-   :width: 70%
+   :width: 75%
 
 CONFIG_FLATMEM Organizasyonu
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1848,14 +1848,12 @@ ve ``kmap_local_page`` fonksiyonlarından hangisinin hangi durumda kullanılaca�
 aşağıdaki gibi oluşturabiliriz:
 
 .. figure:: _static/highmem-kmap-decision-tree.png
-   :align: center
    :width: 50%
 
 Aynı karar ağacı güncel çekirdekler için şöyle oluşturulabilir:
 
 .. figure:: _static/kmap-local-decision-tree.png
-   :align: center
-   :width: 50%
+   :width: 60%
 
 Aşağıdaki tabloda bu üç fonksiyonu karşılaştırıyoruz:
 
