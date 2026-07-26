@@ -978,7 +978,7 @@ blok tahsisat sistemindedir. Örneğin UMA x86-64 mimarisindeki başlangıç dur
 .. figure:: _static/node-zone-free-area-movable.png
    :align: center
    :alt: Açılış anındaki serbest blok dağılımı
-   :width: 75%
+   :width: 80%
 
 Örneğin ARM64 kullanılan Raspberry Pi modelleri için başlangıç durumu şöyledir:
 

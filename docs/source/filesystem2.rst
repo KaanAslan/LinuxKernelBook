@@ -221,8 +221,6 @@ Aşağıdaki şema, loop aygıtının tipik kullanım akışını özetlemektedi
    :alt: simplefs disk organizasyonu
    :width: 50%
 
-   loop aygıtlarının kullanım akışı
-
 Little-Endian/Big Endian Sorunu
 --------------------------------
 
@@ -1256,30 +1254,16 @@ Dosya sistemini kodlarken ne zaman okuduğumuz bir blok üzerinde değişiklik y
 ``mark_buffer_dirty`` fonksiyonu ile onun kirlenmiş olduğunu belirtmemiz gerekir.
 ``mark_buffer_dirty`` fonksiyonunun çağrı zinciri şöyledir:
 
-.. code-block:: none
-
-   mark_buffer_dirty(bh)
-   └─ __set_buffer_dirty(bh)
-       ├─ set_buffer_dirty(bh)                 ← BH_Dirty flag'i set et
-       └─ __set_page_dirty()
-               └─ __set_page_dirty_nobuffers() veya
-               __set_page_dirty_buffers()
-                   └─ mapping->host → mark_inode_dirty_pages()
-                       └─ I_DIRTY_PAGES flag → __mark_inode_dirty()
+.. figure:: _static/mark-buffer-dirty-call-tree.png
+   :alt: mark_buffer_dirty çağrı zinciri
+   :width: 65%
 
 Blok kirli olarak işaretlendikten sonra çekirdeğin ``bdi_writeback`` thread'i onu aşağıdaki çağrı
 zinciriyle flush etmektedir:
 
-.. code-block:: none
-
-   wb_writeback()
-   └─ writeback_sb_inodes()
-       └─ __writeback_single_inode()
-               └─ do_writepages()                      ← buraya gelir
-                   └─ mapping->a_ops->writepages()
-                       └─ (örn.) ext4_writepages()
-                           └─ mpage_writepages() / iomap_writepages()
-                                   └─ submit_bio()     ← block layer'a ilet
+.. figure:: _static/writeback-call-chain.png
+   :alt: mark_buffer_dirty çağrı zinciri
+   :width: 75%
 
 En sonunda ilgili bloğun yazım için blok aygıt sürücüsüne iletildiğini görüyorsunuz.
 
@@ -1287,12 +1271,8 @@ Benzer biçimde inode önbelleğindeki inode nesneleri üzerinde de değişiklik
 ``mark_inode_dirty`` fonksiyonu ile onun kirlenmiş olduğunu belirtmeliyiz. ``mark_inode_dirty``
 fonksiyonunun çağrı zinciri şöyledir:
 
-.. code-block:: none
-
-   mark_inode_dirty()
-   └─ __mark_inode_dirty()
-       ├─ inode_io_list_move_locked()   ← b_dirty listesine ekle
-       └─ wb_wakeup()                   ← writeback thread'i uyandır
+.. figure:: _static/mark-inode-dirty-chain.png
+   :alt: mark_inode_dirty çağrı zinciri
 
 Kirli inode nesneleri de yine çekirdeğin ``bdi_writeback`` thread'i tarafından dosya sisteminin
 ``super_operations`` nesnesinde belirtilen ``write_inode`` fonksiyonu çağrılarak diske yazılmaktadır.
