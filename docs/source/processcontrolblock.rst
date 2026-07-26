@@ -6,7 +6,7 @@ Bu bölümde proses kavramı ve proses kontrol bloğu üzerinde duracağız ve L
 kontrol bloğunu* temsil eden ``task_struct`` yapısını ele alacağız. 
 
 Proses Kavramı
-================================
+==============
 
 İşletim sistemlerinde *program* terimi çoğu kez "çalıştırılabilen bir dosyayı" ya da "bir kaynak dosyayı"
 belirtmektedir. Çalışmakta olan programlara ise *proses* denilmektedir. Bir program çalıştırıldığında artık
@@ -14,7 +14,7 @@ o bir proses haline gelmektedir. Aynı programı birden fazla kez de çalıştı
 bağımsız birden fazla proses oluşacaktır.
 
 Proses Kontrol Bloğu
-================================
+====================
 
 İşletim sistemlerinin proses yönetimlerindeki en önemli veri yapısı *proses kontrol bloğu (process control
 block)* denilen veri yapısıdır. İşletim sistemleri her proses için kavramsal olarak ismine "proses kontrol
@@ -38,9 +38,8 @@ bilgilerden bazıları şunlardır:
 - Prosesin çalışma dizini (current working directory)
 - Prosesin açmış olduğu dosyalara ilişkin bilgiler
 
-
 task_struct Yapısı
-==================================
+==================
 
 Linux çekirdeğinde proses kontrol bloğu ``<include/linux/sched.h>`` dosyası içerisinde bulunan
 ``task_struct`` isimli yapıyla temsil edilmiştir. Bu ``task_struct`` nesnesi eskiden daha az eleman
@@ -110,7 +109,6 @@ Bilindiği gibi Linux sistemlerinde yeni bir proses *fork* isimli POSIX fonksiyo
 çekirdeklerde bu fonksiyon da *kernel_clone* isimli çekirdek fonksiyonunu çağırmaktadır. İşte
 ``task_struct`` nesnesi bu fonksiyonlar tarafından çekirdeğin heap alanında yaratılmaktadır.
 
-
 Proseslerin ID Değerleri (PID)
 ==============================
 
@@ -123,9 +121,8 @@ fonksiyonu çalışmakta olan programın proses id değerini, *getppid* POSIX fo
 proses id değerini vermektedir. Tabii prosesin proses id değeri ve üst prosesin proses id değeri proses
 kontrol bloğunda yani ``task_struct`` nesnesi içerisinde saklanmaktadır.
 
-
 Thread Kavramı
-===============
+==============
 
 İşletim sistemlerine thread kavramı 90'lı yıllarda sokulmuştur. Ancak ilk thread denemeleri çeşitli
 çalışmalar eşliğinde daha önceleri yapılmıştır. Linux işletim sistemine thread'ler ilk kez çekirdeğin
@@ -159,9 +156,8 @@ düşünülmüştür. Bu nedenle yalnızca prosesler için değil thread'ler iç
 oluşturulmaktadır. Tabii işletim sistemi bir prosesin thread'lerini izleyen paragraflarda göreceğimiz
 biçimde bağlı listelerde tutmaktadır.
 
-
 Prosesler Arasındaki Altlık-Üstlük İlişkisi
-============================================
+===========================================
 
 UNIX/Linux sistemlerinde prosesler arasında kuvvetli bir *altlık-üstlük (parent-child)* ilişkisi vardır.
 Bir proses yaratıldığında prosesin ``task_struct`` bilgilerinin çoğu üst prosesten (parent process)
@@ -176,7 +172,7 @@ POSIX thread sisteminde thread'ler arasında önemli bir altlık-üstlük ilişk
 durum dışında bir thread'i hangi thread'in yarattığının önemi yoktur.
 
 task_struct Yapısının Dallı Budaklı Tasarımı
-=============================================
+============================================
 
 ``task_struct`` yapısının pek çok gösterici elemanı vardır. Bu gösterici elemanları başka yapıları
 göstermektedir. Hatta o gösterici elemanların gösterdiği yapıların elemanları da başka yapıları
@@ -280,7 +276,7 @@ bir bölümde ele alınacaktır.
 Biz kursumuzda *current* için "current göstericisi" ya da "current makrosu" terimlerini kullanacağız.
 
 fork ve pthread_create Çağrı Zincirleri
-================================================
+=======================================
 
 Bilindiği gibi UNIX/Linux sistemlerinde kullanıcı modunda yeni bir proses *fork* POSIX fonksiyonu ile,
 yeni bir thread de *pthread_create* fonksiyonu ile yaratılmaktadır. Yukarıda da belirttiğimiz gibi
@@ -305,7 +301,7 @@ duracağız. Çekirdeğin bir prosesin thread'lerine sonra da alt proseslerine n
 
 
 Thread Listesi: thread_head ve thread_node
----------------------------------------------------
+------------------------------------------
 
 Bir prosesin thread'lerine erişim için eskiden ``task_struct`` içerisindeki ``thread_group`` isimli
 döngüsel bağlı liste bağı kullanılıyordu. 4.2 çekirdeği (2015) ile birlikte bu veri yapısında bir
@@ -371,9 +367,8 @@ değilse -1 değerinde, ana thread ise >= 0 değerinde olmaktadır.
 Linux çekirdeğinde terminoloji bağlamında "prosesin ana thread'i" yerine *thread grup lideri (thread group
 leader)* terimi tercih edilmektedir.
 
-
 pid ve tgid Elemanları
---------------------------------
+----------------------
 
 Bilindiği gibi UNIX/Linux sistemlerinde her prosesin sistem genelinde tek (unique) olan bir *proses id
 (pid)* değeri vardır. Linux çekirdeği prosesin id değerini prosesin ana thread'ine ilişkin ``task_struct``
@@ -430,7 +425,7 @@ Linux'ta thread'lere özgü pid değeri Linux'a özgü *gettid* fonksiyonu ile e
    *gettid* fonksiyonunun bir POSIX fonksiyonu olmadığına dikkat ediniz.
 
 group_leader Göstericisi
-------------------------------
+------------------------
 
 Aslında Linux çekirdeği thread'lere ilişkin ``task_struct`` nesnelerinde yalnızca prosesin ana thread'ine
 ilişkin pid değerini değil, aynı zamanda ana thread'in ``task_struct`` nesnesinin adresini de
@@ -452,7 +447,6 @@ içerisindeki ``list_head`` düğümünün durumu ne olacaktır? İşte Linux ç
 sonlandığında istisna olarak ana thread'e ilişkin ``task_struct`` nesnesini yok etmemektedir (başka bir
 deyişle *hortlak (zombie)* olarak tutmaktadır). Yani bu ``group_leader`` göstericisi her zaman geçerli
 bir ``task_struct`` nesnesini gösteriyor durumda olmaktadır.
-
 
 real_parent ve parent Göstericileri
 --------------------------------------------
@@ -775,8 +769,8 @@ aslında programın akışı çekirdek moduna geçerek aygıt sürücü içerisi
 
 Linux sistemlerinde aygıt sürücüler (ve dolayısıyla aygıt dosyaları) iki kısma ayrılmaktadır:
 
-- *Karakter Aygıt Sürücüleri (Character Device Drivers)*
-- *Blok Aygıt Sürücüleri (Block Device Drivers)*
+- Karakter Aygıt Sürücüleri (Character Device Drivers)
+- Blok Aygıt Sürücüleri (Block Device Drivers)
 
 Blok aygıt sürücüleri *hard disk, SSD, CDROM, ramdisk* gibi blok blok transferlerin yapıldığı aygıtlar
 söz konusu olduğunda kullanılmaktadır. Karakter aygıt sürücülerine ilişkin aygıt dosyaları UNIX/Linux
@@ -803,13 +797,12 @@ Aygıt dosyaları komut satırında *mknod* isimli programla yaratılmaktadır:
 Tipik olarak sistem programcısı bir *kabuk betiği (shell script)* yazarak bu işlemi otomatize eder. Bu
 betik önce *insmod* ile aygıt sürücüyü yükler, ``/proc/devices`` dosyasına başvurup onun majör numarasını
 elde eder ve aygıt dosyasını *mknod* komutuyla dinamik bir biçimde oluşturur. Biz de denemelerimizde
-böyle yapacağız. Bunun için aşağıdaki gibi bir *load* betiği kullanacağız:
+böyle yapacağız. Bunun için aşağıdaki gibi bir ``load`` betiği kullanacağız:
 
 .. code-block:: bash
 
    #!/bin/bash
-   # load  (bu satırı dosyaya kopyalamayınız)
-
+  
    module=$1
    mode=666
 
@@ -825,14 +818,13 @@ Bu betik dosyasını oluşturduktan sonra dosyaya ``x`` hakkını vermeyi unutma
    $ chmod +x load
    $ sudo ./load mydriver
 
-Aygıt sürücüyü *rmmod* ile çıkartıp ilgili aygıt dosyasını silen *unload* betiği de aşağıdaki gibi
+Aygıt sürücüyü *rmmod* ile çıkartıp ilgili aygıt dosyasını silen ``unload`` betiği de aşağıdaki gibi
 yazılabilir:
 
 .. code-block:: bash
 
    #!/bin/bash
-   # unload  (bu satırı dosyaya kopyalamayınız)
-
+ 
    module=$1
 
    /sbin/rmmod ./${module}.ko || exit 1
@@ -842,7 +834,6 @@ yazılabilir:
 
    $ chmod +x unload
    $ sudo ./unload mydriver
-
 
 İskelet Karakter Aygıt Sürücüsü Örneği
 --------------------------------------
@@ -990,7 +981,6 @@ kodu da hazırlanmıştır.
     clean:
         make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-
 ``load``
 
 .. code-block:: bash
@@ -1083,7 +1073,6 @@ görülmelidir:
    [  450.631958] IOC_test_driver_TEST1
    [  450.631967] test-driver closed...
 
-
 RCU Mekanizması ile task_struct Listelerinin Dolaşılması
 ------------------------------------------------------------
 
@@ -1163,7 +1152,6 @@ Bu makro kullanılarak *walk_process* fonksiyonu şöyle de yazılabilir:
 
        rcu_read_unlock();
    }
-
 
 Tüm Prosesleri Dolaşan Çekirdek Modülü Örneği
 ---------------------------------------------
@@ -1443,11 +1431,11 @@ sonra ``app`` programı çalıştırmalısınız. Bu program önce 10 tane threa
     static dev_t g_dev;
     static struct cdev g_cdev;
     static struct file_operations g_fops = {
-        .owner          = THIS_MODULE,
-        .open           = test_driver_open,
-        .read           = test_driver_read,
-        .write          = test_driver_write,
-        .release        = test_driver_release,
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
         .unlocked_ioctl = test_driver_ioctl
     };
 
@@ -2518,21 +2506,10 @@ Görüldüğü gibi bu tasarımda hiç anahtar saklanmadan yaprak görülene kad
 bulunmuş olur ya da bulunamamış olur. Aslında Radix ağaçlarında anahtar ve değerler düğümlerde de turulabilir. 
 Peki her düğümde anahtar ve değeri tutmakla yalnızca yapraklarda değeri tutmanın hangisi daha iyi bir yöntemdir?
 
-.. list-table::
-   :header-rows: 1
-   :widths: 20 40 40
-
-   * - Yöntem
-     - Avantajları
-     - Dezavantajları
-   * - **Her düğümde anahtar saklama**
-     - Erken durabilme; ara düğümde tam eşleşme bulununca yaprağa kadar inmek gerekmez.
-       Prefix aramaları daha kolay.
-     - Veri yapısı karmaşıklaşır; bellek kullanımı artar.
-   * - **Yalnızca yapraklarda değer saklama**
-     - Basit tasarım: iç düğümler yalnızca yönlendirme bilgisi tutar. Bellek daha düzenli kullanılır.
-       Ekleme/silme algoritmaları daha etkin.
-     - Her zaman yaprağa kadar inmek gerekir. Prefix tabanlı aramalarda ek iş yapılması gerekir.
+.. figure:: _static/btree-key-storage-table.png
+   :alt: Anahtar Saklama Yöntemlerinin Karşılaştırması
+   :align: center
+   :width: 70%
 
 .. note::
 
@@ -2556,30 +2533,10 @@ Güncel sürümlerde Linux'un pid araması için kullandığı XArray ağacı bu
 
 Hash tablosu ile XArray/Radix ağacı arasındaki avantaj ve dezavantajları karşılaştıralım:
 
-.. list-table::
-   :header-rows: 1
-
-   * - Ölçüt
-     - Hash Tablosu
-     - XArray / Radix Ağacı
-   * - **Arama karmaşıklığı**
-     - Ortalama O(1); çakışmada en kötü O(N)
-     - O(log\ :sub:`k` N), tipik derinlik 2–3
-   * - **Bellek kullanımı**
-     - Tablo önceden sabit boyutta ayrılır; seyrek pid'lerde boşa gider
-     - Yalnızca kullanılan düğümler açılır; seyrek alanda çok verimli
-   * - **Çakışma**
-     - Mümkün; performansı düşürebilir
-     - Yok; her pid tek bir yolu izler
-   * - **Ölçeklenebilirlik**
-     - Tablo boyutunu baştan iyi seçmek gerekir
-     - pid alanı büyüse bile uyum sağlar
-   * - **Sıralı gezinme**
-     - Doğal sıralama yok; yavaş
-     - Doğası gereği sıralı; çok hızlı
-   * - **Boş pid bulma**
-     - Ayrı veri yapısı gerektirir
-     - Aynı ağaç hem arama hem tahsisat için kullanılır
+.. figure:: _static/hash-vs-xarray-table.png
+   :alt: Hash Tablosu ile XArray Karşılaştırması
+   :align: center
+   :width: 70%
 
 Özetle: tekil arama için hash tablosu genellikle biraz daha hızlıdır; ancak büyük ve seyrek pid isim
 alanlarında XArray çok daha verimli bellek kullanır. Sıralı gezinme ve boş pid bulma gerektirdiğinde
@@ -2652,7 +2609,7 @@ göstermektedir:
 .. figure:: _static/modern-pid-chain.png
    :align: center
    :alt: Modern pid chain
-   :width: 100%
+   :width: 50%
 
 Prosesin içinde bulunduğu pid isim alanının bilgisine ulaşım çağrı zinciri şöyledir:
 
@@ -2778,7 +2735,6 @@ Boş pid değerinin elde edilmesi de aynı XArray altyapısı üzerinden yapılm
 
 .. code-block:: c
 
-   /* Boş pid tahsisatı çağrı zinciri */
    alloc_pid --> idr_alloc_cyclic --> idr_alloc_u32 --> idr_get_free
 
 XArray gerçekleştirimi hakkında ileride başka konularda ek bilgiler vereceğiz.

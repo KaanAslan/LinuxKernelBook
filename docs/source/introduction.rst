@@ -590,64 +590,10 @@ değiştirilmiştir. 2011 yılında 3.0, 2015 yılında 4.0, 2019 yılında 5.0,
 Linux çekirdeklerinin versiyonları ve bu versiyonlarda eklenen önemli özellikler aşağıdaki
 tabloda verilmiştir.
 
-.. list-table::
-   :header-rows: 1
-   :width: 60%
-
-   * - Sürüm
-     - Tarih
-     - Önemli Yenilikler
-   * - 0.01
-     - Ağustos 1991
-     - Linus Torvalds tarafından duyurulan ilk sürüm; sadece temel fonksiyonlara sahipti.
-   * - 1.0
-     - Mart 1994
-     - İlk resmi sürüm; çoklu işlemci desteği yoktu. Ağ üzerinden TCP/IP desteği sağlandı.
-   * - 1.2
-     - Mart 1995
-     - x86 dışı mimarilere (Alpha, MIPS) ilk destekler geldi.
-   * - 2.0
-     - Haziran 1996
-     - SMP (Simetrik Çoklu İşlemci) desteği eklendi. Daha fazla mimari desteği sunuldu.
-   * - 2.2
-     - Ocak 1999
-     - Gelişmiş ağ yığını, IPv6 desteği, daha fazla SMP ölçeklenebilirliği.
-   * - 2.4
-     - Ocak 2001
-     - USB, PCMCIA ve Bluetooth desteği; 64 GB RAM'e kadar bellek desteği (PAE ile).
-   * - 2.6
-     - Aralık 2003
-     - Yeni scheduler (O(1)), udev ile dinamik aygıt yönetimi, sysfs, Native POSIX Thread
-       Library (NPTL), preemptive kernel.
-   * - 3.0
-     - Temmuz 2011
-     - Büyük bir teknik değişiklik yok; sadece sürüm numarası sadeleştirildi (2.6.x'lerin
-       devamı).
-   * - 4.0
-     - Nisan 2015
-     - Canlı kernel güncelleme (live patching) özelliği eklendi.
-   * - 5.0
-     - Mart 2019
-     - Yeni donanım desteği, enerji verimliliği iyileştirmeleri, Adiantum şifreleme
-       algoritması.
-   * - 5.4
-     - Kasım 2019
-     - Lockdown modu, fs-verity desteği.
-   * - 5.10
-     - Aralık 2020
-     - EXT4 ve Btrfs iyileştirmeleri, AMD GPU desteği.
-   * - 5.15
-     - Kasım 2021
-     - NTFS3 dosya sistemi, yeni I/O kontrolcüsü.
-   * - 6.0
-     - Ekim 2022
-     - Rust diline ilk çekirdek içi destek, Scheduler ve TCP performans iyileştirmeleri.
-   * - 6.1
-     - Aralık 2022
-     - Rust desteği genişletildi, Intel AMX desteği.
-   * - 6.6
-     - Kasım 2023
-     - Apple Silicon (M1/M2) desteği, yeni enerji yönetimi özellikleri.
+.. figure:: _static/kernel-versions-table.png
+   :alt: Linux Çekirdeği Sürüm Tarihçesi
+   :align: center
+   :width: 70%
 
 Linux monolithic bir çekirdek yapısına sahiptir. Büyük ölçüde POSIX uyumu bulunmaktadır.
 
@@ -673,38 +619,10 @@ Toplamda iki yüzün üzerinde Linux dağıtımının olduğu söylenebilir. Anc
 az sayıda dağıtım çok popüler olmuştur. Bazı dağıtımlar bazı dağıtımlardan fork edilerek
 oluşturulmuştur. Aşağıda en çok kullanılan dağıtımlara ilişkin dağıtım ağacı verilmektedir:
 
-.. code-block:: text
-
-    Linux
-    ├── Debian
-    │   ├── Ubuntu
-    │   │   ├── Linux Mint
-    │   │   ├── Pop!_OS
-    │   │   ├── elementary OS
-    │   │   └── Zorin OS
-    │   ├── Devuan       # Systemd olmayan Debian
-    │   └── Kali Linux   # Güvenlik test amaçlı
-    ├── Red Hat Linux (eski)
-    │   ├── Fedora       # Topluluk temelli, RHEL'in test yatağı
-    │   │   └── RHEL (Red Hat Enterprise Linux)
-    │   │       ├── CentOS (→ 2021 sonrası CentOS Stream)
-    │   │       ├── AlmaLinux
-    │   │       └── Rocky Linux
-    ├── Slackware
-    │   └── Slax         # Hafif sürüm
-    ├── Arch Linux
-    │   ├── Manjaro
-    │   └── EndeavourOS
-    ├── Gentoo
-    │   └── Calculate Linux
-    ├── SUSE Linux
-    │   ├── openSUSE Leap
-    │   └── openSUSE Tumbleweed
-    ├── Android          # Mobil, Linux çekirdeğine dayalı
-    ├── Alpine Linux     # Minimal, güvenli, konteyner dostu
-    └── Chrome OS
-        └── Chromium OS  # Açık kaynak tabanı
-
+.. figure:: _static/linux-distro-tree.png
+   :alt: Linux Dağıtımları Soy Ağacı
+   :width: 60%
+    
 En çok kullanılan Linux dağıtımları aşağıda özetlenmiştir.
 
 **Debian:** En önemli ve en eski Linux dağıtımlarından biridir. Knoppix, Mint ve Ubuntu

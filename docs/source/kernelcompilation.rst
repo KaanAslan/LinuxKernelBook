@@ -119,7 +119,6 @@ gerektiği tipik durumlar şunlardır:
 Bu bölümde çekirdek kodlarının nasıl derleneceği ve derlenmiş olan çekirdekle sistemin nasıl boot
 edileceği üzerinde duracağız.
 
-
 Çapraz Derleme
 --------------
 
@@ -130,7 +129,6 @@ işlemcilerinin bulunduğu gömülü aygıtlar için Linux çekirdeğini derleme
 çapraz derleme faaliyetidir. Çapraz derleme işlemleri için *çapraz araç zincirlerinin (cross
 toolchains)* kullanılması gerekmektedir. Linux çekirdeğinin derlenmesinde yalnızca C derleyicisi
 değil pek çok yardımcı programlara da gereksinim duyulmaktadır.
-
 
 Çekirdek Kaynak Kodlarının İndirilmesi ve Açılması
 --------------------------------------------------
@@ -195,25 +193,10 @@ formatındadır. *gzip* ile *zip* aynı algoritmaları kullandığından perform
 
 Her format için ayrı araçlar mevcuttur:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 20 25 25
-
-   * - Format
-     - Sıkıştırma
-     - Açma
-   * - gzip
-     - ``gzip``
-     - ``gunzip``
-   * - bz2
-     - ``bzip2``
-     - ``bunzip2``
-   * - xz
-     - ``xz``
-     - ``unxz``
-   * - zip
-     - ``zip``
-     - ``unzip``
+.. figure:: _static/compression-tools-table.png
+   :alt: Sıkıştırma Formatları ve Araçları
+   :align: center
+   :width: 40%
 
 *tar* programının en çok kullanılan seçenekleri şunlardır: ``-c`` (tar'lamak için), ``-x`` (açmak
 için), ``-v`` (ayrıntılı çıktı), ``-f`` (``.tar`` dosyasını belirtmek için; seçenek listesinin
@@ -919,33 +902,17 @@ imajı ve geçici kök dosya sistemi dosyaları default yerlerin dışında baş
 bulundurulabilir; önyükleyiciye bu konuda bilgi verilebilir. Ancak yukarıdaki dosyaların hedef
 sistemde bulundurulduğu default yerler şöyledir:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 40 60
-
-   * - Dosya
-     - Hedef Dizin
-   * - Çekirdek İmajı
-     - ``/boot``
-   * - Çekirdek Sembol Tablosu
-     - ``/boot``
-   * - Modül Dosyaları
-     - ``/lib/modules/<çekirdek_sürümü>/kernel``
-   * - Geçici Kök Dosya Sistemi Dosyası
-     - ``/boot``
+.. figure:: _static/kernel-install-dirs-table.png
+   :alt: Çekirdek Kurulum Dosyaları ve Hedef Dizinleri
+   :align: center
+   :width: 55%
 
 İsteğe bağlı olarak aşağıdaki dosyalar da hedef sisteme konuşlandırılabilir:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 40 60
-
-   * - Dosya
-     - Hedef Dizin
-   * - Konfigürasyon Dosyası
-     - ``/boot``
-   * - Modüllere İlişkin Bazı Dosyalar
-     - ``/lib/modules/<çekirdek_sürümü>``
+.. figure:: _static/kernel-extra-install-dirs-table.png
+   :alt: Diğer Kurulum Dosyaları ve Hedef Dizinleri
+   :align: center
+   :width: 55%
 
 Peki yukarıda belirttiğimiz dosyalar hedef sistemdeki ilgili dizinlere hangi isimlerle
 kopyalanmalıdır? Tipik isimlendirme şöyle olmalıdır (buradaki ``<çekirdek_sürümü>``, *"uname -r"*
@@ -1235,20 +1202,10 @@ dosya ve dizinleri ``Kconfig`` dosyasında belirtmek zorunda değiliz.
 
 *"make menuconfig"* menüsünde seçenekler için birkaç seçme biçimi bulunmaktadır:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 15 85
-
-   * - Gösterim
-     - Anlamı
-   * - ``[ ]``
-     - Seçilebilir ya da seçilmeyebilir. Seçildiğinde ``[*]`` biçiminde gösterilir.
-   * - ``< >``
-     - Üç konumlu seçenek: boş (seçilmedi), ``<M>`` (modül) ya da ``<*>`` (çekirdek içine gömülü).
-   * - ``-*-``
-     - Seçilememezlik yapılamaz; ilgili özellik mutlaka çekirdek kodlarında bulunmalıdır.
-   * - değer
-     - İlgili özellik için doğrudan bir değer girilmektedir.
+.. figure:: _static/menuconfig-notation-table.png
+   :alt: menuconfig Gösterimleri
+   :align: center
+   :width: 60%
 
 Tabii *"make menuconfig"* menüsünde yapılan her şey aslında ``.config`` dosyasına yansıtılmaktadır.
 

@@ -304,14 +304,13 @@ bulundurulmuştur:
 
 .. code-block:: c
 
-   static inline int list_is_head(const struct list_head *list,
-                                  const struct list_head *head)
+   static inline int list_is_head(const struct list_head *list, const struct list_head *head)
    {
        return list == head;
    }
 
    #define list_for_each(pos, head) \
-       for (pos = (head)->next; !list_is_head(pos, (head)); pos = pos->next)
+           for (pos = (head)->next; !list_is_head(pos, (head)); pos = pos->next)
 
 Makronun birinci parametresi ``list_head`` türünden bir göstericiyi, ikinci parametresi başlangıç
 düğümünün adresini almaktadır. Döngünün her yinelenmesinde bu göstericiye sonraki düğümün ``list_head``
@@ -343,9 +342,9 @@ eşdeğeri bazı ayrıntılar ihmal edilerek şöyle de yazılabilir:
 
 .. code-block:: c
 
-   #define my_list_for_each_entry(pos, head, member)                                            \
-       for (pos = container_of((head)->next, typeof(*pos), member); &(pos)->member != head;     \
-           pos = container_of((pos)->member.next, typeof(*pos), member))
+   #define my_list_for_each_entry(pos, head, member)                                                \
+           for (pos = container_of((head)->next, typeof(*pos), member); &(pos)->member != head;     \
+                   pos = container_of((pos)->member.next, typeof(*pos), member))
 
 .. note::
 
@@ -376,16 +375,15 @@ yazılmıştır:
 
 .. code-block:: c
 
-   #define list_for_each_entry_safe(pos, n, head, member)           \
-       for (pos = list_first_entry(head, typeof(*pos), member),     \
-            n = list_next_entry(pos, member);                       \
-            !list_entry_is_head(pos, head, member);                 \
-            pos = n, n = list_next_entry(n, member))
+   #define list_for_each_entry_safe(pos, n, head, member)               \
+           for (pos = list_first_entry(head, typeof(*pos), member),     \
+                    n = list_next_entry(pos, member);                   \
+                !list_entry_is_head(pos, head, member);                 \
+                pos = n, n = list_next_entry(n, member))
 
 Makronun birinci elemanı dolaşımda kullanılacak asıl yapı türünden göstericiyi almaktadır. Makronun
 ikinci parametresi de asıl yapı göstericidir. Üçüncü ve dördüncü parametreler sırasıyla kök düğümün
 adresi ve bağ düğümünün ismini almaktadır.
-
 
 Bağlı Listeden Düğüm Silme
 --------------------------
@@ -420,7 +418,6 @@ Fonksiyonun parametresi silinecek düğüme ilişkin ``list_head`` nesnesinin ad
 silinen düğümdeki ``next`` ve ``prev`` göstericilerine özel bazı değerlerin atandığını görüyorsunuz. Bu
 değerler silinmiş düğümün kullanılması durumunda *page fault* oluşmasına yol açmaktadır; dolayısıyla bir
 çeşit debug mekanizması oluşturmak amacıyla atandıklarını söyleyebiliriz.
-
 
 Bağli Listede Araya Düğüm Ekleme
 --------------------------------
@@ -467,25 +464,25 @@ Aşağıda kullanıcı alanında çekirdekteki bağlı liste kullanımına bir �
    #define LIST_HEAD_INIT(name) { &(name), &(name) }
 
    #define LIST_HEAD(name) \
-       struct list_head name = LIST_HEAD_INIT(name)
+           struct list_head name = LIST_HEAD_INIT(name)
 
-   #define container_of(ptr, type, member) ({          \
-           void *__mptr = (void *)(ptr);               \
+   #define container_of(ptr, type, member) ({           \
+           void *__mptr = (void *)(ptr);                \
            ((type *)(__mptr - offsetof(type, member))); })
 
-   #define list_entry(ptr, type, member)            \
+   #define list_entry(ptr, type, member)                \
        container_of(ptr, type, member)
 
-   #define list_entry_is_head(pos, head, member)    \
+   #define list_entry_is_head(pos, head, member)        \
        (&pos->member == (head))
 
-   #define list_first_entry(ptr, type, member)      \
+   #define list_first_entry(ptr, type, member)          \
        list_entry((ptr)->next, type, member)
 
-   #define list_next_entry(pos, member)             \
+   #define list_next_entry(pos, member)                 \
        list_entry((pos)->member.next, typeof(*(pos)), member)
 
-   #define list_for_each(pos, head)                 \
+   #define list_for_each(pos, head)                     \
        for (pos = (head)->next; !list_is_head(pos, (head)); pos = pos->next)
 
    #define list_for_each_entry(pos, head, member)                   \
@@ -742,7 +739,6 @@ faydalı bir etki oluşturmaktadır. Diziyi önce sıraya dizip sonra ikili aram
 ise genellikle iyi bir fikir değildir. Çünkü sırayı korumak için araya eleman ekleme ve
 aradan eleman silme gibi işlemlerde O(N) karmaşıklıkta kaydırmaların yapılması
 gerekmektedir.
-
 
 İndeksli Arama
 --------------
@@ -1516,7 +1512,6 @@ zincirleriyle birlikte serbest bırakılmıştır.
 .. note::
    Bağlı liste düğümleri serbest bırakılırken sonraki düğümün adresini saklamak gerekir.
    ``NULL`` adrese ``free`` uygulamanın bir soruna yol açmayacağını anımsayınız.
-
 
 RCU'lu Hash Tablosu Fonksiyonları
 ===================================
