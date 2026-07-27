@@ -2673,7 +2673,7 @@ Her düğümün en fazla iki alt düğüme (*child nodes*) sahip olabildiği ağ
 .. figure:: _static/binary-tree-example.png
    :alt: İkili ağaç örneği
    :align: center
-   :width: 70% 
+   :width: 60% 
 
 Görüldüğü gibi burada her düğümün en fazla iki alt düğümü vardır. Ağacın hiç alt düğümü olmayan
 düğümlerine "yaprak (leaf)" denilmektedir. Bir ağacın yüksekliği (height) kök düğümden en dipteki
@@ -2692,3 +2692,101 @@ Tam ikili ağaçlardaki düğüm sayısının 2ʰ⁺¹ - 1 olduğuna dikkat edin
 kökten o düğüme gitmek için geçilen kenar sayısını belirtmektedir. Ağacın yüksekliği de zaten en
 yüksek düğümünün yüksekliğidir.
 
+Bir ikili ağaç arama amaçlı oluşturuluyorsa (genellikle bu amaçla oluşturulur) bu tür ikili
+ağaçlara *ikili arama ağaçları (binary search trees)* denilmektedir. İkili arama ağaçlarında
+eleman anahtara göre yerleştirilir. Yerleştirme *küçükler sola, büyükler sağa* biçiminde
+yapılır. (Tersi de olabilir ancak gelenek böyledir.) Örneğin aşağıdaki değerler anahtar olsun
+ve bunları sırasıyla ikili arama ağacına yerleştirelim:
+
+``24 13 36 42 8 19 4 21 39 7``
+
+.. figure:: _static/bst-example-24.png
+   :alt: İkili arama ağacı örneği
+   :align: center
+   :width: 65%
+
+İkili arama ağaçlarında arama yapılırken kökten girilir, aranacak anahtarla düğümün anahtarları
+karşılaştırılır. Aranacak anahtar düğümün anahtarından büyükse sağa, küçükse sola sapılır.
+Yapraklara gelindiğinde hala değerin bulunamamış olması aramanın başarısız olduğu anlamına
+gelmektedir.
+
+İkili arama ağaçları "değerleri sıraya dizmeden ikili arama (binary search)"" yapabilme
+olanağını sağlamaktadır. Ancak yukarıdaki ikili ağaçta bir sorun vardır. Bu ağaç dengesizdir.
+Yaprakların yükseklikleri arasında belli bir sınırlama getirilmiş olan ağaçlara *dengeli
+ağaçlar (balanced trees)* denilmektedir. Örneğin biz bu sınırlamayı 1 olarak alalım. Bu durumda
+yukarıdaki ağacımız dengesizdir. Ancak aşağıdaki ağaç dengelidir:
+
+.. figure:: _static/balanced-bst-example.png
+   :alt: Dengeli ikili arama ağacı örneği
+   :align: center
+   :width: 65%
+
+Burada yapraklar arasındaki yükseklik farkı en fazla 1'dir.
+
+Peki ikili ağaçta denge nasıl sağlanmaktadır? İşte eleman eklenirken dengenin bozulduğu tespit
+edilip denge sağlanmaktadır. Bunun için iki temel dengeleme algoritması kullanılmaktadır: *AVL
+(Adelson-Velsky ve Landis) dengelemesi* ve *kırmızı-siyah (red-black) dengelemesi*. AVL
+dengelemesiyle oluşturulmuş ikili arama ağaçlarına *AVL ağacı (AVL tree)*, kırmızı-siyah
+dengelemesi ile oluşturulmuş ikili arama ağaçlarına ise *kırmızı-siyah ağacı (red-black tree)*
+denilmektedir. İki dengeleme algoritmasının da birbirlerine göre avantaj ve dezavantajları
+vardır.
+ 
+Peki dengeleme nasıl yapılmaktadır? İşte eleman *insert* edilirken dengenin bozulduğu tespit
+edilir, sonra dengeyi korumak için az sayıda düğüm yer değiştirilerek işlem yapılır. İşte
+dengenin korunması için yapılan işlemler AVL dengelemesinde farklı, kırmızı-siyah
+dengelemesinde farklıdır.
+ 
+AVL dengelemesi Georgy Adelson-Velsky ve Evgenii Landis tarafından 1962'de, kırmızı-siyah ağacı
+ise *Leo Guibas ve Robert Sedgewick* tarafından 1978'de ortaya atılmıştır. Biz burada AVL ve
+kırmızı-siyah dengeleme algoritmaları üzerinde durmayacağız. Bunun için "veri yapıları ve
+algoritmalar" kitaplarına başvurabilirsiniz.
+
+Kırmızı-siyah ağaçlarında düğümlere *kırmızı* ya da *siyah* renkleri verilmektedir. Yani bir düğüm ya kırmızı olabilir
+ya da siyah olabilir. (Buradaki kırmızı ve siyah renkleri o zamanın lazer yazıcısı tarafından en iyi basılan renkler
+olduğu için tercih edilmiştir.) Kırmızı-siyah ağacında bir anahtar önce yine ikili arama ağacında olduğu gibi küçükler
+sola büyükler sağa biçiminde yeri tespit edilerek ağaca eklenir. Sonra aşağıda belirteceğimiz kuralların ihlal edilip
+edilmediğine bakılır. Eğer bu kurallardan biri ihlal edilmişse uygun düğüm hareketleri yapılarak dengeleme sağlanır.
+Eğer bu kurallardan biri ihlal edilmişse uygun düğüm hareketleri yapılarak dengeleme sağlanır. Dengelemenin sağlanması 
+için yapılan işlemlere "döndürme (rotation)" de denilmektedir.
+Kırmızı-siyah ağacının kuralları şunlardır:
+
+**1) Renk kuralı:** Her düğüm ya kırmızıdır ya da siyahtır.
+
+**2) Kök kuralı:** Kök düğüm her zaman siyahtır.
+
+**3) NIL (NULL) düğüm kuralı:** NIL düğümler siyah kabul edilir.
+
+**4) Kırmızı kuralı:** Kırmızı bir düğümün alt düğümleri siyah olmak zorundadır. Başka bir deyişle, kökten yaprağa giden
+herhangi bir yol üzerinde ardışık iki kırmızı düğüm bulunamaz. (Yani kırmızı düğümün alt düğümü kırmızı olamaz.
+Kırmızı düğümün üst düğümü her zaman siyahtır.)
+
+**5) Siyah yükseklik kuralı:** Herhangi bir düğümden, o düğümün altındaki tüm yapraklara giden her yol üzerinde eşit
+sayıda siyah düğüm bulunur. Bu sayıya o düğümün *siyah yüksekliği* (black height) denir.
+
+.. image:: _static/red-black-tree-sample.png
+   :align: center
+   :width: 70%
+
+Yukarıdaki ağaçta kuralın uygulandığını görüyorsunuz. Burada yaprakları temsil eden NIL düğümler her zaman siyahtır.
+İşte yeni düğüm önce ağaca yerleştirilir, sonra kuralın bozulup bozulmadığına bakılır, eğer kural bozulmuşsa bazı
+düğüm hareketleriyle kuralın bozulması engellenir. 4 ve 5 numaralı kurallarla şu garanti verilmiş olur: Kökten yaprağa 
+giden en uzun yol, en kısa yolun en fazla iki katı olabilir. Çünkü en kısa yol tamamen siyah düğümlerden oluşur; en 
+uzun yol ise siyah ve kırmızı düğümlerin dönüşümlü dizilmesiyle elde edilir. Bu da ağacın yüksekliğinin en kötü durumda 
+şu sınırda kalmasını sağlar:
+
+.. math::
+
+    h \leq 2 \log_2(n + 1)
+
+.. image:: _static/shortest-longest-path.png
+   :align: center
+   :width: 50%
+   
+Aşağıdaki tabloda AVL ağacı ile kırmızı-siyah ağacı çeşitli özelliklere göre karşılaştırılmıştır.
+ 
+.. figure:: _static/rbtree-avl-comparison-table.png
+   :align: center
+   :alt: Kırmızı-siyah ağaç ve AVL ağacı karşılaştırması
+
+Linux çekirdeğinde ekleme silme işlemleri daha yoğun olduğu için AVL ağacı yerine kırmızı-siyah ağacı tercih
+edilmiştir.
