@@ -2574,7 +2574,7 @@ tutmaktadır:
 .. figure:: _static/pages-pointer-array.png
    :alt: pages gösterici dizisi
    :align: center
-   :width: 50%
+   :width: 55%
 
 ``pages`` elemanının göstericiyi gösteren gösterici olduğuna, yani gösterici dizisini gösterdiğine
 dikkat ediniz.
@@ -2655,3 +2655,40 @@ nesnelerin tahsisatları bu önbellekten yapılmaktadır.
 alanlar farklı "kırmızı-siyah ağaçlarında" tutuluyordu. Bu iki ağacın kök düğümü ``vmap_area_root`` ve
 ``free_vmap_cache`` ismindeydi. Ancak 5.15 çekirdeği ile birlikte ağaç teke indirilmiştir. Ağacın kök
 düğümü ``free_vmap_area_root`` değişkeninde tutulmaktadır.
+
+Her ``vmalloc`` çağrısı yapıldığında çekirdek yukarıda da belirttiğimiz gibi bir ``vm_struct``
+nesnesi bir de ``vmap_area`` nesnesi oluşturmaktadır. ``vm_struct`` nesnesini de ``vmap_area``
+nesnesinin içerisine yerleştirmektedir. Peki belli bir sanal bellek alanının tahsis edilip
+edilmediğini çekirdek nasıl anlamakta ve tahsisat için gereken boş sanal bellek alanını nasıl
+tespit etmektedir? İşte çekirdek burada hash tablosu yerine *kırmızı-siyah ağacı (red-black
+tree)* denilen ikili arama ağacı kullanmaktadır. Biz de önce kırmızı-siyah ikili arama ağacı
+konusunda bazı bilgiler vereceğiz.
+
+Kırmızı-Siyah Ağaçlarına Genel Bakış
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Her düğümün en fazla iki alt düğüme (*child nodes*) sahip olabildiği ağaçlara *ikili ağaçlar
+(binary trees)* denilmektedir. Örneğin:
+
+.. figure:: _static/binary-tree-example.png
+   :alt: İkili ağaç örneği
+   :align: center
+   :width: 70% 
+
+Görüldüğü gibi burada her düğümün en fazla iki alt düğümü vardır. Ağacın hiç alt düğümü olmayan
+düğümlerine "yaprak (leaf)" denilmektedir. Bir ağacın yüksekliği (height) kök düğümden en dipteki
+yaprağa ulaşmak için kaç kenardan geçildiği ile belirlenmektedir. Örneğin yukarıdaki ağacın
+yüksekliği 3'tür.
+
+Eğer düğümün tam olarak iki alt düğümü varsa böyle ikili ağaçlara "tam ikili ağaçlar (complete
+binary tree)" denilmektedir. Örneğin:
+
+.. figure:: _static/complete-binary-tree.png
+   :alt: Tam ikili ağaç örneği
+   :align: center
+   :width: 70%
+
+Tam ikili ağaçlardaki düğüm sayısının 2ʰ⁺¹ - 1 olduğuna dikkat ediniz. Bir düğümün yüksekliği
+kökten o düğüme gitmek için geçilen kenar sayısını belirtmektedir. Ağacın yüksekliği de zaten en
+yüksek düğümünün yüksekliğidir.
+
