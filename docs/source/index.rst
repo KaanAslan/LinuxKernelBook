@@ -53,6 +53,7 @@ ilişkin temel bilgilere ve becerilere sahip olduğu varsayılmaktadır.
    waitqueues
    memorymanagement1
    memorymanagement2
+   pagecache
    bibliography
   
 

@@ -3031,4 +3031,110 @@ eğer ilgili dalda istenilen uzunlukta boş alan yoksa o dalda gereksiz arama ya
    :alt: vmalloc çağrı zinciri
    :width: 75%
 
+Güncel çekirdeklerde yukarıdaki fonksiyonlara ``_noprof`` sonekleri getirilmiştir. Biz grafta bu
+sonekli fonksiyonlar yerine soneksiz olanları bulundurduk.
+
+``vmalloc`` akışı tarafından çağrılan, ağaçta uygun boş bloğa ilişkin düğümü bulan
+``find_vmap_lowest_match`` fonksiyonu güncel çekirdeklerde şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline struct vmap_area *
+    find_vmap_lowest_match(struct rb_root *root, unsigned long size,
+            unsigned long align, unsigned long vstart, bool adjust_search_size)
+    {
+        struct vmap_area *va;
+        struct rb_node *node;
+        unsigned long length;
+
+        /* Start from the root. */
+        node = root->rb_node;
+
+        /* Adjust the search size for alignment overhead. */
+        length = adjust_search_size ? size + align - 1 : size;
+
+        while (node) {
+            va = rb_entry(node, struct vmap_area, rb_node);
+
+            if (get_subtree_max_size(node->rb_left) >= length &&
+                    vstart < va->va_start) {
+                node = node->rb_left;
+            } else {
+                if (is_within_this_va(va, size, align, vstart))
+                    return va;
+
+                /*
+                 * Does not make sense to go deeper towards the right
+                 * sub-tree if it does not have a free block that is
+                 * equal or bigger to the requested search length.
+                 */
+                if (get_subtree_max_size(node->rb_right) >= length) {
+                    node = node->rb_right;
+                    continue;
+                }
+
+                /*
+                 * OK. We roll back and find the first right sub-tree,
+                 * that will satisfy the search criteria. It can happen
+                 * due to "vstart" restriction or an alignment overhead
+                 * that is bigger then PAGE_SIZE.
+                 */
+                while ((node = rb_parent(node))) {
+                    va = rb_entry(node, struct vmap_area, rb_node);
+                    if (is_within_this_va(va, size, align, vstart))
+                        return va;
+
+                    if (get_subtree_max_size(node->rb_right) >= length &&
+                            vstart <= va->va_start) {
+                        /*
+                         * Shift the vstart forward. Please note, we update it with
+                         * parent's start address adding "1" because we do not want
+                         * to enter same sub-tree after it has already been checked
+                         * and no suitable free block found there.
+                         */
+                        vstart = va->va_start + 1;
+                        node = node->rb_right;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return NULL;
+    }
+
+``vmalloc`` her zaman en düşük adresteki ilk bulunan yeterli uzunluğa sahip bloğu tahsis etmektedir.
+Düşük adresten tahsisat yapmanın "bölünme (fragmentation)" üzerinde olumlu etkileri vardır. Aynı
+zamanda düşük adres temel alınarak tahsisat yapılması boş blokların birleştirilmesi üzerinde de
+faydalar sağlamaktadır. Bilindiği gibi ikili arama ağaçlarında küçükten-büyüğe dolaşım aslında
+özyinelemeyle (buna *in-order* dolaşım denilmektedir) sağlanmaktadır. Ancak burada kırmızı-siyah
+ağaçlarında her düğüm üst düğümün yerini de tuttuğu için özyinelemeye gerek kalmamaktadır. (Kırmızı-
+siyah ağacında sürekli sola gittiğimizde yapraklara ulaşınca geri dönüş özyinelemeyle değil üst
+düğümün adresi yoluyla yapılabilmektedir.) ``find_vmap_lowest_match`` fonksiyonu dikkatle incelendiğinde
+şu işlemlerin yapıldığı görülmektedir:
+
+1. Ağaçta önce eğer sol kolda uygun büyüklükte yer varsa sürekli sol koldan ilerlenmektedir.
+2. Eğer sol kolda istenilen büyüklükte yer bulunamazsa düğümün kendisine bakılmaktadır (*in-order*
+   dolaşım).
+3. Eğer düğümün kendisinde de yeterli boş yer yoksa bu kez sağ koldan ilerlenmektedir. Tabii sağ
+   kolun da sol kollarından itibaren bu işlemler yapılmaktadır.
+
+``find_vmap_lowest_match`` fonksiyonunda bir düğüme girilmeden önce o alt ağaçta talep edilen miktarda
+boş yerin olup olmadığının sorgulandığına dikkat ediniz. Böylece talep edilen miktarda boş yer olmayan
+alt ağaçlarda arama yapılmamaktadır. Dolaşım sırasında ilgili düğümün "boş mu dolu mu olduğuna"
+dolaylı olarak bakılmıştır. ``get_subtree_max_size`` fonksiyonu şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static __always_inline unsigned long
+    get_subtree_max_size(struct rb_node *node)
+    {
+        struct vmap_area *va;
+
+        va = rb_entry_safe(node, struct vmap_area, rb_node);
+        return va ? va->subtree_max_size : 0;
+    }
+
+Görüldüğü gibi eğer düğüm doluysa zaten bu fonksiyon sıfır değerini döndürmektedir. Yani dolu düğümler
+geçilmektedir.
 
