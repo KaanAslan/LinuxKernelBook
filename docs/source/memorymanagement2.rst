@@ -2035,7 +2035,7 @@ Yaratılmış olan bir dilim önbelleğinden tahsisat yapmak için kullanılan t
 .. figure:: _static/kmem-cache-alloc-functions.png
    :alt: Dilim önbelleği tahsisat fonksiyonları
    :align: center
-   :width: 40%
+   :width: 45%
 
 ``kmem_cache_alloc`` ve ``kmem_cache_zalloc`` en çok kullanılan tahsisat fonksiyonlarıdır. Bu
 fonksiyonlar belli bir dilim önbelleğinden nesne tahsis etmektedir. Fonksiyonların prototipleri
@@ -2082,7 +2082,7 @@ açıklıyoruz:
 .. figure:: _static/kmem-cache-alloc-failures.png
    :alt: kmem_cache_alloc başarısızlık nedenleri
    :align: center
-   :width: 50%
+   :width: 60%
 
 Eğer bu fonksiyonlar başka fonksiyonların içerisinde çağrılmışsa başarısızlık durumunda çağrımın
 yapıldığı fonksiyonun ``-ENOMEM`` değeri ile geri döndürülmesi uygun olur.
@@ -2150,7 +2150,7 @@ dilim önbelleklerinin nesne uzunlukları şöyledir:
 .. figure:: _static/kmalloc-caches-table.png
    :alt: Hazır genel amaçlı dilim önbellekleri
    :align: center
-   :width: 60%
+   :width: 65%
 
 Burada nesne uzunlukları 2'nin kuvvetine ilişkin olsa da (*) ile gösterilen iki istisna bulunmaktadır.
 Bu dilim önbellekleri çekirdek imajı belleğe yüklenip ilklenirken bellek yönetim işlevlerine ilişkin
@@ -2270,6 +2270,7 @@ büyüklüğü içerecek kadar boş yer varsa ya da blok küçültülüyorsa ayn
 .. figure:: _static/krealloc-behavior-table.png
    :alt: krealloc davranış tablosu
    :align: center
+   :width: 65%
 
 ``krealloc_array`` fonksiyonu 6.1 çekirdekleriyle eklenmiştir. ``kmalloc_array`` fonksiyonunun
 *realloc* biçimi gibidir:
@@ -2301,6 +2302,7 @@ yapılmaktadır:
 .. figure:: _static/obj-to-kmem-cache-chain.png
    :alt: Nesne adresinden kmem_cache nesnesine erişim zinciri
    :align: center
+   :width: 50%
 
 Dilim Önbelleklerine İlişkin Bilgilerin proc ve sys Dosya Sistemleri Yoluyla Elde Edilmesi
 ------------------------------------------------------------------------------------------
@@ -2361,6 +2363,7 @@ Buradaki kendi yarattığımız dilim önbelleği için değerleri tablo halinde
 .. figure:: _static/slabinfo-myobject-table.png
    :alt: myobject_cache slabinfo değerleri
    :align: center
+   :width: 70%
 
 ``/proc/meminfo`` dosyası aslında bellek kullanımı hakkında genel bilgi veren bir dosyadır. Bu dosyanın
 içeriği aşağıdakine benzer biçimdedir:
@@ -2665,7 +2668,7 @@ tree)* denilen ikili arama ağacı kullanmaktadır. Biz de önce kırmızı-siya
 konusunda bazı bilgiler vereceğiz.
 
 Kırmızı-Siyah Ağaçlarına Genel Bakış
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Her düğümün en fazla iki alt düğüme (*child nodes*) sahip olabildiği ağaçlara *ikili ağaçlar
 (binary trees)* denilmektedir. Örneğin:
@@ -2781,7 +2784,14 @@ uzun yol ise siyah ve kırmızı düğümlerin dönüşümlü dizilmesiyle elde 
 .. image:: _static/shortest-longest-path.png
    :align: center
    :width: 50%
-   
+
+Kırmızı-siyah ağacının gerçekleştiriminde düğümlerde şu bilgilerin tutulması gerekir:
+
+- Sol alt düğümün adresi
+- Sağ alt düğümün adresi
+- Düğümün rengi
+- Üst düğümün adresi
+
 Aşağıdaki tabloda AVL ağacı ile kırmızı-siyah ağacı çeşitli özelliklere göre karşılaştırılmıştır.
  
 .. figure:: _static/rbtree-avl-comparison-table.png
@@ -2790,3 +2800,235 @@ Aşağıdaki tabloda AVL ağacı ile kırmızı-siyah ağacı çeşitli özellik
 
 Linux çekirdeğinde ekleme silme işlemleri daha yoğun olduğu için AVL ağacı yerine kırmızı-siyah ağacı tercih
 edilmiştir.
+
+vmalloc Ailesi Tahsisatların Kırmızı-Siyah Ağacıyla Kayıt Altında Tutulması
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yukarıda da belirttiğimiz gibi eskiden (çekirdeğin 5.15 versiyonundan önce) sanal bellekteki boş alanlarla
+dolu alanlar ayrı kırmızı-siyah ağaçlarında tutuluyordu. Ancak çekirdeğin 5.15 versiyonuyla birlikte iki
+ağaç yerine tek bir ağaç kullanılmaya başlanmıştır. Eskiden dolu alanlara ilişkin ağacın kökü
+``vmap_area_root`` değişkeninde, boş alanlara ilişkin ağacın kökü ise ``free_vmap_cache`` değişkeninde
+tutuluyordu. Çekirdeğin 5.15 versiyonuyla birlikte teke düşürülen ağacın kökü ``mm/vmalloc.c`` dosyası
+içerisindeki ``free_vmap_area_root`` değişkeninde tutulmaktadır:
+
+.. code-block:: c
+
+    static struct rb_root free_vmap_area_root = RB_ROOT;
+
+Burada ``rb_root`` yapısı kırmızı-siyah ağacının kök düğümünü belirtmektedir. Yapı güncel çekirdeklerde
+``include/linux/rbtree_types.h`` dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct rb_root {
+        struct rb_node *rb_node;
+    };
+
+``RB_ROOT`` makrosu da şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #define RB_ROOT (struct rb_root) { NULL, }
+
+Görüldüğü gibi yapıda yalnızca kök düğümün adresi tutulmaktadır.
+
+Kırmızı-siyah ağacının düğümleri aynı dosyada ``rb_node`` yapısıyla temsil edilmiştir:
+
+.. code-block:: c
+
+    struct rb_node {
+        unsigned long  __rb_parent_color;
+        struct rb_node *rb_right;
+        struct rb_node *rb_left;
+    } __attribute__((aligned(sizeof(long))));
+
+Burada yapının ``__rb_parent_color`` elemanı hem üst düğümün adresini hem de düğümün kendi rengini
+tutmaktadır. Düğümler ``long`` türünün uzunluğuna (32 bit sistemde 4, 64 bit sistemde 8) hizalandığından
+adresin düşük anlamlı bitleri zaten sıfırdır. İşte ``__rb_parent_color`` elemanının en düşük anlamlı
+biti düğümün rengini tutmaktadır. En düşük anlamlı bit 0 ise düğüm kırmızı, 1 ise siyahtır.
+
+Görüldüğü gibi düğümlerin içerisinde bilgi tutulmamaktadır. Çünkü kırmızı-siyah ağaçları da gömme
+tekniğiyle oluşturulmaktadır. Yani aslında bu düğüm başka bir yapının elemanı durumundadır,
+``container_of`` makrosuyla ana yapı nesnesinin adresi elde edilmektedir.
+
+``vmalloc`` işlemlerinde kırmızı-siyah ağacının düğümlerinde ``vmap_area`` nesneleri bulunmaktadır.
+``vmap_area`` yapısını yeniden anımsatmak istiyoruz:
+
+.. code-block:: c
+
+    struct vmap_area {
+        unsigned long va_start;
+        unsigned long va_end;
+
+        struct rb_node rb_node;         /* address sorted rbtree */
+        struct list_head list;          /* address sorted list */
+
+        /*
+         * The following two variables can be packed, because
+         * a vmap_area object can be either:
+         *    1) in "free" tree (root is free_vmap_area_root)
+         *    2) or "busy" tree (root is vmap_area_root)
+         */
+        union {
+            unsigned long subtree_max_size; /* in "free" tree */
+            struct vm_struct *vm;           /* in "busy" tree */
+        };
+        unsigned long flags;            /* mark type of vm_map_ram area */
+    };
+
+İşte yapının ``rb_node`` elemanı aslında kırmızı-siyah ağacının düğümünü belirtmektedir. ``vmap_area``
+nesnesinin adresi bu düğümden yukarı çıkılarak elde edilmektedir. ``vmalloc`` gerçekleştiriminde
+kullanılan kırmızı-siyah ağacındaki anahtar ``va_start`` adresidir. Yani arama işlemi ``va_start``
+değerine göre yapılmaktadır. Ancak izleyen paragraflarda da açıklayacağımız gibi ağaçta aralık tabanlı
+aramalar da yapılabilmektedir.
+
+Şimdi siz "neden kırmızı-siyah ağacı yerine hash tablolarının kullanılmadığını" merak edebilirsiniz.
+İkili arama ağaçları aynı zamanda bir sıralama da oluşturmaktadır. Hash tablolarında böyle bir sıralama
+oluşturulamamaktadır. ``vmalloc`` gerçekleştiriminde sıralamadan da faydalanılmaktadır. Örneğin free
+hale getirme işleminde iki komşunun birleştirilmesi gerekir. Hash tablolarında iki komşu tek bir
+aramayla bulunamamaktadır.
+
+vfree Fonksiyonunun Gerçekleştirimi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``vfree`` fonksiyonunun parametrik yapısını anımsayınız:
+
+.. code-block:: c
+
+    void vfree(const void *addr);
+
+Serbest bırakma işlemi için ağacın kökünden girilir. ``vmap_area`` nesnesinin içerisindeki ``va_start``
+elemanı ile karşılaştırma yapılarak sola ya da sağa ilerlenir, ilgili düğüm bulunur. Boş komşu bloklar
+varsa bunlar da birleştirilir. ``vfree`` fonksiyonunun çağrı zincirindeki önemli fonksiyonlar şunlardır:
+
+.. figure:: _static/vfree-callchain.png
+   :alt: vfree çağrı zinciri
+   :width: 75%
+
+Güncel çekirdeklerde kırmızı-siyah ağacında blok araması aşağıdaki fonksiyonla yapılmaktadır:
+
+.. code-block:: c
+
+    static struct vmap_area *__find_vmap_area(unsigned long addr, struct rb_root *root)
+    {
+        struct rb_node *n = root->rb_node;
+
+        addr = (unsigned long)kasan_reset_tag((void *)addr);
+
+        while (n) {
+            struct vmap_area *va;
+
+            va = rb_entry(n, struct vmap_area, rb_node);
+            if (addr < va->va_start)
+                n = n->rb_left;
+            else if (addr >= va->va_end)
+                n = n->rb_right;
+            else
+                return va;
+        }
+
+        return NULL;
+    }
+
+Burada ``rb_entry`` fonksiyonu ``container_of`` makrosunu kullanarak düğümün içinde bulunduğu
+``vmap_area`` nesnesinin adresini elde etmektedir. Arama sırasında yapılan karşılaştırmalara dikkat
+ediniz:
+
+.. code-block:: c
+
+    /* ... */
+
+    if (addr < va->va_start)
+        n = n->rb_left;
+    else if (addr >= va->va_end)
+        n = n->rb_right;
+    else
+        return va;
+
+    /* ... */
+
+``addr`` değeri ``va->va_start`` değerinden küçükse ağaçta sola gidilmiştir, ancak ikinci karşılaştırma
+``addr > va->va_start`` biçiminde değil ``addr >= va->va_end`` biçiminde yapılmıştır. Bunun nedeni
+aslında bu fonksiyonun genel olarak kapsama amaçlı kullanılmasındandır. Yani aslında yukarıdaki
+fonksiyon ``addr`` adresinden başlayan düğümü değil, ``addr`` adresini içeren düğümü bulmaktadır. Biz
+bu fonksiyona tahsis edilmiş alandaki herhangi bir adresi versek de bu fonksiyon o alana ilişkin düğümü
+bulmaktadır. Örneğin biz tahsis edilen alan içerisinde herhangi bir adres verdiğimizde birinci ``if``
+deyiminden de ikinci ``if`` deyiminden de ``else`` kısmına sapılacaktır.
+
+``vfree`` fonksiyonunun gerçekleştirimi biraz daha ayrıntılıdır. Bu fonksiyon serbest bırakma işlemini
+yaparken ona komşu olan boş alan varsa onları da birleştirmektedir. Bir alan serbest bırakılırken o alan
+için yaratılmış olan ``vm_struct`` nesnesi hemen, ``vmap_area`` nesnesi ise "purge listesi" denilen
+listeye yerleştirilip gecikmeli bir biçimde serbest bırakılmaktadır. "purge listeleri" ``vmap_node``
+yapısının içerisindedir (buradaki "node" terimi ağaç düğümünü ya da NUMA düğümünü belirtmiyor).
+``vmap_node`` yapısı güncel çekirdeklerde ``mm/vmalloc.c`` dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static struct vmap_node {
+        /* Simple size segregated storage. */
+        struct vmap_pool pool[MAX_VA_SIZE_PAGES];
+        spinlock_t pool_lock;
+        bool skip_populate;
+
+        /* Bookkeeping data of this node. */
+        struct rb_list busy;
+        struct rb_list lazy;
+
+        /*
+         * Ready-to-free areas.
+         */
+        struct list_head purge_list;
+        struct work_struct purge_work;
+        unsigned long nr_purged;
+    } single;
+
+Buradaki ``purge_list`` elemanı daha sonra silinecek ``vmap_area`` nesnelerini tutmaktadır. ``vmap_node``
+nesneleri genellikle CPU sayısına bağlı olarak birden fazla oluşturulmaktadır. İlgili tanımlamalar
+``mm/vmalloc.c`` dosyasında tutulmaktadır:
+
+.. code-block:: c
+
+    static struct vmap_node *vmap_nodes = &single;
+    static __read_mostly unsigned int nr_vmap_nodes = 1;
+    static __read_mostly unsigned int vmap_zone_size = 1;
+
+Tanımlamalarda varsayılan değer olarak 1 görüyor olsanız da bu değerler sistemin ilklenmesi (initialize
+edilmesi) sırasında işlemci ya da çekirdek sayısına bağlı olarak artırılmaktadır.
+
+Burada bir noktayı yeniden vurgulamak istiyoruz: ``vfree`` fonksiyonu bir bloğu serbest bıraktığında
+o bloğun bilgileri kırmızı-siyah ağacında kalmaya devam etmektedir. Çünkü ``free_vmap_area_root``
+ağacı hem tahsis edilmiş blokları hem de serbest bırakılmış blokları tutmaktadır. Yukarıda da
+belirttiğimiz gibi ``vfree`` fonksiyonu tahsis edilmiş alan için ``vm_struct`` nesnesini hemen serbest
+bırakmakta ancak ``vmap_area`` nesnesini hemen serbest bırakmamaktadır. Çünkü bu nesne alan serbest
+bırakılmış olsa bile ağaçta kullanılmaya devam etmektedir.
+
+vmalloc Fonksiyonunun Gerçekleştirimi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``vmalloc`` fonksiyonunun gerçekleştirimi biraz daha karmaşıktır. ``vmalloc`` boş bir bloğu bulabilmek
+için *first fit* yöntemini kullanmaktadır. Yani talep edilen uzunluğu içeren ilk boş bloğu bulmaktadır.
+Güncel çekirdeklerdeki ``free_vmap_area_root`` ağacının hem tahsis edilmiş blokları hem de boş blokları
+tuttuğunu anımsayınız. ``vmap_area`` yapısının içerisindeki birlik şöyleydi:
+
+.. code-block:: c
+
+    struct vmap_area {
+        /* ... */
+        union {
+            unsigned long subtree_max_size;     /* in "free" tree */
+            struct vm_struct *vm;               /* in "busy" tree */
+        };
+        /* ... */
+    };
+
+Birliğin iki elemanı çakışık yerleştirilmektedir. Eğer blok doluysa birliğin ``vm`` elemanı aktiftir
+(yani ``NULL`` değildir); eğer blok boşsa ilgili düğümden itibaren en büyük boş alana sahip bloğun
+uzunluğu birliğin ``subtree_max_size`` elemanında tutulmaktadır. Bu eleman ağaçta boş alan aranırken
+eğer ilgili dalda istenilen uzunlukta boş alan yoksa o dalda gereksiz arama yapmayı engellemektedir.
+``vmalloc`` fonksiyonunun çağrı zincirindeki önemli fonksiyonlar şunlardır:
+
+.. figure:: _static/vmalloc-callchain.png
+   :alt: vmalloc çağrı zinciri
+   :width: 75%
+
+
