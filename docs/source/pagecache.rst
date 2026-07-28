@@ -162,9 +162,7 @@ tutulmaktadır:
 
     struct inode {
         /* ... */
-
         struct address_space *i_mapping;
-
         /* ... */
     };
 
@@ -194,8 +192,175 @@ alt düğümü olmakla birlikte bu alt düğümlere ilişkin slotlar kullanılma
 içermektedir. Böylece belli bir sayfa numarası ağaçta 64 / 6 + 1 = 11 karşılaştırmayla
 bulunabilmektedir.
 
+Biz yukarıda sayfa önbelleğinin yalnızca disk tabanlı dosya işlemlerinde kullanıldığı yönünde bir
+izlenim vermiş olabiliriz. Ancak sayfa önbelleği disk dosyalarının dışında başka çekirdek
+mekanizmaları tarafından da kullanılmaktadır:
+
+.. figure:: _static/page-cache-users.png
+   :alt: Sayfa önbelleği kullanıcıları
+   :align: center
+   :width: 55%
+
+Buradaki VFS kutucuğu disk tabanlı dosya işlemlerini belirtmektedir.
+
 address_space Yapısı
 --------------------
 
+Şimdi ``address_space`` yapısını inceleyelim. ``address_space`` yapısı güncel çekirdeklerde
+``include/linux/fs.h`` dosyasında aşağıdaki gibi tanımlanmıştır:
 
+.. code-block:: c
 
+    struct address_space {
+        struct inode                    *host;
+        struct xarray                    i_pages;
+        struct rw_semaphore              invalidate_lock;
+        gfp_t                            gfp_mask;
+        atomic_t                         i_mmap_writable;
+    #ifdef CONFIG_READ_ONLY_THP_FOR_FS
+        /* number of thp, only for non-shmem files */
+        atomic_t                         nr_thps;
+    #endif
+        struct rb_root_cached            i_mmap;
+        unsigned long                    nrpages;
+        pgoff_t                          writeback_index;
+        const struct address_space_operations *a_ops;
+        unsigned long                    flags;
+        errseq_t                         wb_err;
+        spinlock_t                       i_private_lock;
+        struct list_head                 i_private_list;
+        struct rw_semaphore              i_mmap_rwsem;
+        void                            *i_private_data;
+    } __attribute__((aligned(sizeof(long)))) __randomize_layout;
+
+``address_space`` yapısının ``i_pages`` elemanı ``xarray`` yapısı türündendir. Yani *XArray* ağacı
+yapının bu elemanında tutulmaktadır. Başka bir deyişle önbellekte arama bu elemanın belirttiği ağaç
+kullanılarak yapılmaktadır. Yapının ``nrpages`` elemanı bu dosyanın önbelleğinde tutulan sayfaların
+toplam sayısını belirtmektedir. Bazı durumlarda elde bir ``address_space`` nesnesi varken geriye
+dönüp ona ilişkin ``inode`` nesnesine erişilmesi gerekebilmektedir. Yapının ``host`` elemanı
+``address_space`` nesnesinin sahibi olan ``inode`` nesnesini göstermektedir. Yapının içerisinde bazı
+senkronizasyon nesnelerini görüyorsunuz. Bunlar dosyanın önbellek işlemlerinde eşzamanlı erişimlerde
+koruma sağlamak için kullanılmaktadır. Yapının ``flags`` elemanında işleyiş sırasında kullanılan bazı
+bayraklar tutulmaktadır. Yapının ``i_mmap`` elemanı bellek tabanlı dosyalarda ve genel olarak bellek
+haritalama (memory mapping) işlemlerinde kullanılmaktadır. Yapının ``a_ops`` elemanı çokbiçimli
+davranış için kullanılan fonksiyon göstericilerinden oluşan bir yapı nesnesinin adresini
+tutmaktadır. Biz bu konuları ayrı bir paragrafta ele alacağız. Aşağıdaki tabloda yapı elemanlarının
+işlevlerini özet olarak veriyoruz:
+
+.. figure:: _static/address-space-fields-table.png
+   :alt: address_space yapısı elemanları
+   :align: center
+   :width: 70%
+
+Dosya Offset'inden Hareketle Dosyanın Önbellekteki Kısmına Erişilmesi
+-------------------------------------------------------------------------
+
+Her ``inode`` nesnesinin ayrı bir sayfa önbelleği olduğunu ve sayfa önbelleğinde dosyaya ilişkin
+kısımların tutulduğunu, arama işleminin de XArray yani radix ağacı yoluyla yapıldığını belirttik.
+Şimdi önbelleğin organizasyonunun nasıl yapıldığı üzerinde duralım. Önbellekte anahtar dosyaya
+ilişkin sayfa indeksidir. Yani dosyanın parçaları sayfa temelinde (tipik olarak 4K) sayfa
+önbelleğinde tutulmaktadır. Örneğin bir dosyanın 80000 byte olduğunu düşünelim. Aslında bu dosya
+4K'lık sayfaların söz konusu olduğu tipik sistemlerde 80000 / 4096 = 19.53125 yani 20 sayfa olarak
+düşünülebilir. Tabii dosyaya offset yoluyla erişilmektedir. Dosya offset'inin dosyanın kaçıncı
+sayfasında olduğunun hesabı oldukça basittir: ``offset >> PAGE_SHIFT``. Burada ``PAGE_SHIFT`` bir
+sayfanın 2 üzeri kaç byte'tan oluştuğunu belirtmektedir. (4K sayfalar için ``PAGE_SHIFT`` değeri
+12'dir.) Tabii ``offset % PAGE_SIZE`` değeri ile ilgili sayfadaki offset de elde edilebilir. İşte
+çekirdek belli bir dosya offset'inden hareketle önce dosya offset'ini sayfa indeksine (sayfa
+offset'i de diyebiliriz) dönüştürüp sonra ilgili sayfayı dosyanın sayfa önbelleğinde aramaktadır.
+Örneğin biz aşağıdaki gibi bir çağrı yapmış olalım:
+
+.. code-block:: c
+
+    result = read(fd, buf, 100);
+
+Dosya göstericisinin konumu da 10254 olsun. Çekirdek önce dosya nesnesine, oradan dosyaya ilişkin
+``inode`` nesnesine, oradan da dosyanın önbellek bilgilerinin bulunduğu ``address_space`` nesnesine
+erişir. *XArray* yani radix ağacının kökünün ``address_space`` nesnesi içerisinde olduğunu
+belirtmiştik. İşte radix ağacındaki anahtar sayfa indeksidir. Çekirdek 10254 numaralı dosya
+offset'ini 4096'ya tam bölerek sayfa indeksini elde eder. Örneğimizde bu değer 2'dir. İşte bu 2
+değerini radix ağacına anahtar yapmaktadır.
+
+*XArray* radix ağacının anahtarının sayfa indeksi (dosya offset'i değil) olduğunu söyledik. Peki
+aramadan elde edilecek değer nedir? İşte güncel çekirdeklerde sayfa önbelleğindeki aramadan
+``folio`` isimli bir yapı türünden nesne adresi elde edilmektedir. Yani radix ağacındaki anahtarlar
+sayfa indeksidir, elde edilecek değerler ise ``folio`` nesneleridir. Eskiden (çekirdeğin 5.16
+sürümünden önce) ``folio`` nesneleri yerine doğrudan ``page`` nesneleri kullanılıyordu. Yani
+çekirdeğin 5.16 sürümünden önce buradaki radix ağacı bize dosyanın bellekteki kısmına ilişkin
+``page`` nesnesinin adresini veriyordu. Ancak 5.16'dan itibaren sistem biraz daha iyileştirilmiş ve
+``folio`` yapısı kullanılmaya başlanmıştır. Tabii izleyen paragraflarda ele alacağımız gibi ``folio``
+nesnesinden ``page`` nesnesine, dolayısıyla da dosyanın ilgili kısmının fiziksel bellekteki kısmına
+erişilmektedir.
+
+Bir dosyaya ilişkin önbelleğin *XArray* ağacını sembolik biçimde şöyle betimleyebiliriz:
+
+.. figure:: _static/xarray-page-cache-table.png
+   :alt: Sayfa önbelleği XArray ağacı örneği
+   :align: center
+   :width: 45%
+
+Sayfa Önbelleğinde Büyük Blokların Saklanması
+--------------------------------------------- 
+
+Sayfa önbelleğinde saklanan önbellek blokları genellikle sayfa büyüklüğündedir. Yani genellikle bir
+dosyanın çeşitli kısımlarının birer sayfalık (tipik olarak 4K'lık) bölümleri önbelleğe alınmaktadır.
+Ancak bazı durumlarda ilgili dosyanın (genellikle bellek haritalama işlemlerinde karşımıza çıkmaktadır)
+daha büyük kısımları da önbelleğe alınabilmektedir. Biz bir dosyanın 4K'lık değil de 64K'lık
+kısımlarının önbelleğe alınacağını düşünelim. Bu durumda organizasyon nasıl olacaktır? İşte sayfa
+önbelleğindeki bir sayfadan büyük bloklara "bileşik sayfa (compound page)" denilmektedir. Örneğin
+önbellekte 64K'lık blokların da tutulduğunu düşünelim. Çekirdek bu 64K'lık bileşik sayfayı aslında
+16 tane normal sayfa gibi XArray ağacında tutmaktadır. Bu 16 sayfanın ilk sayfasına "baş (head)"
+sayfa, diğerlerine ise "kuyruk (tail)" sayfaları denilmektedir. Yani kuyruk sayfaları bloğun baş
+sayfa dışındaki sayfalarını temsil etmektedir.
+
+*XArray* ağacında her zaman sayfa temelinde arama yapılmaktadır. Bu durumda örneğin dosyanın 64K'lık
+bir kısmı tek bir birim gibi sayfa önbelleğine yerleştirilip belli bir offset'e dayalı arama
+yapıldığında bulunan sayfa bu 16 sayfanın baş sayfası olabileceği gibi kuyruk sayfalarından biri de
+olabilecektir. Bir sayfadan daha büyük birimlerin önbelleğe yerleştirilmesi durumunda sayfa önbelleği
+için metadata bilgileri her zaman baş sayfada tutulmaktadır. O halde çekirdek bir sayfa indeksiyle
+*XArray* ağacında arama yaptığında o sayfanın bir baş sayfa mı yoksa kuyruk sayfası mı olduğunu
+anlayabilmeli; eğer erişilen sayfa bir kuyruk sayfası ise onun baş sayfasını bulabilmelidir. *XArray*
+aramasında baş sayfanın nasıl bulunduğunu izleyen paragraflarda açıklayacağız. Ancak bazen çekirdeğin
+bir ``page`` nesnesinden hareketle o ``page`` nesnesinin ilişkin olduğu büyük bloğun baş sayfasına
+ilişkin ``page`` nesnesine de erişmesi gerekebilmektedir. İşte bu işlem ``page`` yapısının
+içerisindeki ``compound_head`` isimli eleman yardımıyla yapılmaktadır:
+
+.. code-block:: c
+
+    struct page {
+        /* ... */
+        unsigned long compound_head;    /* Bit zero is set for tail pages */
+        /* ... */
+    };
+
+``compound_head`` elemanının en düşük anlamlı biti (0 numaralı biti) 1 ise ``page`` nesnesi bir
+kuyruk sayfasına, 0 ise baş sayfaya ilişkindir. Sayfa eğer kuyruk sayfasıysa ``compound_head``
+elemanının en düşük anlamlı biti sıfırlandığında (bu işlem 1 çıkartılarak da yapılabilir)
+``compound_head`` elemanı baş sayfaya ilişkin ``page`` nesnesinin adresini vermektedir. Eğer
+``compound_head`` elemanının en düşük anlamlı biti 1 değilse zaten ilgili sayfa bir baş sayfadır.
+Bu durumda bu eleman artık ``page`` içerisindeki birlik yoluyla LRU listesindeki sonraki elemanı
+gösteren düğümle çakıştırılmış durumda olur. Çekirdekte bir ``page`` nesnesinin adresini parametre
+olarak alıp nesnesinin baş sayfasına ilişkin ``page`` nesne adresini elde eden ``_compound_head``
+isimli bir fonksiyon bulunmaktadır:
+
+.. code-block:: c
+
+    static __always_inline unsigned long _compound_head(const struct page *page)
+    {
+        unsigned long head = READ_ONCE(page->compound_head);
+
+        if (unlikely(head & 1))
+            return head - 1;
+        return (unsigned long)page_fixed_fake_head(page);
+    }
+
+Bir sayfadan (tipik olarak 4K'dan) büyük birimlerin önbelleklerde tutulması Linux çekirdeğine 4.8
+sürümüyle eklenmiş bir özelliktir. Dolayısıyla daha önceki çekirdeklerin ``page`` yapılarında
+``compound_head`` elemanı yoktu.
+
+Aslında sayfa önbelleğinde bir sayfadan (yani 4K'dan) daha büyük birimlerle seyrek karşılaşılmaktadır.
+Bir sayfadan büyük önbellek birimleri kullanan başlıca kaynaklar şunlardır:
+
+.. figure:: _static/large-folio-users-table.png
+   :alt: Büyük folio kullanan dosya sistemleri ve mekanizmalar
+   :align: center
+   :width: 75%

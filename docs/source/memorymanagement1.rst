@@ -1313,8 +1313,9 @@ gibi tanımlanmıştır:
    #endif
    } _struct_page_alignment;
 
-Tabii eskiden bu yapı bu kadar büyük değildi. Zaman içerisinde yapıya çeşitli konfigürasyon parametreleri eşliğinde
-alanlar eklendi ve yapı büyüdü. Örneğin çekirdeğin 2.2 versiyonunda ``page`` yapısı şöyleydi:
+Güncel çekirdeklerde ``page`` yapısının uzunluğu 64 byte'tır. Dolayısıyla bir fiziksel sayfaya bu ``page``
+yapılarından 64 tanesi sığabilmektedir. Eskiden page bu kadar büyük değildi. Zaman içerisinde yapıya çeşitli konfigürasyon 
+parametreleri eşliğinde alanlar eklendi ve yapı büyüdü. Örneğin çekirdeğin 2.2 versiyonunda ``page`` yapısı şöyleydi:
 
 .. code-block:: c
 
@@ -1366,8 +1367,15 @@ alanlar eklendi ve yapı büyüdü. Örneğin çekirdeğin 2.2 versiyonunda ``pa
    #endif /* CONFIG_HIGMEM || WANT_PAGE_VIRTUAL */
    } mem_map_t;
 
-Güncel çekirdeklerde ``page`` yapısının uzunluğu 64 byte'tır. Dolayısıyla bir fiziksel sayfaya bu ``page``
-yapılarından 64 tanesi sığabilmektedir.
+Güncel çekirdeklerde ``page`` nesnelerinin elemanları sayfanın o andaki durumuna göre birlikler
+yoluyla değişik biçimlerde ele alınmaktadır. Bir ``page`` nesnesinin içinde bulunduğu olası durumları
+aşağıdaki tabloda belirtiyoruz. Her ne kadar tabloyu şu andaki bilgilerimizle anlamlandıramayacak
+olsanız da konular ilerledikçe geriye dönüp bu tabloya başvurabilirsiniz:
+
+.. figure:: _static/page-states-table.png
+   :alt: Sayfa önbelleği XArray ağacı örneği
+   :align: center
+   :width: 70%
 
 Tüm Fiziksel Sayfalara İlişkin Bilgilerin Tutulması
 ---------------------------------------------------
