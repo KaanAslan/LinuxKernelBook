@@ -364,3 +364,191 @@ Bir sayfadan büyük önbellek birimleri kullanan başlıca kaynaklar şunlardı
    :alt: Büyük folio kullanan dosya sistemleri ve mekanizmalar
    :align: center
    :width: 75%
+
+folio Yapısı
+------------
+
+Yukarıda da belirttiğimiz gibi eskiden sayfa önbelleğine ilişkin *XArray* ağacına dosyanın sayfa
+indeksi verildiğinde o bize doğrudan sayfaya ilişkin ``page`` nesnesinin adresini veriyordu. Ancak
+daha sonra ``folio`` nesneleri kullanılmaya başlandı. Mevcut çekirdeklerde sayfa önbelleğinden
+yapılan başarılı aramalarda ``folio`` nesnelerinin adresleri elde edilmektedir. ``folio`` nesneleri için 
+ayrıca bir tahsisat yapılmamaktadır. Yani ``folio`` nesneleri aslında ``page`` nesneleri 
+ile aynı alanı kullanmaktadır.
+
+``folio`` yapısı birlikler içeren oldukça karmaşık bir görünümdedir. Yapının tanımlaması
+``include/linux/mm_types.h`` dosyası içerisinde şöyle yapılmıştır:
+
+.. code-block:: c
+
+    struct folio {
+        /* private: don't document the anon union */
+        union {
+            struct {
+        /* public: */
+                memdesc_flags_t flags;
+                union {
+                    struct list_head lru;
+        /* private: avoid cluttering the output */
+                    /* For the Unevictable "LRU list" slot */
+                    struct {
+                        /* Avoid compound_head */
+                        void *__filler;
+        /* public: */
+                        unsigned int mlock_count;
+        /* private: */
+                    };
+        /* public: */
+                    struct dev_pagemap *pgmap;
+                };
+                struct address_space *mapping;
+                union {
+                    pgoff_t index;
+                    unsigned long share;
+                };
+                union {
+                    void *private;
+                    swp_entry_t swap;
+                };
+                atomic_t _mapcount;
+                atomic_t _refcount;
+    #ifdef CONFIG_MEMCG
+                unsigned long memcg_data;
+    #elif defined(CONFIG_SLAB_OBJ_EXT)
+                unsigned long _unused_slab_obj_exts;
+    #endif
+    #if defined(WANT_PAGE_VIRTUAL)
+                void *virtual;
+    #endif
+    #ifdef LAST_CPUPID_NOT_IN_PAGE_FLAGS
+                int _last_cpupid;
+    #endif
+        /* private: the union with struct page is transitional */
+            };
+            struct page page;
+        };
+        union {
+            struct {
+                unsigned long _flags_1;
+                unsigned long _head_1;
+                union {
+                    struct {
+        /* public: */
+                        atomic_t _large_mapcount;
+                        atomic_t _nr_pages_mapped;
+    #ifdef CONFIG_64BIT
+                        atomic_t _entire_mapcount;
+                        atomic_t _pincount;
+    #endif /* CONFIG_64BIT */
+                        mm_id_mapcount_t _mm_id_mapcount[2];
+                        union {
+                            mm_id_t _mm_id[2];
+                            unsigned long _mm_ids;
+                        };
+        /* private: the union with struct page is transitional */
+                    };
+                    unsigned long _usable_1[4];
+                };
+                atomic_t _mapcount_1;
+                atomic_t _refcount_1;
+        /* public: */
+    #ifdef NR_PAGES_IN_LARGE_FOLIO
+                unsigned int _nr_pages;
+    #endif /* NR_PAGES_IN_LARGE_FOLIO */
+        /* private: the union with struct page is transitional */
+            };
+            struct page __page_1;
+        };
+        union {
+            struct {
+                unsigned long _flags_2;
+                unsigned long _head_2;
+        /* public: */
+                struct list_head _deferred_list;
+    #ifndef CONFIG_64BIT
+                atomic_t _entire_mapcount;
+                atomic_t _pincount;
+    #endif /* !CONFIG_64BIT */
+        /* private: the union with struct page is transitional */
+            };
+            struct page __page_2;
+        };
+        union {
+            struct {
+                unsigned long _flags_3;
+                unsigned long _head_3;
+        /* public: */
+                void *_hugetlb_subpool;
+                void *_hugetlb_cgroup;
+                void *_hugetlb_cgroup_rsvd;
+                void *_hugetlb_hwpoison;
+        /* private: the union with struct page is transitional */
+            };
+            struct page __page_3;
+        };
+    };
+
+Yapının anlaşılması oldukça zordur. Parça parça incelenerek daha kolay anlaşılabilir. Yapının baş
+kısmı bir birlik içermektedir:
+
+.. code-block:: c
+
+    struct folio {
+        union {
+            struct {
+                /* ... */
+            };
+            struct page page;
+        };
+        /* ... */
+    };
+
+``folio`` yapısının baş kısmı birlik kullanılarak tamamen ``page`` yapısının üzerine oturtulmuştur.
+``folio`` yapısının ``page`` yapısı dışında kalan alanlarına ancak ``folio`` yapısı birden fazla
+sayfadan oluşan bir önbellek bloğuna ilişkinse erişilmektedir. Bu alanlar ``folio`` nesnesi bir
+sayfadan büyük birimleri tutuyorsa onun sonraki ``page`` nesnesi içerisinde bulunmaktadır. Bir
+sayfadan büyük önbellek bloklarının ikinci ``page`` nesnesinde de bazı ``folio`` bilgileri
+saklanmaktadır. Bunu aşağıdaki çizimle görselleştirebiliriz:
+
+.. figure:: _static/folio-page-layout.png
+   :alt: folio ve page nesnelerinin bellek düzeni
+   :align: center
+   :width: 70%
+
+Peki bir ``folio`` nesnesinin belirttiği önbellek sayfasına nasıl erişilmektedir? ``folio`` nesnesi
+aslında bir ``page`` nesnesi olduğuna göre ``folio`` nesnesinin adresi ile ``page`` nesnesinin adresi
+aynıdır. Biz bir ``page`` nesnesinin adresi ile o nesnenin belirttiği sayfanın fiziksel ve sanal
+adreslerine makrolar ve fonksiyonlarla erişebiliyorduk. ``include/linux/mm.h`` dosyası içerisinde
+``folio`` nesnesinin adresini alarak ona ilişkin önbellek bloğunun adresini veren ``folio_address``
+isimli fonksiyon bulunmaktadır:
+
+.. code-block:: c
+
+    static inline void *folio_address(const struct folio *folio)
+    {
+        return page_address(&folio->page);
+    }
+
+Gördüğünüz gibi fonksiyonun tek yaptığı şey ``page_address`` fonksiyonunu çağırmaktır. Biz bu
+fonksiyonu incelemiştik. ``folio`` yapısının ``page`` elemanının aslında nesnesinin başlangıç
+adresiyle, dolayısıyla da ``folio`` adresiyle aynı olduğuna dikkat ediniz. ``page_address``
+fonksiyonu ``page`` türünden bir adres istediği için erişim bu biçimde yapılmıştır.
+
+Peki bir sayfadan büyük (örneğin 64K) önbellek bloğuna sahip bir dosya sisteminde belli bir dosya
+offset'inden ``read`` fonksiyonuyla okuma yapıldığında çekirdek önbellekteki yeri nasıl tespit
+etmektedir? İşte çekirdek önce dosya offset'ini yine sayfa indeksine dönüştürerek bu sayfa indeksi
+ile XArray ağacında arama yapar. *XArray* ağacında arama yapıldığında ağaçtaki alt düğümün yerlerini
+belirten slotlarda aranan hedef slot bulunur (anımsayacağınız gibi düğümün slotları alt düğümlerin
+yerlerini tutan göstericileri barındırmaktadır). İşte bulunan slot eğer baş sayfaya ilişkin bir slot
+değilse buna *kardeş slot (sibling slot)* denilmektedir. Bu kardeş slotun içerisinde ``folio``
+nesnesinin adresi değil baş sayfanın slot indeksinin yeri tutulmaktadır. Eğer bu slot baş sayfaya
+ilişkinse (baş sayfaya ilişkin slotlara *kanonik slotlar* da denilmektedir) slot indeks değil
+doğrudan ``folio`` nesnesinin adresini tutmaktadır. Yani bulunan kardeş slottan hareketle baş slotun
+(kanonik slotun) yeri, oradan hareketle de büyük birimin ``folio`` nesne adresi elde edilmektedir.
+Yani işlemler çekirdek tarafından şu aşamalardan geçilerek yürütülmektedir:
+
+1. Dosya offset'inden hareketle erişilecek yerin sayfa indeksi elde edilir.
+2. Bu sayfa indeksi XArray ağacına anahtar yapılarak ağaçtan bu sayfa indeksine ilişkin slot elde
+   edilir. Bu slot baş sayfaya ilişkin değilse baş sayfaya ilişkin slota (kanonik slota) geçilir.
+3. Baş sayfaya ilişkin slotun (kanonik slotun) içerisinden ``folio`` nesne adresinden hareketle bir
+   sayfadan büyük (örneğin 64K) önbellek bloğunun başlangıç adresi elde edilir.
+4. Aranan dosya offset'inin önbellek bloğu içerisindeki offset'i elde edilir.
