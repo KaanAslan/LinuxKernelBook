@@ -536,7 +536,7 @@ fonksiyonu ``page`` türünden bir adres istediği için erişim bu biçimde yap
 Peki bir sayfadan büyük (örneğin 64K) önbellek bloğuna sahip bir dosya sisteminde belli bir dosya
 offset'inden ``read`` fonksiyonuyla okuma yapıldığında çekirdek önbellekteki yeri nasıl tespit
 etmektedir? İşte çekirdek önce dosya offset'ini yine sayfa indeksine dönüştürerek bu sayfa indeksi
-ile XArray ağacında arama yapar. *XArray* ağacında arama yapıldığında ağaçtaki alt düğümün yerlerini
+ile *XArray* ağacında arama yapar. *XArray* ağacında arama yapıldığında ağaçtaki alt düğümün yerlerini
 belirten slotlarda aranan hedef slot bulunur (anımsayacağınız gibi düğümün slotları alt düğümlerin
 yerlerini tutan göstericileri barındırmaktadır). İşte bulunan slot eğer baş sayfaya ilişkin bir slot
 değilse buna *kardeş slot (sibling slot)* denilmektedir. Bu kardeş slotun içerisinde ``folio``
@@ -547,8 +547,256 @@ doğrudan ``folio`` nesnesinin adresini tutmaktadır. Yani bulunan kardeş slott
 Yani işlemler çekirdek tarafından şu aşamalardan geçilerek yürütülmektedir:
 
 1. Dosya offset'inden hareketle erişilecek yerin sayfa indeksi elde edilir.
-2. Bu sayfa indeksi XArray ağacına anahtar yapılarak ağaçtan bu sayfa indeksine ilişkin slot elde
+2. Bu sayfa indeksi *XArray* ağacına anahtar yapılarak ağaçtan bu sayfa indeksine ilişkin slot elde
    edilir. Bu slot baş sayfaya ilişkin değilse baş sayfaya ilişkin slota (kanonik slota) geçilir.
 3. Baş sayfaya ilişkin slotun (kanonik slotun) içerisinden ``folio`` nesne adresinden hareketle bir
    sayfadan büyük (örneğin 64K) önbellek bloğunun başlangıç adresi elde edilir.
 4. Aranan dosya offset'inin önbellek bloğu içerisindeki offset'i elde edilir.
+
+Örneğin önbellek bloğunun 64K (16 sayfa) olduğunu varsayalım. Biz de ``read`` fonksiyonuyla
+dosyanın 72128'inci offset'inden okuma yapmak isteyelim. İşte çekirdek önce 72128 offset değerini
+sayfa indeksine dönüştürür. Bu değer 17'dir. Sonra bu 17'inci sayfa indeksini *XArray* içerisinde
+arar. Buna ilişkin slot eğer bir kardeş slotsa onun baş slotuna geçer. Baş slottan ``folio``
+nesnesinin adresini, ``folio`` nesnesinden de önbellek bloğunun adresini elde eder. Artık çekirdeğin
+elinde 64K'lık önbellek bloğunun başlangıç adresi vardır. Erişilecek offset 72128 olduğuna göre
+oradan 72128 % 65536 = 6592'inci offset'e erişir. Bu süreci şekilsel olarak şöyle gösterebiliriz:
+
+.. figure:: _static/folio-offset-lookup.png
+   :alt: folio offset arama süreci
+   :align: center
+   :width: 65%
+
+*XArray* ağacının organizasyonu hakkında bir anımsatma yapmak istiyoruz. *XArray* ağacında yapraklar
+için ayrı düğümlerin tutulmasına gerek yoktur. Zaten arama son kademeye geldiğinde son kademedeki
+slotlar doğrudan değeri ya da değerin bulunduğu nesnenin adresini tutmaktadır. Buradaki *XArray* ağacı
+için her kademede 64 slot (6 bitlik kademeler) tutulduğunu anımsayınız. Bu durumda 64K'lık bir
+bloğun son kademesindeki 16 slotun yalnızca ilk slotu ``folio`` nesnesinin adresini tutmaktadır.
+Geri kalan 15 slot kardeş slottur.
+
+Burada bir noktaya dikkatinizi çekmek istiyoruz. Sayfa önbelleğinde farklı büyüklüklere ilişkin
+önbellek birimleri bir arada bulunabilir. Örneğin *XArray* ağacının bazı slotları 4K'lık sayfalara
+ilişkin önbellek bloklarını tutarken bazı slotları 64K'ya ilişkin slotları tutuyor olabilir. *XArray*
+ağacında sayfa tabanlı arama yapılırken ilgili slota erişildiğinde zaten bu slotun bir kardeş slot
+mu yoksa baş slot mu olduğu anlaşılmaktadır. Eğer ilgili slot kardeş slotsa onun baş slotu elde
+edilip ``folio`` nesnesine ulaşılabilmektedir. Erişimi yapan kodun erişilecek bloğun büyüklüğünü
+bilmesi gerekmez. Erişim sonucunda elde edilen ``folio`` nesnesinin içerisinde zaten birimin
+büyüklük bilgisi vardır. Peki *XArray* ağacındaki slotların kardeş slot (sibling slot) olup olmadığı
+nasıl belirlenmektedir? İşte bir slota erişildiğinde onun düşük anlamlı 2 biti bu bilgiyi
+barındırmaktadır. ``folio`` adresleri 4 byte'a hizalandığı için slotta ``folio`` adresi varsa zaten
+düşük anlamlı 2 bit 0'dır. Düşük anlamlı 2 bitin değerleri şöyle yorumlanmaktadır:
+
+.. figure:: _static/xarray-low-bits-table.png
+   :alt: XArray slot düşük 2 bit anlamları
+   :align: center
+   :width: 50%
+
+Düşük anlamlı 2 bit 10 durumundaysa ve yüksek anlamlı bitler 0 ile 62 arasındaysa slot bir kardeş
+slottur ve yüksek anlamlı bitler 64 slot içerisindeki baş slotun indeksini belirtmektedir. Burada
+kardeş slotun içerisindeki indeks değerinin en fazla 62 olabileceğine dikkat ediniz. (Kardeş slot en
+kötü olasılıkla 63'üncü indekste olabilir. Bu durumda baş slot da en kötü olasılıkla 62'inci
+indekste olabilir.) Yüksek anlamlı bitlerin ifade ettiği anlamlar da şöyledir:
+
+.. figure:: _static/xarray-internal-entries-table.png
+   :alt: XArray içsel giriş türleri
+   :align: center
+   :width: 60%
+
+Çekirdek içerisinde erişilen slotun kardeş slot olup olmadığı ``xa_is_sibling`` fonksiyonuyla test
+edilebilmektedir:
+
+.. code-block:: c
+
+    static inline bool xa_is_sibling(const void *entry)
+    {
+        return IS_ENABLED(CONFIG_XARRAY_MULTI) && xa_is_internal(entry) &&
+                (entry < xa_mk_sibling(XA_CHUNK_SIZE - 1));
+    }
+
+Burada ``xa_is_internal`` slotun son iki bitinin ikilik sistemde 10 olup olmadığına bakmaktadır.
+Slotun son iki biti 10 ise yüksek anlamlı bitlerin 0 ile 62 arasında olup olmadığına da bakılmıştır.
+
+Çekirdek içerisindeki *XArray* gerçekleştiriminde çeşitli düzeylerde pek çok fonksiyon bulunmaktadır.
+Örneğin ``xa_entry`` fonksiyonu sırasıyla ``xarray`` nesnesinin adresini, ilgili düğümün adresini ve
+slot offset'ini parametre olarak alır, slotun içerisindeki değeri adres biçiminde geri döndürür:
+
+.. code-block:: c
+
+    static inline void *xa_entry(const struct xarray *xa,
+                const struct xa_node *node, unsigned int offset)
+    {
+        XA_NODE_BUG_ON(node, offset >= XA_CHUNK_SIZE);
+        return rcu_dereference_check(node->slots[offset],
+                            lockdep_is_held(&xa->xa_lock));
+    }
+
+``xa_to_sibling`` fonksiyonu slot içerisindeki değeri adres olarak alır, onun düşük anlamlı iki biti dışındaki 
+yüksek anlamlı bitlerinin değerini döndürür:
+
+.. code-block:: c
+
+    static inline unsigned long xa_to_sibling(const void *entry)
+    {
+        return xa_to_internal(entry);
+    }
+
+    static inline unsigned long xa_to_internal(const void *entry)
+    {
+        return (unsigned long)entry >> 2;
+    }
+
+``folio`` yapısının elemanlarının bazıları henüz görmediğimiz konularla ilgilidir. Ancak biz
+aşağıdaki tabloda ``folio`` yapısının tüm elemanlarının anlamlarını özet olarak veriyoruz:
+
+.. figure:: _static/folio-fields-table.png
+   :alt: folio yapısı elemanları
+   :align: center
+   :width: 80%
+
+Bir ``folio`` nesnesine erişildiğinde bu ``folio`` nesnesinin kaç sayfalık önbellek birbloğunsimine ilişkin
+olduğu bilgisi ``folio`` nesnesinin içerisinde bulunmaktadır. ``folio`` yapısının ``flags`` elemanı
+``page`` yapısının ``flags`` elemanı ile çakışıktır. Yani bu iki eleman aynıdır. Bu eleman bitsel
+olarak şöyle kodlanmıştır:
+
+.. figure:: _static/folio-flags-layout.png
+   :alt: folio flags elemanının bit düzeni
+   :align: center
+   :width: 70%
+
+``flags`` elemanının yüksek anlamlı bitleri, sayfanın hangi bölgeye, hangi NUMA düğümüne ve hangi
+bellek bölümüne ilişkin olduğu bilgisini tutmaktadır. Bu elemanın düşük anlamlı bitleri çeşitli
+bayraklardan oluşmaktadır. ``PG_head`` bayrağı (6'ıncı bit) ``folio`` nesnesinin bir sayfalık bloğa
+mı yoksa çok sayfalık bloğa mı ilişkin olduğu bilgisini tutmaktadır. Bu bit 1 ise ``folio`` nesnesi
+bir sayfadan büyük önbellek bloğunu, 0 ise bir sayfalık önbellek bloğunu temsil etmektedir. Eğer
+``folio`` nesnesi çok sayfalık bloğa ilişkinse onun düzey (order) bilgisi (ikiz blok tahsisat
+sistemindeki düzeyi kastediyoruz) ``folio`` nesnesinin ikinci kısmındaki ``_flags_1`` elemanının
+düşük anlamlı byte'ında kodlanmaktadır. Güncel çekirdeklerde ``folio`` nesnesinin düzey bilgisini
+veren ``folio_order`` fonksiyonu ``include/linux/mm.h`` dosyasında şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static inline unsigned int folio_order(struct folio *folio)
+    {
+        if (!folio_test_large(folio))
+            return 0;
+        return folio->_flags_1 & 0xff;
+    }
+
+``flags`` elemanının yüksek anlamlı bitleri, sayfanın hangi bölgeye, hangi NUMA düğümüne ve hangi
+bellek bölümüne ilişkin olduğu bilgisini tutmaktadır. Bu elemanın düşük anlamlı bitleri çeşitli
+bayraklardan oluşmaktadır. ``PG_head`` bayrağı (6'ıncı bit) ``folio`` nesnesinin bir sayfalık bloğa
+mı yoksa çok sayfalık bloğa mı ilişkin olduğu bilgisini tutmaktadır. Bu bit 1 ise ``folio`` nesnesi
+bir sayfadan büyük önbellek bloğunu, 0 ise bir sayfalık önbellek bloğunu temsil etmektedir. Eğer
+``folio`` nesnesi çok sayfalık bloğa ilişkinse onun düzey (order) bilgisi (ikiz blok tahsisat
+sistemindeki düzeyi kastediyoruz) ``folio`` nesnesinin ikinci kısmındaki ``_flags_1`` elemanının
+düşük anlamlı byte'ında kodlanmaktadır. Güncel çekirdeklerde ``folio`` nesnesinin düzey bilgisini
+veren ``folio_order`` fonksiyonu ``include/linux/mm.h`` dosyasında şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static inline unsigned int folio_order(struct folio *folio)
+    {
+        if (!folio_test_large(folio))
+            return 0;
+        return folio->_flags_1 & 0xff;
+    }
+
+``folio`` yapısının ikinci kısmında bulunan ``_nr_pages`` elemanı 64 bit sistemlerde eğer ``folio``
+nesnesi bir sayfadan büyük önbellek bloğuna ilişkinse doğrudan onun sayfa sayısını vermektedir.
+Ancak bu eleman ``NR_PAGES_IN_LARGE_FOLIO`` makrosu define edilmişse ``folio`` içerisinde
+bulunmaktadır. ``folio`` nesnesinin belirttiği önbellek bloğunun uzunluğu ``folio_nr_pages``
+fonksiyonuyla elde edilebilmektedir. Bu fonksiyon güncel çekirdeklerde ``include/linux/mm.h``
+dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static inline unsigned long folio_nr_pages(const struct folio *folio)
+    {
+        if (!folio_test_large(folio))
+            return 1;
+        return folio_large_nr_pages(folio);
+    }
+
+``folio_large_nr_pages`` fonksiyonu da aynı dosyada şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #ifdef NR_PAGES_IN_LARGE_FOLIO
+    static inline unsigned long folio_large_nr_pages(const struct folio *folio)
+    {
+        return folio->_nr_pages;
+    }
+    #else
+    static inline unsigned long folio_large_nr_pages(const struct folio *folio)
+    {
+        return 1L << folio_large_order(folio);
+    }
+    #endif
+
+Buradaki ``NR_PAGES_IN_LARGE_FOLIO`` makrosu ``folio`` yapısında ``_nr_pages`` alanının olup
+olmadığını belirtmektedir. Görüldüğü gibi ``NR_PAGES_IN_LARGE_FOLIO`` makrosu define edilmemişse
+``folio_large_nr_pages`` fonksiyonu bloğun düzeyini ikinci kısımdaki ``_flags_1`` elemanının düşük
+anlamlı byte'ından elde etmektedir.
+
+Sayfa Önbelleği Üzerinde İşlem Yapan Çekirdek Fonksiyonları
+===========================================================
+
+Çekirdekte sayfa önbelleği üzerinde işlemler yapan çeşitli düzeylerde fonksiyonlar bulunmaktadır.
+Biz bu fonksiyonların bazılarını iomap modeliyle dosya sisteminin gerçekleştirilmesi kısmında
+kullanacağız. Aşağıda önemli çekirdek fonksiyonlarını tablo halinde veriyoruz:
+
+.. figure:: _static/pagecache-functions-table.png
+   :alt: Sayfa önbelleği çekirdek fonksiyonları
+   :align: center
+   :width: 80%
+
+Buradaki fonksiyonların prototiplerini de veriyoruz:
+
+.. code-block:: c
+
+    void *filemap_get_entry(struct address_space *mapping, pgoff_t index);
+    struct folio *filemap_get_folio(struct address_space *mapping, pgoff_t index);
+    struct folio *filemap_lock_folio(struct address_space *mapping, pgoff_t index);
+    struct folio *__filemap_get_folio(struct address_space *mapping, pgoff_t index,
+            fgf_t fgp_flags, gfp_t gfp);
+    struct folio *filemap_grab_folio(struct address_space *mapping, pgoff_t index);
+    unsigned filemap_get_folios(struct address_space *mapping, pgoff_t *start,
+            pgoff_t end, struct folio_batch *fbatch);
+    unsigned filemap_get_folios_contig(struct address_space *mapping, pgoff_t *start,
+            pgoff_t end, struct folio_batch *fbatch);
+    unsigned filemap_get_folios_tag(struct address_space *mapping, pgoff_t *start,
+            pgoff_t end, xa_mark_t tag, struct folio_batch *fbatch);
+    unsigned find_get_entries(struct address_space *mapping, pgoff_t *start,
+            pgoff_t end, struct folio_batch *fbatch, pgoff_t *indices);
+    unsigned find_lock_entries(struct address_space *mapping, pgoff_t *start,
+            pgoff_t end, struct folio_batch *fbatch, pgoff_t *indices);
+    static void filemap_get_read_batch(struct address_space *mapping, pgoff_t index,
+            pgoff_t max, struct folio_batch *fbatch);
+    pgoff_t page_cache_next_miss(struct address_space *mapping, pgoff_t index,
+            unsigned long max_scan);
+    pgoff_t page_cache_prev_miss(struct address_space *mapping, pgoff_t index,
+            unsigned long max_scan);
+    bool filemap_range_has_page(struct address_space *mapping, loff_t start_byte,
+            loff_t end_byte);
+    noinline int __filemap_add_folio(struct address_space *mapping,
+            struct folio *folio, pgoff_t index, gfp_t gfp, void **shadowp);
+    int filemap_add_folio(struct address_space *mapping, struct folio *folio,
+            pgoff_t index, gfp_t gfp);
+    void replace_page_cache_folio(struct folio *old, struct folio *new);
+    void __filemap_remove_folio(struct folio *folio, void *shadow);
+    void filemap_remove_folio(struct folio *folio);
+    void delete_from_page_cache_batch(struct address_space *mapping,
+            struct folio_batch *fbatch);
+    static void clear_shadow_entries(struct address_space *mapping,
+            pgoff_t start, pgoff_t max);
+    unsigned long mapping_try_invalidate(struct address_space *mapping,
+            pgoff_t start, pgoff_t end, unsigned long *nr_failed);
+    void __folio_mark_dirty(struct folio *folio, struct address_space *mapping,
+            int warn);
+    void __folio_start_writeback(struct folio *folio, bool keep_write);
+    bool __folio_end_writeback(struct folio *folio);
+    int mapping_tagged(struct address_space *mapping, xa_mark_t tag);
+    int folio_migrate_mapping(struct address_space *mapping,
+            struct folio *newfolio, struct folio *folio, int extra_count);
+    void xas_split(struct xa_state *xas, void *entry, unsigned int order);
+    void xas_split_alloc(struct xa_state *xas, void *entry,
+            unsigned int order, gfp_t gfp);

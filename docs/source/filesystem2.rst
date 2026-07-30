@@ -9673,7 +9673,7 @@ Birden fazla dizin girişi peşi sıra şu şekilde gelmektedir:
 .. figure:: _static/directory-block.png
    :alt: Dizin bloğu içeriği
    :align: center
-   :width: 50%
+   :width: 60%
 
 Bu dosya sistemlerinde bir dizin girişi silinirse simplefs dosya sisteminde olduğu
 gibi dizin girişinin inode numarası 0 yapılmaktadır. Silinmiş bir dizin girişine
@@ -9681,25 +9681,10 @@ artık o isimden daha kısa isimli bir dosya yerleştirilebilmektedir. Silinen g
 uzunsa ve kalan kısım minimum uzunluk olan 12'den büyükse, kalan uzunluk da boş
 giriş olarak bölünmektedir.
 
-**Silme öncesi:**
-
-.. code-block:: text
-
-    ┌──────────────────────────────────────────────────┐
-    │ inode: 1234  │ rec_len: 20  │ name_len: 11       │
-    │ file_type: 1 │ name: "deleted.txt"    │ padding  │
-    └──────────────────────────────────────────────────┘
-
-**Silme sonrası:**
-
-.. code-block:: text
-
-    ┌──────────────────────────────────────────────────┐
-    │ inode: 0     │ rec_len: 20  │ name_len: 11       │
-    │ file_type: 1 │ name: "deleted.txt"    │ padding  │
-    └──────────────────────────────────────────────────┘
-    ↑
-    Sıfırlanır (silinmiş işareti) — rec_len korunur, alan tekrar kullanılabilir
+.. figure:: _static/dirent-delete.png
+   :alt: Dizin girişinin silme öncesi ve sonrası durumu
+   :align: center
+   :width: 70%
 
 .. admonition:: Minimum rec_len Hesabı
    :class: tip
@@ -9714,39 +9699,12 @@ giriş olarak bölünmektedir.
    - ``+ 3`` ve ``& ~3``: Sonucu yukarı yuvarlayarak 4'ün katına getirir (son 2 biti
      sıfırlar)
 
-``file_type`` alanında kullanılan dosya türü değerleri:
+``file_type`` alanında kullanılan dosya türü değerleri şöyledir:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 12 30 28
-
-   * - Değer
-     - Sabit Adı
-     - Açıklama
-   * - 0
-     - ``EXT2_FT_UNKNOWN``
-     - Bilinmeyen
-   * - 1
-     - ``EXT2_FT_REG_FILE``
-     - Normal dosya
-   * - 2
-     - ``EXT2_FT_DIR``
-     - Dizin
-   * - 3
-     - ``EXT2_FT_CHRDEV``
-     - Karakter aygıt
-   * - 4
-     - ``EXT2_FT_BLKDEV``
-     - Blok aygıt
-   * - 5
-     - ``EXT2_FT_FIFO``
-     - FIFO (named pipe)
-   * - 6
-     - ``EXT2_FT_SOCK``
-     - Soket
-   * - 7
-     - ``EXT2_FT_SYMLINK``
-     - Sembolik link
+.. figure:: _static/ext2-file-types-table.png
+   :alt: EXT2 dosya türleri
+   :align: center
+   :width: 40%
 
 .. note::
 
