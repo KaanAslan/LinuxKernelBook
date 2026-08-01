@@ -187,7 +187,7 @@ amacıyla kullanıldığını anımsayınız. Radix ağaçlarında her düğüm�
 olabilmektedir. İşte sayfa önbelleğinde kullanılan radix ağaçlarında dosyaya ilişkin sayfa
 indeksi (sayfa offset'i de diyebiliriz) anahtar durumundadır. Bu ağaçlarda her kademede 6 bitlik
 değer tutulmaktadır. Yani ağacın her düğümü 64 bit temel alındığından 64 alt düğüm içermektedir.
-Tabii XArray gerçekleştiriminde düğümler ancak gerektiğinde yaratılmaktadır. Yani her düğümün 64
+Tabii *XArray* gerçekleştiriminde düğümler ancak gerektiğinde yaratılmaktadır. Yani her düğümün 64
 alt düğümü olmakla birlikte bu alt düğümlere ilişkin slotlar kullanılmadığı sürece ``NULL`` adres
 içermektedir. Böylece belli bir sayfa numarası ağaçta 64 / 6 + 1 = 11 karşılaştırmayla
 bulunabilmektedir.
@@ -256,7 +256,7 @@ Dosya Offset'inden Hareketle Dosyanın Önbellekteki Kısmına Erişilmesi
 -------------------------------------------------------------------------
 
 Her ``inode`` nesnesinin ayrı bir sayfa önbelleği olduğunu ve sayfa önbelleğinde dosyaya ilişkin
-kısımların tutulduğunu, arama işleminin de XArray yani radix ağacı yoluyla yapıldığını belirttik.
+kısımların tutulduğunu, arama işleminin de *XArray* yani radix ağacı yoluyla yapıldığını belirttik.
 Şimdi önbelleğin organizasyonunun nasıl yapıldığı üzerinde duralım. Önbellekte anahtar dosyaya
 ilişkin sayfa indeksidir. Yani dosyanın parçaları sayfa temelinde (tipik olarak 4K) sayfa
 önbelleğinde tutulmaktadır. Örneğin bir dosyanın 80000 byte olduğunu düşünelim. Aslında bu dosya
@@ -308,7 +308,7 @@ daha büyük kısımları da önbelleğe alınabilmektedir. Biz bir dosyanın 4K
 kısımlarının önbelleğe alınacağını düşünelim. Bu durumda organizasyon nasıl olacaktır? İşte sayfa
 önbelleğindeki bir sayfadan büyük bloklara "bileşik sayfa (compound page)" denilmektedir. Örneğin
 önbellekte 64K'lık blokların da tutulduğunu düşünelim. Çekirdek bu 64K'lık bileşik sayfayı aslında
-16 tane normal sayfa gibi XArray ağacında tutmaktadır. Bu 16 sayfanın ilk sayfasına "baş (head)"
+16 tane normal sayfa gibi *XArray* ağacında tutmaktadır. Bu 16 sayfanın ilk sayfasına "baş (head)"
 sayfa, diğerlerine ise "kuyruk (tail)" sayfaları denilmektedir. Yani kuyruk sayfaları bloğun baş
 sayfa dışındaki sayfalarını temsil etmektedir.
 
@@ -564,7 +564,7 @@ oradan 72128 % 65536 = 6592'inci offset'e erişir. Bu süreci şekilsel olarak �
 .. figure:: _static/folio-offset-lookup.png
    :alt: folio offset arama süreci
    :align: center
-   :width: 65%
+   :width: 60%
 
 *XArray* ağacının organizasyonu hakkında bir anımsatma yapmak istiyoruz. *XArray* ağacında yapraklar
 için ayrı düğümlerin tutulmasına gerek yoktur. Zaten arama son kademeye geldiğinde son kademedeki
@@ -588,7 +588,7 @@ düşük anlamlı 2 bit 0'dır. Düşük anlamlı 2 bitin değerleri şöyle yor
 .. figure:: _static/xarray-low-bits-table.png
    :alt: XArray slot düşük 2 bit anlamları
    :align: center
-   :width: 50%
+   :width: 45%
 
 Düşük anlamlı 2 bit 10 durumundaysa ve yüksek anlamlı bitler 0 ile 62 arasındaysa slot bir kardeş
 slottur ve yüksek anlamlı bitler 64 slot içerisindeki baş slotun indeksini belirtmektedir. Burada
@@ -599,7 +599,7 @@ indekste olabilir.) Yüksek anlamlı bitlerin ifade ettiği anlamlar da şöyled
 .. figure:: _static/xarray-internal-entries-table.png
    :alt: XArray içsel giriş türleri
    :align: center
-   :width: 60%
+   :width: 50%
 
 Çekirdek içerisinde erişilen slotun kardeş slot olup olmadığı ``xa_is_sibling`` fonksiyonuyla test
 edilebilmektedir:
@@ -747,7 +747,7 @@ kullanacağız. Aşağıda önemli çekirdek fonksiyonlarını tablo halinde ver
 .. figure:: _static/pagecache-functions-table.png
    :alt: Sayfa önbelleği çekirdek fonksiyonları
    :align: center
-   :width: 80%
+   :width: 70%
 
 Buradaki fonksiyonların prototiplerini de veriyoruz:
 
@@ -800,3 +800,104 @@ Buradaki fonksiyonların prototiplerini de veriyoruz:
     void xas_split(struct xa_state *xas, void *entry, unsigned int order);
     void xas_split_alloc(struct xa_state *xas, void *entry,
             unsigned int order, gfp_t gfp);
+
+Örneğin amacımız belli bir sayfa indeksine ilişkin ``folio`` nesnesinin adresini elde etmek olsun.
+Bu işlemi ``filemap_get_folio`` fonksiyonuyla yapabiliriz. Fonksiyonun prototipine dikkat ediniz:
+
+.. code-block:: c
+
+    struct folio *filemap_get_folio(struct address_space *mapping, pgoff_t index);
+
+Fonksiyon ``inode`` nesnesi içerisindeki ``address_space`` nesnesinin adresini ve sayfa indeksini
+parametre olarak alır. Başarı durumunda ``folio`` nesnesinin adresine, başarısızlık durumunda ise
+``ERR_PTR(-ENOENT)`` değerine geri döner.
+
+Görüldüğü gibi ``folio`` nesnesinin adresi, ``folio`` nesnesinin belirttiği önbellek sanal adresi,
+dosya offset'inin ``folio`` içerisindeki yeri yüksek seviyeli fonksiyonlarla kolay bir biçimde elde
+edilebilmektedir. Bu fonksiyonların bazılarını izleyen paragraftaki çalışmada kullanacağız.
+
+Dosya önbelleğindeki *XArray* ağacı üzerinde işlemler yapan fonksiyonların listesini pid aramasını
+açıkladığımız bölümde vermiştik. ``folio`` nesneleri üzerinde işlem yapan alçak seviyeli çekirdek
+fonksiyonlarını ve makrolarını da aşağıdaki tabloda veriyoruz:
+
+.. figure:: _static/folio-functions-table.png
+   :alt: folio fonksiyonları
+   :align: center
+   :width: 55%
+
+Bu fonksiyonların prototipleri ve makro tanımlamaları da şöyledir:
+
+.. code-block:: c
+
+    static inline void folio_get(struct folio *folio);
+    void folio_put(struct folio *folio);
+    static inline void folio_lock(struct folio *folio);
+    static inline bool folio_trylock(struct folio *folio);
+    void folio_unlock(struct folio *folio);
+    static inline void folio_wait_locked(struct folio *folio);
+    static inline void folio_mark_uptodate(struct folio *folio);
+    static inline bool folio_test_uptodate(const struct folio *folio);
+    bool folio_mark_dirty(struct folio *folio);
+    bool folio_clear_dirty_for_io(struct folio *folio);
+    static inline void folio_start_writeback(struct folio *folio);
+    void folio_end_writeback(struct folio *folio);
+    void folio_wait_writeback(struct folio *folio);
+    void folio_add_lru(struct folio *folio);
+    struct address_space *folio_mapping(struct folio *folio);
+    static inline unsigned int folio_order(struct folio *folio);
+    static inline size_t folio_size(const struct folio *folio);
+    static inline loff_t folio_pos(const struct folio *folio);
+    static inline pgoff_t folio_index(struct folio *folio);
+    static inline void folio_zero_range(struct folio *folio, size_t start,
+            size_t length);
+    static inline void folio_attach_private(struct folio *folio, void *data);
+    static inline void *folio_detach_private(struct folio *folio);
+    bool filemap_release_folio(struct folio *folio, gfp_t gfp);
+    #define offset_in_page(p)   ((unsigned long)(p) & ~PAGE_MASK)
+    #define offset_in_folio(folio, p) \
+            ((unsigned long)(p) & (folio_size(folio) - 1))
+    static inline void *folio_address(const struct folio *folio);
+    static inline void *kmap_local_folio(struct folio *folio, size_t offset);
+    #define kunmap_local(__addr)   do { ... } while (0)
+
+Sayfa Önbelleğinin Yok Edilmesi
+===============================
+
+Sayfa önbelleğinin dosyaya ilişkin ``inode`` nesnesinin içerisinde tutulduğunu gördük. Peki ``inode``
+nesnesi içerisindeki bu sayfa önbelleği ne zaman yok edilmektedir? İşte anımsayacağınız gibi biz
+başkalarının kullanmadığı bir dosyayı açıp kapatsak bile dosyaya ilişkin ``inode`` nesnesi inode
+önbelleğinde kalmaya devam etmektedir. Bu önbellek sayfalarının sisteme iade edilmesi güncel
+çekirdeklerde bellek baskısı altında ``kswapd`` isimli çekirdek thread'i yoluyla yapılmaktadır.
+Bellek baskısı oluştuğunda bu çekirdek thread'i ``inode`` nesnelerinin sayfa önbelleklerini LRU
+listeleri yardımıyla ikiz blok tahsisat sistemine iade etmektedir. Ancak ``inode`` nesnesine ilişkin
+sayfa önbellekleri bazı işlemler sonucunda da sisteme iade edilebilmektedir. Örneğin ``truncate`` ya
+da ``ftruncate`` fonksiyonlarıyla bir dosyanın uzunluğu küçültülürse ve küçültülen kısım da ``inode``
+nesnesinin sayfa önbelleğindeyse o kısımlara ilişkin önbellek sayfaları ikiz blok tahsisat sistemine
+iade edilmektedir.
+
+Bellek baskısı altında sayfaların ikiz blok tahsisat sistemine (buddy allocator) iade edilmesine
+"sayfa geri alımı (page reclaim)" denilmektedir. Bu geri alım işlemi bazen ``kswapd`` çekirdek
+thread'ini beklemeden doğrudan da (buna "doğrudan geri alım (direct reclaim)" da denilmektedir)
+yapılabilmektedir. Biz sayfa geri alımı konusunu ayrı bir başlık altında inceleyeceğiz.
+
+Bir ``inode`` nesnesine ilişkin çok sayıda sayfa önbellekte olabilir. Bu durumda geri alım sırasında
+(bu işlemi temel olarak ``kswapd`` isimli çekirdek thread'inin yaptığını belirtmiştik) son zamanlarda
+en az kullanılan önbellek sayfaları öncelikle geri alınmaktadır. Çekirdek son zamanlarda en az
+kullanılan ``folio`` nesnelerini ``inode`` nesnesinden hareketle tespit etmez, onları LRU bağlı
+listelerinde saklar. Yani aslında çekirdek, ``inode`` nesnelerinden hareketle değil bu LRU
+listelerinden hareketle sayfa önbelleğindeki sayfaları geri almaktadır.
+
+Biz dosya sistemini incelediğimiz bölümde ``inode`` nesnelerinin de bellek baskısı oluştuğunda
+sisteme iade edildiğini belirtmiştik. Ancak o zamanlar dilimli tahsisat sisteminden (slab allocator)
+bahsetmemiştik. ``inode`` nesneleri aslında bu amaçla oluşturulmuş dilim önbelleklerinden tahsis
+edilmektedir. Dolayısıyla bunların sisteme iade edilmesi doğrudan değil dilim önbelleği yoluyla
+yapılmaktadır. Yani ``kswapd`` çekirdek thread'i inode önbelleğindeki ``inode`` nesnelerini önce
+inode dilim önbelleğine iade etmekte, oradaki sayfalar da ikiz blok tahsisat sistemine iade
+edilmektedir. Biz bu bilgileri sayfa geri alımı bölümünde göreceğiz.
+
+``inode`` nesnesinin önbelleğindeki tüm sayfalar sisteme iade edilmeden ``inode`` nesnesi de inode
+önbelleğinden atılmamaktadır. Bu durumda siz "sayfalarının çoğu önbellekten atılmış ancak çok azı
+kalmış inode nesnelerinin önbellekten atılamayacağını" düşünebilirsiniz. Ancak genellikle bellek
+baskısı altında uzun süre kullanılmayan ``inode`` nesnesine ilişkin önbellek sayfalarının hepsi
+birkaç turda sisteme iade edilmektedir.
+

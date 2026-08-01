@@ -12,7 +12,7 @@ kursuna sınıf içerisinde tasarlanmış oldukça basit bir dosya sistemidir. B
 Hazırlık İşlemleri
 ==================
 
-*simplfs* dosya sistemiminin gerçekleştirimine başlamadan önce bazı hazırlık bilgileri vereceğiz.
+*simplefs* dosya sistemiminin gerçekleştirimine başlamadan önce bazı hazırlık bilgileri vereceğiz.
 
 Linux Çekirdeğinde Kullanılan Belli Uzunluklardaki Tamsayı Türlerine İlişkin typedef İsimleri
 ---------------------------------------------------------------------------------------------
@@ -1019,10 +1019,10 @@ yapacağız:
 
    static const struct super_operations simplefs_super_ops = {
        .alloc_inode = simplefs_alloc_inode,
-       .free_inode  = simplefs_free_inode,
+       .free_inode = simplefs_free_inode,
        .write_inode = simplefs_write_inode,
        .evict_inode = simplefs_evict_inode,
-       .statfs      = simple_statfs,
+       .statfs = simple_statfs,
    };
 
 Bu elemanlara girilecek fonksiyonların parametrik yapısı aşağıdaki gibi olmalıdır:
@@ -2029,7 +2029,7 @@ Artık ``simplefs_iget`` fonksiyonunda inode nesnemizin içini de doldurmuş old
        i_gid_write(inode, le32_to_cpu(disk_inode->gid));
        set_nlink(inode, le32_to_cpu(disk_inode->nlink));
        inode->i_blocks = le32_to_cpu(disk_inode->blocks);
-       inode->i_size   = le32_to_cpu(disk_inode->size);
+       inode->i_size = le32_to_cpu(disk_inode->size);
        inode_set_atime(inode, le32_to_cpu(disk_inode->atime), 0);
        inode_set_mtime(inode, le32_to_cpu(disk_inode->mtime), 0);
        inode_set_ctime(inode, le32_to_cpu(disk_inode->ctime), 0);
@@ -2705,19 +2705,19 @@ bütün olarak veriyoruz.
    static struct dentry *simplefs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags);
 
    static struct file_system_type simplefs_type = {
-       .owner    = THIS_MODULE,
-       .name     = "simplefs",
-       .mount    = simplefs_mount,
-       .kill_sb  = simplefs_kill_sb,
+       .owner = THIS_MODULE,
+       .name = "simplefs",
+       .mount = simplefs_mount,
+       .kill_sb = simplefs_kill_sb,
        .fs_flags = FS_REQUIRES_DEV,
    };
 
    static const struct super_operations simplefs_super_ops = {
        .alloc_inode = simplefs_alloc_inode,
-       .free_inode  = simplefs_free_inode,
+       .free_inode = simplefs_free_inode,
        .write_inode = simplefs_write_inode,
        .evict_inode = simplefs_evict_inode,
-       .statfs      = simple_statfs,
+       .statfs = simple_statfs,
    };
 
    static const struct inode_operations simplefs_dir_inode_ops = {
@@ -2959,8 +2959,8 @@ bütün olarak veriyoruz.
        struct buffer_head *bh;
        struct simplefs_disk_inode *disk_inode;
 
-       block_no     = SIMPLEFS_INODE_TABLE_LOCATION
-                      + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+       block_no = SIMPLEFS_INODE_TABLE_LOCATION 
+               + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
        block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
 
        if ((bh = sb_bread(sb, block_no)) == NULL)
@@ -3085,7 +3085,7 @@ yapabiliriz:
 .. code-block:: c
 
    static const struct file_operations simplefs_dir_inode_fops = {
-       .owner          = THIS_MODULE,
+       .owner = THIS_MODULE,
        .iterate_shared = simplefs_iterate_shared
    };
 
@@ -3094,7 +3094,7 @@ yapabiliriz:
        /* ... */
 
        if (S_ISDIR(inode->i_mode)) {
-           inode->i_op  = &simplefs_dir_inode_ops;
+           inode->i_op = &simplefs_dir_inode_ops;
            inode->i_fop = &simplefs_dir_inode_fops;   /* BU SATIRI YENİ EKLEDİK */
            /* ... */
        }
@@ -3247,7 +3247,7 @@ döndüğünde işlemimizi sonlandırdık. Örneğimizdeki ``iterate_shared`` fo
        unsigned long ino;
        int i;
 
-       inode     = file_inode(file);
+       inode = file_inode(file);
        inode_sfs = container_of(inode, struct simplefs_inode, vfs_inode);
 
        if (ctx->pos >= SIMPLEFS_MAX_DENTRIES)
@@ -3378,19 +3378,19 @@ veriyoruz.
    static int simplefs_iterate_shared(struct file *file, struct dir_context *ctx);
 
    static struct file_system_type simplefs_type = {
-       .owner    = THIS_MODULE,
-       .name     = "simplefs",
-       .mount    = simplefs_mount,
-       .kill_sb  = simplefs_kill_sb,
+       .owner = THIS_MODULE,
+       .name = "simplefs",
+       .mount = simplefs_mount,
+       .kill_sb = simplefs_kill_sb,
        .fs_flags = FS_REQUIRES_DEV,
    };
 
    static const struct super_operations simplefs_super_ops = {
        .alloc_inode = simplefs_alloc_inode,
-       .free_inode  = simplefs_free_inode,
+       .free_inode = simplefs_free_inode,
        .write_inode = simplefs_write_inode,
        .evict_inode = simplefs_evict_inode,
-       .statfs      = simple_statfs,
+       .statfs = simple_statfs,
    };
 
    static const struct inode_operations simplefs_dir_inode_ops = {
@@ -3402,7 +3402,7 @@ veriyoruz.
    };
 
    static const struct file_operations simplefs_dir_inode_fops = {
-       .owner          = THIS_MODULE,
+       .owner = THIS_MODULE,
        .iterate_shared = simplefs_iterate_shared,
    };
 
@@ -3606,7 +3606,7 @@ veriyoruz.
        inode->i_mode = le32_to_cpu(disk_inode->mode);
        i_uid_write(inode, le32_to_cpu(disk_inode->uid));
        i_gid_write(inode, le32_to_cpu(disk_inode->gid));
-       inode->i_size   = le32_to_cpu(disk_inode->size);
+       inode->i_size = le32_to_cpu(disk_inode->size);
        set_nlink(inode, le32_to_cpu(disk_inode->nlink));
        inode->i_blocks = le32_to_cpu(disk_inode->blocks);
        inode_set_atime(inode, le32_to_cpu(disk_inode->atime), 0);
@@ -3617,7 +3617,7 @@ veriyoruz.
        inode_sfs->block_no = disk_inode->block_no;
 
        if (S_ISDIR(inode->i_mode)) {
-           inode->i_op  = &simplefs_dir_inode_ops;
+           inode->i_op = &simplefs_dir_inode_ops;
            inode->i_fop = &simplefs_dir_inode_fops;
            /* ... */
        }
@@ -3638,7 +3638,7 @@ veriyoruz.
        struct buffer_head *bh;
        struct simplefs_disk_inode *disk_inode;
 
-       block_no = SIMPLEFS_INODE_TABLE_LOCATION  ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+       block_no = SIMPLEFS_INODE_TABLE_LOCATION + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
        block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
 
        if ((bh = sb_bread(sb, block_no)) == NULL)
@@ -4169,7 +4169,7 @@ Tahsis ettiğimiz inode nesnesinin ``i_op`` ve ``i_fop`` elemanlarını da doldu
 
 .. code-block:: c
 
-   inode->i_op  = &simplefs_dir_inode_ops;
+   inode->i_op = &simplefs_dir_inode_ops;
    inode->i_fop = &simplefs_dir_inode_fops;
 
 Artık bizim dizin için tahsis ettiğimiz data blok içerisinde ``"."`` ve ``".."`` dizin girişlerini
@@ -4767,25 +4767,25 @@ test ederken komut satırında "mkdir" komutuyla dizin yaratıp onu "rmdir" komu
     static int simplefs_remove_entry(struct inode *dir, struct dentry *dentry);
 
     static struct file_system_type simplefs_type = {
-        .owner    = THIS_MODULE,
-        .name     = "simplefs",
-        .mount    = simplefs_mount,
-        .kill_sb  = simplefs_kill_sb,
+        .owner = THIS_MODULE,
+        .name = "simplefs",
+        .mount = simplefs_mount,
+        .kill_sb = simplefs_kill_sb,
         .fs_flags = FS_REQUIRES_DEV,
     };
 
     static const struct super_operations simplefs_super_ops = {
         .alloc_inode = simplefs_alloc_inode,
-        .free_inode  = simplefs_free_inode,
+        .free_inode = simplefs_free_inode,
         .write_inode = simplefs_write_inode,
         .evict_inode = simplefs_evict_inode,
-        .statfs      = simple_statfs,
+        .statfs = simple_statfs,
     };
 
     static const struct inode_operations simplefs_dir_inode_ops = {
         .lookup = simplefs_lookup,
-        .mkdir  = simplefs_mkdir,
-        .rmdir  = simplefs_rmdir,
+        .mkdir = simplefs_mkdir,
+        .rmdir = simplefs_rmdir,
     };
 
     static const struct inode_operations simplefs_file_inode_ops = {
@@ -5054,7 +5054,7 @@ test ederken komut satırında "mkdir" komutuyla dizin yaratıp onu "rmdir" komu
         inode_sfs->block_no = disk_inode->block_no;
 
         if (S_ISDIR(inode->i_mode)) {
-            inode->i_op  = &simplefs_dir_inode_ops;
+            inode->i_op = &simplefs_dir_inode_ops;
             inode->i_fop = &simplefs_dir_inode_fops;
         }
         else {
@@ -5073,8 +5073,7 @@ test ederken komut satırında "mkdir" komutuyla dizin yaratıp onu "rmdir" komu
         struct buffer_head *bh;
         struct simplefs_disk_inode *disk_inode;
 
-        block_no = SIMPLEFS_INODE_TABLE_LOCATION +
-                ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+        block_no = SIMPLEFS_INODE_TABLE_LOCATION + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
         block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
 
         if ((bh = sb_bread(sb, block_no)) == NULL)
@@ -5189,7 +5188,7 @@ test ederken komut satırında "mkdir" komutuyla dizin yaratıp onu "rmdir" komu
         inode->i_blocks = 1;
         inode->i_size = SIMPLEFS_BLOCK_SIZE;
 
-        inode->i_op  = &simplefs_dir_inode_ops;
+        inode->i_op = &simplefs_dir_inode_ops;
         inode->i_fop = &simplefs_dir_inode_fops;
 
         if ((bh = sb_bread(dir->i_sb, block)) == NULL) {
@@ -5636,7 +5635,7 @@ yerleştirebiliriz:
 
 .. code-block:: c
 
-    inode->i_op  = &simplefs_file_inode_ops;
+    inode->i_op = &simplefs_file_inode_ops;
     inode->i_fop = &simplefs_file_inode_fops;
 
 Burada başarısızlık durumunda inode nesnesi sayacının bir azaltıldığına dikkat ediniz. Çünkü
@@ -5669,7 +5668,7 @@ Fonksiyon bütünsel olarak şöyledir:
             return result;
         }
 
-        inode->i_op  = &simplefs_file_inode_ops;
+        inode->i_op = &simplefs_file_inode_ops;
         inode->i_fop = &simplefs_file_inode_fops;
 
         d_instantiate(dentry, inode);
@@ -5883,19 +5882,19 @@ hali bir bütün olarak verilmiştir.
     static int simplefs_unlink(struct inode *dir, struct dentry *dentry);
 
     static struct file_system_type simplefs_type = {
-        .owner    = THIS_MODULE,
-        .name     = "simplefs",
-        .mount    = simplefs_mount,
-        .kill_sb  = simplefs_kill_sb,
+        .owner = THIS_MODULE,
+        .name = "simplefs",
+        .mount = simplefs_mount,
+        .kill_sb = simplefs_kill_sb,
         .fs_flags = FS_REQUIRES_DEV,
     };
 
     static const struct super_operations simplefs_super_ops = {
         .alloc_inode = simplefs_alloc_inode,
-        .free_inode  = simplefs_free_inode,
+        .free_inode = simplefs_free_inode,
         .write_inode = simplefs_write_inode,
         .evict_inode = simplefs_evict_inode,
-        .statfs      = simple_statfs,
+        .statfs = simple_statfs,
     };
 
     static const struct inode_operations simplefs_dir_inode_ops = {
@@ -6176,11 +6175,11 @@ hali bir bütün olarak verilmiştir.
         inode_sfs->block_no = disk_inode->block_no;
 
         if (S_ISDIR(inode->i_mode)) {
-            inode->i_op  = &simplefs_dir_inode_ops;
+            inode->i_op = &simplefs_dir_inode_ops;
             inode->i_fop = &simplefs_dir_inode_fops;
         }
         else {
-            inode->i_op  = &simplefs_file_inode_ops;
+            inode->i_op = &simplefs_file_inode_ops;
             inode->i_fop = &simplefs_file_inode_fops;
         }
         brelse(bh);
@@ -6196,8 +6195,7 @@ hali bir bütün olarak verilmiştir.
         struct buffer_head *bh;
         struct simplefs_disk_inode *disk_inode;
 
-        block_no = SIMPLEFS_INODE_TABLE_LOCATION +
-                ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+        block_no = SIMPLEFS_INODE_TABLE_LOCATION + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
         block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
 
         if ((bh = sb_bread(sb, block_no)) == NULL)
@@ -6313,7 +6311,7 @@ hali bir bütün olarak verilmiştir.
         inode->i_blocks = 1;
         inode->i_size = SIMPLEFS_BLOCK_SIZE;
 
-        inode->i_op  = &simplefs_dir_inode_ops;
+        inode->i_op = &simplefs_dir_inode_ops;
         inode->i_fop = &simplefs_dir_inode_fops;
 
         if ((bh = sb_bread(dir->i_sb, block)) == NULL) {
@@ -6620,7 +6618,7 @@ hali bir bütün olarak verilmiştir.
             return result;
         }
 
-        inode->i_op  = &simplefs_file_inode_ops;
+        inode->i_op = &simplefs_file_inode_ops;
         inode->i_fop = &simplefs_file_inode_fops;
 
         d_instantiate(dentry, inode);
@@ -7555,11 +7553,11 @@ adreslerini yerleştirebilirsiniz:
         inode_sfs->block_no = disk_inode->block_no;
 
         if (S_ISDIR(inode->i_mode)) {
-            inode->i_op  = &simplefs_dir_inode_ops;
+            inode->i_op = &simplefs_dir_inode_ops;
             inode->i_fop = &simplefs_dir_inode_fops;
         }
         else {
-            inode->i_op  = &simplefs_file_inode_ops;
+            inode->i_op = &simplefs_file_inode_ops;
             inode->i_fop = &simplefs_file_inode_fops;
         }
         brelse(bh);
@@ -7575,8 +7573,7 @@ adreslerini yerleştirebilirsiniz:
         struct buffer_head *bh;
         struct simplefs_disk_inode *disk_inode;
 
-        block_no = SIMPLEFS_INODE_TABLE_LOCATION +
-                ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
+        block_no = SIMPLEFS_INODE_TABLE_LOCATION + ino * SIMPLEFS_DISK_INODE_SIZE / SIMPLEFS_BLOCK_SIZE;
         block_offset = ino * SIMPLEFS_DISK_INODE_SIZE % SIMPLEFS_BLOCK_SIZE;
 
         if ((bh = sb_bread(sb, block_no)) == NULL)
@@ -7692,7 +7689,7 @@ adreslerini yerleştirebilirsiniz:
         inode->i_blocks = 1;
         inode->i_size = SIMPLEFS_BLOCK_SIZE;
 
-        inode->i_op  = &simplefs_dir_inode_ops;
+        inode->i_op = &simplefs_dir_inode_ops;
         inode->i_fop = &simplefs_dir_inode_fops;
 
         if ((bh = sb_bread(dir->i_sb, block)) == NULL) {
