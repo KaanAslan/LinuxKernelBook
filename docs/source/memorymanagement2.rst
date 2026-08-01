@@ -78,7 +78,7 @@ Başlangıç durumu şöyledir:
 
 .. image:: _static/buddy-initial.png
    :align: center
-   :width: 60%
+   :width: 65%
 
 2'inci düzeyde ve 3'üncü düzeyde boş sayfa bloğu olmadığı için 4'üncü düzeydeki boş sayfa bloklarının
 biri alınıp bölünür. Bölünen bloklar 8 sayfalık olacaktır. Bunlardan biri 3'üncü düzeydeki boş listeye
@@ -86,20 +86,20 @@ eklenir, diğeri bölünmeye devam eder:
 
 .. image:: _static/buddy-split-step1.png
    :align: center
-   :width: 70%
+   :width: 65%
 
 Burada 3'üncü düzeydeki 8 sayfanın yeniden ikiye bölünmesiyle bunlardan biri 2'inci düzeydeki boş listeye eklenir:
 
 .. image:: _static/buddy-split-step2.png
    :align: center
-   :width: 70%
+   :width: 65%
 
 İşte 8 sayfanın 4'lük kısmı 2'inci düzeydeki bağlı listeye eklenip kalan 4'lük kısmı da çağrıyı yapana verilmektedir. 
 Boş listelerin son hali şöyle olacaktır:
 
 .. image:: _static/buddy-final-state.png
    :align: center
-   :width: 70%
+   :width: 65%
 
 Peki tahsis edilen bu 4 sayfalık blok free hale getirildiğinde ne olmaktadır? İşte algoritma bu durumda
 tersten işletilmektedir. Yani bu 4 sayfalık blok 2'inci düzeye yerleştirilir. Ancak bu 2'inci düzeyde onun
@@ -128,7 +128,7 @@ Birleştirme sonucunda şu durum oluşacaktır:
 
 .. image:: _static/buddy-final-merge.png
    :align: center
-   :width: 70%
+   :width: 80%
 
 Görüldüğü gibi her şey ters sırada eski haline gelmiştir. 
 
@@ -942,7 +942,7 @@ Burada önemli bir noktayı belirtmek istiyoruz. ``node_zonelists`` elemanının
 NUMA düğümlerinin bölgeleri de bu dizi içerisindedir. ``node_zonelists`` dizisinin temsili görüntüsü şöyledir:
 
 .. image:: _static/pgdat-zonelists.png
-   :width: 80%
+   :width: 75%
 
 Bu temsili çizimde örnek olarak 0'ıncı NUMA düğümünün ``node_zonelists`` dizisi gösterilmiştir. Görüldüğü
 gibi bu dizinin 0'ıncı elemanı bölgelerden oluşmaktadır; ancak bölgeler yalnızca 0'ıncı düğümün bölgelerini
@@ -952,7 +952,7 @@ dolaşılmasına 0'ıncı düğümdeki DMA32'den başlatılacaktır:
 
 .. figure:: _static/pgdat-zonelists-search-start.png
    :alt: pg_data_t zonelist yapısı
-   :width: 95%
+   :width: 90%
 
 Eğer bu bölgenin göç *fallback* listesinin hiçbir yerinde talep edilen miktarda boş sayfa bulunamazsa bundan
 sonra arama 0'ıncı düğümün ``ZONE_DMA`` bölgesinden devam edecek, orada da bulunamazsa 1'inci düğümün
@@ -974,17 +974,17 @@ blok tahsisat sistemindedir. Örneğin UMA x86-64 mimarisindeki başlangıç dur
 
 .. figure:: _static/node-zone-free-area-movable.png
    :alt: Açılış anındaki serbest blok dağılımı
-   :width: 75%
+   :width: 70%
 
 Örneğin ARM64 kullanılan Raspberry Pi modelleri için başlangıç durumu şöyledir:
 
 .. image:: _static/rpi-node-zone-free-area.png
-   :width: 85 %
+   :width: 80 %
 
 ARM32 kullanan BeagleBone modelleri için de başlangıç durumu şöyledir:
 
 .. image:: _static/bbb-node-zone-free-area.png
-   :width: 90%
+   :width: 85%
 
 Fallback Mekanizmasında NUMA Düğümlerinin Dolaşım Sırası
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1043,6 +1043,7 @@ Tipik bazı NUMA donanımlarındaki gecikmeler nanosaniyeler mertebesinde şöyl
 .. figure:: _static/numa-two-socket.png
    :alt: 2 soketli NUMA mimarisi
    :align: center
+   :width: 65%
 
 Her soketteki çekirdek o sokete ilişkin RAM bank'ına (yani NUMA düğümüne) daha hızlı erişmektedir. Yukarıdaki
 sistemde her sokette 64 çekirdekli bir işlemci paketi, 2 sokette toplamda 128 çekirdek bulunmaktadır. 
@@ -1237,6 +1238,7 @@ dilimler de nesnelerden oluşmaktadır. Bu sistemi şekille şöyle gösterebili
 .. figure:: _static/slab-cache-structure.png
    :alt: Dilim önbelleği hiyerarşisi
    :align: center
+   :width: 65%
 
 Bu şekilde iki NUMA düğümü vardır. Her NUMA düğümünde dilimler bulunmaktadır. Dilimler de tahsis edilecek
 blokları içermektedir.
@@ -1431,7 +1433,7 @@ veriyoruz:
 
 .. image:: _static/slub-oo-order-table.png
    :align: center
-   :width: 70%
+   :width: 65%
 
 Bu tabloda sütunlarda neden ``oo:order`` ve ``min:order`` yazıldığını merak edebilirsiniz. Aslında ``oo``
 ve ``min`` elemanları yalnızca dilim için yapılacak tahsisatın düzey bilgisini değil aynı zamanda bir
@@ -1450,6 +1452,7 @@ biti nesne sayısını, yüksek anlamlı 16 biti de düzey değerini tutmaktadı
 .. figure:: _static/oo-bitfield.png
    :alt: kmem_cache_order_objects x alanının bit düzeni
    :align: center
+   :width: 65%
 
 kmem_cache_node Yapısı
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -2302,7 +2305,7 @@ yapılmaktadır:
 .. figure:: _static/obj-to-kmem-cache-chain.png
    :alt: Nesne adresinden kmem_cache nesnesine erişim zinciri
    :align: center
-   :width: 50%
+   :width: 45%
 
 Dilim Önbelleklerine İlişkin Bilgilerin proc ve sys Dosya Sistemleri Yoluyla Elde Edilmesi
 ------------------------------------------------------------------------------------------

@@ -296,7 +296,7 @@ Bir dosyaya ilişkin önbelleğin *XArray* ağacını sembolik biçimde şöyle 
 .. figure:: _static/xarray-page-cache-table.png
    :alt: Sayfa önbelleği XArray ağacı örneği
    :align: center
-   :width: 45%
+   :width: 40%
 
 Sayfa Önbelleğinde Büyük Blokların Saklanması
 --------------------------------------------- 
