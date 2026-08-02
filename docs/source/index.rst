@@ -24,7 +24,7 @@ Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi
    - Güncel çekirdekleri de dikkate alması
    - Örnek kodlarla desteklenmiş olması
 
-   Bu e-kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. Dokümanın kurs formatındaki saf metin haline 
+   Bu kitap oluşturulma aşamasındadır, içerik sürekli güncellenmektedir. Dokümanın kurs formatındaki saf metin haline 
    aşağıdaki bağlantıdan erişebilirsiniz:
 
    https://github.com/CSD-1993/KursNotlari

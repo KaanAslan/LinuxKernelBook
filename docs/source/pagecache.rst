@@ -588,7 +588,7 @@ düşük anlamlı 2 bit 0'dır. Düşük anlamlı 2 bitin değerleri şöyle yor
 .. figure:: _static/xarray-low-bits-table.png
    :alt: XArray slot düşük 2 bit anlamları
    :align: center
-   :width: 45%
+   :width: 40%
 
 Düşük anlamlı 2 bit 10 durumundaysa ve yüksek anlamlı bitler 0 ile 62 arasındaysa slot bir kardeş
 slottur ve yüksek anlamlı bitler 64 slot içerisindeki baş slotun indeksini belirtmektedir. Burada
@@ -599,7 +599,7 @@ indekste olabilir.) Yüksek anlamlı bitlerin ifade ettiği anlamlar da şöyled
 .. figure:: _static/xarray-internal-entries-table.png
    :alt: XArray içsel giriş türleri
    :align: center
-   :width: 50%
+   :width: 45%
 
 Çekirdek içerisinde erişilen slotun kardeş slot olup olmadığı ``xa_is_sibling`` fonksiyonuyla test
 edilebilmektedir:
@@ -901,3 +901,1183 @@ kalmış inode nesnelerinin önbellekten atılamayacağını" düşünebilirsini
 baskısı altında uzun süre kullanılmayan ``inode`` nesnesine ilişkin önbellek sayfalarının hepsi
 birkaç turda sisteme iade edilmektedir.
 
+Sayfa Önbelleğine Erişime İlişkin Örnek Bir Uygulama
+====================================================
+
+Biz sayfa önbelleğinin veri yapısını ve kullanılan algoritmaları gördük. Şimdi küçük bir çalışma
+yapalım. Bu çalışmada bir karakter aygıt sürücüsü oluşturalım. Karakter aygıt sürücüsünün içerisinde
+``ioctl`` işlemiyle prosesin açmış olduğu bir dosyadan sayfa önbelleğini manuel bir biçimde
+kullanarak okuma yapmaya çalışalım. ``ioctl`` fonksiyonuna geçirilecek okuma bilgilerini aşağıdaki
+yapıyla temsil edebiliriz:
+
+.. code-block:: c
+
+    struct read_info {
+        int fd;             /* okunacak dosyanin betimleyicisi */
+        char *buf;          /* kullanici tamponunun adresi */
+        size_t size;        /* okunacak bayt sayısı */
+        off_t offset;       /* dosya icindeki baslangıç konumu */
+        size_t count;       /* gerçekte okunan byte miktarı */
+    };
+
+Kullanacağımız ``ioctl`` kodu şöyle oluşturulmuştur:
+
+.. code-block:: c
+
+    #define PCACHE_DRIVER_MAGIC     'c'
+    #define IOC_CACHE_READ          _IOR(PCACHE_DRIVER_MAGIC, 0, struct read_info)
+
+Örneğin kullanıcı modundaki test programı şöyle olabilir:
+
+.. code-block:: c
+
+    int main(void)
+    {
+        int fd_dev;
+        int fd_file;
+        struct read_info ri;
+        char buf[8192];
+
+        if ((fd_file = open("test.txt", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if (read(fd_file, buf, 8192) == -1)      /* sayfa önbelleğine girsin diye */
+            exit_sys("read");
+
+        if ((fd_dev = open("pcache-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        ri.fd = fd_file;
+        ri.buf = buf;
+        ri.size = 10;
+        ri.offset = 4090;
+
+        if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
+            exit_sys("ioctl");
+        buf[10] = '\0';
+        printf("%s\n", buf);
+        printf("bytes read: %zu\n", ri.count);
+
+        close(fd_dev);
+        close(fd_file);
+
+        return 0;
+    }
+
+Burada biz sayfa önbelleğini manuel bir biçimde kullanarak ``test.txt`` dosyasının 4090'ıncı
+offset'inden 10 byte okumak istiyoruz. Dosyanın okunacak kısmı sayfa önbelleğine çekilsin diye önce
+dosyadan okuma yapılmıştır. Aygıt sürücümüzün ``ioctl`` fonksiyonu şöyle olabilir:
+
+.. code-block:: c
+
+    static long test_driver_ioctl(unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        printk(KERN_INFO "test_driver_ioctl...\n");
+
+        switch (cmd) {
+            case IOC_CACHE_READ:
+                result = ioctl_cache_read(arg);
+                break;
+            default:
+                result = -ENOTTY;
+                break;
+        }
+
+        return result;
+    }
+
+Burada eğer ``ioctl`` kodu ``IOC_CACHE_READ`` ise işlemi ``ioctl_cache_read`` fonksiyonuna havale
+ediyoruz. ``ioctl_cache_read`` fonksiyonunda ilk yapacağımız şey dosya nesnesinden hareketle
+``inode`` nesnesine, ``inode`` nesnesinden hareketle de ``address_space`` nesnesine erişmektir.
+Bunu şöyle yapabiliriz:
+
+.. code-block:: c
+
+    static long ioctl_cache_read(unsigned long arg)
+    {
+        struct file *filp;
+        struct read_info ri;
+
+        if (copy_from_user(&ri, (void *)arg, sizeof(struct read_info)) != 0)
+            return -EFAULT;
+        ri.count = 0;
+
+        filp = fget(ri.fd);
+        if (filp == NULL)
+            return -EBADF;
+
+        /* ... */
+
+        return 0;
+    }
+
+Burada görüldüğü gibi önce ``copy_from_user`` fonksiyonu ile kullanıcı alanındaki ``read_info``
+nesnesinin içeriği çekirdek alanına çekilmiştir. Sonra daha önce görmüş olduğumuz ``fget``
+fonksiyonuyla dosya nesnesinin referans sayacı artırılarak dosya nesnesine erişilmiştir.
+
+Dosya açılmış ancak ``read`` işleminde dosyaya *r* hakkı yoksa ``errno`` değerinin ``EBADF`` ile set
+edildiğini anımsayınız. Bu kontrolü de aşağıdaki gibi yapabiliriz:
+
+.. code-block:: c
+
+    result = 0;
+    if (!(filp->f_mode & FMODE_READ)) {
+        result = -EBADF;
+        goto EXIT;
+    }
+
+Artık dosya nesnesini kullanarak ``inode`` nesnesine erişebiliriz:
+
+.. code-block:: c
+
+    inode = filp->f_inode;
+
+Bu erişimin ``file_inode`` isimli fonksiyonla da yapılabileceğini görmüştük:
+
+.. code-block:: c
+
+    struct inode *inode;
+    /* ... */
+
+    inode = file_inode(filp);
+
+Fonksiyonun şöyle tanımlandığını anımsayınız:
+
+.. code-block:: c
+
+    static inline struct inode *file_inode(const struct file *f)
+    {
+        return f->f_inode;
+    }
+
+Dosya betimleyicisinin bir disk dosyasına ilişkin olduğunu doğrulamak gerekir. Çünkü örneğin bir
+dizin dosyasından okuma yapmak kullanıcı için anlamlı değildir. Kontrolü şöyle yapabiliriz:
+
+.. code-block:: c
+
+    if (!S_ISREG(inode->i_mode)) {
+        result = -EBADF;
+        goto EXIT;
+    }
+
+Dosyaya ilişkin önbellek bilgilerinin ``inode`` nesnesinin ``i_mapping`` elemanında bulunduğunu
+anımsayınız:
+
+.. code-block:: c
+
+    struct address_space *mapping;
+    /* ... */
+
+    mapping = inode->i_mapping;
+
+Fonksiyonumuz şu duruma gelmiştir:
+
+.. code-block:: c
+
+    static long ioctl_cache_read(unsigned long arg)
+    {
+        struct file *filp;
+        struct inode *inode;
+        struct address_space *mapping;
+        struct read_info ri;
+        int result;
+
+        if (copy_from_user(&ri, (void *)arg, sizeof(struct read_info)) != 0)
+            return -EFAULT;
+
+        filp = fget(ri.fd);
+        if (!filp)
+            return -EBADF;
+
+        result = 0;
+        if (!(filp->f_mode & FMODE_READ)) {
+            result = -EBADF;
+            goto EXIT;
+        }
+        inode = file_inode(filp);
+
+        if (!S_ISREG(inode->i_mode)) {
+            result = -EBADF;
+            goto EXIT;
+        }
+        mapping = inode->i_mapping;
+
+        /* ... */
+
+    EXIT:
+        fput(filp);
+        return result;
+    }
+
+Biz ``address_space`` nesnesini elde ettik. Artık o ``address_space`` nesnesinin içerisinde
+dosyanın ilgili offset'ine ilişkin sayfanın bulunup bulunmadığını anlayabiliriz ve o sayfanın
+içeriğini sayfa önbelleğinden elde edebiliriz. Ancak burada çözmemiz gereken iki sorun vardır:
+
+1. Bizim dosyadan okuyacağımız kısım tek bir önbellek sayfası içerisinde olmayabilir. Örneğin bir
+   kısmı bir önbellek sayfası içerisinde diğer kısmı başka bir sayfanın içerisinde olabilir. Bu
+   durumda okuma işlemini bir döngü içerisinde yapmamız gerekir.
+2. Okumak istediğimiz yerin tamamı ya da bir kısmı sayfa önbelleğinde bulunmayabilir. Bu durumda
+   biz işlemi kesebiliriz ya da ``kernel_read`` gibi bir çekirdek fonksiyonuyla olmayan kısmın
+   çekirdek tarafından okunmasını sağlayabiliriz.
+
+Okuma döngüsü şöyle oluşturulabilir:
+
+.. code-block:: c
+
+    u64 left;
+    /* ... */
+
+    left = ri.size;
+    while (left > 0) {
+        /* ... */
+    }
+
+Şimdi bizim döngü içerisinde öncelikle okumak istediğimiz offset'in sayfa indeksini elde etmemiz
+gerekir:
+
+.. code-block:: c
+
+    loff_t pos, isize;
+    u64 left;
+    /* ... */
+
+    pos = ri.pos;
+    left = ri.size;
+    while (left > 0) {
+        isize = i_size_read(inode);
+        if (pos >= isize)
+            goto EXIT;
+        index = pos >> PAGE_SHIFT;
+        /* ... */
+    }
+
+Burada okuyacağımız offset dosyanın uzunluğundan büyükse döngüden çıktığımıza dikkat ediniz. Bizim
+bu noktada talep ettiğimiz uzunlukla gerçekte var olan uzunluğu karşılaştırıp hangisi küçükse o
+kadar okuma yapmaya çalışmamız gerekir. Bu işlemi şöyle yapabiliriz:
+
+.. code-block:: c
+
+    chunk = min_t(u64, left, isize - pos);
+
+Döngümüz şu hale gelmiştir:
+
+.. code-block:: c
+
+    pos = ri.offset;
+    left = ri.size;
+    while (left > 0) {
+        isize = i_size_read(inode);
+        if (isize <= pos)
+            break;
+        index = pos >> PAGE_SHIFT;
+        chunk = min_t(u64, left, isize - pos);
+        /* ... */
+    }
+
+Artık bizim önbellek sayfasına ilişkin ``folio`` nesnesini elde etmemiz ve dosyanın önbellek
+sayfasından okuma yapmamız gerekir. *XArray* ağacında sayfa indeksinden hareketle ``folio`` nesnesini
+elde eden ``filemap_get_folio`` isimli yüksek seviyeli bir fonksiyonun bulunduğunu söylemiştik:
+
+.. code-block:: c
+
+    /* ... */
+    folio = filemap_get_folio(mapping, index);
+    if (!IS_ERR(folio)) {
+        /* ... */
+    }
+
+``folio`` nesnesi elde edildiğinde önce onun güncel olup olmadığı kontrol edilmelidir. Çünkü
+``folio`` nesnesi üzerinde işlemler yapılırken onun bazı elemanları değiştirilmiş olabilmekte, yani
+bir ara durum oluşabilmektedir. Nesnenin güncel olup olmadığı ``flags`` elemanının ``PG_uptodate``
+bayrağına bakılarak tespit edilmektedir. Zaten çekirdekte bu işlemi yapan ``folio_test_uptodate``
+isimli bir fonksiyon bulunmaktadır:
+
+.. code-block:: c
+
+    /* ... */
+    folio = filemap_get_folio(mapping, index);
+    if (!IS_ERR(folio)) {
+        if (folio_test_uptodate(folio)) {
+            /* .. */
+        }
+    }
+
+Artık ``folio`` nesnesinin gösterdiği önbellek sayfasına ilişkin (duruma göre birden fazla sayfa da
+olabilir) sanal adres elde edilebilir. Dosya offset'inin karşı geldiği ``folio`` nesnesinin önbellek
+bloğu içerisindeki offset değeri ``offset_in_folio`` fonksiyonuyla elde edilebilmektedir. (Bu
+değerin zaten ``offset_in_page`` ile aynı olması gerektiğini düşünebilirsiniz. Ancak birden fazla
+sayfadan oluşan bileşik önbellek bloklarında bu fonksiyon önbellek bloğunun uzunluğunu da dikkate
+almaktadır.)
+
+.. code-block:: c
+
+    /* ... */
+    folio = filemap_get_folio(mapping, index);
+    if (!IS_ERR(folio)) {
+        if (folio_test_uptodate(folio)) {
+            foff = offset_in_folio(folio, pos);
+            /* .. */
+        }
+    }
+
+Bizim ``folio`` nesnesinin belirttiği önbellek bloğundan okuyacağımız byte miktarını tespit etmemiz
+gerekir. Çünkü okunacak miktarın hepsi tespit edilen önbellek bloğunda bulunmak zorunda değildir.
+``folio`` nesnesinin büyüklüğüne bağlı olarak önbellek bloğundan okunması gereken miktarı şöyle
+hesaplayabiliriz:
+
+.. code-block:: c
+
+    chunk = min_t(u64, chunk, folio_size(folio) - foff);
+
+Ancak burada bir noktaya da dikkatinizi çekmek istiyoruz. 32 bit sistemlerde önbellek sayfaları
+HIGHMEM alanında ise sayfa tablosunda slotların da oluşturulması gerekir. Bu işlem
+``kmap_local_folio`` fonksiyonuyla yapılmaktadır. Ancak bu fonksiyon 32 bit sistemlerde HIGHMEM
+alanında yalnızca tek bir sayfayı eşlemektedir. O halde önbellek adresinden okuyacağımız yerin
+HIGHMEM bölgesinde olup olmadığını tespit edip okuma miktarını ona göre hesaplamalıyız:
+
+.. code-block:: c
+
+    if (folio_test_highmem(folio))
+        chunk = min_t(size_t, chunk, PAGE_SIZE - offset_in_page(pos));
+    else
+        chunk = min_t(u64, chunk, folio_size(folio) - foff);
+
+Buradaki ``folio_test_highmem`` fonksiyonu ``folio`` nesnesinin belirttiği önbellek bloğunun
+HIGHMEM içerisinde olup olmadığına bakmaktadır. ``offset_in_page`` makrosu ise verilen bir
+offset'in sayfa büyüklüğüne bölümünden kalanı bulmaktadır. ``include/linux/mm.h`` dosyası
+içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    #define offset_in_page(p)   ((unsigned long)(p) & ~PAGE_MASK)
+
+Artık ``kmap_local_folio`` fonksiyonu ile önbellek bloğunda erişeceğimiz yerin sanal adresini elde
+edebiliriz. ``kmap_local_folio`` fonksiyonu 32 bit sistemlerde HIGHMEM durumunu da göz önünde
+bulundurmaktadır. Yani gerektiğinde HIGHMEM alanına erişmek için sayfa tablosunda slot da
+oluşturmaktadır. 64 bit sistemlerde zaten HIGHMEM biçiminde bir bölgenin olmadığını anımsayınız:
+
+.. code-block:: c
+
+    offaddr = kmap_local_folio(folio, foff);
+
+Kodumuz şu hale gelmiştir:
+
+.. code-block:: c
+
+    /* ... */
+    folio = filemap_get_folio(mapping, index);
+    if (!IS_ERR(folio)) {
+        foff = offset_in_folio(folio, pos);
+        if (folio_test_highmem(folio))
+            chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+        else
+            chunk = min_t(u64, chunk, folio_size(folio) - foff);
+        offaddr = kmap_local_folio(folio, foff);
+
+Bu noktada artık biz dosyada okumak istediğimiz yerin önbellek bloğundaki yerini ve o bloktan
+transfer edilecek byte uzunluğunu tespit etmiş olduk. Bu kısmı kullanıcı modundaki alana
+kopyalayabiliriz. Bu kopyalama işleminden sonra artık ``left``, ``ri.count``, ``pos`` ve ``ri.buf``
+değerlerini güncellemeliyiz. Çünkü birden fazla sayfaya yayılmış olan bilgilerin okunması sırasında
+diğer sayfalara geçmek için bu değişkenlerin güncellenmesi gerekmektedir:
+
+.. code-block:: c
+
+    /* ... */
+    folio = filemap_get_folio(mapping, index);
+    if (!IS_ERR(folio)) {
+        foff = offset_in_folio(folio, pos);
+        if (folio_test_highmem(folio))
+            chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+        else
+            chunk = min_t(u64, chunk, folio_size(folio) - foff);
+        offaddr = kmap_local_folio(folio, foff);
+
+        if (copy_to_user(ri.buf, offaddr, chunk) != 0) {
+            kunmap_local(offaddr);
+            folio_put(folio);
+            result = -EFAULT;
+            goto EXIT;
+        }
+        kunmap_local(offaddr);
+        left -= chunk;
+        ri.count += chunk;
+        pos += chunk;
+        ri.buf += chunk;
+        folio_put(folio);
+    }
+    else
+        goto EXIT;
+
+``if`` deyiminin ``else`` kısmına dikkat ediniz. Eğer dosyanın ilgili kısmı sayfa önbelleğinde
+yoksa okunabilen kadar bilgi okunup okuma işlemi hemen sonlandırılmaktadır. Buradaki ``ioctl``
+kodunda birden fazla akışın bu işlemi aynı anda yaptığı bir durumda bir senkronizasyon sorunu
+oluşmayacaktır. Çünkü buradaki kodda ağırlıklı olarak zaten yerel değişkenler kullanılmıştır.
+
+Yukarıdaki örneği bir bütün olarak aşağıda veriyoruz. Örneğimizde test kodunda ``test.txt`` isimli
+bir dosyayı açıp onun ilk 8192 byte'lık kısmı sayfa önbelleğine girsin diye bir okuma yaptık. Yine
+önce aygıt sürücüyü aşağıdaki gibi derlemelisiniz:
+
+.. code-block:: bash
+
+    $ make file=pcache-driver
+
+Sonra ``load`` betiği ile yüklemelisiniz:
+
+.. code-block:: bash
+
+    $ sudo ./load pcache-driver
+
+Test programını da şöyle derleyebilirsiniz:
+
+.. code-block:: bash
+
+    $ gcc -Wall -o pcache-driver-test pcache-driver-test.c
+
+Test programını şöyle çalıştırabilirsiniz:
+
+.. code-block:: bash
+
+    $ ./pcache-driver-test
+
+Test işlemi bittikten sonra aygıt sürücüyü ``unload`` betiği ile sistemden atabilirsiniz:
+
+.. code-block:: bash
+
+    $ sudo ./unload pcache-driver
+
+``pcache-driver.h``
+
+.. code-block:: c
+  
+    #ifndef PCACHE_DRIVER_H_
+    #define PCACHE_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    struct read_info {
+        int fd;             /* okunacak dosyanin betimleyicisi */
+        char *buf;           /* kullanici tamponunun adresi */
+        size_t size;         /* okunacak bayt sayısı */
+        off_t offset;        /* dosya icindeki baslangıç konumu */
+        size_t count;        /* gerçekte okunan byte miktarı */
+    };
+
+    #define PCACHE_DRIVER_MAGIC     'c'
+    #define IOC_CACHE_READ          _IOR(PCACHE_DRIVER_MAGIC, 0, struct read_info)
+
+    #endif
+
+``pcache-driver.c```
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/fdtable.h>
+    #include <linux/file.h>
+    #include <linux/pagemap.h>
+    #include "pcache-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("pcache-driver");
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+    static long ioctl_cache_read(unsigned long arg);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "pcache-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "pcache-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "pcache-driver module exit...\n");
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        printk(KERN_INFO "test_driver_ioctl...\n");
+
+        switch (cmd) {
+            case IOC_CACHE_READ:
+                result = ioctl_cache_read(arg);
+                break;
+            default:
+                result = -ENOTTY;
+                break;
+        }
+
+        return result;
+    }
+
+    static long ioctl_cache_read(unsigned long arg)
+    {
+        struct file *filp;
+        struct inode *inode;
+        struct address_space *mapping;
+        struct folio *folio;
+        struct read_info ri;
+        pgoff_t index;
+        loff_t pos, isize;
+        u64 left, chunk;
+        size_t foff;
+        void *offaddr;
+        int result;
+
+        if (copy_from_user(&ri, (void *)arg, sizeof(struct read_info)) != 0)
+            return -EFAULT;
+        ri.count = 0;
+
+        filp = fget(ri.fd);
+        if (!filp)
+            return -EBADF;
+
+        result = 0;
+        if (!(filp->f_mode & FMODE_READ)) {
+            result = -EBADF;
+            goto EXIT;
+        }
+        inode = file_inode(filp);
+
+        if (!S_ISREG(inode->i_mode)) {
+            result = -EBADF;
+            goto EXIT;
+        }
+        mapping = inode->i_mapping;
+
+        pos = ri.offset;
+        left = ri.size;
+
+        while (left > 0) {
+            isize = i_size_read(inode);
+            if (pos >= isize)
+                goto EXIT;
+
+            index = pos >> PAGE_SHIFT;
+            chunk = min_t(u64, left, isize - pos);
+
+            folio = filemap_get_folio(mapping, index);
+            if (!IS_ERR(folio)) {
+                foff = offset_in_folio(folio, pos);
+                if (folio_test_highmem(folio))
+                    chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+                else
+                    chunk = min_t(u64, chunk, folio_size(folio) - foff);
+
+                offaddr = kmap_local_folio(folio, foff);
+
+                if (copy_to_user(ri.buf, offaddr, chunk) != 0) {
+                    kunmap_local(offaddr);
+                    folio_put(folio);
+                    result = -EFAULT;
+                    goto EXIT;
+                }
+                kunmap_local(offaddr);
+                left -= chunk;
+                ri.count += chunk;
+                pos += chunk;
+                ri.buf += chunk;
+                folio_put(folio);
+            }
+            else
+                goto EXIT;
+        }
+
+        if (copy_to_user((void *)arg, &ri, sizeof(struct read_info)) != 0)
+            result = -EFAULT;
+    EXIT:
+        fput(filp);
+        return result;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+``Makefile``
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``load```
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+``unload`` 
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+   
+``pcache-driver-test.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "pcache-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd_dev;
+        int fd_file;
+        struct read_info ri;
+        char buf[8192];
+
+        if ((fd_file = open("test.txt", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        read(fd_file, buf, 8192);
+
+        if ((fd_dev = open("pcache-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        ri.fd = fd_file;
+        ri.buf = buf;
+        ri.size = 10;
+        ri.offset = 4090;
+
+        if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
+            exit_sys("ioctl");
+        buf[10] = '\0';
+        printf("%s\n", buf);
+        printf("bytes read: %zu\n", ri.count);
+
+        close(fd_dev);
+        close(fd_file);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+
+Yukarıdaki örnekte biz önbellekte olmayan bir sayfayla karşılaşıldığında işlemi sonlandırdık.
+Alternatif olarak önbellekte olmayan bir sayfayla karşılaşıldığında çekirdeğin yaptığı okuma
+işleminin benzeri ``kernel_read`` fonksiyonuyla yapılarak sayfanın önbelleğe çekilmesi de
+sağlanabilir. ``kernel_read`` fonksiyonu belli bir offset'ten itibaren belli bir tampona okuma yapan
+yüksek seviyeli bir çekirdek fonksiyonudur. Bu fonksiyon önce dosyadaki verileri sayfa önbelleğine
+çekip sonra aynı zamanda parametresiyle belirtilen tampona da kopyalamaktadır. ``kernel_read``
+fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+    ssize_t kernel_read(struct file *file, void *buf, size_t count, loff_t *pos);
+
+Fonksiyonun birinci parametresi dosya nesnesinin adresini, ikinci parametresi tamponun adresini,
+üçüncü parametresi okunacak byte miktarını ve dördüncü parametresi okunacak dosya offset'inin
+yerleştirileceği nesnenin adresini belirtmektedir. Bu offset okumadan sonra güncellenmektedir.
+Fonksiyon başarı durumunda okunan byte sayısına, başarısızlık durumunda negatif ``errno`` değerine
+geri dönmektedir.
+
+Sayfa önbelleğinde olmayan kısımların ``kernel_read`` fonksiyonu ile okunmasını sağlayan kodu aygıt
+sürücümüze eklediğimizde aygıt sürücümüzdeki ana döngü şu hale gelmektedir:
+
+.. code-block:: c
+
+    while (left > 0) {
+        isize = i_size_read(inode);
+        if (pos >= isize)
+            goto EXIT;
+
+        index = pos >> PAGE_SHIFT;
+        chunk = min_t(u64, left, isize - pos);
+
+        folio = filemap_get_folio(mapping, index);
+        if (!IS_ERR(folio)) {
+            printk(KERN_INFO "cache hit...\n");
+
+            foff = offset_in_folio(folio, pos);
+            if (folio_test_highmem(folio))
+                chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+            else
+                chunk = min_t(u64, chunk, folio_size(folio) - foff);
+
+            offaddr = kmap_local_folio(folio, foff);
+
+            if (copy_to_user(ri.buf, offaddr, chunk) != 0) {
+                kunmap_local(offaddr);
+                folio_put(folio);
+                result = -EFAULT;
+                goto EXIT;
+            }
+            kunmap_local(offaddr);
+            folio_put(folio);
+        }
+        else {                  /* önbellekte yoksa */
+            ssize_t n;
+            loff_t rpos = pos;
+
+            printk(KERN_INFO "cache miss...\n");
+
+            if (kbuf == NULL) {
+                struct page *pg;
+
+                if ((pg = alloc_pages(GFP_KERNEL, 0)) == NULL) {
+                        result = -ENOMEM;
+                        goto EXIT;
+                }
+                kbuf = page_address(pg);
+            }
+            if ((n = kernel_read(filp, kbuf, chunk, &rpos)) < 0) {
+                free_page((unsigned long)kbuf);
+                result = n;
+                goto EXIT;
+            }
+            if (n == 0)          /* EOF */
+                break;
+
+            if (copy_to_user(ri.buf, kbuf, n)) {
+                free_page((unsigned long)kbuf);
+                result = -EFAULT;
+                goto EXIT;
+            }
+            chunk = n;
+        }
+        left -= chunk;
+        ri.count += chunk;
+        pos += chunk;
+        ri.buf += chunk;
+    }
+
+Burada ``if`` deyiminin ``else`` kısmına dikkat ediniz:
+
+.. code-block:: c
+
+    if (!IS_ERR(folio)) {
+        /* ... */
+    }
+    else {                  /* önbellekte yoksa */
+        ssize_t n;
+        loff_t rpos = pos;
+
+        printk(KERN_INFO "cache miss...\n");
+
+        if (kbuf == NULL) {
+            struct page *pg;
+
+            if ((pg = alloc_pages(GFP_KERNEL, 0)) == NULL) {
+                    result = -ENOMEM;
+                    goto EXIT;
+            }
+            kbuf = page_address(pg);
+        }
+        if ((n = kernel_read(filp, kbuf, chunk, &rpos)) < 0) {
+            free_page((unsigned long)kbuf);
+            result = n;
+            goto EXIT;
+        }
+        if (n == 0)          /* EOF */
+            break;
+
+        if (copy_to_user(ri.buf, kbuf, n)) {
+            free_page((unsigned long)kbuf);
+            result = -EFAULT;
+            goto EXIT;
+        }
+        chunk = n;
+    }
+
+``kernel_read`` çağrısından önce okunacak bilgilerin yerleştirileceği bir sayfa ``alloc_pages``
+fonksiyonuyla tahsis edilmiştir. Sonra ``page_address`` fonksiyonu ile onun sanal adresi elde
+edilmiştir. Sonra da ``kernel_read`` fonksiyonu uygulanmıştır. Yukarıda da belirttiğimiz gibi
+``kernel_read`` fonksiyonu hem okunanları sayfa önbelleğine yerleştirmekte hem de bizim verdiğimiz
+adrese kopyalamaktadır. Biz de doğrudan ``copy_to_user`` fonksiyonu ile okunan bilgileri kullanıcı
+alanına kopyaladık. Ayrıca kodda ``folio`` bulunduğu zaman "cache hit", bulunamadığı zaman "cache
+miss" mesajlarının log olarak yazdırıldığını görüyorsunuz. ``dmesg`` komutuyla bu mesajları
+görüntüleyebilirsiniz. Test kodunda önce sayfa önbelleğinde olmayan kısmı okuyup sonra okunan kısmı
+yeniden okuyabiliriz. Böylece mekanizmanın çalışıp çalışmadığını kontrol edebiliriz:
+
+.. code-block:: c
+
+    ri.fd = fd_file;
+    ri.buf = buf;
+    ri.size = 10;
+    ri.offset = 4090;
+
+    if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
+        exit_sys("ioctl");
+    buf[10] = '\0';
+    printf("%s\n", buf);
+    printf("bytes read: %zu\n", ri.count);
+
+    ri.fd = fd_file;
+    ri.buf = buf;
+    ri.size = 10;
+    ri.offset = 4090;
+
+    if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
+        exit_sys("ioctl");
+    buf[10] = '\0';
+    printf("%s\n", buf);
+    printf("bytes read: %zu\n", ri.count);
+
+``pcache-driver.h``
+
+.. code-block:: c
+
+    #ifndef PCACHE_DRIVER_H_
+    #define PCACHE_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    struct read_info {
+        int fd;             /* okunacak dosyanin betimleyicisi */
+        char *buf;           /* kullanici tamponunun adresi */
+        size_t size;         /* okunacak bayt sayısı */
+        off_t offset;        /* dosya icindeki baslangıç konumu */
+        size_t count;        /* gerçekte okunan byte miktarı */
+    };
+
+    #define PCACHE_DRIVER_MAGIC     'c'
+    #define IOC_CACHE_READ          _IOR(PCACHE_DRIVER_MAGIC, 0, struct read_info)
+
+    #endif
+
+``pcache-driver.c``
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/fdtable.h>
+    #include <linux/file.h>
+    #include <linux/pagemap.h>
+    #include "pcache-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("pcache-driver");
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+    static long ioctl_cache_read(unsigned long arg);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "pcache-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "pcache-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "pcache-driver module exit...\n");
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        printk(KERN_INFO "test_driver_ioctl...\n");
+
+        switch (cmd) {
+            case IOC_CACHE_READ:
+                result = ioctl_cache_read(arg);
+                break;
+            default:
+                result = -ENOTTY;
+                break;
+        }
+
+        return result;
+    }
+
+    static long ioctl_cache_read(unsigned long arg)
+    {
+        struct file *filp;
+        struct inode *inode;
+        struct address_space *mapping;
+        struct folio *folio;
+        struct read_info ri;
+        pgoff_t index;
+        loff_t pos, isize;
+        u64 left, chunk;
+        size_t foff;
+        void *offaddr;
+        void *kbuf;
+        int result;
+
+        if (copy_from_user(&ri, (void *)arg, sizeof(struct read_info)) != 0)
+            return -EFAULT;
+        ri.count = 0;
+
+        filp = fget(ri.fd);
+        if (!filp)
+            return -EBADF;
+
+        result = 0;
+        if (!(filp->f_mode & FMODE_READ)) {
+            result = -EBADF;
+            goto EXIT;
+        }
+        inode = file_inode(filp);
+
+        if (!S_ISREG(inode->i_mode)) {
+            result = -EBADF;
+            goto EXIT;
+        }
+        mapping = inode->i_mapping;
+
+        pos = ri.offset;
+        left = ri.size;
+
+        while (left > 0) {
+            isize = i_size_read(inode);
+            if (pos >= isize)
+                goto EXIT;
+
+            index = pos >> PAGE_SHIFT;
+            chunk = min_t(u64, left, isize - pos);
+
+            folio = filemap_get_folio(mapping, index);
+            if (!IS_ERR(folio)) {
+                printk(KERN_INFO "cache hit...\n");
+
+                foff = offset_in_folio(folio, pos);
+                if (folio_test_highmem(folio))
+                    chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+                else
+                    chunk = min_t(u64, chunk, folio_size(folio) - foff);
+
+                offaddr = kmap_local_folio(folio, foff);
+
+                if (copy_to_user(ri.buf, offaddr, chunk) != 0) {
+                    kunmap_local(offaddr);
+                    folio_put(folio);
+                    result = -EFAULT;
+                    goto EXIT;
+                }
+                kunmap_local(offaddr);
+                folio_put(folio);
+            }
+            else {                  /* önbellekte yoksa */
+                ssize_t n;
+                loff_t rpos = pos;
+
+                printk(KERN_INFO "cache miss...\n");
+
+                if (kbuf == NULL) {
+                    struct page *pg;
+
+                    if ((pg = alloc_pages(GFP_KERNEL, 0)) == NULL) {
+                            result = -ENOMEM;
+                            goto EXIT;
+                    }
+                    kbuf = page_address(pg);
+                }
+                if ((n = kernel_read(filp, kbuf, chunk, &rpos)) < 0) {
+                    free_page((unsigned long)kbuf);
+                    result = n;
+                    goto EXIT;
+                }
+                if (n == 0)          /* EOF */
+                    break;
+
+                if (copy_to_user(ri.buf, kbuf, n)) {
+                    free_page((unsigned long)kbuf);
+                    result = -EFAULT;
+                    goto EXIT;
+                }
+                chunk = n;
+            }
+            left -= chunk;
+            ri.count += chunk;
+            pos += chunk;
+            ri.buf += chunk;
+        }
+
+        if (copy_to_user((void *)arg, &ri, sizeof(struct read_info)) != 0)
+            result = -EFAULT;
+    EXIT:
+
+        fput(filp);
+        return result;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+``Makefile``
+
+.. code-block:: makefile
+
+    obj-m += ${file}.o
+
+    all:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``load`` 
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+    mode=666
+
+    /sbin/insmod ./${module}.ko ${@:2} || exit 1
+    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
+    rm -f $module
+    mknod -m $mode $module c $major 0
+
+``unload``
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module=$1
+
+    /sbin/rmmod ./${module}.ko || exit 1
+    rm -f $module
+
+``pcache-driver-test.c``
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "pcache-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd_dev;
+        int fd_file;
+        struct read_info ri;
+        char buf[10 + 1];
+
+        if ((fd_file = open("test.txt", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if ((fd_dev = open("pcache-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        ri.fd = fd_file;
+        ri.buf = buf;
+        ri.size = 10;
+        ri.offset = 4090;
+
+        if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
+            exit_sys("ioctl");
+        buf[10] = '\0';
+        printf("%s\n", buf);
+        printf("bytes read: %zu\n", ri.count);
+
+        ri.fd = fd_file;
+        ri.buf = buf;
+        ri.size = 10;
+        ri.offset = 4090;
+
+        if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
+            exit_sys("ioctl");
+        buf[10] = '\0';
+        printf("%s\n", buf);
+        printf("bytes read: %zu\n", ri.count);
+
+        close(fd_dev);
+        close(fd_file);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
