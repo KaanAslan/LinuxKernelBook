@@ -1,13 +1,14 @@
-===================
-Sayfa Önbelleği
-===================
+=========================================================
+Sayfa Önbelleği - I. Bölüm :raw-html:`<br>` Temel İşleyiş
+=========================================================
 
 Biz şimdiye kadar Linux çekirdeğindeki bellek yönetimiyle ilgili önemli konuları gördük. Şimdi
 dikkatimizi "sayfa önbelleğine (page cache)" yönelteceğiz. Sayfa önbelleği hem bellek yönetimi ile
 hem de dosya sistemi ile ilişkili bir konudur. Çünkü sayfa önbelleği ağırlıklı olarak dosya
 işlemlerinde devreye girmektedir. Biz sayfa önbelleğine dosya sistemini ele aldığımız beşinci ve
-altıncı bölümlerde kavramsal olarak değinmiştik. Bu bölümde bu alt sistemi ayrıntılarıyla ele
-alacağız.
+altıncı bölümlerde kavramsal olarak değinmiştik. Sayfa önbelleği kitabımızda iki bölüm halinde 
+ele alınmaktadır. Birinci bölümde sayfa önbelleğinin genel işleyisi üzerinde duracağız. İkinci 
+bölümde ise sayfa önbelleğindeki blokların geri yazımına (flush edilmesine) süreci inceleyeceğiz.
 
 Sayfa önbelleği (page cache) dosyalara ilişkin disk bloklarının fiziksel bellekte tutularak disk
 erişiminin azaltılmasını hedefleyen bir önbellek sistemidir. Böylece ``read``/``write`` gibi
@@ -2081,3 +2082,8 @@ yeniden okuyabiliriz. Böylece mekanizmanın çalışıp çalışmadığını ko
         perror(msg);
         exit(EXIT_FAILURE);
     }
+
+Sayfa Önbelleğinin Yazma İşlemlerinde Kullanımı
+===============================================
+
+
