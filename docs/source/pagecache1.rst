@@ -2876,8 +2876,8 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         exit(EXIT_FAILURE);
     }
 
-Sayfa Önbelleğini İlgilendiren Dosya Bayrakları 
-===============================================
+Sayfa Önbelleğini İlgilendiren Dosya Bayrakları ve fsync Fonksiyonu 
+===================================================================
 
 Aslında Linux sistemlerinde kullanıcı modundaki dosya işlemlerinde sayfa önbelleği büyük ölçüde
 devre dışı bırakılabilir. Bunun için Linux sistemlerinde ``open`` fonksiyonunda açış moduna
@@ -2962,8 +2962,7 @@ Fonksiyonda aşağıdaki kısma dikkat ediniz:
 Burada ``O_DIRECT`` bayrağının set edilip edilmediği kontrol edilmiş ve akış dosya sistemine
 geçirilmiştir. ext2, ext4 gibi dosya sistemleri ``generic_file_read_iter`` fonksiyonunu çağırmadan
 önce ``O_DIRECT`` kontrolünü kendileri yapıp durumu ele almaktadır. Sayfa önbelleğini devreye
-sokmadan doğrudan okuma/yazma işlemlerini dosya sistemine geri döndüğümüz ilerideki bir bölümde
-ele alacağız.
+sokmadan doğrudan okuma/yazma işlemlerini dosya sistemine ilişkin üçüncü bölümde ele alacağız.
 
 Kullanıcı alanında dosya açarken kullanılan ``O_SYNC``, ``O_DSYNC`` ve ``O_RSYNC`` bayraklarının
 da davranışları sayfa önbelleği ile ilgilidir. Bu bayraklar POSIX standartlarında da
@@ -3002,6 +3001,53 @@ nesnesinin ``mtime`` dışındaki elemanları yazılmıştır:
 .. figure:: _static/odsync-write-flow.png
    :alt: O_DSYNC write akışı
    :width: 40%
+
+``fsync`` bir dosyanın bütün önbellek bloklarını ve metadata bilgilerini diske flush eden bir POSIX
+fonksiyonudur. Fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+    #include <unistd.h>
+
+    int fsync(int fd);
+
+Fonksiyon parametre olarak dosya betimleyicisini alır, başarı durumunda 0 değerine başarısızlık
+durumunda -1 değerine geri döner. Güncel çekirdeklerdeki çağrı zinciri şöyledir:
+
+.. figure:: _static/fsync-callchain.png
+   :alt: fsync çağrı zinciri
+   :width: 60%
+
+Linux sistemlerine özgü ``fdatasync`` isimli bir fonksiyon da bulunmaktadır. Bu fonksiyon dosyanın
+önbellekteki bloklarını ve onu yeniden okuyabilmek için gereken metadata alanlarını flush
+etmektedir. Yani ``fsync`` fonksiyonu tüm dosya için ``O_SYNC`` semantiğini uygularken
+``fdatasync`` fonksiyonu ``O_DSYNC`` semantiğini uygulamaktadır. ``fdatasync`` fonksiyonunun
+prototipi şöyledir:
+
+.. code-block:: c
+
+    #include <unistd.h>
+
+    int fdatasync(int fd);
+
+Fonksiyon yine dosyaya ilişkin betimleyiciyi parametre olarak alır, başarı durumunda 0 değerine,
+başarısızlık durumunda -1 değerine geri döner.
+
+Son olarak ``sync`` isimli POSIX fonksiyonundan da bahsetmek istiyoruz. ``sync`` fonksiyonu tüm
+dosya sistemlerinin önbellek bloklarını ve metadata alanlarını diske flush etmektedir. Fonksiyonun
+prototipi şöyledir:
+
+.. code-block:: c
+
+    #include <unistd.h>
+
+    void sync(void);
+
+Ancak ``sync`` senkron bir fonksiyon değildir. Yani işlemi başlatır ve geri döner. İşlem bitene
+kadar akışı bekletmez. ``sync`` fonksiyonunu uygulayan ``sync`` isimli bir kabuk komutu da
+bulunmaktadır.
+
+
 
 
 
