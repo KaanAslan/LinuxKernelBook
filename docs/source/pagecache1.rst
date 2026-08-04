@@ -1,5 +1,5 @@
 =========================================================
-Sayfa Önbelleği - I. Bölüm :raw-html:`<br>` Temel İşleyiş
+Sayfa Önbelleği - I. Bölüm :raw-html:`<br>` Genel İşleyiş
 =========================================================
 
 Biz şimdiye kadar Linux çekirdeğindeki bellek yönetimiyle ilgili önemli konuları gördük. Şimdi
@@ -2875,3 +2875,134 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         perror(msg);
         exit(EXIT_FAILURE);
     }
+
+Sayfa Önbelleğini İlgilendiren Dosya Bayrakları 
+===============================================
+
+Aslında Linux sistemlerinde kullanıcı modundaki dosya işlemlerinde sayfa önbelleği büyük ölçüde
+devre dışı bırakılabilir. Bunun için Linux sistemlerinde ``open`` fonksiyonunda açış moduna
+``O_DIRECT`` bayrağı eklenmelidir. Örneğin:
+
+.. code-block:: c
+
+    fd = open("test.txt", O_RDWR | O_DIRECT);
+
+``O_DIRECT`` bayrağı POSIX standartlarında bulunmamaktadır. Bu bayrak Linux çekirdeklerine 2.4
+versiyonuyla girmiştir. Linux'ta dosya ``O_DIRECT`` ile açılıp okuma işlemi yapıldığında dosyadan
+okunanlar hiç sayfa önbelleğine alınmadan doğrudan kullanıcı modundaki tampona aktarılmaktadır.
+``O_DIRECT`` bayrağı ile dosya açılıp dosyaya yazma yapıldığında yine yazılacak byte'lar hiç
+önbelleğe alınmadan doğrudan aygıta yazılmaktadır. Ancak yazma durumunda yazılacak yer daha önce
+önbelleğe alınmışsa ve bu önbellek bloğu kirliyse önce ilgili blok diske geri yazılmaktadır.
+
+Dosyalardan ``O_DIRECT`` modu ile okuma/yazma yapabilmek için dosya sisteminin de bu modu
+destekliyor olması gerekir. Güncel çekirdekte ``O_DIRECT`` bayrağı birkaç yerde kontrol
+edilmektedir. Güncel çekirdeklerde okuma işlemlerinde sayfa önbelleği asıl olarak
+``mm/filemap.c`` dosyasındaki ``generic_file_read_iter`` ve ``generic_file_write_iter``
+fonksiyonlarında devre dışı bırakılmaktadır:
+
+.. code-block:: c
+
+    ssize_t
+    generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
+    {
+        size_t count = iov_iter_count(iter);
+        ssize_t retval = 0;
+
+        if (!count)
+            return 0; /* skip atime */
+
+        if (iocb->ki_flags & IOCB_DIRECT) {
+            struct file *file = iocb->ki_filp;
+            struct address_space *mapping = file->f_mapping;
+            struct inode *inode = mapping->host;
+
+            retval = kiocb_write_and_wait(iocb, count);
+            if (retval < 0)
+                return retval;
+            file_accessed(file);
+
+            retval = mapping->a_ops->direct_IO(iocb, iter);
+            if (retval >= 0) {
+                iocb->ki_pos += retval;
+                count -= retval;
+            }
+            if (retval != -EIOCBQUEUED)
+                iov_iter_revert(iter, count - iov_iter_count(iter));
+
+            /*
+             * Btrfs can have a short DIO read if we encounter
+             * compressed extents, so if there was an error, or if
+             * we've already read everything we wanted to, or if
+             * there was a short read because we hit EOF, go ahead
+             * and return.  Otherwise fallthrough to buffered io for
+             * the rest of the read.  Buffered reads will not work for
+             * DAX files, so don't bother trying.
+             */
+            if (retval < 0 || !count || IS_DAX(inode))
+                return retval;
+            if (iocb->ki_pos >= i_size_read(inode))
+                return retval;
+        }
+
+        return filemap_read(iocb, iter, retval);
+    }
+
+Fonksiyonda aşağıdaki kısma dikkat ediniz:
+
+.. code-block:: c
+
+    if (iocb->ki_flags & IOCB_DIRECT) {
+        /* ... */
+
+        retval = mapping->a_ops->direct_IO(iocb, iter);
+
+        /* ... */
+    }
+
+Burada ``O_DIRECT`` bayrağının set edilip edilmediği kontrol edilmiş ve akış dosya sistemine
+geçirilmiştir. ext2, ext4 gibi dosya sistemleri ``generic_file_read_iter`` fonksiyonunu çağırmadan
+önce ``O_DIRECT`` kontrolünü kendileri yapıp durumu ele almaktadır. Sayfa önbelleğini devreye
+sokmadan doğrudan okuma/yazma işlemlerini dosya sistemine geri döndüğümüz ilerideki bir bölümde
+ele alacağız.
+
+Kullanıcı alanında dosya açarken kullanılan ``O_SYNC``, ``O_DSYNC`` ve ``O_RSYNC`` bayraklarının
+da davranışları sayfa önbelleği ile ilgilidir. Bu bayraklar POSIX standartlarında da
+bulunmaktadır. ``O_RSYNC`` ve ``O_DSYNC`` bayrakları ``O_SYNC`` bayrağı ile kullanılmak
+zorundadır. Önce bu bayrakların görünen işlevlerini anımsatmak istiyoruz:
+
+**O_DSYNC (Synchronized I/O data integrity):** ``write`` fonksiyonu geri döndüğünde veri ve o
+veriyi geri okumak için gereken metadata bilgileri diske (blok aygıtına) ulaşmış olmalıdır. Dosya
+büyüdüyse ``i_size`` ve blok eşlemesi (extent/block map) buna dahildir; ama mtime/ctime gibi zaman
+damgaları dahil değildir.
+
+**O_SYNC (Synchronized I/O file integrity):** Bu bayrak ``O_DSYNC`` bayrağını kapsar, artı
+olarak ``write`` fonksiyonu geri döndüğünde tüm metadata bilgileri (zaman damgaları da dahil olmak
+üzere) diske (blok aygıtına) yazılır.
+
+**O_RSYNC:** ``read`` fonksiyonu geri dönmeden önce, okunan aralığı etkileyen bekleyen
+yazmaların diske (blok aygıtına) aktarılacağı anlamına gelmektedir. Linux bu semantiği
+uygulamamaktadır. glibc kütüphanesi de ``<fcntl.h>`` içinde ``O_RSYNC`` sembolik sabitini
+``O_SYNC`` ile aynı değerde olacak biçimde define etmiştir. Yani Linux'ta ``O_SYNC | O_RSYNC`` ile
+``O_SYNC`` arasında bir fark yoktur.
+
+Linux çekirdeğinde ``O_SYNC`` bayrağı set edilmiş dosyaya ``write`` fonksiyonuyla yazma
+yapıldığında çekirdek yazmayı normal yolla sayfa önbelleğine yapar, ardından aynı ``write()``
+çağrısı içinde senkron bir ``fsync`` benzeri adım eklenir. Yani ``O_SYNC`` adeta her ``write``
+işleminden sonra otomatik olarak ``fsync`` yapılmasına yol açmaktadır. Bu durumu şekilsel olarak
+şöyle de açıklayabiliriz:
+
+.. figure:: _static/osync-write-flow.png
+   :alt: O_SYNC write akışı
+   :width: 40%
+
+Linux çekirdeğinde ``O_SYNC | O_DSYNC`` de yazma işleminden sonra ``fsync`` işlevini yerine
+getirmektedir. Ancak bu ``fsync`` yolunda ``O_SYNC | O_DSYNC`` durumu kontrol edilmiş ve ``inode``
+nesnesinin ``mtime`` dışındaki elemanları yazılmıştır:
+
+.. figure:: _static/odsync-write-flow.png
+   :alt: O_DSYNC write akışı
+   :width: 40%
+
+
+
+
