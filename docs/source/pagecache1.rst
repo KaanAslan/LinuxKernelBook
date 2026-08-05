@@ -2876,8 +2876,8 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         exit(EXIT_FAILURE);
     }
 
-Sayfa Önbelleğini İlgilendiren Dosya Bayrakları ve fsync Fonksiyonu 
-===================================================================
+Sayfa Önbelleğini İlgilendiren Dosya Bayrakları ve Tazeleme Fonksiyonları
+=========================================================================
 
 Aslında Linux sistemlerinde kullanıcı modundaki dosya işlemlerinde sayfa önbelleği büyük ölçüde
 devre dışı bırakılabilir. Bunun için Linux sistemlerinde ``open`` fonksiyonunda açış moduna
@@ -2992,7 +2992,7 @@ işleminden sonra otomatik olarak ``fsync`` yapılmasına yol açmaktadır. Bu d
 
 .. figure:: _static/osync-write-flow.png
    :alt: O_SYNC write akışı
-   :width: 40%
+   :width: 35%
 
 Linux çekirdeğinde ``O_SYNC | O_DSYNC`` de yazma işleminden sonra ``fsync`` işlevini yerine
 getirmektedir. Ancak bu ``fsync`` yolunda ``O_SYNC | O_DSYNC`` durumu kontrol edilmiş ve ``inode``
@@ -3000,7 +3000,7 @@ nesnesinin ``mtime`` dışındaki elemanları yazılmıştır:
 
 .. figure:: _static/odsync-write-flow.png
    :alt: O_DSYNC write akışı
-   :width: 40%
+   :width: 35%
 
 ``fsync`` bir dosyanın bütün önbellek bloklarını ve metadata bilgilerini diske flush eden bir POSIX
 fonksiyonudur. Fonksiyonun prototipi şöyledir:
@@ -3031,7 +3031,12 @@ prototipi şöyledir:
     int fdatasync(int fd);
 
 Fonksiyon yine dosyaya ilişkin betimleyiciyi parametre olarak alır, başarı durumunda 0 değerine,
-başarısızlık durumunda -1 değerine geri döner.
+başarısızlık durumunda -1 değerine geri döner. fdatasync fonksiyonu da çekirdekte sync fonksiyonu ile 
+aynı yolu izlemektedir, yalnızca fsync callback fonksiyonuna geçirilen argüman farklıdır:
+
+.. figure:: _static/fdatasync-callchain.png
+   :alt: fdatasync çağrı zinciri
+   :width: 55%
 
 Son olarak ``sync`` isimli POSIX fonksiyonundan da bahsetmek istiyoruz. ``sync`` fonksiyonu tüm
 dosya sistemlerinin önbellek bloklarını ve metadata alanlarını diske flush etmektedir. Fonksiyonun
@@ -3045,10 +3050,12 @@ prototipi şöyledir:
 
 Ancak ``sync`` senkron bir fonksiyon değildir. Yani işlemi başlatır ve geri döner. İşlem bitene
 kadar akışı bekletmez. ``sync`` fonksiyonunu uygulayan ``sync`` isimli bir kabuk komutu da
-bulunmaktadır.
+bulunmaktadır. ``sync`` fonksiyonun çağrı zinciri de şöyledir:
 
+.. figure:: _static/sync-callchain.png
+   :alt: sync çağrı zinciri
+   :width: 75%
 
-
-
-
-
+Bu fonksiyonların çalışma mekazizmaları sayfa önbelleğinin flush edilme süreciyle ve dosya sisteminin henüz 
+görmediğimiz bazı özellikleriyle de ilgilidir. Biz bu açıkları izleyen bölümde ve dosya sistemine ilişkin üçüncü 
+bölümde kapatacağız. 
