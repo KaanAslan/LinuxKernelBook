@@ -1,6 +1,6 @@
-===================
-Bekleme Kuyrukları
-===================
+======================
+**Bekleme Kuyrukları**
+======================
 
 Bu bölümde önce bekleme kuyruklarının (wait queues) genel yapısını açıklayacağız. Sonra da
 thread'lerin çalışma kuyruğundan (run queue) bekleme kuyruklarına nasıl aktarıldığı (yani

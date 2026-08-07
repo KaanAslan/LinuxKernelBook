@@ -1,6 +1,6 @@
-=========================
-Çekirdek Senkronizasyonu
-=========================
+============================
+**Çekirdek Senkronizasyonu**
+============================
 
 Kitabımızın bu bölümünde Linux çekirdeğindeki senkronizasyon mekanizmaları üzerinde
 duracağız. Çekirdek içerisindeki kodlar iç içe geçebilecek biçimde (re-entrant)

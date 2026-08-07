@@ -1,6 +1,6 @@
-====================================================================================
-Linux Çekirdeğinde Bağlı Listeler ve Hash Tabloları 
-====================================================================================
+=======================================================
+**Linux Çekirdeğinde Bağlı Listeler ve Hash Tabloları**
+=======================================================
 
 Bu bölümde Linux çekirdeğindeki bağlı listelerin ve hash tablolarının gerçekleştirimleri üzerinde duracağız.
 Çekirdeğin diğer önemli veri yapıları onların kullanıldığı konular ele alınırken açıklanacaktır.

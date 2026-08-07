@@ -1,6 +1,6 @@
-===============
-Sayfa Önbelleği
-===============
+===================
+**Sayfa Önbelleği**
+===================
 
 Biz şimdiye kadar Linux çekirdeğindeki bellek yönetimiyle ilgili önemli konuları gördük. Şimdi
 dikkatimizi "sayfa önbelleğine (page cache)" yönelteceğiz. Sayfa önbelleği hem bellek yönetimi ile

@@ -1,6 +1,6 @@
-===========================================
-Çekirdeğin Derlenmesi
-===========================================
+==========================
+**Çekirdeğin Derlenmesi**
+==========================
 
 Bu bölümde ayrıntılı bir biçimde Linux çekireğinin derlenmesi sürecini ele alacapız.
 

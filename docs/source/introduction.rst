@@ -696,35 +696,9 @@ Linux çekirdeğinin kaynak kod ağacı üzerinde temel dizinler aynı kalmak ü
 içerisinde çeşitli değişiklikler yapılmıştır. Biz burada çekirdeğin son versiyonlarını
 dikkate alarak açıklamalar yapacağız. Linux kaynak kod ağacındaki temel dizinler şunlardır:
 
-.. code-block:: text
-
-    linux-6.x/
-    ├── arch/          → Mimarilere özel kodlar (x86, ARM, RISC-V, vb.)
-    ├── block/         → Blok aygıt altyapısı
-    ├── certs/         → Kernel modül imzalama için sertifikalar
-    ├── crypto/        → Kriptografik algoritmalar ve API'ler
-    ├── Documentation/ → Belgeler (API, özellikler, davranışlar)
-    ├── drivers/       → Aygıt sürücüleri (net, usb, gpu, vb.)
-    ├── fs/            → Dosya sistemi sürücüleri (ext4, btrfs, vb.)
-    ├── include/       → Global başlık dosyaları (headers)
-    ├── io_uring/      → 5.1 çekirdeği ile eklenen asenkron io_uring sistem fonksiyonları
-    ├── init/          → Kernelin ilk başlatma kodları
-    ├── ipc/           → IPC mekanizmaları (semaphore, message queue, vb.)
-    ├── kernel/        → Temel kernel işlevleri (zamanlayıcı, process, vb.)
-    ├── lib/           → Genel amaçlı yardımcı fonksiyonlar
-    ├── mm/            → Bellek yönetimi
-    ├── net/           → Ağ yığını (TCP/IP, socket, protokoller)
-    ├── rust/          → Rust dili ile yazılmış çekirdek kodları (6.x ile)
-    ├── samples/       → Örnek kodlar (eBPF, modül kodları, vb.)
-    ├── scripts/       → Derleme sürecine yardımcı betikler
-    ├── security/      → Güvenlik altyapısı (LSM, SELinux, AppArmor, vb.)
-    ├── sound/         → Ses sürücüleri (ALSA, vb.)
-    ├── tools/         → Kullanıcı uzayı araçları (perf, bpftool, vb.)
-    ├── usr/           → Yerleşik initramfs oluşturmak için
-    ├── virt/          → Sanallaştırma (KVM, Xen, vb.)
-    ├── MAINTAINERS    → Dosyaların kim tarafından korunduğu bilgisi
-    ├── Makefile       → Ana derleme talimatı
-    └── Kconfig        → Kernel yapılandırma seçenekleri
+.. figure:: _static/kernel-source-tree.png
+   :alt: Linux çekirdek kaynak ağacı
+   :width: 70%
 
 Dizinlerin açıklamaları aşağıda verilmiştir.
 

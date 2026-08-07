@@ -1,6 +1,6 @@
-===============================================================
-Bellek Yönetimi - II. Bölüm :raw-html:`<br>` Tahsisat İşlemleri
-===============================================================
+=======================================================================
+**Bellek Yönetimi** - II. Bölüm :raw-html:`<br>` **Tahsisat İşlemleri**
+=======================================================================
 
 Bu bölümde Linux çekirdeğinin sayfa düzeyindeki ve byte düzeyindeki tahsisat mekanizmalarını ele
 alacağız. Bölüm içerisinde önce çekirdeğin boş sayfaları nasıl belirlediğini ve sayfa düzeyinde
