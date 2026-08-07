@@ -3059,8 +3059,8 @@ Bu fonksiyonların çalışma mekazizmaları sayfa önbelleğinin flush edilme s
 görmediğimiz bazı özellikleriyle de ilgilidir. Biz bu açıkları izleyen bölümde ve dosya sistemine ilişkin üçüncü 
 bölümde kapatacağız. 
 
-Geri Yazım İşlemleri
-====================
+Sayfa Önbelleğinde Geri Yazım İşlemleri
+=======================================
 
 Önceki bölümde sayfa önbelleğindeki sayfalar kirlendiğinde çekirdeğin onları belli periyotlarla diske (blok aygıtına)
 flush ettiğini söylemiştik. Bu bölümde bu flush etme mekanizmasının nasıl işletildiği üzerinde duracağız. Linux
