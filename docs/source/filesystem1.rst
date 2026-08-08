@@ -3579,6 +3579,11 @@ içi 0'larla dolu dinamik tahsisat yapmaktadır. Modülü yükledikten sonra oku
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
+Burada bir noktayı da vurgulamak istiyoruz. Çekirdek modülleri ve aygıt sürücüler tarafından
+dosyaların ``filp_open`` ile açılması, ``kernel_read`` ve ``kernel_write`` fonksiyonlarıyla okuma
+yazma işlemleri yapılarak ``filp_close`` ile kapatılması gereksinim duyulan bir durum değildir.
+Genel olarak çekirdek modüllerinde ve aygıt sürücülerde kullanıcı modundaki gibi dosya işlemlerinin
+yapılması kötü bir tekniktir.
 
 Çekirdeğin 0.01 Versiyonundaki sys_open Fonksiyonu
 --------------------------------------------------
