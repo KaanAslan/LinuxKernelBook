@@ -287,8 +287,8 @@ değerini radix ağacına anahtar yapmaktadır.
 aramadan elde edilecek değer nedir? İşte güncel çekirdeklerde sayfa önbelleğindeki aramadan
 ``folio`` isimli bir yapı türünden nesne adresi elde edilmektedir. Yani radix ağacındaki anahtarlar
 sayfa indeksidir, elde edilecek değerler ise ``folio`` nesneleridir. Eskiden (çekirdeğin 5.16
-sürümünden önce) ``folio`` nesneleri yerine doğrudan ``page`` nesneleri kullanılıyordu. Yani
-çekirdeğin 5.16 sürümünden önce buradaki radix ağacı bize dosyanın bellekteki kısmına ilişkin
+versiyonundan önce) ``folio`` nesneleri yerine doğrudan ``page`` nesneleri kullanılıyordu. Yani
+çekirdeğin 5.16 versiyonundan önce buradaki radix ağacı bize dosyanın bellekteki kısmına ilişkin
 ``page`` nesnesinin adresini veriyordu. Ancak 5.16'dan itibaren sistem biraz daha iyileştirilmiş ve
 ``folio`` yapısı kullanılmaya başlanmıştır. Tabii izleyen paragraflarda ele alacağımız gibi ``folio``
 nesnesinden ``page`` nesnesine, dolayısıyla da dosyanın ilgili kısmının fiziksel bellekteki kısmına
@@ -357,7 +357,7 @@ isimli bir fonksiyon bulunmaktadır:
     }
 
 Bir sayfadan (tipik olarak 4K'dan) büyük birimlerin önbelleklerde tutulması Linux çekirdeğine 4.8
-sürümüyle eklenmiş bir özelliktir. Dolayısıyla daha önceki çekirdeklerin ``page`` yapılarında
+versiyonuyla eklenmiş bir özelliktir. Dolayısıyla daha önceki çekirdeklerin ``page`` yapılarında
 ``compound_head`` elemanı yoktu.
 
 Aslında sayfa önbelleğinde bir sayfadan (yani 4K'dan) daha büyük birimlerle seyrek karşılaşılmaktadır.
@@ -2897,7 +2897,7 @@ Dosyalardan ``O_DIRECT`` modu ile okuma/yazma yapabilmek için dosya sisteminin 
 destekliyor olması gerekir. Güncel çekirdekte ``O_DIRECT`` bayrağı birkaç yerde kontrol
 edilmektedir. Güncel çekirdeklerde okuma işlemlerinde sayfa önbelleği asıl olarak
 ``mm/filemap.c`` dosyasındaki ``generic_file_read_iter`` ve ``generic_file_write_iter``
-fonksiyonlarında devre dışı bırakılmaktadır:
+fonksiyonlarında devre dışı bırakılmaktadır. ``file_read_iter`` fonksiyonu şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -3115,3 +3115,234 @@ vermek istiyoruz.
 Çalışma Kuyruklarına Temel Bakış
 --------------------------------
 
+Çalışma kuyrukları genel bir çekirdek mekanizmasıdır. Geri yazım mekanizması da güncel
+çekirdeklerde çalışma kuyruklarını kullanmaktadır. Çalışma kuyruğu (workqueue) terimi mekanizmanın
+kendisini betimlemektedir. Bu mekanizmada "çalışma havuzları (work pools)" vardır. Bu havuzlara iş
+öğeleri (workqueue items) yerleştirilmektedir. (Burada iş öğesi demekle çağrılacak fonksiyonları
+kastediyoruz.) Havuzlar üretici-tüketici (producer-consumer) mekanizmasını oluşturmaktadır.
+Çekirdeğin kendisi ya da aygıt sürücü geliştirenler bu havuzlara iş öğelerini yerleştirirler. Bu
+havuzlardan iş öğelerini alan ve oradaki fonksiyonları çalıştıran tüketici görevini yapan
+thread'ler vardır. Bu thread'lere "kworker" thread'leri denilmektedir. Sisteminizdeki bu
+thread'leri aşağıdaki komutla görebilirsiniz:
+
+.. code-block:: bash
+
+    $ ps -e | grep kworker
+
+Komuttan elde edilecek örnek bir çıktı şöyledir:
+
+.. code-block:: none
+
+      4 ?        00:00:00 kworker/R-rcu_gp
+      5 ?        00:00:00 kworker/R-sync_wq
+      6 ?        00:00:00 kworker/R-kvfree_rcu_reclaim
+      7 ?        00:00:00 kworker/R-slub_flushwq
+      8 ?        00:00:00 kworker/R-netns
+     10 ?        00:00:00 kworker/0:0H-kblockd
+     12 ?        00:00:00 kworker/u512:0-ipv6_addrconf
+     13 ?        00:00:00 kworker/R-mm_percpu_wq
+     27 ?        00:00:00 kworker/1:0H-kblockd
+     33 ?        00:00:00 kworker/2:0H-kblockd
+     39 ?        00:00:00 kworker/3:0H-kblockd
+     45 ?        00:00:00 kworker/4:0H-kblockd
+     51 ?        00:00:00 kworker/5:0H-kblockd
+     57 ?        00:00:00 kworker/6:0H-kblockd
+     63 ?        00:00:00 kworker/7:0H-kblockd
+     64 ?        00:00:00 kworker/u513:0-flush-8:0
+     67 ?        00:00:00 kworker/u516:0-events_power_efficient
+    ...
+
+Peki her havuzdaki iş öğelerini kuyruktan alıp çalıştıran kaç "kworker" thread vardır? İşte bu sayı
+dinamik bir biçimde artırılıp eksiltilmektedir. Havuzlardaki kuyruklar büyüdüğü zaman yeni
+"kworker" thread'ler yaratılır, havuzlardaki kuyruklar küçüldüğü zaman bunlar yok edilir. Ancak
+işin başında tipik olarak her işlemci ya da çekirdek için 2 havuz ve her havuz için 2 thread
+yaratılmaktadır. Sonra yukarıda da belirttiğimiz gibi bunların sayısı dinamik bir biçimde
+ayarlanmaktadır.
+
+Çalışma kuyruğu mekanizmasında her işlemci ya da çekirdek için işin başında 2 ayrı havuz
+yaratıldığını belirttik. Havuzlardan biri normal öncelikli iş öğeleri için (nice = 0), diğerleri de
+yüksek öncelikli iş öğeleri için (nice = -20) oluşturulmaktadır. Bu havuzları tüketen kworker
+thread'leri her zaman havuzun ilişkin olduğu işlemci ya da çekirdek tarafından çalıştırılmaktadır.
+(Yani bu thread'ler bu işlemci ya da çekirdeklere bağlanmış durumdadır.) Bir iş öğesini (yani
+çalıştırılacak fonksiyonu) hangi işlemci ya da çekirdekteki akış oluşturmuşsa iş o işlemci ya da
+çekirdeğin havuzuna yerleştirilmektedir. Çekirdeğin 6.10 sürümüyle birlikte işlemci ya da çekirdek
+için havuz sayısı ikiden dörde çıkarılmıştır.
+
+İşlemcilere bağlı (bound) havuzların dışında, hiçbir işlemciye bağlı olmayan (unbound) havuzlar da
+bulunmaktadır. Bu havuzların sayısı sabit değildir; istenen ayrık nitelik kümesi sayısına ve
+makinenin pod (varsayılan olarak son seviye önbellek) topolojisine göre değişebilmektedir.
+Başlangıçta tipik olarak işlemciye bağlı olmayan tek bir havuz bulunmaktadır.
+
+Çalışma kuyruğuna iş bırakmaya "işin çizelgelenmesi" denilmektedir. Çalışma kuyruğu havuzlarına iş
+öğeleri "belli bir zaman sonra çalışsın" biçiminde de bırakılabilmektedir. Havuza bırakılan iş
+öğeleri yalnızca bir kez çalıştırılmaktadır. Ancak bu iş öğeleri içinde yeniden çizelgeleme
+yapılırsa çalışma devam ettirilebilir.
+
+Biz burada çalışma kuyruklarının temel yapısını kolaylaştırarak açıkladık. Aslında çalışma
+kuyruklarının organizasyonunda beş aktör vardır:
+
+1. İş öğeleri. Bunlar ``work_struct`` yapısıyla temsil edilmektedir:
+
+   .. code-block:: c
+
+       struct work_struct {
+           atomic_long_t data;
+           struct list_head entry;
+           work_func_t func;
+       #ifdef CONFIG_LOCKDEP
+           struct lockdep_map lockdep_map;
+       #endif
+       };
+
+   Yapının ``func`` elemanı çalıştırılacak fonksiyonu belirtmektedir.
+
+2. Havuzlar. Bunlar ``worker_pool`` yapısıyla temsil edilmektedir. Havuzlar iş öğelerini
+   tutmaktadır.
+3. Kullanıcının gördüğü çalışma kuyruğu nesnesi. Bunlar ``workqueue_struct`` yapısıyla temsil
+   edilmektedir. Kullanıcılar (burada kullanıcı demekle aygıt sürücülerini ve mekanizmayı kullanan
+   çekirdek kodlarını kastediyoruz) çalışma kuyruğu nesnesi oluşturup iş öğelerini çalışma kuyruğu
+   nesnesi yoluyla çizelgelemektedir.
+4. Havuz kuyruğu. Bunlar ``pool_workqueue`` yapısıyla temsil edilmektedir. Havuz kuyrukları
+   havuzlarla çalışma kuyruğu nesneleri arasında aracılık görevi yaparlar.
+5. Havuzlardaki iş öğelerini çalıştıran çekirdek thread'leri. Bunlara "kworker" thread'ler
+   denilmektedir.
+
+Bu nesnelerin arasındaki ilişkileri de aşağıdaki şekille betimleyebiliriz:
+
+.. figure:: _static/workqueue-architecture.png
+   :alt: Çalışma kuyruğu mimarisi
+   :align: center
+   :width: 70%
+
+Çalışma kuyruklarının ayrıntılı incelemesini ayrı bir bölümde ele alacağız.
+
+Geri Yazım Süreci
+-----------------
+
+Güncel çekirdeklerde geri yazım mekanizması yukarıda açıkladığımız çalışma kuyrukları yoluyla
+sağlanmaktadır. Yani geri yazım için özel çekirdek thread'leri yoktur. Zaten yaratılmış olan
+"kworker" thread'leri bu çizelgelenmiş geri yazım işlemini yapan fonksiyonları da çalıştırmaktadır.
+Geri yazım işlemleri için kullanılan çalışma kuyrukları ``WQ_UNBOUND`` parametresiyle bağlanmamış
+(unbound) yaratılmaktadır. Yani bu havuzlara bırakılan iş öğeleri herhangi bir işlemci ya da
+çekirdek tarafından çalıştırılabilmektedir. Geri yazım için oluşturulan çalışma kuyruğu nesnesi
+``mm/backing-dev.c`` dosyası içerisinde global ``bdi_wq`` nesnesi ile temsil edilmektedir:
+
+.. code-block:: c
+
+    struct workqueue_struct *bdi_wq;
+
+Geri yazım için oluşturulan iş öğesindeki callback fonksiyon ``wb_workfn`` isimli fonksiyondur. Bu
+fonksiyon geri yazım işlemlerini yapan ana fonksiyondur. Bu fonksiyon güncel çekirdeklerde
+``fs/fs-writeback.c`` dosyası içerisinde aşağıdaki gibi tanımlanmıştır:
+
+.. code-block:: c
+
+    void wb_workfn(struct work_struct *work)
+    {
+        struct bdi_writeback *wb = container_of(to_delayed_work(work),
+                            struct bdi_writeback, dwork);
+        long pages_written;
+
+        set_worker_desc("flush-%s", bdi_dev_name(wb->bdi));
+
+        if (likely(!current_is_workqueue_rescuer() ||
+            !test_bit(WB_registered, &wb->state))) {
+            /*
+            * The normal path.  Keep writing back @wb until its
+            * work_list is empty.  Note that this path is also taken
+            * if @wb is shutting down even when we're running off the
+            * rescuer as work_list needs to be drained.
+            */
+            do {
+                pages_written = wb_do_writeback(wb);
+                trace_writeback_pages_written(pages_written);
+            } while (!list_empty(&wb->work_list));
+        } else {
+            /*
+            * bdi_wq can't get enough workers and we're running off
+            * the emergency worker.  Don't hog it.  Hopefully, 1024 is
+            * enough for efficient IO.
+            */
+            pages_written = writeback_inodes_wb(wb, 1024,
+                                WB_REASON_FORKER_THREAD);
+            trace_writeback_pages_written(pages_written);
+        }
+
+        if (!list_empty(&wb->work_list))
+            wb_wakeup(wb);
+        else if (wb_has_dirty_io(wb) && dirty_writeback_interval)
+            wb_wakeup_delayed(wb);
+    }
+
+Tabii fonksiyon başka fonksiyonları çağırarak izleyen paragraflarda açıklayacağımız işlemleri
+yapmaktadır. Default durumda geri yazımı yapan bu fonksiyon 5 saniye periyotlarla
+çizelgelenmektedir. Ancak bu süre değiştirilebilmektedir.
+
+Şimdi geri yazım sürecini ele alalım. Geri yazımda kabaca şunlar yapılmaktadır: "Sistemdeki
+``inode`` nesneleri dolaşılır, o ``inode`` nesnelerinin sayfa önbelleklerinde kirli olan sayfalar
+ve ``inode`` nesneleri diske geri yazılır". Ancak bu işlemin ayrıntıları vardır. Örneğin sistemde
+farklı dosya sistemlerine ilişkin binlerce hatta on binlerce ``inode`` nesnesi bulunuyor olabilir;
+bu nesneler içerisinde de binlerce, on binlerce kirlenmiş sayfa olabilir. O halde bu işlemin belli
+bir verimlilikte yapılması gerekmektedir. Örneğin sistemde tüm ``inode`` nesnelerinin dolaşılması
+mümkün olmayabilir. Bir ``inode`` nesnesindeki tüm kirli sayfaların flush edilmesi diğerlerine
+haksızlık yapıldığı anlamına gelir.
+
+Güncel çekirdeklerde diskler blok aygıt sürücüleri tarafından yönetilmektedir. Aygıt sürücü
+mimarisini kitabımızda ayrı bir bölümde ele alacağız. (Biz kitabımızda disk terimini genel bir terim
+olarak kullanacağız. Aslında disk terimi yerine "blok aygıtı (block device)" terimi daha
+kapsayıcıdır.) Çekirdekte her blok aygıt sürücüsü için ``gendisk`` isimli bir yapı nesnesi
+oluşturulmaktadır. ``gendisk`` yapısı güncel çekirdeklerde ``include/linux/blkdev.h`` dosyası
+içerisinde tanımlanmıştır. Bu yapının ``bdi`` elemanı ``backing_dev_info`` isimli bir yapı
+nesnesini göstermektedir:
+
+.. code-block:: c
+
+    struct gendisk {
+        /* ... */
+        struct backing_dev_info *bdi;
+        /* ... */
+    };
+
+Bu "bdi" kısaltması "backing device info" sözcüklerinden kısaltma yapılarak uydurulmuştur.
+``backing_dev_info`` yapısının ``wb`` elemanı ``bdi_writeback`` isimli bir yapı türündendir:
+
+.. code-block:: c
+
+    struct backing_dev_info {
+        /* ... */
+        struct bdi_writeback wb;    /* the root writeback info for this bdi */
+        /* ... */
+    };
+
+``wb`` elemanının bir gösterici olmadığına, doğrudan yapıya gömüldüğüne dikkat ediniz. İşte bu
+``wb`` elemanı geri yazım için gerekli olan tüm bilgileri içermektedir. ``bdi_writeback`` yapısının
+önemli elemanlarını aşağıda veriyoruz:
+
+.. code-block:: c
+
+    struct bdi_writeback {
+        /* ... */
+
+        unsigned long state;                /* Always use atomic bitops on this */
+
+        struct list_head b_dirty;           /* dirty inodes */
+        struct list_head b_io;              /* parked for writeback */
+        struct list_head b_more_io;         /* parked for more writeback */
+        struct list_head b_dirty_time;      /* time stamps are dirty */
+        spinlock_t list_lock;               /* protects the b_* lists */
+
+        atomic_t writeback_inodes;          /* number of inodes under writeback */
+
+       /* ... */
+    };
+
+Yapının ``b_dirty`` elemanı o blok aygıtındaki kirlenmiş olan ``inode`` nesnelerini tutmaktadır.
+Bu liste LRU tarzındadır. Yani yeni kirlenenler listenin başına yerleştirilmektedir. Dolayısıyla
+liste kesin olmasa da yaklaşık kirlenme zamanına göre sıralı gibidir. Başka bir deyişle bu listenin
+sonundakiler daha uzun süre kirli biçimde kalan ``inode`` nesneleridir. Örneğin son uygulamamızda
+bir ``folio`` nesnesini ``folio_mark_dirty`` fonksiyonuyla kirli hale getirmiştik. Bu fonksiyonun
+aynı zamanda ``inode`` nesnesini de kirli olarak işaretlediğini söylemiştik. İşte bu fonksiyon da
+aslında kirlenmiş ``inode`` nesnesini ilgili blok aygıtına ilişkin ``gendisk`` nesnesinden
+hareketle bu ``b_dirty`` listesine yerleştirmektedir. Buradan da görüldüğü gibi sistemdeki tüm
+kirlenmiş ``inode`` nesneleri tek bir bağlı listede tutulmamaktadır. Her blok aygıtı için ayrı bir
+LRU listesi vardır.

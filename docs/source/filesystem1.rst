@@ -3412,9 +3412,11 @@ Görüldüğü gibi bu fonksiyon da aslında çekirdek alanındaki yol ifadesini
 
 .. warning::
 
-   Burada son çekirdek sürümlerine (7'li sürümleri kastediyoruz) ilişkin bir uyarıda bulunmak istiyoruz.
-   ``do_filp_open`` fonksiyonu çok eskiden beri Linux çekirdeklerinde bulunmaktadır. Ancak çekirdeğin 7'li
-   versiyonlarından itibaren bu fonksiyonun ismi ``do_file_open`` biçiminde değiştirilmiştir. Buna dikkat ediniz.
+    ``filp_open`` fonksiyonu 2.6 versiyonlarıyla birlikte ``sys_open`` yolundan çıkartılmıştır. Ancak ayrı bir fonksiyon olarak 
+    güncel çekirdeklerde de bulundurulmaktadır. Burada ayrıca son çekirdek sürümlerine (7'li sürümleri kastediyoruz) 
+    ilişkin bir uyarıda bulunmak istiyoruz. ``do_filp_open`` fonksiyonu çok eskiden beri Linux çekirdeklerinde bulunmaktadır. 
+    Ancak çekirdeğin 7'li versiyonlarından itibaren bu fonksiyonun ismi ``do_file_open`` biçiminde değiştirilmiştir. 
+    Buna dikkat ediniz.
 
 Çekirdek modülleri ve aygıt sürücüler için bulundurulmuş olan ``filp_open`` fonksiyonu çağrıldığında
 bir dosya nesnesi oluşturulup o dosya nesnesinin adresi (yani ``struct file`` nesnesinin adresi) geri dönüş değeri olarak
