@@ -3122,7 +3122,7 @@ kendisini betimlemektedir. Bu mekanizmada "çalışma havuzları (work pools)" v
 kastediyoruz.) Havuzlar üretici-tüketici (producer-consumer) mekanizmasını oluşturmaktadır.
 Çekirdeğin kendisi ya da aygıt sürücü geliştirenler bu havuzlara iş öğelerini yerleştirirler. Bu
 havuzlardan iş öğelerini alan ve oradaki fonksiyonları çalıştıran tüketici görevini yapan
-thread'ler vardır. Bu thread'lere "kworker" thread'leri denilmektedir. Sisteminizdeki bu
+thread'ler vardır. Bu thread'lere *kworker* thread'leri denilmektedir. Sisteminizdeki bu
 thread'leri aşağıdaki komutla görebilirsiniz:
 
 .. code-block:: bash
@@ -3152,9 +3152,9 @@ Komuttan elde edilecek örnek bir çıktı şöyledir:
      67 ?        00:00:00 kworker/u516:0-events_power_efficient
     ...
 
-Peki her havuzdaki iş öğelerini kuyruktan alıp çalıştıran kaç "kworker" thread vardır? İşte bu sayı
+Peki her havuzdaki iş öğelerini kuyruktan alıp çalıştıran kaç *kworker* thread vardır? İşte bu sayı
 dinamik bir biçimde artırılıp eksiltilmektedir. Havuzlardaki kuyruklar büyüdüğü zaman yeni
-"kworker" thread'ler yaratılır, havuzlardaki kuyruklar küçüldüğü zaman bunlar yok edilir. Ancak
+*kworker* thread'ler yaratılır, havuzlardaki kuyruklar küçüldüğü zaman bunlar yok edilir. Ancak
 işin başında tipik olarak her işlemci ya da çekirdek için 2 havuz ve her havuz için 2 thread
 yaratılmaktadır. Sonra yukarıda da belirttiğimiz gibi bunların sayısı dinamik bir biçimde
 ayarlanmaktadır.
@@ -3165,7 +3165,7 @@ yüksek öncelikli iş öğeleri için (nice = -20) oluşturulmaktadır. Bu havu
 thread'leri her zaman havuzun ilişkin olduğu işlemci ya da çekirdek tarafından çalıştırılmaktadır.
 (Yani bu thread'ler bu işlemci ya da çekirdeklere bağlanmış durumdadır.) Bir iş öğesini (yani
 çalıştırılacak fonksiyonu) hangi işlemci ya da çekirdekteki akış oluşturmuşsa iş o işlemci ya da
-çekirdeğin havuzuna yerleştirilmektedir. Çekirdeğin 6.10 sürümüyle birlikte işlemci ya da çekirdek
+çekirdeğin havuzuna yerleştirilmektedir. Çekirdeğin 6.10 versiyonuyla birlikte işlemci ya da çekirdek
 için havuz sayısı ikiden dörde çıkarılmıştır.
 
 İşlemcilere bağlı (bound) havuzların dışında, hiçbir işlemciye bağlı olmayan (unbound) havuzlar da
@@ -3204,7 +3204,7 @@ kuyruklarının organizasyonunda beş aktör vardır:
    nesnesi yoluyla çizelgelemektedir.
 4. Havuz kuyruğu. Bunlar ``pool_workqueue`` yapısıyla temsil edilmektedir. Havuz kuyrukları
    havuzlarla çalışma kuyruğu nesneleri arasında aracılık görevi yaparlar.
-5. Havuzlardaki iş öğelerini çalıştıran çekirdek thread'leri. Bunlara "kworker" thread'ler
+5. Havuzlardaki iş öğelerini çalıştıran çekirdek thread'leri. Bunlara *kworker* thread'ler
    denilmektedir.
 
 Bu nesnelerin arasındaki ilişkileri de aşağıdaki şekille betimleyebiliriz:
@@ -3221,7 +3221,7 @@ Geri Yazım Süreci
 
 Güncel çekirdeklerde geri yazım mekanizması yukarıda açıkladığımız çalışma kuyrukları yoluyla
 sağlanmaktadır. Yani geri yazım için özel çekirdek thread'leri yoktur. Zaten yaratılmış olan
-"kworker" thread'leri bu çizelgelenmiş geri yazım işlemini yapan fonksiyonları da çalıştırmaktadır.
+*kworker* thread'leri bu çizelgelenmiş geri yazım işlemini yapan fonksiyonları da çalıştırmaktadır.
 Geri yazım işlemleri için kullanılan çalışma kuyrukları ``WQ_UNBOUND`` parametresiyle bağlanmamış
 (unbound) yaratılmaktadır. Yani bu havuzlara bırakılan iş öğeleri herhangi bir işlemci ya da
 çekirdek tarafından çalıştırılabilmektedir. Geri yazım için oluşturulan çalışma kuyruğu nesnesi
@@ -3289,7 +3289,7 @@ haksızlık yapıldığı anlamına gelir.
 
 Güncel çekirdeklerde diskler blok aygıt sürücüleri tarafından yönetilmektedir. Aygıt sürücü
 mimarisini kitabımızda ayrı bir bölümde ele alacağız. (Biz kitabımızda disk terimini genel bir terim
-olarak kullanacağız. Aslında disk terimi yerine "blok aygıtı (block device)" terimi daha
+olarak kullanacağız. Aslında disk terimi yerine *blok aygıtı (block device)* terimi daha
 kapsayıcıdır.) Çekirdekte her blok aygıt sürücüsü için ``gendisk`` isimli bir yapı nesnesi
 oluşturulmaktadır. ``gendisk`` yapısı güncel çekirdeklerde ``include/linux/blkdev.h`` dosyası
 içerisinde tanımlanmıştır. Bu yapının ``bdi`` elemanı ``backing_dev_info`` isimli bir yapı
@@ -3346,3 +3346,178 @@ aslında kirlenmiş ``inode`` nesnesini ilgili blok aygıtına ilişkin ``gendis
 hareketle bu ``b_dirty`` listesine yerleştirmektedir. Buradan da görüldüğü gibi sistemdeki tüm
 kirlenmiş ``inode`` nesneleri tek bir bağlı listede tutulmamaktadır. Her blok aygıtı için ayrı bir
 LRU listesi vardır.
+
+Peki geri yazım işlemi yapılırken bu işlemden sorumlu olan *kworker* thread'lerin çağırdığı
+``wb_workfn`` fonksiyonu blok aygıt sürücüsüne ilişkin ``gendisk`` yapısından hareketle tüm
+``b_dirty`` listesindeki kirlenmiş ``inode`` nesnelerinin önbellek sayfalarını diske (blok
+aygıtına) geri yazmakta mıdır? İşte çok fazla kirli ``inode`` nesnesi bulunabileceği için tüm
+``inode`` nesnelerinin kirlenmiş önbellek sayfalarının diske geri yazılması performans kaybına yol
+açabilmektedir. Bu nedenle yalnızca belli bir süredir kirli kalan ``inode`` nesneleri diske geri
+yazılmaktadır. Bu süre güncel çekirdeklerde default durumda 30 saniyedir. Yani *kworker*
+thread'lerin çağırdığı ``wb_workfn`` fonksiyonu ``b_dirty`` bağlı listesinin sonundan başına doğru
+en az 30 saniyedir kirli durumda olan ``inode`` nesnelerinin önbellek sayfalarını diske geri
+yazmaktadır. Aslında bu 30 saniye değeri de değiştirilebilir. Bu değer proc dosya sisteminde
+``/proc/sys/vm/dirty_expire_centisecs`` dosyasında tutulmaktadır. Bu dosyadaki değeri manuel bir
+biçimde ya da ``sysctl`` komutu ile değiştirebiliriz. Örneğin:
+
+.. code-block:: bash
+
+    $ cat /proc/sys/vm/dirty_expire_centisecs
+    3000
+
+``/proc/sys/vm/dirty_expire_centisecs`` dosyasının değeri santisaniye cinsinden tuttuğuna dikkat
+ediniz. Bu değeri manuel bir biçimde şöyle değiştirebiliriz:
+
+.. code-block:: bash
+
+    $ echo 3500 | sudo tee /proc/sys/vm/dirty_expire_centisecs
+
+Bu tür işlemlerin daha kolay yapılabilmesi için ``sysctl`` isimli bir komutun da bulunduğunu
+anımsayınız. ``sysctl`` komutu aslında ``/proc/sys`` dizini içerisindeki dosyalardan okuma ve
+yazma yapmaktadır. Aynı işlem ``sysctl`` komutu ile şöyle de yapılabilmektedir:
+
+.. code-block:: bash
+
+    $ sudo sysctl vm.dirty_expire_centisecs=35000
+    vm.dirty_expire_centisecs = 35000
+
+Bu değerler yukarıdaki komutların konfigürasyon dosyalarına ya da kabuğun startup dosyalarına
+yazılarak açılışta kalıcı hale getirilebilir. Bunun için ``/etc/sysctl.conf`` dosyasını
+kullanabilirsiniz. Örneğin:
+
+.. code-block:: none
+
+    vm.dirty_expire_centisecs = 35000
+
+Çekirdeğin 5.8 versiyonuyla birlikte ``sysctl`` komutları boot parametreleri haline de getirilmiştir.
+Eğer bu komutlar boot parametresi olarak çekirdeğe geçirilirse çekirdek ``kernel_write``
+fonksiyonuyla bunları ``/proc/sys`` girişlerini kullanarak ilgili dosyalara yazmaktadır. Biz de
+aynı işlemi boot işlemi sırasında aşağıdaki gibi bir boot parametresi yoluyla da yapabiliriz:
+
+.. code-block:: none
+
+    sysctl.vm.dirty_expire_centisecs=35000
+
+Peki bu *kworker* thread'ler hangi periyotlarla geri yazımı yapan ``wb_workfn`` fonksiyonunu
+çağırmaktadır? Biz yukarıda çalışma kuyruklarındaki çalışma öğelerinin belli bir zaman sonra işlem
+görecek biçimde çizelgelenebildiğini belirtmiştik. İşte çekirdek geri yazımı yapan iş öğelerini 5
+saniye sonra çalıştırılacak biçimde çalışma kuyruğuna çizelgelemektedir. Çalışma öğesi her
+çalıştığında kendini yeniden 5 saniye sonraya çizelgeler. Böylece ``wb_workfn`` fonksiyonu 5
+saniyede bir devreye girmektedir. Burada sözünü ettiğimiz 5 saniyelik periyot da 30 saniyelik
+eskime süresinde olduğu gibi değiştirilebilmektedir. Bu değer
+``/proc/sys/vm/dirty_writeback_centisecs`` dosyası yoluyla değiştirilebilmektedir. Örneğin:
+
+.. code-block:: bash
+
+    $ echo 600 | sudo tee /proc/sys/vm/dirty_writeback_centisecs
+
+Bu değişiklik ``sysctl`` komutu ile de şöyle yapılabilir:
+
+.. code-block:: bash
+
+    $ sysctl vm.dirty_writeback_centisecs=1000
+
+Çekirdeğin 5.8 versiyonundan itibaren aynı komut çekirdek boot parametresi ile de çekirdeğe
+verilebilmektedir:
+
+.. code-block:: none
+
+    sysctl.vm.dirty_writeback_centisecs=1000
+
+Özetle geri yazım işlemini yapan kodlar 5 saniyede bir çalışıp en az 30 saniyedir kirli kalmış
+olan ``inode`` nesnelerinin önbelleklerini diske geri yazmaktadır.
+
+.. figure:: _static/writeback-params-table.png
+   :alt: Geri yazım parametreleri
+   :align: center
+   :width: 70%
+
+Burada bazı ayrıntılardan da bahsetmek istiyoruz. Geri yazım sırasında ``bdi_writeback``
+nesnesinin ``b_dirty`` bağlı listesi üzerinde doğrudan dolaşım yapılmamaktadır. Önce bu bağlı
+listede en az 30 saniye yaşlanmış ``inode`` nesneleri ``bdi_writeback`` nesnesinin ``b_io``
+listesine alınmakta ve geri yazım için bu liste dolaşılmaktadır. Burada bir noktaya dikkatinizi
+çekmek istiyoruz. Bir bağlı listenin sondaki bir grup düğümünü başka bir bağlı listeye taşıma
+işlemi aslında taşınacak yerdeki bağların taşınmasıyla sağlanabilmektedir. Yani taşıma sırasında
+düğümler tek tek taşınmamaktadır. Peki yaşlanmış ``inode`` nesnelerinin başka bir bağlı listeye
+taşınıp işlemlerin oradan yürütülmesinin faydası nedir? İşte bunun sağladığı faydaları aşağıda bir
+tablo biçiminde veriyoruz:
+
+.. figure:: _static/bio-list-benefits-table.png
+   :alt: b_io listesine taşımanın faydaları
+   :align: center
+   :width: 70%
+
+``b_dirty`` listesinden ``b_io`` listesine alınmış olan yaşlanmış ``inode`` nesnelerinin önbellek
+sayfaları diske geri yazılırken bu yazma nesnenin kilitli olması, meşgul olması, tıkanmış olması ya
+da bütçe dolayısıyla kısmen yazılmış olması gerekçesiyle temiz hale getirilemeyebilir. İşte tam
+olarak temizlenemeyen ``inode`` nesneleri ``bdi_writeback`` nesnesinin ``b_more_io`` listesine
+alınmaktadır. Sonra bu listeden yeniden ``b_io`` listesine taşınmaktadır. Bu süreci aşağıdaki
+şekille özetliyoruz:
+
+.. figure:: _static/writeback-lists-flow.png
+   :alt: b_dirty, b_io ve b_more_io listeleri arasındaki akış
+   :align: center
+   :width: 60%
+
+Peki geri yazım işlemini yapan akış kirli bir ``inode`` nesnesinin kirlenmiş olan önbellek
+bloklarının hepsini mi diske yazmaktadır? Örneğin bir ``inode`` nesnesinin 5000 tane kirlenmiş
+önbellek sayfası olabilir. Bu durumda bunların hepsinin geri yazımı zaman alabilir ve diğer
+bekleyen ``inode`` nesnelerine karşı bir haksızlık yapılma durumu oluşabilir. İşte bunun için her
+inode temelinde bir bütçe kullanılmaktadır. Tipik olarak geri yazım akışı bir ``inode`` nesnesinin
+en fazla 1024 (4 MB) tane kirli sayfasını diske geri yazmaktadır. Çekirdeğin 3.0 ve önceki
+versiyonlarında inode başına bütçe değeri statik bir biçimde bir sembolik sabitle belirleniyordu:
+
+.. code-block:: c
+
+    /* v3.0, fs/fs-writeback.c */
+
+    #define MAX_WRITEBACK_PAGES     1024
+
+Daha sonra bu bütçe dinamik hale getirildi. Güncel çekirdeklerde bu dinamik bütçe hesabı
+``writeback_chunk_size`` isimli çekirdek fonksiyonu tarafından yapılmaktadır. Bu dinamik değer en
+az 1024 sayfadan oluşmaktadır:
+
+.. code-block:: c
+
+    /* include/linux/writeback.h */
+
+    #define MIN_WRITEBACK_PAGES     (4096UL >> (PAGE_SHIFT - 10))
+
+Buradaki bütçe ``b_io`` listesindeki her ``inode`` nesnesi üzerinde işlem yapılmadan önce o
+``inode`` nesnesi için yeniden hesaplanmaktadır. Bütçe değerinin nasıl oluşturulduğu ve dinamik
+olarak nasıl değiştirildiğine ilişkin ayrıntılara burada değinmeyeceğiz.
+
+Benzer biçimde geri yazım işlemi sırasında ``b_io`` listesine alınmış ve yeterince yaşlanmış olan
+(tipik olarak 30 saniye) bütün ``inode`` nesneleri de işleme sokulmak zorunda değildir. Burada da
+bir kota uygulanmaktadır. Kota, geri yazım akışı sırasında toplam geri yazılacak sayfa sayısı
+temelinde oluşturulmaktadır. Bu toplam sayfa sayısına ulaşıldığında artık ``b_io`` listesindeki
+diğer ``inode`` nesnelerinin geri yazımı ``b_more_io`` listesi yoluyla sonraki tura
+bırakılmaktadır. Örneğin 16 GB fiziksel bellek için kota değerleri aşağıdakine benzer değerlerden
+oluşmaktadır:
+
+.. figure:: _static/dirty-thresholds-table.png
+   :alt: Kirli sayfa eşikleri
+   :align: center
+   :width: 40%
+
+Aşağıda uygulanan kota ve bütçeler bir tablo ile özetlenmektedir:
+
+.. figure:: _static/writeback-quota-table.png
+   :alt: Geri yazım kota ve bütçe seviyeleri
+   :align: center
+   :width: 60%
+
+Buradaki ``wbc``, ``writeback_control`` türünden bir nesneyi belirtmektedir. Bu bilgiler bu
+nesnenin içerisine yazılmaktadır. ``wbc`` kalıcı bir nesne değildir, yerel bir değişkendir,
+dolayısıyla kworker thread'inin çekirdek yığınında (kernel stack) bulunur. Fonksiyon döndüğünde
+yok olur.
+
+Sayfa önbelleğinden geri yazım yalnızca "kworker" thread'lerin tipik olarak 5 saniyede bir devreye
+girmesi yoluyla yapılmamaktadır. Geri yazımı tetikleyen başka süreçler de vardır. Bu süreçlerin bir
+bölümü henüz ele almadığımız mekanizmalar tarafından tetiklenmektedir. Aşağıdaki tabloda "kworker"
+thread'leri dışında geri yazımın tetiklendiği tipik durumlar listelenmiştir:
+
+.. figure:: _static/writeback-triggers-table.png
+   :alt: Geri yazımı tetikleyen durumlar
+   :align: center
+   :width: 70%
