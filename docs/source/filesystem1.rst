@@ -8,8 +8,8 @@ UNIX/Linux sistemlerinde pek çok kavram kullanıcıya bir dosya gibi gösterilm
 illişkin çekirdek veri yapıları üzerine yönelteceğiz. Dosya sistemini kitabımızda üç bölüm 
 halinde ele alacağız. Birinci bölümde belli bir derinliğe kadar çekirdeğin dosya işlemleri için oluşturduğu 
 organizasyon üzerinde duracağız. Bu bölümü izleyen ikinci bölümde basit bir dosya sisteminin gerçekleştirimi eşliğinde 
-dosya sisteminin diğer önemli özelliklerini açıklayacağız. Dosya sistemine ilişkin diğer ayrıntıları ise başka konuları gördükten sonra 
-üçüncü bölümde ele alacağız.
+dosya sisteminin diğer önemli özelliklerini açıklayacağız. Dosya sistemine ilişkin diğer ayrıntıları ise başka konuları 
+gördükten sonra üçüncü bölümde ele alacağız.
 
 Giriş
 =====
@@ -109,7 +109,7 @@ Bu süreci aşağıdaki diyagram özetlemektedir:
 .. figure:: _static/dma-flow.png
    :alt: DMA veri akışı
    :align: center
-   :width: 85%
+   :width: 90%
 
 Eskiden Intel tabanlı PC mimarisinde ISA bus kullanıldığı zamanlarda tek bir merkezi DMA
 denetleyicisi (Intel 8237) vardı. Ancak daha sonra PCI bus kullanılmaya başlanmasıyla birlikte
@@ -331,7 +331,7 @@ Buradaki süreci aşağıdaki şekille özetleyebiliriz:
 
 .. image:: _static/delayed-write-flow.png
    :align: center
-   :width: 40%
+   :width: 35%
 
 Peki işletim sistemi transfer işlemlerini ne kadar süre bekletmektedir? Eğer transfer çok uzun süre bekletilirse 
 elektrik kesilmesi gibi durumlarda kayıplar fazlalaşır. İşte modern işletim sistemlerinde kirlenmiş sayfaların 
@@ -355,7 +355,7 @@ bilgi veriyoruz:
 .. figure:: _static/dirty-writeback-params-table.png
    :alt: Dirty Sayfa Yazım Parametreleri
    :align: center
-   :width: 70%
+   :width: 75%
        
 Bu değerler proc dosya sisteminden görüntülenebilmektedir:
 
@@ -625,12 +625,10 @@ tutmaktadır. Buradaki ``path`` yapısı da şöyle tanımlanmıştır:
 
    struct task_struct {
        /* ... */
-
        unsigned short umask;
        struct m_inode * pwd;
        struct m_inode * root;
        unsigned long close_on_exec;
-
        /* ... */
    };
 
@@ -827,7 +825,7 @@ betimleyicileri aslında dosya betimleyici tablosunda bir indeks belirtmektedir.
 .. image:: /_static/fd-table.png
    :alt: Dosya Betimleyici Tablosu
    :align: center
-   :width: 65%
+   :width: 60%
    
 Güncel çekirdeklerde dosya betimleyici tablosuna ``task_struct`` nesnesinden hareketle birkaç hamlede erişilmektedir:
 
@@ -883,7 +881,7 @@ biçimde gösteriyoruz:
 .. image:: /_static/fd-table.png
    :alt: Dosya Betimleyici Tablosu
    :align: center
-   :width: 65%
+   :width: 60%
 
 Buradaki sayılar dizinin indekslerini belirtmektedir. Tabii zamanla dosyalar kapanınca bu dizinin elemanlarının da 
 boşa düşeceğine dikkat ediniz. Boş elemanlara NULL adres yerleştirilmektedir. İşte ``open`` POSIX fonksiyonunun 
@@ -1019,11 +1017,9 @@ close-on-exec bayrakları için ``files_struct`` yapısı içerisinde alanlar ay
 
    struct files_struct {
        /* ... */
-
        fd_set close_on_exec_init;               /* close-on-exec bayrakları için kullanılan statik bitmap */
        fd_set open_fds_init;                    /* açık dosya betimleyicilerini tutan statik bitmap */
        struct file * fd_array[NR_OPEN_DEFAULT]; /* dosya betimleyici tablosu için ayrılmış statik dizi */
-
        /* ... */
    };
 
