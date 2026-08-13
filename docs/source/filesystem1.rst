@@ -1295,10 +1295,10 @@ isimli bir çekirdek fonksiyonu kullanılmaktadır. Tabii bu fonksiyon nihayetin
 işlemciye özgü makine komutlarını kullanmaktadır. Çekirdeğin güncel versiyonlarında ``sys_open`` sistem
 fonksiyonundan başlanarak ilk boş dosya betimleyicisinin bulunması için yapılan çağrılar şöyledir:
 
-.. code-block:: text
-
-   sys_open --> do_sys_open --> do_sys_openat2 --> __get_unused_fd_flags --> alloc_fd --> find_next_fd -->
-   find_next_zero_bit
+.. figure:: _static/open-fd-callchain.png
+   :alt: open işleminde dosya betimleyicisi tahsisinin çağrı zinciri
+   :align: center
+   :width: 70%
 
 Bu çağrı zincirinde bir dizi içerisinde ilk 0 olan bitin bulunması işlemini ``find_next_zero_bit`` fonksiyonu
 yapmaktadır. İlk 0 olan bitin bulunması aslında baştan başlanarak yapılmamaktadır. ``files_struct`` yapısı
