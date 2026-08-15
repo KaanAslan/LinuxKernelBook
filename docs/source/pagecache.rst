@@ -2965,8 +2965,7 @@ sokmadan doğrudan okuma/yazma işlemlerini dosya sistemine ilişkin üçüncü 
 
 Kullanıcı alanında dosya açarken kullanılan ``O_SYNC``, ``O_DSYNC`` ve ``O_RSYNC`` bayraklarının
 da davranışları sayfa önbelleği ile ilgilidir. Bu bayraklar POSIX standartlarında da
-bulunmaktadır. ``O_RSYNC`` ve ``O_DSYNC`` bayrakları ``O_SYNC`` bayrağı ile kullanılmak
-zorundadır. Önce bu bayrakların görünen işlevlerini anımsatmak istiyoruz:
+bulunmaktadır. Önce bu bayrakların görünen işlevlerini anımsatmak istiyoruz:
 
 **O_DSYNC (Synchronized I/O data integrity):** ``write`` fonksiyonu geri döndüğünde veri ve o
 veriyi geri okumak için gereken metadata bilgileri diske (blok aygıtına) ulaşmış olmalıdır. Dosya
@@ -2980,7 +2979,7 @@ olarak ``write`` fonksiyonu geri döndüğünde tüm metadata bilgileri (zaman d
 **O_RSYNC:** ``read`` fonksiyonu geri dönmeden önce, okunan aralığı etkileyen bekleyen
 yazmaların diske (blok aygıtına) aktarılacağı anlamına gelmektedir. Linux bu semantiği
 uygulamamaktadır. glibc kütüphanesi de ``<fcntl.h>`` içinde ``O_RSYNC`` sembolik sabitini
-``O_SYNC`` ile aynı değerde olacak biçimde define etmiştir. Yani Linux'ta ``O_SYNC | O_RSYNC`` ile
+``O_SYNC`` ile aynı değerde olacak biçimde define etmiştir. Yani Linux'ta ``O_RSYNC`` ile
 ``O_SYNC`` arasında bir fark yoktur.
 
 Linux çekirdeğinde ``O_SYNC`` bayrağı set edilmiş dosyaya ``write`` fonksiyonuyla yazma
@@ -2994,7 +2993,7 @@ işleminden sonra otomatik olarak ``fsync`` yapılmasına yol açmaktadır. Bu d
    :width: 35%
 
 Linux çekirdeğinde ``O_SYNC | O_DSYNC`` de yazma işleminden sonra ``fsync`` işlevini yerine
-getirmektedir. Ancak bu ``fsync`` yolunda ``O_SYNC | O_DSYNC`` durumu kontrol edilmiş ve ``inode``
+getirmektedir. Ancak bu ``fsync`` yolunda ``O_DSYNC`` durumu kontrol edilmiş ve ``inode``
 nesnesinin ``mtime`` dışındaki elemanları yazılmıştır:
 
 .. figure:: _static/odsync-write-flow.png
