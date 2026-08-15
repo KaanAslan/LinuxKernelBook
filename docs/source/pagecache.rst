@@ -2890,8 +2890,10 @@ devre dışı bırakılabilir. Bunun için Linux sistemlerinde ``open`` fonksiyo
 versiyonuyla girmiştir. Linux'ta dosya ``O_DIRECT`` ile açılıp okuma işlemi yapıldığında dosyadan
 okunanlar hiç sayfa önbelleğine alınmadan doğrudan kullanıcı modundaki tampona aktarılmaktadır.
 ``O_DIRECT`` bayrağı ile dosya açılıp dosyaya yazma yapıldığında yine yazılacak byte'lar hiç
-önbelleğe alınmadan doğrudan aygıta yazılmaktadır. Ancak yazma durumunda yazılacak yer daha önce
-önbelleğe alınmışsa ve bu önbellek bloğu kirliyse önce ilgili blok diske geri yazılmaktadır.
+önbelleğe alınmadan doğrudan blok aygıtına aktarılmaktadır. Ancak yazma durumunda yazılacak yer
+daha önce önbelleğe alınmışsa ve bu önbellek bloğu kirliyse önce ilgili blok diske geri
+yazılmaktadır. (``O_DIRECT`` bayrağı dosya açıldıktan sonra da ``fcntl`` fonksiyonuyla set
+edilebilmektedir.)
 
 Dosyalardan ``O_DIRECT`` modu ile okuma/yazma yapabilmek için dosya sisteminin de bu modu
 destekliyor olması gerekir. Güncel çekirdekte ``O_DIRECT`` bayrağı birkaç yerde kontrol
@@ -2952,9 +2954,7 @@ Fonksiyonda aşağıdaki kısma dikkat ediniz:
 
     if (iocb->ki_flags & IOCB_DIRECT) {
         /* ... */
-
         retval = mapping->a_ops->direct_IO(iocb, iter);
-
         /* ... */
     }
 
@@ -2963,34 +2963,44 @@ geçirilmiştir. ext2, ext4 gibi dosya sistemleri ``generic_file_read_iter`` fon
 önce ``O_DIRECT`` kontrolünü kendileri yapıp durumu ele almaktadır. Sayfa önbelleğini devreye
 sokmadan doğrudan okuma/yazma işlemlerini dosya sistemine ilişkin üçüncü bölümde ele alacağız.
 
+``O_DIRECT`` bayrağının kullanılmasının gerekebildiği bazı durumları aşağıda bir tablo halinde veriyoruz:
+
+.. figure:: _static/odirect-usecases-table.png
+   :alt: O_DIRECT kullanım durumları
+   :align: center
+   :width: 70%
+
 Kullanıcı alanında dosya açarken kullanılan ``O_SYNC``, ``O_DSYNC`` ve ``O_RSYNC`` bayraklarının
 da davranışları sayfa önbelleği ile ilgilidir. Bu bayraklar POSIX standartlarında da
 bulunmaktadır. Önce bu bayrakların görünen işlevlerini anımsatmak istiyoruz:
 
-**O_DSYNC (Synchronized I/O data integrity):** ``write`` fonksiyonu geri döndüğünde veri ve o
-veriyi geri okumak için gereken metadata bilgileri diske (blok aygıtına) ulaşmış olmalıdır. Dosya
-büyüdüyse ``i_size`` ve blok eşlemesi (extent/block map) buna dahildir; ama mtime/ctime gibi zaman
-damgaları dahil değildir.
+**O_DSYNC (Synchronized I/O data integrity):** ``write`` fonksiyonu geri döndüğünde yazılan veriyi 
+geri okumak için gereken metadata bilgileri de diske (blok aygıtına) yazılmak zorundadır. Inode tabanlı 
+dosya sistemlerinde dosya büyüdüyse ``inode`` nesnesindeki ``i_size`` ve blok eşlemesi (extent/block map) 
+buna dahildir; ancak mtime/ctime gibi zaman damgaları buna dahil değildir. Yani bu bayrak ile açılmış 
+dosyalara yazma yapılırken yazılanlar sayfa önbelleğine uğramadan doğrudan diske (blok aygıtına) aktarılmakta 
+ve aynı zamanda yazılanları geri okumakta kullanılabilecek ``inode`` nesnesinin içerisindeki bilgiler
+de diske yazılmaktadır. Ancak ``inode`` nesnesinin içerisindeki disk inode elemanlarına ilişkin
+tüm bilgilerin diske yazılması gerekmemektedir.
 
-**O_SYNC (Synchronized I/O file integrity):** Bu bayrak ``O_DSYNC`` bayrağını kapsar, artı
-olarak ``write`` fonksiyonu geri döndüğünde tüm metadata bilgileri (zaman damgaları da dahil olmak
-üzere) diske (blok aygıtına) yazılır.
+**O_SYNC (Synchronized I/O file integrity):** Bu bayrak ``O_DSYNC`` bayrağını kapsar; ek olarak 
+``write`` fonksiyonu geri döndüğünde tüm metadata bilgileri (zaman damgaları da dahil olmak üzere) 
+diske (blok aygıtına) yazılır.
 
-**O_RSYNC:** ``read`` fonksiyonu geri dönmeden önce, okunan aralığı etkileyen bekleyen
-yazmaların diske (blok aygıtına) aktarılacağı anlamına gelmektedir. Linux bu semantiği
-uygulamamaktadır. glibc kütüphanesi de ``<fcntl.h>`` içinde ``O_RSYNC`` sembolik sabitini
-``O_SYNC`` ile aynı değerde olacak biçimde define etmiştir. Yani Linux'ta ``O_RSYNC`` ile
-``O_SYNC`` arasında bir fark yoktur.
+**O_RSYNC:** Bu bayrak ``read`` fonksiyonu geri dönmeden önce, okunan aralığı etkileyen bekleyen yazmaların
+diske (blok aygıtına) aktarılacağı anlamına gelmektedir. Linux bu semantiği uygulamamaktadır.
+glibc kütüphanesi de ``<fcntl.h>`` içinde ``O_RSYNC`` sembolik sabitini ``O_SYNC`` ile aynı değerde
+olacak biçimde define etmiştir. Yani Linux'ta ``O_RSYNC`` ile ``O_SYNC`` arasında bir fark yoktur.
 
 Linux çekirdeğinde ``O_SYNC`` bayrağı set edilmiş dosyaya ``write`` fonksiyonuyla yazma
-yapıldığında çekirdek yazmayı normal yolla sayfa önbelleğine yapar, ardından aynı ``write()``
+yapıldığında çekirdek yazmayı normal yolla sayfa önbelleğine yapar, ardından aynı ``write``
 çağrısı içinde senkron bir ``fsync`` benzeri adım eklenir. Yani ``O_SYNC`` adeta her ``write``
 işleminden sonra otomatik olarak ``fsync`` yapılmasına yol açmaktadır. Bu durumu şekilsel olarak
 şöyle de açıklayabiliriz:
 
 .. figure:: _static/osync-write-flow.png
    :alt: O_SYNC write akışı
-   :width: 35%
+   :width: 50%
 
 Linux çekirdeğinde ``O_SYNC | O_DSYNC`` de yazma işleminden sonra ``fsync`` işlevini yerine
 getirmektedir. Ancak bu ``fsync`` yolunda ``O_DSYNC`` durumu kontrol edilmiş ve ``inode``
@@ -2998,7 +3008,7 @@ nesnesinin ``mtime`` dışındaki elemanları yazılmıştır:
 
 .. figure:: _static/odsync-write-flow.png
    :alt: O_DSYNC write akışı
-   :width: 35%
+   :width: 40%
 
 ``fsync`` bir dosyanın bütün önbellek bloklarını ve metadata bilgilerini diske flush eden bir POSIX
 fonksiyonudur. Fonksiyonun prototipi şöyledir:
@@ -3029,8 +3039,8 @@ prototipi şöyledir:
     int fdatasync(int fd);
 
 Fonksiyon yine dosyaya ilişkin betimleyiciyi parametre olarak alır, başarı durumunda 0 değerine,
-başarısızlık durumunda -1 değerine geri döner. fdatasync fonksiyonu da çekirdekte sync fonksiyonu ile 
-aynı yolu izlemektedir, yalnızca fsync callback fonksiyonuna geçirilen argüman farklıdır:
+başarısızlık durumunda -1 değerine geri döner. ``fdatasync`` fonksiyonu da çekirdekte ``sync`` fonksiyonu ile 
+aynı yolu izlemektedir, yalnızca ``fsync`` callback fonksiyonuna geçirilen argüman farklıdır:
 
 .. figure:: _static/fdatasync-callchain.png
    :alt: fdatasync çağrı zinciri
@@ -3054,7 +3064,7 @@ bulunmaktadır. ``sync`` fonksiyonun çağrı zinciri de şöyledir:
    :alt: sync çağrı zinciri
    :width: 75%
 
-Bu fonksiyonların çalışma mekazizmaları sayfa önbelleğinin flush edilme süreciyle ve dosya sisteminin henüz 
+Bu fonksiyonların çalışma mekanizmaları sayfa önbelleğinin flush edilme süreciyle ve dosya sisteminin henüz 
 görmediğimiz bazı özellikleriyle de ilgilidir. Biz bu açıkları izleyen bölümde ve dosya sistemine ilişkin üçüncü 
 bölümde kapatacağız. 
 
