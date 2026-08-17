@@ -3225,8 +3225,8 @@ Bu nesnelerin arasındaki ilişkileri de aşağıdaki şekille betimleyebiliriz:
 
 Çalışma kuyruklarının ayrıntılı incelemesini ayrı bir bölümde ele alacağız.
 
-Geri Yazım Süreci
------------------
+Önbellek Sayfalarının Geri Yazımı
+---------------------------------
 
 Güncel çekirdeklerde geri yazım mekanizması yukarıda açıkladığımız çalışma kuyrukları yoluyla
 sağlanmaktadır. Yani geri yazım için özel çekirdek thread'leri yoktur. Zaten yaratılmış olan
@@ -3299,7 +3299,7 @@ haksızlık yapıldığı anlamına gelir.
 Güncel çekirdeklerde diskler blok aygıt sürücüleri tarafından yönetilmektedir. Aygıt sürücü
 mimarisini kitabımızda ayrı bir bölümde ele alacağız. (Biz kitabımızda disk terimini genel bir terim
 olarak kullanacağız. Aslında disk terimi yerine *blok aygıtı (block device)* terimi daha
-kapsayıcıdır.) Çekirdekte her blok aygıt sürücüsü için ``gendisk`` isimli bir yapı nesnesi
+kapsayıcıdır.) Çekirdekte her blok aygıtı için ``gendisk`` isimli bir yapı nesnesi
 oluşturulmaktadır. ``gendisk`` yapısı güncel çekirdeklerde ``include/linux/blkdev.h`` dosyası
 içerisinde tanımlanmıştır. Bu yapının ``bdi`` elemanı ``backing_dev_info`` isimli bir yapı
 nesnesini göstermektedir:
@@ -3357,7 +3357,7 @@ kirlenmiş ``inode`` nesneleri tek bir bağlı listede tutulmamaktadır. Her blo
 LRU listesi vardır.
 
 Peki geri yazım işlemi yapılırken bu işlemden sorumlu olan *kworker* thread'lerin çağırdığı
-``wb_workfn`` fonksiyonu blok aygıt sürücüsüne ilişkin ``gendisk`` yapısından hareketle tüm
+``wb_workfn`` fonksiyonu blok aygıtına ilişkin ``gendisk`` yapısından hareketle tüm
 ``b_dirty`` listesindeki kirlenmiş ``inode`` nesnelerinin önbellek sayfalarını diske (blok
 aygıtına) geri yazmakta mıdır? İşte çok fazla kirli ``inode`` nesnesi bulunabileceği için tüm
 ``inode`` nesnelerinin kirlenmiş önbellek sayfalarının diske geri yazılması performans kaybına yol
@@ -3439,7 +3439,7 @@ olan ``inode`` nesnelerinin önbelleklerini diske geri yazmaktadır.
 .. figure:: _static/writeback-params-table.png
    :alt: Geri yazım parametreleri
    :align: center
-   :width: 70%
+   :width: 65%
 
 Burada bazı ayrıntılardan da bahsetmek istiyoruz. Geri yazım sırasında ``bdi_writeback``
 nesnesinin ``b_dirty`` bağlı listesi üzerinde doğrudan dolaşım yapılmamaktadır. Önce bu bağlı
@@ -3454,7 +3454,7 @@ tablo biçiminde veriyoruz:
 .. figure:: _static/bio-list-benefits-table.png
    :alt: b_io listesine taşımanın faydaları
    :align: center
-   :width: 70%
+   :width: 65%
 
 ``b_dirty`` listesinden ``b_io`` listesine alınmış olan yaşlanmış ``inode`` nesnelerinin önbellek
 sayfaları diske geri yazılırken bu yazma nesnenin kilitli olması, meşgul olması, tıkanmış olması ya
@@ -3521,12 +3521,93 @@ nesnenin içerisine yazılmaktadır. ``wbc`` kalıcı bir nesne değildir, yerel
 dolayısıyla kworker thread'inin çekirdek yığınında (kernel stack) bulunur. Fonksiyon döndüğünde
 yok olur.
 
-Sayfa önbelleğinden geri yazım yalnızca "kworker" thread'lerin tipik olarak 5 saniyede bir devreye
+Sayfa önbelleğinden geri yazım yalnızca *kworker* thread'lerin tipik olarak 5 saniyede bir devreye
 girmesi yoluyla yapılmamaktadır. Geri yazımı tetikleyen başka süreçler de vardır. Bu süreçlerin bir
-bölümü henüz ele almadığımız mekanizmalar tarafından tetiklenmektedir. Aşağıdaki tabloda "kworker"
+bölümü henüz ele almadığımız mekanizmalar tarafından tetiklenmektedir. Aşağıdaki tabloda *kworker*
 thread'leri dışında geri yazımın tetiklendiği tipik durumlar listelenmiştir:
 
 .. figure:: _static/writeback-triggers-table.png
    :alt: Geri yazımı tetikleyen durumlar
    :align: center
+   :width: 65%
+
+Inode Nesnelerinin Geri Yazımı
+------------------------------
+
+Biz yukarıda sayfa önbelleğindeki kirli sayfaların nasıl geri yazıldığını ele aldık. Peki kirli
+``inode`` nesnelerinin içerisindeki metadata bilgileri ne zaman diske yazılmaktadır? İşte kirli
+``inode`` nesnelerinin içerisindeki metadata bilgilerinin diskteki inode bloğunun inode elemanına
+yazılması yine *kworker* thread'lerinin çağırdığı ``wb_workfn`` fonksiyonu tarafından geri yazım
+akışında yapılmaktadır.
+
+``inode`` yapısındaki ``i_state`` elemanı ``inode`` nesnesinin kirli olup olmadığı bilgisini
+tutmaktadır. Bu ``i_state`` elemanının kirlilikle ilgili bayrakları şunlardır:
+
+.. code-block:: none
+
+    I_DIRTY_SYNC
+    I_DIRTY_DATASYNC
+    I_DIRTY_PAGES
+    I_DIRTY_TIME
+
+``I_DIRTY_SYNC`` bayrağı ``inode`` nesnesindeki metadata bilgilerinin kirli olduğunu ancak veri
+geri okunması için gereken alanların temiz olduğunu belirtmektedir. ``O_DSYNC`` bayrağı set edilmiş
+dosyaya yazma yapılırken ve ``fdatasync`` fonksiyonu tarafından bu bayrağa başvurulmaktadır.
+``I_DIRTY_DATASYNC`` bayrağı, veriyi diskten okumak için gereken metadata bilgilerinin kirli
+olduğunu belirtmektedir. Örneğin ``inode`` nesnesindeki dosya boyutu değişmiştir.
+``I_DIRTY_PAGES`` bayrağı dosyanın önbelleğinde en az bir kirli folio olduğunu belirtmektedir.
+Anımsanacağı gibi ``folio_mark_dirty`` fonksiyonu bu bayrağı da set etmektedir. Geri yazım
+sırasında bu bayrak set edilmişse ``inode`` nesnesinin önbelleğine flush amaçlı başvurulmaktadır.
+``I_DIRTY_TIME`` bayrağı ``inode`` nesnesinin yalnızca zaman damgası bilgilerinin kirlendiğini
+belirtmektedir. Bu bayrakların anlamlarını aşağıda bir tablo halinde de veriyoruz:
+
+.. figure:: _static/inode-dirty-flags-table.png
+   :alt: inode kirlilik bayrakları
+   :align: center
    :width: 70%
+
+*kworker* thread'ler ``inode`` nesnesinin sayfa önbelleği üzerinde geri yazımı yaptıktan sonra
+``inode`` nesnesinin kendisini de kontrol etmektedir. Güncel çekirdeklerdeki *kworker* thread'inin
+geri yazım akışını özet olarak aşağıda yeniden veriyoruz:
+
+.. figure:: _static/kworker-writeback-flow.png
+   :alt: kworker geri yazım akışı
+   :width: 70%
+
+Bu akışta inode önbelleğinin geri yazımı ``__writeback_single_inode`` fonksiyonunda yapılmaktadır.
+İşte inode önbelleğinin geri yazım işleminden sonra ``inode`` nesnesinin kendisinin de kirli olup
+olmadığına bakılmakta, gerekiyorsa ``inode`` nesnesinin kendisi de diske geri yazılmaktadır.
+``__writeback_single_inode`` fonksiyonunda önbellek sayfalarının yazım işleminden sonra şu kontrol
+yapılmıştır:
+
+.. code-block:: c
+
+    /* ... */
+    if (dirty & ~I_DIRTY_PAGES) {
+        int err = write_inode(inode, wbc);
+        if (ret == 0)
+            ret = err;
+    }
+    /* ... */
+
+O halde bu kontrol şu anlamlara gelmektedir: "Eğer ``inode`` nesnesinin ``I_DIRTY_SYNC``,
+``I_DIRTY_DATASYNC`` ve ``I_DIRTY_TIME`` bayraklarından en az biri set edilmişse inode metadata
+bilgileri diske geri yazılmalıdır." Yani bu kontrolde ``I_DIRTY_PAGES`` bayrağından bağımsız
+olarak diğer *dirty* bayraklarına bakılmaktadır. Örneğin kullanıcı ``chmod`` komutuyla kabuk
+üzerinde bir dosyanın erişim haklarını değiştirmek istesin. ``chmod`` komutu ``chmod`` POSIX
+fonksiyonu kullanılarak yazılmıştır. ``chmod`` POSIX fonksiyonu da ``sys_chmod`` sistem
+fonksiyonunu çağırmaktadır. İşte bu fonksiyon dosyaya ilişkin ``inode`` nesnesini bulur ve onda
+değişiklik yapar. Böylece ``inode`` nesnesi kirlenmiş olur. 5 saniye periyotlarla devreye giren
+*kworker* thread'ler bu ``inode`` nesnesine ilişkin sayfa önbelleğini diske geri yazdıktan sonra
+``inode`` nesnesindeki bu değişikliği de diske geri yazacaktır. Burada bir noktaya dikkat ediniz:
+``inode`` nesnesinin diske geri yazılması için ``inode`` nesnesindeki önbellek sayfalarının
+hepsinin diske geri yazılmış olması gerekmemektedir. Yani ``inode`` nesnesinin önbellek sayfaları
+bütçe yüzünden kısmen diske geri yazılmış olsa bile ``inode`` nesnesinin metadata bilgileri yine
+de diske geri yazılacaktır. Aşağıda örnek bazı senaryolarda ``inode`` nesnesinin flush edilip
+edilmeyeceği belirtilmiştir:
+
+.. figure:: _static/inode-flush-scenarios-table.png
+   :alt: inode flush senaryoları
+   :align: center
+   :width: 50%
+
