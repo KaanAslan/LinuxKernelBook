@@ -3611,3 +3611,49 @@ edilmeyeceği belirtilmiştir:
    :align: center
    :width: 50%
 
+``inode`` nesnesinin önbelleğindeki tüm sayfalar diske geri yazılıp nesnenin kendisi de geri
+yazıldıktan sonra ``inode`` nesnesi de ``bdi_writeback`` nesnesinin ``b_dirty`` listesinden
+çıkarılmaktadır. ``b_dirty`` listesinden çıkarma işlemi ``requeue_inode`` fonksiyonunda
+yapılmaktadır.
+
+Bu noktada ``inode`` nesnesinin hangi bağlı listelerde bulunduğunu gözden geçirmek istiyoruz.
+``inode`` yapısının liste elemanları şunlardır:
+
+.. code-block:: c
+
+    struct inode {
+        /* ... */
+        struct hlist_node       i_hash;      /* inode hash tablosu        */
+        struct list_head        i_io_list;   /* writeback listeleri       */
+        struct list_head        i_lru;       /* boşta/atılabilir listesi  */
+        struct list_head        i_sb_list;   /* sb'nin tüm inode'ları     */
+        struct list_head        i_wb_list;   /* sync bekleme listesi      */
+        /* ... */
+    };
+
+``i_hash`` elemanı inode önbelleğinde hash listesinde, ``i_io_list`` elemanı ``bdi_writeback``
+yapısının ``b_dirty`` listesinde, ``i_lru`` elemanı da geri alım için gereken LRU listesinde düğüm
+belirtmektedir. ``i_lru`` elemanına ilişkin bağlı listenin kök düğümü ``super_block`` nesnesi
+içerisindedir. Bir ``super_block`` nesnesindeki (yani bir dosya sistemindeki) tüm ``inode``
+elemanları ``super_block`` yapısının ``s_inodes`` bağlı listesinde saklanmaktadır. ``i_sb_list``
+elemanı da bu bağlı listede düğüm belirtmektedir. ``i_wb_list`` elemanı ise yazma için beklenecek
+``inode`` nesnelerinin tutulduğu bağlı listenin düğümüdür. Bu elemanları aşağıda bir tablo
+biçiminde de veriyoruz:
+
+.. figure:: _static/inode-lists-table.png
+   :alt: inode yapısının bağlı liste elemanları
+   :align: center
+   :width: 65%
+
+``inode`` nesnelerinin önbelleğinin ve nesnenin kendisinin diske geri yazılması yukarıda da
+belirttiğimiz gibi tipik olarak default durumda 5 saniyede bir devreye giren *kworker* thread'ler
+yoluyla yapılmaktadır. Ancak bazı çekirdek fonksiyonları da o anda kirli önbellek sayfalarını ve
+``inode`` nesnelerini de diske geri yazabilmektedir. *kworker* thread'lerinin dışında kirli
+önbellek sayfalarının ve ``inode`` nesnelerinin diske yazıldığı diğer durumları aşağıda bir tablo
+halinde veriyoruz. Biz daha önce önbellek sayfalarının yazımında etkili olan durumları yine tablo
+halinde vermiştik. Ancak burada ``inode`` nesnelerini de dahil ederek tabloyu genişletiyoruz:
+
+.. figure:: _static/sync-triggers-full-table.png
+   :alt: kworker dışında kirli sayfa ve inode yazımını tetikleyen durumlar
+   :align: center
+   :width: 90%
