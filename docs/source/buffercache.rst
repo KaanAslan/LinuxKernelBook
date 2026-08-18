@@ -2,13 +2,28 @@
 **Tampon Önbelleği**
 ====================
 
-Bu bölümde eskiden ismine "tampon önbelleği (buffer cache)" denilen önbellek mekanizması 
-üzerinde duracağız. Sayfa önbelleği bir dosyanın içerisindeki bilgileri önbellekte tutmak 
-için kullanılmaktadır. Peki bir dosya sistemindeki dosya içindeki bilgilere ilişkin olmayan 
-bloklar üzerinde (tipik olarak metadata blokları üzerinde) nasıl önbellekleme yapılmaktadır? 
-Biz dosya sistemini ele aldığımız bölümde *simplefs* dosya sistemimizde blokları ``sb_bread`` 
-fonksiyonuyla okumuştuk. Bu fonksiyona okuyacağımız blok numarasını vermiştik, fonksiyondan da 
-``buffer_head`` nesnesi elde etmiştik. ``sb_bread`` fonksiyonunun prototipi şöyleydi:
+Bu bölümde eskiden ismine *tampon önbelleği (buffer cache)* denilen önbellek mekanizması 
+üzerinde duracağız. Çekirdeğin 2.4 versiyonundan önce sayfa önbelleği ile tampon 
+önbelleği ayrı veri yapıları biçiminde organize edilmişti. 2.4 çekirdeği ile birlikte tampon
+önbelleği sayfa önbelleğinin içerisine gömüldü ve *tampon önbelleği (buffer cache)* terimi yerine 
+*tampon başları (buffer heads)* terimi de kullanılmaya başlandı. Biz kitabımızda bu önbellek 
+mekanizması için geleneksel olarak *tampon önbelleği* terimini kullanacağız. 
+
+Çekirdek evrimleştikçe sayfa önbelleği ve tampon önbelleği üzerinde peek çok iyileştirmeler yapılmıştır. 
+Biz kitabımızın bu bölümünde güncel çekirdeklerdeki tasarımı ele alıp açıklayacağız. Gelecekte tampon 
+mekanizmasının çekirdeğin veri yolundan tamamen çıkartılması da düşünülmektedir. 
+
+Giriş
+=====
+
+Sayfa önbelleği bir dosyanın içerisindeki bilgileri önbellekte tutmak için kullanılmaktadır. Linux çekirdeğinde 
+dosya içeriğine ilişkin olmayan diskin metadata alanlarını önbelleklemek için kullanılan önbellek 
+sistemine *tampon önbelleği* denilmektedir. Yani sayfa önbelleğinin amacı dosyanın içeriklerini önbelleklemekken 
+tampon önbelleğinin amacı disk metadata bloklarını önbelleklemektir. 
+
+Biz dosya sistemini ele aldığımız bölümde *simplefs* dosya sistemimizde blokları ``sb_bread`` fonksiyonuyla okumuştuk. 
+Bu fonksiyona okuyacağımız blok numarasını vermiştik, fonksiyondan da ``buffer_head`` nesnesi elde etmiştik. 
+``sb_bread`` fonksiyonunun prototipi şöyleydi:
 
 .. code-block:: c
 
@@ -19,8 +34,6 @@ bölümde okunan blokların aynı zamanda sayfa önbelleğine de yerleştirildi�
 bölümde bu tamponlama sistemini ele alıp bu sistemin sayfa önbelleğiyle ilişkisi üzerinde
 duracağız.
 
-Biz kursumuzda tamponlamayla ilgili önbellek organizasyonu için -her ne kadar eski bir terim olsa
-da- *tampon önbelleği (buffer cache)* terimini kullanacağız.
 
 Eskiden çekirdeğin 2.4 versiyonu öncesinde tampon önbelleği ile sayfa önbelleği birbirinden tamamen
 ayrıydı. Tampon önbelleği dosya sisteminin bloklarını önbelleklerken, sayfa önbelleği dosya
