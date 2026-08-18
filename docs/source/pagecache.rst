@@ -165,16 +165,106 @@ tutulmaktadır:
 
     struct inode {
         /* ... */
-        struct address_space *i_mapping;
+        struct address_space    *i_mapping;
+        /* ... */
+        struct address_space	i_data;
         /* ... */
     };
 
-Burada ``i_mapping`` elemanının ``address_space`` isimli bir yapı türünden olduğuna dikkat ediniz.
-Bu ``address_space`` yapısı dosyanın sayfa önbelleğinin giriş noktasıdır. Her dosya için çekirdek
-bir ``address_space`` nesnesi oluşturmaktadır.
+Burada ``i_mapping`` elemanının ``address_space`` isimli yapı türünden olduğuna dikkat ediniz. Aslında ``i_mapping`` elemanı 
+genellikle aynı yapıdaki ``i_data`` nesnesini göstermektedir. Bazı seyrek durumlarda ``i_mapping`` elemanı başka bir ``inode`` 
+nesnesindeki ``i_data`` elemanını gösterir duruma da getirilebilmektedir. Ancak çekirdek her zaman ``i_mapping`` göstericisinden 
+hareketle ``address_space`` nesnesine erişmektedir. Her ``inode`` nesnesi yaratıldığında onun içerisinde bir ``address_space`` 
+nesnesinin de yaratılmış olduğuna dikkat ediniz:
 
-``address_space`` yapısı dosyaya ilişkin önbellek işlemlerinde gereksinim duyulacak tüm bilgileri
-içermektedir. Nesneler arasındaki ilişkiyi aşağıdaki şekille betimleyebiliriz:
+.. figure:: _static/inode-imapping-idata.png
+   :alt: i_mapping elemanının i_data elemanını göstermesi
+   :align: center
+   :width: 70%
+
+``address_space`` nesnesi dosyaya ilişkin sayfa önbelleğinin giriş noktasıdır. ``address_space``
+yapısı dosyaya ilişkin önbellek işlemlerinde gereksinim duyulan tüm bilgileri içermektedir.
+
+Aslında dosya nesnelerini temsil eden ``file`` yapısının da ``inode`` yapısına uğramadan doğrudan
+``address_space`` nesnesine erişilmesini sağlayan bir ``f_mapping`` elemanı da bulunmaktadır.
+Çekirdek dosya nesnesi yoluyla dosyaya ilişkin sayfa önbelleğine bu gösterici yardımıyla erişir:
+
+.. code-block:: c
+
+    struct file {
+        /* ... */
+
+        struct address_space    *f_mapping;
+        /* ... */
+        struct inode            *f_inode;
+
+        /* ... */
+    };
+
+Birkaç istisna durum dışında ``f_mapping`` elemanı ile ``f_inode->i_mapping`` elemanı aynı
+``address_space`` nesnesini göstermektedir. (İstisnalardan biri bir aygıt dosyası ``open`` ile
+açıldığında oluşmaktadır. ``open`` fonksiyonu ile açılan aygıt dosyasından elde edilen dosya
+nesnesinin ``f_inode`` elemanı bu dosyaya ilişkin ``inode`` nesnesini gösterirken ``f_mapping``
+elemanı blok aygıtı için yaratılan ``address_space`` nesnesini göstermektedir. Bu durum tampon
+önbelleğinin anlatıldığı 12. Bölümde ele alınacaktır.) Dosya nesnesinin ``f_mapping`` elemanına
+``inode`` nesnesinin ``i_mapping`` elemanının atanması dosya açılırken çağrı zinciri içerisindeki
+``do_dentry_open`` fonksiyonunda yapılmaktadır. ``open`` fonksiyonundan itibaren çağrı zincirini
+özetleyerek aşağıda veriyoruz:
+
+.. code-block:: none
+
+    open("/dev/sda1", O_RDONLY)
+        │
+        ▼
+        sys_open → do_sys_open → do_sys_openat2             [fs/open.c]
+        │
+        ├─► getname                                         yol ifadesi kullanıcı alanından kopyalanır
+        ├─► get_unused_fd_flags()                           boş betimleyici elde edilir
+        │
+        ▼
+    do_filp_open → path_openat                              [fs/namei.c]
+        │
+        ├─► alloc_empty_file()                              struct file ayrılır
+        │                                                   (f_mapping henüz NULL/boş)
+        ├─► link_path_walk + open_last_lookups              yol çözümlenir,
+        │                                                   dentry/inode bulunur
+        ▼
+        vfs_open(path, file)                                [fs/open.c]
+        │
+        ▼
+        do_dentry_open(file, inode, open)                   [fs/open.c]
+        │
+        │   file->f_path  = *path;
+        │   file->f_inode = inode;                          ◄── (1) inode bağlanır
+        │   file->f_mapping = inode->i_mapping;             ◄── (2) ATAMA BURADA
+        │   file->f_wb_err = filemap_sample_wb_err(file->f_mapping);
+        │   file->f_sb_err = file_sample_sb_err(file);
+        │   ...
+        │   file->f_op = fops_get(inode->i_fop);            ◄── (3) f_op inode'dan alınır
+        │   ...
+        │   if (file->f_op->open)
+        │           error = file->f_op->open(inode, file);  ◄── (4) sürücüye/fs'e söz
+        │                    │                                    hakkı: blkdev_open
+        │                    ▼                                    BURADA f_mapping'i
+        │               blkdev_open():                            EZEBİLİR
+        │               filp->f_mapping = bdev->...;
+        │               filp->f_wb_err  = filemap_sample_wb_err(filp->f_mapping);
+        │
+        ▼
+        fd_install(fd, file)                                fd tablosuna takılır;
+                                                            bu andan sonra kullanıcı alanı
+                                                            fd'yi kullanabilir
+
+Dosya nesnesinden hareketle ilgili dosyaya ilişkin önbellek bilgilerine erişimin nasıl yapıldığını aşağıdaki
+şekille de betimleyebiliriz:
+
+.. figure:: _static/inode-imapping-idata.png
+   :alt: i_mapping elemanının i_data elemanını göstermesi
+   :width: 40%
+
+``address_space`` nesnesi dosyanın sayfa önbelleğinin giriş noktasıdır. ``address_space`` yapısı dosyaya ilişkin önbellek 
+işlemlerinde gereksinim duyulacak tüm bilgileri içermektedir. Nesneler arasındaki ilişkiyi aşağıdaki şekille 
+betimleyebiliriz:
 
 .. figure:: _static/file-inode-address-space.png
    :alt: dosya nesnesi, inode ve address_space ilişkisi
@@ -2179,7 +2269,7 @@ ulaşılabilmektedir. Ulaşım yolunu şöyle gösterebiliriz:
 .. figure:: _static/folio-dirty-chain.png
    :alt: folio nesnesinden inode ve XArray ağacına erişim
    :align: center
-   :width: 65%
+   :width: 70%
 
 ``index`` bilgisi ``folio`` nesnesinin çakışık olduğu ``page`` elemanından (yani
 ``folio->page.index`` erişimiyle) elde edilebilmektedir.

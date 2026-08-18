@@ -43,7 +43,7 @@ içeriklerini önbellekliyordu. Bu iki önbellek sisteminin veri yapıları da b
 .. figure:: _static/old-dual-cache.png
    :alt: 2.4 öncesi ayrık sayfa ve tampon önbellekleri
    :align: center
-   :width: 55%
+   :width: 50%
 
 Sayfa önbelleği 2.4 öncesinde read-only bir önbellekti. Kirli veri orada durmuyordu, oradan diske
 geri yazım da yapılmıyordu. O dönemlerde yazma sahipliği tampon önbelleğindeydi. O dönemlerde bu
@@ -146,3 +146,24 @@ Bu yerleşimi şekilsel olarak şöyle de gösterebiliriz:
    :alt: bdev_inode yapısının bellek yerleşimi
    :align: center
    :width: 50%
+
+Dolayısıyla aslında eğer elimizde ``block_device`` nesnesinin adresi varsa ``container_of``
+işlemiyle yapının ``vfs_inode`` elemanına erişebiliriz. Tabii bunun tersini de yapabiliriz. Güncel
+çekirdeklerde ``block/bdev.c`` dosyası içerisinde bu erişimleri yapan inline fonksiyonlar
+bulundurulmuştur:
+
+.. code-block:: c
+
+    static inline struct bdev_inode *BDEV_I(struct inode *inode)
+    {
+        return container_of(inode, struct bdev_inode, vfs_inode);
+    }
+
+    static inline struct inode *BD_INODE(struct block_device *bdev)
+    {
+        return &container_of(bdev, struct bdev_inode, bdev)->vfs_inode;
+    }
+
+``gendisk`` nesnesi ve ``block_device`` nesnesi blok aygıt sürücüsü çekirdeğe yüklenirken blok
+aygıt sürücülerinin ``init`` fonksiyonları tarafından yaratılmaktadır. Bu konuyu aygıt sürücü
+mimarisinin açıklandığı bölümde ele alacağız.
