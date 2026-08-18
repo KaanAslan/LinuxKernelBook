@@ -57,8 +57,92 @@ oturtuldu. 2.4 ve sonrasındaki organizasyonu şekilsel olarak şöyle göstereb
 .. figure:: _static/unified-cache.png
    :alt: 2.4 ve sonrasında birleştirilmiş önbellek organizasyonu
    :align: center
-   :width: 55%
+   :width: 50%
 
 Tampon önbelleğinin sayfa önbelleğinin içerisine oturtulmasıyla artık her disk bloğu toplamda tek
 bir yerde önbelleklenmektedir. Bu durum hem sistemin ele alınmasını kolaylaştırmış hem de
 tutarlılığı artırmıştır.
+
+Blok Aygıtlarına İlişkin Inode Nesneleri
+=========================================
+
+Linux çekirdeğinde blok aygıtlarının *blok aygıt sürücüsü (block device driver)* denilen aygıt
+sürücüler tarafından yönetildiğini belirtmiştik. İşte bir blok aygıtı kullanıldığı zaman ona
+ilişkin bir ``inode`` nesnesi de sistem tarafından yaratılmaktadır. Yani blok aygıtları da birer
+dosya gibi ele alınmaktadır. O halde blok aygıtları için de bir sayfa önbelleği bulunmaktadır.
+Örneğin sistemimizdeki diski temsil eden ``/dev/sda1`` blok aygıtını kullandığımızı düşünelim. Bu
+aygıt kullanıldığı zaman sistem onun için bir ``inode`` nesnesi oluşturmaktadır. Bu blok
+aygıtındaki okumalarda ve yazmalarda bu ``inode`` nesnesinin sayfa önbelleği kullanılmaktadır.
+Blok aygıtları için oluşturulan ``inode`` nesneleri *bdevfs* isimli bir dosya sistemi
+içerisindedir. Bu dosya sistemi ``/proc/filesystems`` içerisinde görünmesine karşın mount
+edilememektedir.
+
+Blok aygıtları için yaratılan ``inode`` nesneleri kullanıcı tarafından görülmez. Bu ``inode``
+nesneleri güncel çekirdeklerde blok aygıtları için ``gendisk`` nesneleri oluşturulurken çağrılan
+``blk_alloc_disk`` ya da ``blk_mq_alloc_disk`` fonksiyonlarının çağrı zincirindeki ``bdev_alloc``
+fonksiyonunda yaratılmaktadır. Güncel çekirdeklerdeki ``blk_alloc_disk`` ve ``blk_mq_alloc_disk``
+fonksiyonlarından ``bdev_alloc`` fonksiyonuna kadar giden çağrı zinciri şöyledir:
+
+.. figure:: _static/bdev-alloc-callchain.png
+   :alt: bdev_alloc çağrı zinciri
+   :width: 45%
+
+Blok aygıt sürücülerine ilişkin çekirdek mimarisi ve fonksiyonları çekirdeğin çeşitli versiyonlarında
+defalarca değiştirilmiştir. Biz ``blk_alloc_disk`` ve ``blk_mq_alloc_disk`` fonksiyonlarını aygıt
+sürücü mimarilerini konu aldığımız bölümde ele alacağız.
+
+Linux çekirdeklerinde blok aygıtları için en genel yapı ``gendisk`` isimli yapıdır. Biz bu yapıyla
+daha önce tanışmıştık. Blok aygıtlarının bilgileri ise ``block_device`` isimli bir yapıyla temsil
+edilmektedir. ``gendisk`` nesnesi içerisinde ``block_device`` nesnesinin adresi tutulmaktadır:
+
+.. code-block:: c
+
+    struct gendisk {
+        /* ... */
+        struct block_device *part0;
+        /* ... */
+    };
+
+Blok aygıtına ilişkin ``inode`` nesnesinin adresi eskiden doğrudan ``block_device`` nesnesinin
+içerisindeki ``bd_inode`` elemanında tutuluyordu:
+
+.. code-block:: c
+
+    struct block_device {
+        /* ... */
+        struct inode *bd_inode;
+        /* ... */
+    };
+
+Ancak çekirdeğin 6.9 versiyonundan itibaren artık blok aygıtına ilişkin ``inode`` nesnesinin adresi
+``block_device`` nesnesi içerisinde tutulmamaktadır. Bunun yerine artık güncel çekirdeklerde
+``block_device`` nesnesi içerisinde doğrudan blok aygıtına ilişkin ``address_space`` nesnesinin
+(yani sayfa önbelleğinin) adresi tutulmaktadır:
+
+.. code-block:: c
+
+    struct block_device {
+        /* ... */
+        struct address_space    *bd_mapping;
+        /* ... */
+    };
+
+Tabii yeni çekirdeklerde de ``address_space`` nesnesinden hareketle ``inode`` nesnesine
+erişilebilmektedir. ``address_space`` yapısının ``host`` elemanının o ``address_space`` nesnesine
+ilişkin ``inode`` nesnesinin adresini tuttuğunu anımsayınız. Aslında güncel çekirdeklerde
+``block_device`` nesnesi ile bu nesneye ilişkin ``inode`` nesnesi ``bdev_inode`` denilen bir yapıda
+alt alta bulundurulmuştur:
+
+.. code-block:: c
+
+    struct bdev_inode {
+        struct block_device bdev;
+        struct inode vfs_inode;
+    };
+
+Bu yerleşimi şekilsel olarak şöyle de gösterebiliriz:
+
+.. figure:: _static/bdev-inode-layout.png
+   :alt: bdev_inode yapısının bellek yerleşimi
+   :align: center
+   :width: 50%
