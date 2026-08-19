@@ -70,12 +70,11 @@ Linux çekirdeğinde blok aygıtlarının *blok aygıt sürücüsü (block devic
 sürücüler tarafından yönetildiğini belirtmiştik. İşte bir blok aygıtı kullanıldığı zaman ona
 ilişkin bir ``inode`` nesnesi de sistem tarafından yaratılmaktadır. Yani blok aygıtları da birer
 dosya gibi ele alınmaktadır. O halde blok aygıtları için de bir sayfa önbelleği bulunmaktadır.
-Örneğin sistemimizdeki diski temsil eden ``/dev/sda1`` blok aygıtını kullandığımızı düşünelim. Bu
-aygıt kullanıldığı zaman sistem onun için bir ``inode`` nesnesi oluşturmaktadır. Bu blok
-aygıtındaki okumalarda ve yazmalarda bu ``inode`` nesnesinin sayfa önbelleği kullanılmaktadır.
-Blok aygıtları için oluşturulan ``inode`` nesneleri *bdevfs* isimli bir dosya sistemi
-içerisindedir. Bu dosya sistemi ``/proc/filesystems`` içerisinde görünmesine karşın mount
-edilememektedir.
+Örneğin sistemimizdeki diski temsil eden ``/dev/sda`` blok aygıtını göz önüne alalım. Bu blok 
+aygıtı için çekirdek blok aygıt sürücüsünün ön ayak olmasıyla bir inode nesnesi oluşturmaktadır. Bu blok aygıtındaki 
+okumalarda ve yazmalarda bu ``inode`` nesnesinin sayfa önbelleği kullanılmaktadır. Blok aygıtları için oluşturulan ``inode`` 
+nesneleri ``bdevfs`` isimli bir dosya sistemi içerisindedir. Bu dosya sistemi ``/proc/filesystems`` içerisinde görünmesine 
+karşın mount edilememektedir. 
 
 Blok aygıtları için yaratılan ``inode`` nesneleri kullanıcı tarafından görülmez. Bu ``inode``
 nesneleri güncel çekirdeklerde blok aygıtları için ``gendisk`` nesneleri oluşturulurken çağrılan
@@ -85,7 +84,7 @@ fonksiyonlarından ``bdev_alloc`` fonksiyonuna kadar giden çağrı zinciri şö
 
 .. figure:: _static/bdev-alloc-callchain.png
    :alt: bdev_alloc çağrı zinciri
-   :width: 45%
+   :width: 50%
 
 Blok aygıt sürücülerine ilişkin çekirdek mimarisi ve fonksiyonları çekirdeğin çeşitli versiyonlarında
 defalarca değiştirilmiştir. Biz ``blk_alloc_disk`` ve ``blk_mq_alloc_disk`` fonksiyonlarını aygıt

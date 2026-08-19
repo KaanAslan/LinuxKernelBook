@@ -171,19 +171,20 @@ tutulmaktadır:
         /* ... */
     };
 
-Burada ``i_mapping`` elemanının ``address_space`` isimli yapı türünden olduğuna dikkat ediniz. Aslında ``i_mapping`` elemanı 
-genellikle aynı yapıdaki ``i_data`` nesnesini göstermektedir. Bazı seyrek durumlarda ``i_mapping`` elemanı başka bir ``inode`` 
-nesnesindeki ``i_data`` elemanını gösterir duruma da getirilebilmektedir. Ancak çekirdek her zaman ``i_mapping`` göstericisinden 
-hareketle ``address_space`` nesnesine erişmektedir. Her ``inode`` nesnesi yaratıldığında onun içerisinde bir ``address_space`` 
-nesnesinin de yaratılmış olduğuna dikkat ediniz:
+Burada ``i_mapping`` elemanının ``address_space`` isimli yapı türünden olduğuna dikkat ediniz. 
+``address_space`` nesnesi dosyaya ilişkin sayfa önbelleğinin giriş noktasıdır. ``address_space``
+yapısı dosyaya ilişkin önbellek işlemlerinde gereksinim duyulan tüm bilgileri içermektedir.
+Aslında ``i_mapping`` elemanı genellikle aynı yapıdaki ``i_data`` nesnesini göstermektedir.
 
 .. figure:: _static/inode-imapping-idata.png
    :alt: i_mapping elemanının i_data elemanını göstermesi
-   :align: center
-   :width: 70%
+   :width: 40%
 
-``address_space`` nesnesi dosyaya ilişkin sayfa önbelleğinin giriş noktasıdır. ``address_space``
-yapısı dosyaya ilişkin önbellek işlemlerinde gereksinim duyulan tüm bilgileri içermektedir.
+Bazı seyrek durumlarda ``i_mapping`` elemanı başka bir ``inode`` nesnesindeki ``i_data`` elemanını gösterir duruma da 
+getirilebilmektedir. Ancak çekirdek her zaman ``i_mapping`` göstericisinden  hareketle ``address_space`` nesnesine erişmektedir. 
+Her ``inode`` nesnesi yaratıldığında onun içerisinde bir ``address_space`` nesnesinin de yaratılmış olduğuna dikkat ediniz:
+
+
 
 Aslında dosya nesnelerini temsil eden ``file`` yapısının da ``inode`` yapısına uğramadan doğrudan
 ``address_space`` nesnesine erişilmesini sağlayan bir ``f_mapping`` elemanı da bulunmaktadır.
