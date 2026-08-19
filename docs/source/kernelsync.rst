@@ -1079,8 +1079,8 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
         exit(EXIT_FAILURE);
     }
 
-Mutex ile Binary Semaphore Arasındaki Farklar
----------------------------------------------
+Mutex ile Binary Semaphore Arasındaki Farklılıklar
+--------------------------------------------------
 
 Peki mutex nesneleriyle binary semaphore'lar arasında ne fark vardır? İki nesne arasındaki tipik farklılıklar
 şunlardır:
@@ -1586,7 +1586,7 @@ tarafından sağlanmaktadır. UMA mimarisindeki RAM erişimini aşağıdaki şek
 .. image:: _static/smp-architecture.png
    :alt: UMA Mimarisi
    :align: center
-   :width: 60%
+   :width: 55%
 
 UMA sisteminde bir CPU ya da çekirdek DRAM belleğe eriştiği zaman diğeri nano saniyeler mertebesinde
 beklediği için tam bir paralel çalışma mümkün olamamaktadır. Tabii işlemcilerin ya da çekirdeklerin içsel
@@ -1614,7 +1614,7 @@ aşağıdaki şekille betimleyebiliriz:
 .. image:: _static/numa-architecture.png
    :alt: NUMA Mimarisi
    :align: center
-   :width: 60%
+   :width: 55%
 
 UMA ve NUMA Mimarilerinin Avantaj ve Dezavantajları
 ----------------------------------------------------

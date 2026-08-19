@@ -147,7 +147,7 @@ Bu yerleşimi şekilsel olarak şöyle de gösterebiliriz:
    :width: 50%
 
 Dolayısıyla aslında eğer elimizde ``block_device`` nesnesinin adresi varsa ``container_of``
-işlemiyle yapının ``vfs_inode`` elemanına erişebiliriz. Tabii bunun tersini de yapabiliriz. Güncel
+makrosuyla yapının ``vfs_inode`` elemanına erişebiliriz. Tabii bunun tersini de yapabiliriz. Güncel
 çekirdeklerde ``block/bdev.c`` dosyası içerisinde bu erişimleri yapan inline fonksiyonlar
 bulundurulmuştur:
 
@@ -166,3 +166,48 @@ bulundurulmuştur:
 ``gendisk`` nesnesi ve ``block_device`` nesnesi blok aygıt sürücüsü çekirdeğe yüklenirken blok
 aygıt sürücülerinin ``init`` fonksiyonları tarafından yaratılmaktadır. Bu konuyu aygıt sürücü
 mimarisinin açıklandığı bölümde ele alacağız.
+
+Blok aygıtlarına ilişkin ``inode`` nesneleriyle blok aygıtını ``open`` fonksiyonuyla açtığımızda
+elde ettiğimiz ``inode`` nesnesini karıştırmayınız. Örneğin diskimizi yöneten aygıt sürücüye
+ilişkin aygıt dosyası ``/dev/sda1`` olsun. Bu aygıt dosyasına ilişkin aygıt sürücü sistem boot
+edilirken çekirdeğe yüklenmektedir. Biz bu aygıt sürücüyü ``open`` fonksiyonuyla şöyle açmış
+olalım:
+
+.. code-block:: c
+
+    fd = open("/dev/sda1", O_RDONLY);
+
+Buradan hareketle bir dosya nesnesi ve bir ``inode`` nesnesi oluşturulmaktadır. Ancak ``fd`` dosya
+nesnesine ilişkin bu ``inode`` nesnesi yukarıda sözünü ettiğimiz blok aygıt sürücüsünün ``inode``
+nesnesi değildir. Dolayısıyla biz ``fd`` betimleyicisini kullanarak ``read`` fonksiyonuyla okuma
+yaptığımızda burada oluşturulan ``inode`` nesnesinin önbelleği kullanılmaz, blok aygıt sürücüsünün
+önbelleği kullanılır. Aslında bir blok aygıtını açtığımızda oluşturulan ``inode`` nesnesi blok
+aygıtına erişmekte kullanılan bir anahtar gibidir. Blok aygıtının önbelleği blok aygıtına ilişkin
+``inode`` nesnesinin içerisindedir. Aygıt dosyasından elde edilen dosya nesnesi ve ``inode``
+nesnesi yoluyla aygıt sürücünün ``inode`` nesnesine nasıl erişildiği aşağıdaki şekilde
+özetlenmektedir:
+
+.. figure:: _static/blkdev-file-mapping.png
+   :alt: Aygıt dosyasından blok aygıtının inode nesnesine erişim
+   :align: center
+   :width: 95%
+
+Yukarıda da belirttiğimiz gibi zaten bu önbelleğe artık ``block_device`` nesnesi yoluyla doğrudan
+erişilebilmektedir. Sayfa önbelleğini anlattığımız önceki bölümde dosya açılırken dosya nesnesinin
+(``struct file``) ``f_mapping`` elemanının ``inode`` nesnesinin ``i_data`` elemanını gösterir hale
+getirildiğini belirtmiştik. İşte blok aygıt sürücüleri ``open`` fonksiyonu ile açılırken artık
+dosya nesnesinin ``f_mapping`` elemanı aygıt dosyasına ilişkin ``inode`` nesnesinin ``i_data``
+elemanını değil blok aygıtına ilişkin ``inode`` nesnesinin ``i_data`` elemanını gösterir duruma
+getirilmektedir. Yani örneğin biz blok aygıt dosyasını ``open`` fonksiyonuyla açıp ``read`` işlemi
+yaptığımızda ``f_mapping`` yoluyla başvurulacak önbellek blok aygıtına ilişkin önbellek olacaktır.
+
+Aşağıdaki tabloda blok aygıt dosyasına ilişkin ``inode`` nesnesi ile blok aygıtına ilişkin
+``inode`` nesnesinin nelerden sorumlu olduğu belirtilmektedir. Burada "Dosya Inode" blok aygıtı
+açılarak elde edilen ``inode`` nesnesini, "bdev Inode" ise blok aygıtına ilişkin ``inode``
+nesnesini belirtmektedir:
+
+.. figure:: _static/inode-responsibilities-table.png
+   :alt: Dosya Inode ve bdev Inode sorumlulukları
+   :align: center
+   :width: 50%
+
