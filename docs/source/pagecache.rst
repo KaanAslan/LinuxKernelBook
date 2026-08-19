@@ -184,8 +184,6 @@ Bazı seyrek durumlarda ``i_mapping`` elemanı başka bir ``inode`` nesnesindeki
 getirilebilmektedir. Ancak çekirdek her zaman ``i_mapping`` göstericisinden  hareketle ``address_space`` nesnesine erişmektedir. 
 Her ``inode`` nesnesi yaratıldığında onun içerisinde bir ``address_space`` nesnesinin de yaratılmış olduğuna dikkat ediniz:
 
-
-
 Aslında dosya nesnelerini temsil eden ``file`` yapısının da ``inode`` yapısına uğramadan doğrudan
 ``address_space`` nesnesine erişilmesini sağlayan bir ``f_mapping`` elemanı da bulunmaktadır.
 Çekirdek dosya nesnesi yoluyla dosyaya ilişkin sayfa önbelleğine bu gösterici yardımıyla erişir:
@@ -194,11 +192,9 @@ Aslında dosya nesnelerini temsil eden ``file`` yapısının da ``inode`` yapıs
 
     struct file {
         /* ... */
-
         struct address_space    *f_mapping;
         /* ... */
         struct inode            *f_inode;
-
         /* ... */
     };
 
