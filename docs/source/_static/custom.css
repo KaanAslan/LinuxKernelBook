@@ -65,6 +65,22 @@ table.docutils th {
     border: 1px solid #7f8c8d !important;
 }
 
+.rst-content table.docutils.narrow-table {
+    width: auto;
+    max-width: 70%;
+    table-layout: auto;
+}
+
+@media screen and (max-width: 768px) {
+    .rst-content table.docutils.narrow-table {
+        max-width: 100%;
+    }
+    .rst-content .wy-table-responsive table td,
+    .rst-content .wy-table-responsive table th {
+        white-space: normal !important;
+    }
+}
+
 @media screen and (max-width: 768px) {
     .rst-content img {
         width: 100% !important;

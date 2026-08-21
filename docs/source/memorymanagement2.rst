@@ -721,8 +721,8 @@ istiyoruz:
 .. image:: _static/zone-free-area-tree.png
    :width: 70% 
 
-Aslında sayfa tahsisatları "belli bir düğümün, belli bir bölgesinin, belli bir göç türünü" hedef alarak süreci
-başlatmaktadır. İşte ``alloc_pages`` gibi fonksiyonların birinci parametresindeki bayraklar bu tespitin
+Aslında sayfa tahisat işlemlerinde "belli bir düğümün, belli bölgesinin, belli bir göç türü" hedef alınarak süreç 
+başlatılmaktadır. İşte ``alloc_pages`` gibi fonksiyonların birinci parametresindeki bayraklar bu tespitin
 yapılmasını sağlamaktadır. Aşağıda hangi bayraklar kullanıldığında işlemlerin hangi bölgeden ve hangi göç
 türünden başlatılacağı bilgisi bir tablo halinde verilmiştir:
 
@@ -843,7 +843,7 @@ burada boş sayfa bulunamazsa sırasıyla ``MIGRATE_RECLAIMABLE`` ve ``MIGRATE_M
 bakılacaktır. Bu *fallback* sırasının statik bir biçimde çekirdek kodlarında belirtildiğine dikkat ediniz.
 
 Burada önemli bir noktayı vurgulamak istiyoruz. Çekirdek belli bir göç türünde boş blok bulamayıp diğer göç
-türüne başvurup oradan boş blok aldığında artık kopardığı blokları hedef göç türüne taşımaktadır. Bu sayfalar
+türüne başvurup oradan boş blok aldığında artık kopardığı blokları ilk baştaki hedef göç türüne taşımaktadır. Bu sayfalar
 free hale getirildiğinde alınan yere iade edilmemektedir, taşınan yere iade edilmektedir. Ayrıca önemli bir
 ayrıntı da vardır. Diğer göç türlerinden arama her zaman en yüksek düzeyden (order'dan) başlanarak aşağıya
 doğru yapılmaktadır. (En yüksek düzeyin 10 olduğunu ve 4 MB sayfa bloğu belirttiğini anımsayınız.) Örneğin
@@ -933,7 +933,7 @@ sembolik sabit şöyle tanımlanmıştır:
 
 .. code-block:: c
 
-    #define MAX_ZONES_PER_ZONELIST (MAX_NUMNODES * MAX_NR_ZONES)
+    #define MAX_ZONES_PER_ZONELIST     (MAX_NUMNODES * MAX_NR_ZONES)
 
 Buradaki ``MAX_NUMNODES`` ve ``MAX_NR_ZONES`` değerleri çeşitli etmenlere göre değişebilmektedir.
 
@@ -957,6 +957,13 @@ dolaşılmasına 0'ıncı düğümdeki DMA32'den başlatılacaktır:
 Eğer bu bölgenin göç *fallback* listesinin hiçbir yerinde talep edilen miktarda boş sayfa bulunamazsa bundan
 sonra arama 0'ıncı düğümün ``ZONE_DMA`` bölgesinden devam edecek, orada da bulunamazsa 1'inci düğümün
 ``ZONE_NORMAL`` bölgesinden devam edecektir.
+
+Peki bölgeler ``_zonerefs`` dizisinde hangi sırada yerleştirilmektedir? Bu yerleştirmenin bazı ayrıntıları vardır.
+Ancak ayrıntıları göz ardı edersek yerleştirmenin ``zone_type`` *enum* listesinin ters sırasında yapıldığını
+söyleyebiliriz. Tabii boş olan bölgeler listeden atılacaktır. Örneğin bu durumda tipik temel sıra
+``ZONE_NORMAL`` -> ``ZONE_DMA32`` -> ``ZONE_DMA`` biçiminde olacaktır. Yukarıdaki örnekte diğer düğümlerde yalnızca
+``ZONE_NORMAL`` bulunduğu da dikkatinizi çekmiştir. Genel olarak DMA sistemleri 0'ıncı düğümdeki bölgeleri
+kullanmaktadır.
 
 ``node_zonelists[1]`` elemanının (``ZONELIST_NOFALLBACK``) ne işe yaradığını merak edebilirsiniz. Bu elemanda
 belirtilen bölge dizisi aramanın kesinlikle belirli bir NUMA düğümünde kalması gerektiği durumlar için
