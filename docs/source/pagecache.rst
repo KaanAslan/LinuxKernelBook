@@ -208,49 +208,8 @@ elemanı blok aygıtı için yaratılan ``address_space`` nesnesini göstermekte
 ``do_dentry_open`` fonksiyonunda yapılmaktadır. ``open`` fonksiyonundan itibaren çağrı zincirini
 özetleyerek aşağıda veriyoruz:
 
-.. code-block:: none
-
-    open("/dev/sda1", O_RDONLY)
-        │
-        ▼
-        sys_open → do_sys_open → do_sys_openat2             [fs/open.c]
-        │
-        ├─► getname                                         yol ifadesi kullanıcı alanından kopyalanır
-        ├─► get_unused_fd_flags()                           boş betimleyici elde edilir
-        │
-        ▼
-    do_filp_open → path_openat                              [fs/namei.c]
-        │
-        ├─► alloc_empty_file()                              struct file ayrılır
-        │                                                   (f_mapping henüz NULL/boş)
-        ├─► link_path_walk + open_last_lookups              yol çözümlenir,
-        │                                                   dentry/inode bulunur
-        ▼
-        vfs_open(path, file)                                [fs/open.c]
-        │
-        ▼
-        do_dentry_open(file, inode, open)                   [fs/open.c]
-        │
-        │   file->f_path  = *path;
-        │   file->f_inode = inode;                          ◄── (1) inode bağlanır
-        │   file->f_mapping = inode->i_mapping;             ◄── (2) ATAMA BURADA
-        │   file->f_wb_err = filemap_sample_wb_err(file->f_mapping);
-        │   file->f_sb_err = file_sample_sb_err(file);
-        │   ...
-        │   file->f_op = fops_get(inode->i_fop);            ◄── (3) f_op inode'dan alınır
-        │   ...
-        │   if (file->f_op->open)
-        │           error = file->f_op->open(inode, file);  ◄── (4) sürücüye/fs'e söz
-        │                    │                                    hakkı: blkdev_open
-        │                    ▼                                    BURADA f_mapping'i
-        │               blkdev_open():                            EZEBİLİR
-        │               filp->f_mapping = bdev->...;
-        │               filp->f_wb_err  = filemap_sample_wb_err(filp->f_mapping);
-        │
-        ▼
-        fd_install(fd, file)                                fd tablosuna takılır;
-                                                            bu andan sonra kullanıcı alanı
-                                                            fd'yi kullanabilir
+.. figure:: _static/open-f-mapping-call-path.png
+    :width: 70%
 
 Dosya nesnesinden hareketle ilgili dosyaya ilişkin önbellek bilgilerine erişimin nasıl yapıldığını aşağıdaki
 şekille de betimleyebiliriz:

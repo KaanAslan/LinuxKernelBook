@@ -89,6 +89,23 @@ table.docutils th {
     }
 }
 
+@media screen and (max-width: 768) {
+    .rst-content table.docutils.narrow-table {
+        max-width: 100%;
+    }
+    .rst-content .wy-table-responsive table td,
+    .rst-content .wy-table-responsive table th {
+        white-space: normal !important;
+    }
+}
+
+@media screen and (max-width: 768) {
+    .rst-content img {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+}
 .rst-content h1 {
     text-align: center;
 }
@@ -113,3 +130,10 @@ table.docutils th {
     white-space: normal !important;
 }
 
+.rst-content pre,
+.rst-content div[class^="highlight"] pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow-x: visible;
+}
