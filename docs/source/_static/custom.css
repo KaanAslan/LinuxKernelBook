@@ -71,7 +71,7 @@ table.docutils th {
     table-layout: auto;
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
     .rst-content table.docutils.narrow-table {
         max-width: 100%;
     }
@@ -81,7 +81,7 @@ table.docutils th {
     }
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
     .rst-content img {
         width: 100% !important;
         max-width: 100% !important;
