@@ -89,7 +89,7 @@ table.docutils th {
     }
 }
 
-@media screen and (max-width: 768) {
+@media screen and (max-width: 768px) {
     .rst-content table.docutils.narrow-table {
         max-width: 100%;
     }
@@ -99,7 +99,7 @@ table.docutils th {
     }
 }
 
-@media screen and (max-width: 768) {
+@media screen and (max-width: 768px) {
     .rst-content img {
         width: 100% !important;
         max-width: 100% !important;
@@ -137,3 +137,10 @@ table.docutils th {
     overflow-wrap: break-word;
     overflow-x: visible;
 }
+
+@media screen and (max-width: 1024px) {
+    img.fig-mapping1 { width: 50% !important; }
+}
+
+@media screen and (max-width: 768px) {
+    img.fig-mapping1 { width: 90% !important; }

@@ -77,6 +77,7 @@ oluşturmaktadır.
     :alt: İşletim sistemi katmanları
     :align: center
     :width: 25%
+    :class: fig-mapping1
 
 Peki işletim sistemi bu kadar temel donanım yönetimini sağlıyorsa işletim sistemi olmadan
 programlama yapılabilir mi? İşletim sistemi olmadan programlama faaliyetine halk arasında

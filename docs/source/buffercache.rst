@@ -214,67 +214,61 @@ nesnesini belirtmektedir:
 Tampon Önbelleğinin Organizasyonu
 =================================
 
-Tampon önbelleğinin amacının dosyanın sayfalarını değil blok aygıtının bloklarını önbelleklemek
-olduğunu ve 2.4 ile birlikte tampon önbelleğinin sayfa önbelleğinin içerisine oturtulduğunu
-belirtmiştik. Şimdi tampon önbelleğinin yapısı üzerinde duralım.
+Tampon önbelleğinin amacının dosyanın sayfalarını değil blok aygıtının bloklarını önbelleklemek olduğunu ve 2.4 ile
+birlikte tampon önbelleğinin sayfa önbelleğinin içerisine oturtulduğunu belirtmiştik. Şimdi tampon önbelleğinin
+yapısı üzerinde duralım.
 
-Tamponlar sayfaların içerisinde (genel olarak folio'ların içerisinde) bulunmaktadır. Bir sayfanın
-tipik olarak 4K büyüklüğünde olduğunu anımsayınız.  Sayfa içerisindeki tamponların büyüklüğü blok 
-aygıt sürücüsü tarafından belirlenmektedir. Eskiden bu belirleme blok aygıt sürücüsünü
-oluşturanlar tarafından ``blk_queue_logical_block_size`` fonksiyonuyla ayarlanıyordu. Güncel
-çekirdeklerde artık bu ayarlama ``queue_limits`` yapısının ``logical_block_size`` elemanı ile
-yapılmaktadır. Bu blok büyüklüğü değeri çekirdek tarafından ``block_device`` nesnesine ilişkin
-``inode`` nesnesinin ``i_blkbits`` elemanında 2'nin kuvvet değeri olarak saklanmaktadır. (Yani
-örneğin burada 9 değeri varsa tampon büyüklüğü 512, 10 değeri varsa 1024'tür.) Bu değeri bu
-elemana yerleştiren ``set_blocksize`` isimli bir fonksiyon da vardır. Burada bir noktaya daha
-dikkatinizi çekmek istiyoruz. Aslında her ne kadar blok büyüklüğünü belirten ``i_blkbits`` değeri
-işin başında sürücü tarafından belirleniyorsa da bu değer dosya sistemini yazanlar tarafından
-değiştirilerek dosya sisteminin blok büyüklüğüne ayarlanmaktadır. *simplefs* dosya sistemimizde
-biz bu ayarlamayı şöyle yapmıştık:
+Tamponlar sayfaların içerisinde (genel olarak *folio*'ların içerisinde) bulunmaktadır. Bir sayfanın tipik olarak 4K
+büyüklüğünde olduğunu anımsayınız. Sayfa içerisindeki tamponların büyüklüğü blok aygıt sürücüsü tarafından
+belirlenmektedir. Eskiden bu belirleme blok aygıt sürücüsünü oluşturanlar tarafından ``blk_queue_logical_block_size``
+fonksiyonuyla ayarlanıyordu. Güncel çekirdeklerde artık bu ayarlama ``queue_limits`` yapısının
+``logical_block_size`` elemanı ile yapılmaktadır. Bu blok büyüklüğü değeri çekirdek tarafından ``block_device``
+nesnesine ilişkin ``inode`` nesnesinin ``i_blkbits`` elemanında 2'nin kuvvet değeri olarak saklanmaktadır. (Yani
+örneğin burada 9 değeri varsa tampon büyüklüğü 512, 10 değeri varsa 1024'tür.) Bu değeri bu elemana yerleştiren
+``set_blocksize`` isimli bir fonksiyon da vardır. Burada bir noktaya daha dikkatinizi çekmek istiyoruz. Aslında her
+ne kadar blok büyüklüğünü belirten ``i_blkbits`` değeri işin başında sürücü tarafından belirleniyorsa da bu değer
+dosya sistemini yazanlar tarafından değiştirilerek dosya sisteminin blok büyüklüğüne ayarlanmaktadır. *simplefs*
+dosya sistemimizde biz bu ayarlamayı şöyle yapmıştık:
 
 .. code-block:: c
 
     sb_set_blocksize(sb, SIMPLEFS_BLOCK_SIZE);
 
-Bu fonksiyon hem ``super_block`` nesnesi içerisindeki ``s_blocksize`` elemanını hem de
-``block_device`` nesnesine ilişkin ``inode`` nesnesinin ``i_blkbits`` elemanını set etmektedir.
+Bu fonksiyon hem ``super_block`` nesnesi içerisindeki ``s_blocksize`` elemanını hem de ``block_device`` nesnesine
+ilişkin ``inode`` nesnesinin ``i_blkbits`` elemanını set etmektedir.
 
-Tampon büyüklüğü için bazı kısıtlar da vardır. 6.12 çekirdeği öncesinde tampon büyüklüğü için
-kısıtlar şöyleydi:
+Tampon büyüklüğü için bazı kısıtlar da vardır. 6.12 çekirdeği öncesinde tampon büyüklüğü için kısıtlar şöyleydi:
 
 .. figure:: _static/buffer-size-limits-old-table.png
    :alt: 6.12 öncesi tampon büyüklüğü kısıtları
    :align: center
    :width: 55%
 
-6.12'ye kadar bir tampon bir sayfanın içinde bulunmak zorundaydı, dolayısıyla sayfa uzunluğundan
-büyük olamıyordu. Ancak 6.12 ile birlikte artık tamponlar sayfaların içerisinde değil folio'lar
-içerisinde tutulmaya başlanmıştır. Folio'ların sayfalardan büyük olabildiğini (large folio)
-anımsayınız. Güncel kısıtlar şöyledir:
+6.12'ye kadar bir tampon bir sayfanın içinde bulunmak zorundaydı, dolayısıyla sayfa uzunluğundan büyük olamıyordu.
+Ancak 6.12 ile birlikte artık tamponlar sayfaların içerisinde değil *folio*'lar içerisinde tutulmaya başlanmıştır.
+*Folio*'ların sayfalardan büyük olabildiğini (*large folio*) anımsayınız. Güncel kısıtlar şöyledir:
 
 .. figure:: _static/buffer-size-limits-new-table.png
    :alt: Güncel tampon büyüklüğü kısıtları
    :align: center
    :width: 55%
 
-Buradaki mantıksal blok büyüklüğü blok aygıt sürücüsü tarafından blok aygıtındaki en küçük
-transfer birimi olarak set edilen değerdir. Bugünkü disklerde bu değer genellikle 512 olan sektör
-büyüklüğündedir. Örneğin dosya sisteminin blok uzunluğu 1024 byte ise 4K'lık bir sayfa içerisinde
-4 tampon bulunabilmektedir. Ancak örneğin dosya sisteminin blok büyüklüğü 4K ise sayfa içerisinde
-tek bir tampon bulunabilmektedir.
+Buradaki mantıksal blok büyüklüğü blok aygıt sürücüsü tarafından blok aygıtındaki en küçük transfer birimi olarak
+set edilen değerdir. Bugünkü disklerde bu değer genellikle 512 olan sektör büyüklüğündedir. Örneğin dosya sisteminin
+blok uzunluğu 1024 byte ise 4K'lık bir sayfa içerisinde 4 tampon bulunabilmektedir. Ancak örneğin dosya sisteminin
+blok büyüklüğü 4K ise sayfa içerisinde tek bir tampon bulunabilmektedir.
 
-Aslında dosya sistemini yazanlar bu tampon büyüklüğünü super_block okuması gibi işlemlerde önce
-küçültüp sonra uygun değere getirebilmektedir. Aşağıdaki tabloda yaygın dosya sistemlerinin
-kullandığı blok büyüklükleri yani başka bir deyişle tampon büyüklükleri verilmiştir (tablonun
-sonuna *simplefs* dosya sistemimizi de ekledik):
+Aslında dosya sistemini yazanlar bu tampon büyüklüğünü ``super_block`` okuması gibi işlemlerde önce küçültüp sonra
+uygun değere getirebilmektedir. Aşağıdaki tabloda yaygın dosya sistemlerinin kullandığı blok büyüklükleri yani
+başka bir deyişle tampon büyüklükleri verilmiştir (tablonun sonuna *simplefs* dosya sistemimizi de ekledik):
 
 .. figure:: _static/fs-block-sizes-table.png
    :alt: Yaygın dosya sistemlerinin blok büyüklükleri
    :align: center
    :width: 55%
 
-Görüldüğü gibi yaygın dosya sistemlerinde en büyük blok büyüklüğü sayfa büyüklüğü olan 4K'dır.
-6.12 ve sonrasında blokların 4K'dan büyük olabileceğini belirtmiştik.
+Görüldüğü gibi yaygın dosya sistemlerinde en büyük blok büyüklüğü sayfa büyüklüğü olan 4K'dır. 6.12 ve sonrasında
+blokların 4K'dan büyük olabileceğini belirtmiştik.
 
 buffer_head Yapısı
 ------------------
@@ -333,6 +327,14 @@ yapısının ``page`` yapısıyla çakıştırıldığını anımsayınız) ``pr
     :align: center
     :width: 75%
 
+``uffer_head`` nesnesinin durumunu belirten b?state elemanına ilişkin bayraklar da şunlardır:
+
+``buffer_head`` nesnesinin durumunu belirten ``b_state`` elemanına ilişkin bayraklar da şunlardır:
+
+.. figure:: _static/buffer-head-state-flags-table.png
+    :align: center
+    :width: 70%
+
 ``buffer_head`` nesnelerinin içerisinde tampon içeriğinin bulunmadığına, ``buffer_head`` nesnelerinin tamponu yönetmek
 için gerekli bilgileri barındırdığına dikkat ediniz. Tamponlar sayfaların (genel olarak *folio*'ların) içerisindedir.
 ``buffer_head`` nesneleri ise kendi dilim önbelleğinden (*slab cache*) tahsis edilmektedir. Çekirdekte ``buffer_head``
@@ -357,8 +359,8 @@ bir sayfadan oluştuğunu varsayıyoruz):
     :align: center
     :width: 65%
 
-Tabii bir sayfadaki tüm tamponlar dolu olmak zorunda değildir. Zaten döngüsel bağlı liste dolu olan tamponları
-gezmektedir. Buradaki döngüsel bağlı listeyi şöyle de gösterebiliriz:
+Tabii bir sayfadaki tüm tamponlar dolu olmak zorunda değildir. Ancak buradaki bağlı liste sayfadaki (genel olarak
+*folio*'daki) tüm tamponları dolaşmaktadır. Buradaki döngüsel bağlı listeyi şöyle de gösterebiliriz:
 
 .. figure:: _static/folio-buffer-head-ring.png
     :align: center
@@ -368,18 +370,17 @@ Bir kez daha anımsatmak istiyoruz: Buradaki önbellek blok aygıtı için tahsi
 önbelleğidir.
 
 Peki çekirdek belli bir bloğa ilişkin tamponu blok aygıt sürücüsünün ``inode`` önbelleğinde nasıl arayıp
-bulabilmektedir? Örneğin dosya sisteminde bir blok 1024 byte olsun ve biz 1654 numaralı bloğa ilişkin tamponu
-önbellekte aramak isteyelim. Anımsanacağı gibi ``inode`` önbelleğinin arama mekanizması sayfa temelinde
+bulabilmektedir? Örneğin dosya sisteminde bir blok 1024 byte uzunluğunda olsun ve biz 1654 numaralı bloğa ilişkin
+tamponu önbellekte aramak isteyelim. Anımsanacağı gibi ``inode`` önbelleğinin arama mekanizması sayfa temelinde
 yapılmaktadır. İşte çekirdek önce blok numarasından hareketle o bloğun içinde bulunduğu sayfa indeksini, sayfa
-indeksinden hareketle de tampona ilişkin ``buffer_head`` nesnesini elde etmektedir. Bloğa ilişkin sayfa indeksi şu
-işlemle elde edilmektedir:
+indeksinden hareketle de tampona ilişkin ``buffer_head`` nesnesini elde etmektedir. Sayfa indeksinin elde edilmesi
+için önce bloğun aygıtın başından itibaren byte *offset*'i elde edilir. Örneğimizde 1654 numaralı bloğun aygıttaki
+*offset* numarasını 1654 ile 1024'ü çarparak elde edebiliriz. Çekirdek zaten öteleme miktarını ``inode`` nesnesinin
+``i_blkbits`` elemanında tuttuğu için bu işlemi doğrudan ``1654 << i_blkbits`` biçiminde yapmaktadır. Artık 1654
+numaralı bloğun aygıtın kaçıncı *offset*'inde olduğunu hesapladık. Şimdi bu *offset*'i sayfa uzunluğuna bölerek
+sayfa indeksini elde edebiliriz. Bu işlemleri şöyle genelleştirebiliriz:
 
 .. code-block:: c
 
-    const int blkbits = bd_mapping->host->i_blkbits;   /* = 10 */
+    const int blkbits = bd_mapping->host->i_blkbits;    /* = 10 */
     index = ((loff_t)block << blkbits) / PAGE_SIZE;
-
-Örneğimizde bloğun byte *offset*'i ``1654 << 10 = 1693696`` biçimindedir. Bu değeri sayfa uzunluğu olan 4K'ya
-bölersek sayfa indeksini 413 olarak elde ederiz. İşte bu 413'üncü sayfa ``inode`` nesnesinin sayfa önbelleğinde
-aranacaktır. Biz bu sayfanın bulunduğunu varsayalım. 413'üncü sayfa 1652 … 1655 numaralı dört tamponu
-barındırmaktadır (ilk tampon = 413 * 4 = 1652).
