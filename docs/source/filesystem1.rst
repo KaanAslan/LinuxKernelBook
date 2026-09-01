@@ -67,6 +67,7 @@ okuma yazma işlemleri de disk birimi tarafından yapılır:
 .. figure:: _static/disk-hierarchy.png
    :alt: Disk erişim hiyerarşisi
    :align: center
+   :class: fig-mapping0
    :width: 20%
 
 Bugünkü masaüstü bilgisayarlarımızda *SATA* ve *NVMe* en çok kullanılan disk denetleyicileridir.
@@ -331,6 +332,7 @@ Buradaki süreci aşağıdaki şekille özetleyebiliriz:
 
 .. image:: _static/delayed-write-flow.png
    :align: center
+   :class: fig-mapping2
    :width: 35%
 
 Peki işletim sistemi transfer işlemlerini ne kadar süre bekletmektedir? Eğer transfer çok uzun süre bekletilirse 
@@ -3322,6 +3324,7 @@ gösterebiliriz:
 .. figure:: _static/sysopen-chain.png
    :align: center
    :alt: sys_open çağrı zinciri
+   :class: fig-mapping-1
    :width: 20%
 
 Akış ``do_filp_open`` fonksiyonuna geldiğinde artık dosya betimleyici tablosunda boş betimleyici bulunmuştur.
@@ -3404,6 +3407,7 @@ Görüldüğü gibi bu fonksiyon da aslında çekirdek alanındaki yol ifadesini
 .. figure:: _static/filp-callers.png
    :align: center
    :alt: open ve openat sistem fonksiyonları
+   :class: fig-mapping2
    :width: 35%
 
 .. warning::
@@ -4565,6 +4569,7 @@ Inode blok, inode elemanlarından oluşmaktadır:
 .. figure:: _static/inode-block-layout.png
    :align: center
    :alt: Inode Bloğu Organizasyonu
+   :class: fig-mapping1
    :width: 30%
 
    Inode blok her dosya için bir inode elemanı içeren indeksli bir yapıdır.
@@ -4794,6 +4799,7 @@ düşünebilirsiniz. Bir dizinin içeriği temsili olarak şöyledir:
 .. figure:: _static/directory-file-entries-boxes.png
    :alt: Dizin dosyasının içeriği
    :align: center
+   :class: fig-mapping2
    :width: 25%
 
 Biz bu bağlamda dizinlerin de birer dosya gibi organize edildiğini vurgulamak için "dizin" yerine
@@ -5627,6 +5633,7 @@ tek yaptığı şey ``mount`` sistem fonksiyonunu çağırmaktır:
 .. figure:: _static/mount-call-chain.png
    :align: center
    :alt: mount işlemi çağrı zinciri
+   :class: fig-mapping4
    :width: 40%
 
    *mount* komutundan çekirdek moduna uzanan çağrı zinciri
@@ -6193,6 +6200,7 @@ gerçekleştirildiğine ilişkin özet bir görünüm sunmaktadır:
 .. figure:: _static/mount-chain-full.png
    :align: center
    :alt: mount işlemi tam çağrı zinciri
+   :class: fig-mapping3
    :width: 35%
 
 Biz yukarıdaki aşamalarda yalnızca bir dosya sisteminin mount edilebilmesi için gerekli olan minimal işlemleri

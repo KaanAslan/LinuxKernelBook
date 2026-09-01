@@ -896,7 +896,7 @@ Genel Boot Akışı
 
 .. figure:: _static/general-boot.png
    :align: center
-   :alt: Genel boot süreci
+   :class: fig-mapping2
    :width: 30%
 
 Boot Aşamalarına İlişkin Terminolojisi
@@ -957,6 +957,7 @@ gibi özetleyebiliriz:
 .. figure:: _static/pc-legacy-boot.png
    :align: center
    :alt: PC legacy boot
+   :class: fig-mapping2
    :width: 30%
    
 Kursumuzda UEFI BIOS sistemlerinin işlevi ve temel çalışma mekanizması başka bir bölümde ele alınacaktır.

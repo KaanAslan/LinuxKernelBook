@@ -9701,6 +9701,7 @@ giriş olarak bölünmektedir.
 .. figure:: _static/ext2-file-types-table.png
    :alt: EXT2 dosya türleri
    :align: center
+   :class: fig-mapping4
    :width: 40%
 
 .. note::

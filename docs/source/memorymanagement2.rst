@@ -21,6 +21,7 @@ sisteminin ikiz blok tahsisat sisteminin üzerine oturtulduğunu söyleyebiliriz
 .. image:: _static/buddy-slab-layers.png
    :alt: Dilimli ve İkiz Blok Tahsisat Sistemi şeması
    :align: center
+   :class: fig-mapping5
    :width: 45%
 
 Biz bu bölümde önce ikiz blok tahsisat sistemini sonra da dilimli tahsisat sistemini inceleyeceğiz.
@@ -1018,6 +1019,7 @@ olabilmektedir:
 
 .. figure:: _static/numa-distance-scores-table.png
    :align: center
+   :class: fig-mapping4
    :width: 40%
 
 NUMA uzaklık matrisi aşağıdaki gibi temsil edilebilir:
@@ -1387,6 +1389,7 @@ için gereken minimum dilim sayısını belirtmektedir:
 
 .. image:: _static/slub-min-partial-table.png
    :align: center
+   :class: fig-mapping5
    :width: 50%
 
 ``min_partial`` elemanının amacı dilim önbelleğinde hazır durumda tutulacak belli miktarda boş dilimlerin
@@ -1748,6 +1751,7 @@ olabilmektedir:
 
 .. image:: _static/kmalloc-minalign-table.png
    :align: center
+   :class: fig-mapping5
    :width: 50%
 
 ``kmem_cache_create`` fonksiyonunun kullanımına şöyle bir örnek verebiliriz:
@@ -1923,6 +1927,7 @@ Aşağıda bu sürümdeki ``kmem_cache_create`` fonksiyonunun çağrı zinciri �
 .. figure:: _static/kmem-cache-create-callchain.png
    :alt: kmem_cache_create çağrı zinciri
    :align: center
+   :class: fig-mapping2
    :width: 30%
 
 Peki çekirdek içerisindeki nesne tahsisatları dilimli tahsisat sistemiyle yapıldığına göre
@@ -2045,6 +2050,7 @@ Yaratılmış olan bir dilim önbelleğinden tahsisat yapmak için kullanılan t
 .. figure:: _static/kmem-cache-alloc-functions.png
    :alt: Dilim önbelleği tahsisat fonksiyonları
    :align: center
+   :class: fig-mapping5
    :width: 45%
 
 ``kmem_cache_alloc`` ve ``kmem_cache_zalloc`` en çok kullanılan tahsisat fonksiyonlarıdır. Bu
@@ -2169,6 +2175,7 @@ ilkdeğerlerin verildiği ``mm_init`` fonksiyonu içerisinde yaratılmaktadır:
 .. figure:: _static/kmem-cache-init-chain.png
    :alt: kmem_cache_init çağrı zinciri
    :align: center
+   :class: fig-mapping3
    :width: 35%
 
 Tablodaki ``KMALLOC_CGROUP``, *docker* gibi *container* teknolojilerinin kullanımını daha etkin hale
@@ -2312,6 +2319,7 @@ yapılmaktadır:
 .. figure:: _static/obj-to-kmem-cache-chain.png
    :alt: Nesne adresinden kmem_cache nesnesine erişim zinciri
    :align: center
+   :class: fig-mapping4
    :width: 45%
 
 Dilim Önbelleklerine İlişkin Bilgilerin proc ve sys Dosya Sistemleri Yoluyla Elde Edilmesi

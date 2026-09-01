@@ -745,6 +745,7 @@ oluşturulurken bu komutlar işlemlerini kabaca aşağıdaki adımlarla gerçekl
 .. figure:: _static/initramfs.png
    :align: center
    :alt: simplefs disk organizasyonu
+   :class: fig-mapping4
    :width: 40%
 
 *"make install"* komutu masaüstü sistemlerde sırasıyla şunları yapmaktadır:
@@ -1337,11 +1338,6 @@ biçimde de derleme sürecine ekleyebilmektedir:
 
 Burada eğer konfigürasyon yapılırken ilgili seçenek ``y`` biçiminde (yani ``[*]`` ya da ``<*>``
 biçiminde) geçilmişse bu durumda biz de ilgili dosyayı derlemeye dahil etmiş olduk.
-
-
-.. rubric:: ── 9. Ders · 16 Ağustos 2025, Cumartesi ──
-
-----
 
 Yeni Dizin için Makefile ve Kconfig Dosyaları
 ===============================================

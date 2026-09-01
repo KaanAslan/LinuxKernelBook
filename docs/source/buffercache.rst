@@ -144,6 +144,7 @@ Bu yerleşimi şekilsel olarak şöyle de gösterebiliriz:
 .. figure:: _static/bdev-inode-layout.png
    :alt: bdev_inode yapısının bellek yerleşimi
    :align: center
+   :class: fig-mapping5
    :width: 50%
 
 Dolayısıyla aslında eğer elimizde ``block_device`` nesnesinin adresi varsa ``container_of``
@@ -364,6 +365,7 @@ Tabii bir sayfadaki tüm tamponlar dolu olmak zorunda değildir. Ancak buradaki 
 
 .. figure:: _static/folio-buffer-head-ring.png
     :align: center
+    :class: fig-mapping4
     :width: 45%
 
 Bir kez daha anımsatmak istiyoruz: Buradaki önbellek blok aygıtı için tahsis edilen ``inode`` nesnesinin

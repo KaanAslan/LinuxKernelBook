@@ -71,6 +71,16 @@ table.docutils th {
     table-layout: auto;
 }
 
+@media screen and (max-width: 2048px) {
+    .rst-content table.docutils.narrow-table {
+        max-width: 100%;
+    }
+    .rst-content .wy-table-responsive table td,
+    .rst-content .wy-table-responsive table th {
+        white-space: normal !important;
+    }
+}
+
 @media screen and (max-width: 1024px) {
     .rst-content table.docutils.narrow-table {
         max-width: 100%;
@@ -86,16 +96,6 @@ table.docutils th {
         width: 100% !important;
         max-width: 100% !important;
         height: auto !important;
-    }
-}
-
-@media screen and (max-width: 768px) {
-    .rst-content table.docutils.narrow-table {
-        max-width: 100%;
-    }
-    .rst-content .wy-table-responsive table td,
-    .rst-content .wy-table-responsive table th {
-        white-space: normal !important;
     }
 }
 
@@ -139,8 +139,30 @@ table.docutils th {
 }
 
 @media screen and (max-width: 1024px) {
+    img.fig-mapping-1 { width: 30% !important; }
+}
+
+@media screen and (max-width: 1024px) {
+    img.fig-mapping0 { width: 40% !important; }
+}
+
+@media screen and (max-width: 1024px) {
     img.fig-mapping1 { width: 50% !important; }
 }
 
-@media screen and (max-width: 768px) {
-    img.fig-mapping1 { width: 90% !important; }
+@media screen and (max-width: 1024px) {
+    img.fig-mapping2 { width: 60% !important; }
+}
+
+@media screen and (max-width: 1024px) {
+    img.fig-mapping3 { width: 70% !important; }
+}
+
+@media screen and (max-width: 1024px) {
+    img.fig-mapping4 { width: 80% !important; }
+}
+
+@media screen and (max-width: 1024px) {
+    img.fig-mapping5 { width: 90% !important; }
+}
+

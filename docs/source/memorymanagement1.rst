@@ -214,6 +214,7 @@ olabilir:
 
 .. figure:: _static/virtual-physical-page-mapping-table-unmapped.png
    :align: center
+   :class: fig-mapping2
    :width: 35%
 
 Burada ``-`` olan girişler sanal sayfanın fiziksel sayfaya eşleştirilmediğini belirtmektedir. Örneğin ``1A400`` sanal
@@ -292,12 +293,14 @@ prosesinin sayfa tablosu aşağıdaki gibi olsun:
 
 .. image:: _static/p1-page-table.png
    :align: center
+   :class: fig-mapping2
    :width: 35%
 
 P2 prosesinin de sayfa tablosu şöyle olsun:
 
 .. image:: _static/p2-page-table.png
    :align: center
+   :class: fig-mapping2
    :width: 35%
 
 Sayfa tablolarını işletim sisteminin oluşturduğunu anımsayınız. İşletim sistemi proseslerin fiziksel sayfa numaralarını
@@ -347,12 +350,14 @@ vardır. 3 bitlik IGN alanı kullanılmamaktadır. Sayfa tablosu da aşağıdaki
 
 .. figure:: _static/page-table-entries-list.png
    :align: center
+   :class: fig-mapping1
    :width: 30%
 
 Sayfa tablosu girişlerini şöyle de temsil edebiliriz:
 
 .. figure:: _static/page-table-entry-structure.png
    :align: center
+   :class: fig-mapping2
    :width: 30%  
 
 32 bit Intel işlemcilerindeki 4K'lık sayfaların sayfa özelliklerinin bazılarını açıklamak istiyoruz.
@@ -496,6 +501,7 @@ bit Intel işlemcileri sanal adresi iki kısma ayırmaktadır:
 
 .. image:: _static/pse-4mb-address-split.png
    :align: center
+   :class: fig-mapping5
    :width: 50%
 
 Burada artık tek kademeli bir dönüştürmenin olduğuna dikkat ediniz. Bu durumda işlemci yüksek anlamlı 10 bitten
@@ -514,6 +520,7 @@ farklıdır:
 
 .. image:: _static/l1-l2-page-table-address-split.png
    :align: center
+   :class: fig-mapping5
    :width: 50%
 
 Buradaki sanal adresin parçalarının uzunluklarına dikkat ediniz. L1 tablosunun (Intel'deki sayfa dizini) indeksi
@@ -583,6 +590,7 @@ bit ARM işlemcilerinin sayfalama aşamalarını aşağıdaki tabloyla karşıla
 
 .. image:: _static/x86-64-aarch64-paging-comparison.png
    :align: center
+   :class: fig-mapping5
    :width: 55%
 
 Translation Lookaside Buffer (TLB)
@@ -619,6 +627,7 @@ haritalanmıştır. 32 bit Linux sistemlerinde bir prosesin sanal bellek alanı 
 
 .. image:: _static/user-kernel-address-space.png
    :align: center
+   :class: fig-mapping2
    :width: 35%
 
 Buradan da görüldüğü gibi 32 bit Linux sistemlerinde kullanıcı alanı (yani prosesin sanal bellekte kapladığı maksimum
@@ -635,6 +644,7 @@ kolaylaştırmaktadır. Buradaki alanların içeriklerini biraz daha ayrıntıla
 
 .. image:: _static/user-kernel-address-space-64bit.png
    :align: center
+   :class: fig-mapping4
    :width: 45%
 
 64 bit Linux sistemlerinde prosesin sanal bellek alanının 256 TB büyüklüğünde olduğuna dikkat ediniz. Bu sistemlerde
@@ -1487,6 +1497,7 @@ betimleyebiliriz:
 
 .. image:: _static/pfn-range-sections.png
    :align: center
+   :class: fig-mapping5
    :width: 50%
 
 Buradaki *PFN*, *"Page Frame Number"* sözcüklerinden kısaltılmıştır.
@@ -1566,6 +1577,7 @@ Bu işlemi şekilsel olarak da aşağıdaki gibi ifade edebiliriz:
 
 .. image:: _static/sparsemem-pfn-to-page.png
    :align: center
+   :class: fig-mapping3
    :width: 40%
 
 Üç Konfigürasyonun Karşılaştırılması
@@ -1702,12 +1714,14 @@ kademeliymiş gibi gösteriyoruz):
 
 .. image:: _static/user-kernel-address-space.png
    :align: center
+   :class: fig-mapping2
    :width: 35%
 
 64 bit sistemlerde de sayfa tablosu şöyleydi:
 
 .. image:: _static/user-kernel-address-space-64bit.png
    :align: center
+   :class: fig-mapping4
    :width: 50%
 
 Peki çekirdek (ya da aygıt sürücüler) belli bir fiziksel adrese erişmek isterse bunu nasıl yapabiliyor? Çünkü
@@ -1727,6 +1741,7 @@ düşünebilirsiniz:
 
 .. image:: _static/kernel-identity-mapping-table.png
    :align: center
+   :class: fig-mapping5
    :width: 45%
 
 32 Bit Sİstemlerde HIGHMEM Alanına Erişim

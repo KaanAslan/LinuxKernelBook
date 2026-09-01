@@ -216,6 +216,7 @@ Dosya nesnesinden hareketle ilgili dosyaya ilişkin önbellek bilgilerine erişi
 
 .. figure:: _static/inode-imapping-idata.png
    :alt: i_mapping elemanının i_data elemanını göstermesi
+   :class: fig-mapping4
    :width: 40%
 
 ``address_space`` nesnesi dosyanın sayfa önbelleğinin giriş noktasıdır. ``address_space`` yapısı dosyaya ilişkin önbellek 
@@ -345,6 +346,7 @@ Bir dosyaya ilişkin önbelleğin *XArray* ağacını sembolik biçimde şöyle 
 .. figure:: _static/xarray-page-cache-table.png
    :alt: Sayfa önbelleği XArray ağacı örneği
    :align: center
+   :class: fig-mapping5
    :width: 40%
 
 Sayfa Önbelleğinde Büyük Blokların Saklanması
@@ -637,6 +639,7 @@ düşük anlamlı 2 bit 0'dır. Düşük anlamlı 2 bitin değerleri şöyle yor
 .. figure:: _static/xarray-low-bits-table.png
    :alt: XArray slot düşük 2 bit anlamları
    :align: center
+   :class: fig-mapping5
    :width: 40%
 
 Düşük anlamlı 2 bit 10 durumundaysa ve yüksek anlamlı bitler 0 ile 62 arasındaysa slot bir kardeş
@@ -3054,6 +3057,7 @@ nesnesinin ``mtime`` dışındaki elemanları yazılmıştır:
 
 .. figure:: _static/odsync-write-flow.png
    :alt: O_DSYNC write akışı
+   :class: fig-mapping5
    :width: 40%
 
 ``fsync`` bir dosyanın bütün önbellek bloklarını ve metadata bilgilerini diske flush eden bir POSIX
@@ -3553,6 +3557,7 @@ oluşmaktadır:
 .. figure:: _static/dirty-thresholds-table.png
    :alt: Kirli sayfa eşikleri
    :align: center
+   :class: fig-mapping3
    :width: 40%
 
 Aşağıda uygulanan kota ve bütçeler bir tablo ile özetlenmektedir:

@@ -1702,6 +1702,7 @@ makine komutuyla yazmak istediğini varsayalım:
 .. image:: _static/memory-misaligned.png
    :alt: Memory misaligned
    :align: center
+   :class: fig-mapping1
    :width: 20%
 
 İşte bu biçimdeki hizalı olmayan erişimlerde işlemci makine komutunun sonuna kadar veri yolunu tutarak
@@ -1715,6 +1716,7 @@ hizalama demekle *her nesnenin kendi uzunluğunun katlarında bulunması durumun
 .. image:: _static/memory-aligned2.png
    :alt: Memory aligned2
    :align: center
+   :class: fig-mapping1
    :width: 20%
 
 Ya da aşağıdaki 2 byte'lık bilginin okunup yazılmasında da bir sorun oluşmayacaktır:
@@ -1722,6 +1724,7 @@ Ya da aşağıdaki 2 byte'lık bilginin okunup yazılmasında da bir sorun oluş
 .. image:: _static/memory-aligned1.png
    :alt: Memory aligned1
    :align: center
+   :class: fig-mapping1
    :width: 20%
 
 Ancak aşağıdaki 2 byte'lık bilginin okunup yazılmasında bir sorun oluşabilecektir:
@@ -1729,6 +1732,7 @@ Ancak aşağıdaki 2 byte'lık bilginin okunup yazılmasında bir sorun oluşabi
 .. image:: _static/memory-aligned1.png
    :alt: Memory misaligned2
    :align: center
+   :class: fig-mapping1
    :width: 20%
 
 Çünkü 32 bit Intel işlemcileri bellek okumalarını 4'ün katlarından dörder byte'lık verileri çekerek
@@ -3899,6 +3903,7 @@ RCU mekanizmasında paylaşılan nesne yani veri yapısı bir gösterici ile gö
 .. image:: _static/rcu-state1.png
    :alt: RCU — Başlangıç durumu
    :align: center
+   :class: fig-mapping5
    :width: 45%
 
 Okuma yapan akışlar ``ptr`` göstericisinin gösterdiği yerdeki paylaşılan alana hiç kilit almadan
@@ -3908,6 +3913,7 @@ erişirler. Ancak yazma yapan akışlar bu veri yapısının bir kopyasını olu
 .. image:: _static/rcu-state2.png
    :alt: RCU — Kopya oluşturma aşaması
    :align: center
+   :class: fig-mapping5
    :width: 45%
 
 Yazma yapan akışlar yazma işlemini kopya üzerinde yaptıktan sonra ``ptr`` göstericisini bu kopyayı
@@ -3916,6 +3922,7 @@ gösterecek biçimde güncellerler:
 .. image:: _static/rcu-state3.png
    :alt: RCU — Gösterici güncellemesi sonrası
    :align: center
+   :class: fig-mapping5
    :width: 45%
 
 Burada önemli bir sorun eski veri yapısının ne zaman, nasıl ve kim tarafından yok edileceğidir. İlk
