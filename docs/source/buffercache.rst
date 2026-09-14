@@ -145,7 +145,7 @@ Bu yerleşimi şekilsel olarak şöyle de gösterebiliriz:
    :alt: bdev_inode yapısının bellek yerleşimi
    :align: center
    :class: fig-mapping5
-   :width: 50%
+   :width: 45%
 
 Dolayısıyla aslında eğer elimizde ``block_device`` nesnesinin adresi varsa ``container_of``
 makrosuyla yapının ``vfs_inode`` elemanına erişebiliriz. Tabii bunun tersini de yapabiliriz. Güncel
@@ -191,7 +191,7 @@ nesnesi yoluyla aygıt sürücünün ``inode`` nesnesine nasıl erişildiği aş
 .. figure:: _static/blkdev-file-mapping.png
    :alt: Aygıt dosyasından blok aygıtının inode nesnesine erişim
    :align: center
-   :width: 95%
+   :width: 90%
 
 Yukarıda da belirttiğimiz gibi zaten bu önbelleğe artık ``block_device`` nesnesi yoluyla doğrudan
 erişilebilmektedir. Sayfa önbelleğini anlattığımız önceki bölümde dosya açılırken dosya nesnesinin
@@ -386,3 +386,200 @@ sayfa indeksini elde edebiliriz. Bu işlemleri şöyle genelleştirebiliriz:
 
     const int blkbits = bd_mapping->host->i_blkbits;    /* = 10 */
     index = ((loff_t)block << blkbits) / PAGE_SIZE;
+
+Örneğimizde bloğun byte *offset*'i ``1654 << 10 = 1693696`` biçimindedir. Bu değeri sayfa uzunluğu olan 4096'ya
+bölersek sayfa indeksini 413 olarak elde ederiz. İşte bu 413'üncü sayfa ``inode`` nesnesinin sayfa önbelleğinde
+aranacaktır. Biz bu sayfanın bulunduğunu varsayalım. 413'üncü sayfa 1652 ... 1655 numaralı dört tamponu
+barındırmaktadır (ilk tampon = 413 * 4 = 1652). Artık bu sayfa (ya da genel *folio*) nesnesinden hareketle ``page``
+yapısının ``private`` göstericisi yoluyla sayfa içerisindeki ilk ``buffer_head`` nesnesine erişilir. Erişilmek
+istenen tamponun sayfa içerisindeki kaçıncı tampon olduğu zaten hesaplanabilmektedir. Örneğimizde sayfadaki ilk
+tampon 1652 olduğuna göre ve biz 1654 numaralı tamponu elde edeceğimize göre bu döngüsel bağlı listede iki kere
+ilerleyip tampona ilişkin ``buffer_head`` nesnesine ulaşabiliriz. Tabii tampon verilerine aslında ``buffer_head``
+olmadan doğrudan da erişebilir. Ancak çekirdek tamponla ilgili işlemlerde mecburen bu ``buffer_head`` nesnesi
+içerisindeki diğer bilgileri kullanmak zorundadır.
+
+Burada bir noktaya bir kez daha dikkatinizi çekmek istiyoruz. ``buffer_head`` nesneleriyle tampon verilerini
+birbirine karıştırmayınız. Tampon sayfanın (genel olarak *folio*'nun) içerisindedir. Ancak ``buffer_head`` nesneleri
+bunlara ilişkin dilim önbelleğinden tahsis edilmiş olan nesnelerdir. ``buffer_head`` nesnelerine tamponu yönetmek
+için mecburen başvurulmaktadır. Neyin nerede olduğunu aşağıdaki tabloyla özetlemek istiyoruz:
+
+.. figure:: _static/buffer-head-memory-layout-table.png
+    :align: center
+    :width: 70%
+
+Bu ilişkiyi aşağıdaki şekille de gösterebiliriz:
+
+.. figure:: _static/buffer-head-memory-layout.png
+    :align: center
+    :width: 75%
+
+Blok numarasından tampona erişime ilişkin adımları daha düzenli bir biçimde aşağıdaki tabloyla da gösterbiliriz:
+
+.. figure:: _static/buffer-lookup-steps-table.png
+    :align: center
+    :width: 70%
+
+Peki ``buffer_head`` nesneleri ne zaman oluşturulmaktadır? İşte çekirdek tampon önbelleğindeki bir tampona
+eriştiğinde eğer o tamponun içinde bulunduğu sayfa için (genel olarak *folio* için) ``buffer_head`` nesneleri
+oluşturulmadıysa onlar için ``buffer_head`` nesnelerini oluşturmaktadır. Örneğin tamponların 1024 byte olduğu bir
+sistemde ilk kez bir sayfanın tamponuna erişildiğini düşünelim. İşte bu durumda çekirdek o sayfa için gereken 4
+tamponu da yaratıp bunları döngüsel olarak bağlı listede tutmaktadır. Tabii bu durumda sayfadaki diğer üç tampon
+henüz kullanılmamaktadır. Yani boş durumdadır. Ancak çekirdek yalnızca erişilen tampon için değil sayfanın tüm
+tamponları için ``buffer_head`` nesnelerini yaratmaktadır.
+
+Tampon Önbelleğine Erişim Yapan Çekirdek Fonksiyonları
+======================================================
+
+Şimdi de tampon önbelleğine erişim yapan çekirdek fonksiyonlarını inceleyelim. ``bdev_getblk`` isimli çekirdek
+fonksiyonu bir blok aygıtından tampon önbelleği yoluyla belli bir bloğu elde etmek için kullanılmaktadır.
+Fonksiyonun prototipi şöyledir:
+
+.. code-block:: c
+
+    struct buffer_head *bdev_getblk(struct block_device *bdev, sector_t block, unsigned size, gfp_t gfp)
+
+Fonksiyonun birinci parametresi blok aygıtını temsil eden ``block_device`` nesnesinin adresini almaktadır. İkinci
+parametresi erişilecek bloğun numarasını belirtmektedir. Üçüncü parametre ise blok büyüklüğünü belirtmektedir. Blok
+büyüklüğü aslında anımsanacağı gibi blok aygıtına ilişkin ``inode`` nesnesinin ``i_blkbits`` elemanında da
+bulunmaktadır. Ancak bu fonksiyon bu eleman set edilmeden önce de kullanılabilmektedir. Bazen işin başında dosya
+sisteminin blok büyüklüğünden bağımsız büyüklükte blokların da okunması gerekebilmektedir. Bu tür durumlar için
+fonksiyon ayrıca blok büyüklüğünü de üçüncü parametreyle almaktadır. Son parametre bu işlemler sırasında çağrılacak
+``alloc_pages`` gibi, ``kmem_cache_alloc`` gibi tahsisat işlemlerinde kullanılacak bayrakları belirtmektedir.
+Örneğin tipik olarak bu bayrak ``GFP_KERNEL | __GFP_MOVABLE`` biçiminde geçilebilir. Fonksiyon başarı durumunda
+``buffer_head`` nesnesinin adresine, başarısızlık durumunda ``NULL`` adrese geri dönmektedir. Bu fonksiyon yukarıda
+görmüş olduğumuz tüm işlemleri yaparak tampon zaten tahsis edilmişse ona ilişkin ``buffer_head`` nesnesini, tampon
+tahsis edilmemişse onu tahsis ederek yarattığı ``buffer_head`` nesnesini bize vermektedir. Fonksiyonun güncel
+çekirdeklerdeki sadeleştirilmiş çağrı zinciri şöyledir:
+
+.. figure:: _static/bdev-getblk-call-tree.png
+    :width: 90%
+
+``bdev_getblk`` fonksiyonu aygıt sürücülerin kullanabilmesi için *export* edilmiştir.
+
+Çekirdek içerisinde ``bdev_getblk`` fonksiyonunu çağıran ``__getblk`` isimli bir fonksiyon da bulunmaktadır.
+İsminden de anlaşılacağı gibi fonksiyon aygıt sürücüler için *export* edilmemiştir:
+
+.. code-block:: c
+
+    static inline struct buffer_head *__getblk(struct block_device *bdev, sector_t block, unsigned size)
+
+Fonksiyonun ``bdev_getblk`` fonksiyonundan farklı olarak bayrak parametresi almadığına dikkat ediniz. Güncel
+çekirdeklerde bu fonksiyon şöyle yazılmıştır:
+
+.. code-block:: c
+
+    static inline struct buffer_head *__getblk(struct block_device *bdev, sector_t block, unsigned size)
+    {
+        gfp_t gfp;
+
+        gfp = mapping_gfp_constraint(bdev->bd_mapping, ~__GFP_FS);
+        gfp |= __GFP_MOVABLE | __GFP_NOFAIL;
+
+        return bdev_getblk(bdev, block, size, gfp);
+    }
+
+Görüldüğü gibi bayrak parametresi fonksiyonun içerisinde oluşturulmaktadır. Bu fonksiyon aslında blok aygıtına
+ilişkin ``mapping->gfp_mask`` bayraklarını kullanarak blok erişimini yapmaktadır. Yani bayraklar blok aygıtına
+ilişkin önbelleğin ``address_space`` nesnesinden elde edilmektedir. Bu fonksiyonun ``sb_getblk`` isimli bir
+sarmalayıcısı da vardır:
+
+.. code-block:: c
+
+    static inline struct buffer_head *sb_getblk(struct super_block *sb, sector_t block)
+    {
+        return __getblk(sb->s_bdev, block, sb->s_blocksize);
+    }
+
+Bu fonksiyon ``super_block`` nesnesi yoluyla aynı işlemi yapmaktadır.
+
+Tampon önbelleği üzerinde işlem yapan en yüksek seviyeli fonksiyon ``sb_bread`` fonksiyonudur. Biz bu fonksiyonu
+*simplefs* dosya sistemimizi gerçekleştirirken kullanmıştık. Fonksiyonun prototipine dikkat ediniz:
+
+.. code-block:: c
+
+    struct buffer_head *sb_bread(struct super_block *sb, sector_t block);
+
+Bu fonksiyon dosya sistemine ilişkin ``super_block`` nesnesini ve okunacak blok numarasını parametre olarak
+almaktadır. Fonksiyonun ikinci parametresindeki tür isminin ``sector_t`` olması kafanızı karıştırmasın. Fonksiyon
+sektör numarasını değil blok numarasını parametre olarak almaktadır. ``sb_bread`` fonksiyonu yüksek seviyeli bir
+fonksiyondur. ``super_block`` nesnesi içerisindeki ``s_bdev`` elemanından blok aygıtını temsil eden ``block_device``
+nesnesini, ``s_blocksize`` elemanından da blok büyüklüğünü elde eder ve işlemlerini ``bdev_getblk`` fonksiyonunu
+çağırarak yapar. Fonksiyonun ``buffer_head`` nesnesi ile geri döndüğüne dikkat ediniz. Bu fonksiyon yukarıda
+belirttiğimiz tüm işlemleri yapmaktadır. Tabii fonksiyon başarısız da olabilir. Bu durumda ``NULL`` adresle geri
+dönmektedir. ``sb_bread`` fonksiyonu aygıt sürücülerin kullanabilmesi için *export* edilmiştir.
+
+Biz *simplefs* dosya sistemimizde bu fonksiyonu çok kullanmıştık. Örneğin boş data bloklarını tutan *bitmap* bloğunu
+şu çağrıyla okumuştuk:
+
+.. code-block:: c
+
+    if ((sfs_sb->data_bitmap_bh = sb_bread(sb, SIMPLEFS_DATA_BITMAP_LOCATION)) == NULL) {
+        /* ... */
+    }
+
+Dolayısıyla *simplefs* dosya sistemimizde aslında biz bloklara *"blok aygıtına ilişkin inode nesnesinin tampon
+önbelleği yoluyla"* erişmiştik.
+
+Tamponu yöneten ``buffer_head`` nesnesi içerisinde tamponun kullanım sayacı bulunmaktadır. Bu sayaç tamponu kullanan
+fonksiyonlar tarafından zaten artırılmaktadır. ``buffer_head`` nesnesinin kullanımı bittikten sonra onun sayacını
+azaltmak için ``brelse`` fonksiyonu çağrılmalıdır. ``brelse`` fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+    void brelse(struct buffer_head *bh);
+
+Güncel çekirdeklerde bu fonksiyon şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    static inline void brelse(struct buffer_head *bh)
+    {
+        if (bh)
+            __brelse(bh);
+    }
+
+    void __brelse(struct buffer_head *bh)
+    {
+        if (atomic_read(&bh->b_count)) {
+            put_bh(bh);  /* b_count-- */
+            return;
+        }
+        WARN(1, KERN_ERR "VFS: brelse: Trying to free free buffer\n");
+    }
+
+Tabii ``buffer_head`` nesneleri sayaç 0'a düştüğünde dilim önbelleğine hemen geri verilmez. *Folio* yaşadığı sürece
+sayaç 0'a düşmüş olsa bile bunlar yaşamaya devam eder. Bunların dilim önbelleğine geri verilmesi ancak bellek
+baskısı altında sayfa *"geri alımı (page reclaim)"* ile gerçekleşmektedir.
+
+Tampona ilişkin çeşitli bayrakların ``buffer_head`` nesnesinin ``b_state`` elemanında tutulduğunu anımsayınız. İşte
+bir tampon kirlendiğinde de ``buffer_head`` nesnesinin ``b_state`` elemanının ``BH_Dirty`` bayrağı
+``mark_buffer_dirty`` fonksiyonuyla set edilmektedir:
+
+.. code-block:: c
+
+    void mark_buffer_dirty(struct buffer_head *bh);
+
+Tabii bir tampon kirlendiğinde o tamponun içinde bulunduğu sayfanın da kirli hale getirilmesi gerekir. Geri yazım
+sırasında sayfada (genel olarak *folio*'da) tamponlar varsa bu tamponların hepsi değil yalnızca kirli olan tamponlar
+geri yazılmaktadır.
+
+Peki biz yukarıdaki fonksiyonları kullanmadan bir blok aygıtını ``open`` fonksiyonuyla açıp onun belli yerinden
+``read`` fonksiyonu ile okuma yaptığımızda ne olmaktadır? Tampon önbelleğinin aslında blok aygıtına ilişkin
+``inode`` nesnesinin sayfa önbelleğinde organize edildiğini belirtmiştik. İşte blok aygıtına normal bir biçimde
+``read`` fonksiyonuyla okuma yapıldığında aslında sayfa önbelleğinde tamponların bulunduğu aynı sayfa üzerinden
+okuma gerçekleştirilmektedir. Bu durumu aşağıdaki şekille açıklayabiliriz:
+
+.. figure:: _static/bdev-read-page-cache.png
+    :align: center
+    :width: 75%
+
+Yani okuma sırasında herhangi bir tampon işleminin yapılmasına gerek yoktur. Çünkü zaten tamponlar sayfaların
+(*folio*'ların) içerisindedir. Ancak yazma durumu söz konusu olduğunda mecburen yazılacak yerin bir tampon
+içerisinde olup olmadığına da bakılması gerekir. Çünkü ``buffer_head`` nesnesi üzerinde de güncellemeler
+yapılmaktadır. Yazma işleminin nasıl yapıldığını da aşağıdaki şekille açıklayabiliriz:
+
+.. figure:: _static/bdev-write-page-cache.png
+    :align: center
+    :width: 75%
+
+    

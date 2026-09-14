@@ -55,6 +55,7 @@ ilişkin temel bilgilere ve becerilere sahip olduğu varsayılmaktadır.
    memorymanagement2
    pagecache
    buffercache
+   
    bibliography 
   
 

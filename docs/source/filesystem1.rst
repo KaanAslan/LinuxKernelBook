@@ -340,18 +340,18 @@ elektrik kesilmesi gibi durumlarda kayıplar fazlalaşır. İşte modern işleti
 *flush* edilmesi *çekirdek thread'leri (kernel threads)* tarafından yapılmaktadır. Örneğin Linux sistemlerinde 
 bu işlemlerden *flush* isimli çekirdek thread'leri sorumludur. Eskiden Linux çekirdeklerinin 2.6.32 versiyonuna 
 kadar bu işşlemler *pdflush* isimli tek bir çekirdek thread tarafından yapılıyordu. Bu versiyondan sonra
-artık her blok aygıt sürücüsü için ayrı bir flush thread'i oluşturulmaya başlandı. Bu thread'leri komut satırında 
+artık her blok aygıt sürücüsü için ayrı bir *flush* thread'i oluşturulmaya başlandı. Bu thread'leri komut satırında 
 şöyle görüntüleyebilirsiniz:
 
 .. code-block:: bash
 
    $ ps -aux | grep flush
 
-flush thread'leri arka planda sürekli olarak sayfa önbelleğini izler. Orada *kirlenmiş (dirty)*
+*flush* thread'leri arka planda sürekli olarak sayfa önbelleğini izler. Orada *kirlenmiş (dirty)*
 olan sektörleri ilgili blok aygıt sürücüsüne gönderir. Peki bu işleyişte yazma gecikmesi takriben kaç saniye 
 civarında olmaktadır? Aslında bu gecikme süresi başka faktörlere de bağlı olarak değişebilmektedir Burada fikir 
 vermek amacıyla modern Linux sistemleri için bu sürenin ortalama 5 saniye civarında olduğunu söyleyebiliriz. 
-Ancak bu değerler de değiştirilebilmektedir. flush thread'lerinin parametreleri hakkında aşağıda tabloda özet bir 
+Ancak bu değerler de değiştirilebilmektedir. *flush thread'lerinin parametreleri hakkında aşağıda tabloda özet bir 
 bilgi veriyoruz:
 
 .. figure:: _static/dirty-writeback-params-table.png
@@ -375,7 +375,7 @@ Bu değerler proc dosya sisteminden görüntülenebilmektedir:
 *sysctl* komutu zaten kendi içerisinde ``/proc/sys`` dizinindeki dosyalar üzerinde güncelleme
 işlemleri yapmaktadır.
 
-flush thread'lerinin çalışması daha ayrıntılı olarak *sayfa önbelleği (page cache)* konusunun
+*flush* thread'lerinin çalışması daha ayrıntılı olarak *sayfa önbelleği (page cache)* konusunun
 ele alındığı bölümde açıklanacaktır.
 
 Gecikmeli Yazımın Gerekçeleri
@@ -409,10 +409,10 @@ sayfaların hepsi flush edilmektedir:
    void sync(void);
 
 ``sync`` fonksiyonu *asenkron (asynchronous)* biçimde çalışmaktadır. Yani fonksiyon geri döndüğünde tüm blokların
-flush edilmiş olma garantisi yoktur. Aynı zamanda Linux sistemlerde *sync* isimli bir kabuk komutu
+*flush* edilmiş olma garantisi yoktur. Aynı zamanda Linux sistemlerde *sync* isimli bir kabuk komutu
 da bulunmaktadır. Bu komut ``sync`` fonksiyonunu çağırmaktadır.
 
-``fsync`` POSIX fonksiyonu ise belli bir dosyaya ilişkin kirlenmiş sayfaların flush edilmesi için
+``fsync`` POSIX fonksiyonu ise belli bir dosyaya ilişkin kirlenmiş sayfaların *flush* edilmesi için
 kullanılmaktadır:
 
 .. code-block:: c
@@ -422,7 +422,7 @@ kullanılmaktadır:
    int fsync(int fildes);
 
 ``fsync`` fonksiyonu *senkron (synchronous)* çalışmaktadır. Yani fonksiyon geri döndüğünde sayfa
-önbelleğindeki kirlenmiş sayfaların flush edilmiş olması garanti edilmektedir.
+önbelleğindeki kirlenmiş sayfaların *flush* edilmiş olması garanti edilmektedir.
 
 Bir dosya açılırken ``open`` POSIX fonksiyonunda kullanılan konuyla ilgili üç bayrak vardır:
 
