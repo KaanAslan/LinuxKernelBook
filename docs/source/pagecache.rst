@@ -1837,7 +1837,7 @@ yeniden okuyabiliriz. Böylece mekanizmanın çalışıp çalışmadığını ko
     #include <linux/ioctl.h>
 
     struct read_info {
-        int fd;             /* okunacak dosyanin betimleyicisi */
+        int fd;              /* okunacak dosyanin betimleyicisi */
         char *buf;           /* kullanici tamponunun adresi */
         size_t size;         /* okunacak bayt sayısı */
         off_t offset;        /* dosya icindeki baslangıç konumu */
