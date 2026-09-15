@@ -43,7 +43,7 @@ içeriklerini önbellekliyordu. Bu iki önbellek sisteminin veri yapıları da b
 .. figure:: _static/old-dual-cache.png
    :alt: 2.4 öncesi ayrık sayfa ve tampon önbellekleri
    :align: center
-   :width: 50%
+   :width: 45%
 
 Sayfa önbelleği 2.4 öncesinde read-only bir önbellekti. Kirli veri orada durmuyordu, oradan diske
 geri yazım da yapılmıyordu. O dönemlerde yazma sahipliği tampon önbelleğindeydi. O dönemlerde bu
@@ -57,7 +57,7 @@ oturtuldu. 2.4 ve sonrasındaki organizasyonu şekilsel olarak şöyle göstereb
 .. figure:: _static/unified-cache.png
    :alt: 2.4 ve sonrasında birleştirilmiş önbellek organizasyonu
    :align: center
-   :width: 50%
+   :width: 45%
 
 Tampon önbelleğinin sayfa önbelleğinin içerisine oturtulmasıyla artık her disk bloğu toplamda tek
 bir yerde önbelleklenmektedir. Bu durum hem sistemin ele alınmasını kolaylaştırmış hem de
@@ -84,7 +84,7 @@ fonksiyonlarından ``bdev_alloc`` fonksiyonuna kadar giden çağrı zinciri şö
 
 .. figure:: _static/bdev-alloc-callchain.png
    :alt: bdev_alloc çağrı zinciri
-   :width: 50%
+   :width: 45%
 
 Blok aygıt sürücülerine ilişkin çekirdek mimarisi ve fonksiyonları çekirdeğin çeşitli versiyonlarında
 defalarca değiştirilmiştir. Biz ``blk_alloc_disk`` ve ``blk_mq_alloc_disk`` fonksiyonlarını aygıt
@@ -145,7 +145,7 @@ Bu yerleşimi şekilsel olarak şöyle de gösterebiliriz:
    :alt: bdev_inode yapısının bellek yerleşimi
    :align: center
    :class: fig-mapping5
-   :width: 45%
+   :width: 40%
 
 Dolayısıyla aslında eğer elimizde ``block_device`` nesnesinin adresi varsa ``container_of``
 makrosuyla yapının ``vfs_inode`` elemanına erişebiliriz. Tabii bunun tersini de yapabiliriz. Güncel
@@ -191,7 +191,7 @@ nesnesi yoluyla aygıt sürücünün ``inode`` nesnesine nasıl erişildiği aş
 .. figure:: _static/blkdev-file-mapping.png
    :alt: Aygıt dosyasından blok aygıtının inode nesnesine erişim
    :align: center
-   :width: 90%
+   :width: 85%
 
 Yukarıda da belirttiğimiz gibi zaten bu önbelleğe artık ``block_device`` nesnesi yoluyla doğrudan
 erişilebilmektedir. Sayfa önbelleğini anlattığımız önceki bölümde dosya açılırken dosya nesnesinin
@@ -210,7 +210,7 @@ nesnesini belirtmektedir:
 .. figure:: _static/inode-responsibilities-table.png
    :alt: Dosya Inode ve bdev Inode sorumlulukları
    :align: center
-   :width: 50%
+   :width: 45%
 
 Tampon Önbelleğinin Organizasyonu
 =================================
@@ -243,7 +243,7 @@ Tampon büyüklüğü için bazı kısıtlar da vardır. 6.12 çekirdeği önces
 .. figure:: _static/buffer-size-limits-old-table.png
    :alt: 6.12 öncesi tampon büyüklüğü kısıtları
    :align: center
-   :width: 55%
+   :width: 50%
 
 6.12'ye kadar bir tampon bir sayfanın içinde bulunmak zorundaydı, dolayısıyla sayfa uzunluğundan büyük olamıyordu.
 Ancak 6.12 ile birlikte artık tamponlar sayfaların içerisinde değil *folio*'lar içerisinde tutulmaya başlanmıştır.
@@ -252,7 +252,7 @@ Ancak 6.12 ile birlikte artık tamponlar sayfaların içerisinde değil *folio*'
 .. figure:: _static/buffer-size-limits-new-table.png
    :alt: Güncel tampon büyüklüğü kısıtları
    :align: center
-   :width: 55%
+   :width: 50%
 
 Buradaki mantıksal blok büyüklüğü blok aygıt sürücüsü tarafından blok aygıtındaki en küçük transfer birimi olarak
 set edilen değerdir. Bugünkü disklerde bu değer genellikle 512 olan sektör büyüklüğündedir. Örneğin dosya sisteminin
@@ -266,7 +266,7 @@ başka bir deyişle tampon büyüklükleri verilmiştir (tablonun sonuna *simple
 .. figure:: _static/fs-block-sizes-table.png
    :alt: Yaygın dosya sistemlerinin blok büyüklükleri
    :align: center
-   :width: 55%
+   :width: 50%
 
 Görüldüğü gibi yaygın dosya sistemlerinde en büyük blok büyüklüğü sayfa büyüklüğü olan 4K'dır. 6.12 ve sonrasında
 blokların 4K'dan büyük olabileceğini belirtmiştik.
@@ -405,13 +405,13 @@ için mecburen başvurulmaktadır. Neyin nerede olduğunu aşağıdaki tabloyla 
 
 .. figure:: _static/buffer-head-memory-layout-table.png
     :align: center
-    :width: 70%
+    :width: 65%
 
 Bu ilişkiyi aşağıdaki şekille de gösterebiliriz:
 
 .. figure:: _static/buffer-head-memory-layout.png
     :align: center
-    :width: 75%
+    :width: 65%
 
 Blok numarasından tampona erişime ilişkin adımları daha düzenli bir biçimde aşağıdaki tabloyla da gösterbiliriz:
 
@@ -582,4 +582,3 @@ yapılmaktadır. Yazma işleminin nasıl yapıldığını da aşağıdaki şekil
     :align: center
     :width: 75%
 
-    
