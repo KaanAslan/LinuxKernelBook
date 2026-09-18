@@ -63,7 +63,7 @@ sebebi boş sayfa sayısının ``WMARK_LOW`` eşiğinin altına düşmesi olabil
 düzey büyüklüğünde serbest blok kalmamış olması ya da *cpuset*/kirli sayfa kotası gibi başka nedenler de olabilir)
 bu durumda *"yavaş yola"* girilir ve *fallback* listesindeki düğümlerin ``kswapd`` thread'leri uyandırılır.
 Çekirdek kodlarında *fallback* listesindeki düğümlerin bölgelerinden tahsisat yapılamadığında girilen yola *"yavaş
-yol (slow path)"* de denilmektedir. *kswapd* çekirdek thread'inin bu bölgeleri doldurup boş sayfa sayılarını
+yol (slow path)"* de denilmektedir. ``kswapd`` çekirdek thread'inin bu bölgeleri doldurup boş sayfa sayılarını
 ``WMARK_HIGH`` seviyesinin yukarısına taşıma girişimi zaman alabilmektedir. İşte tahsisatı yapmak isteyen kod
 (örneğin tipik olarak ``alloc_pages`` fonksiyonu) *fallback* listesindeki tüm düğümlerin tüm bölgelerinden tahsisat
 yapamadığı durumda düğümlerin ``kswapd`` thread'lerini uyandırdıktan sonra kontrol seviyesini ``WMARK_MIN``
@@ -109,3 +109,160 @@ açıklanmaktadır:
     :width: 65%
 
 Sayfa tahsisat fonksiyonlarının başarısız olma olasılığı oldukça zayıftır.
+
+Boş sayfalara ilişkin su seviyeleri çekirdekte ``include/linux/mmzone.h`` dosyası içerisinde aşağıdaki ``enum``
+türüyle tanımlanmıştır:
+
+.. code-block:: c
+
+    enum zone_watermarks {
+        WMARK_MIN,
+        WMARK_LOW,
+        WMARK_HIGH,
+        WMARK_PROMO,
+        NR_WMARK
+    };
+
+Yukarıda da belirttiğimiz gibi bu seviyeler bölgeleri belirten ``zone`` yapısının içerisinde tutulmaktadır:
+
+.. code-block:: c
+
+    struct zone {
+        /* ... */
+        unsigned long   _watermark[NR_WMARK];
+        /* ... */
+    };
+
+``_watermark`` elemanı yukarıdaki seviyeler için geçerli seviye değerlerini tutmaktadır. Her bölgedeki toplam boş
+sayfaların sayısı ise ``zone`` yapısının ``vm_stat`` elemanının belirttiği dizinin ``NR_FREE_PAGES`` indeksli elemanında
+tutulmaktadır:
+
+.. code-block:: c
+
+    struct zone {
+        /* ... */
+        unsigned long       _watermark[NR_WMARK];
+        atomic_long_t       vm_stat[NR_VM_ZONE_STAT_ITEMS];
+        /* ... */
+    };
+
+Tabii ``vm_stat`` dizisi yalnızca bölgedeki toplam boş sayfa sayılarını değil başka bilgileri de tutmaktadır. Dizi
+elemanlarının tuttuğu bilgilere ilişkin indeksler için ``zone_stat_item`` isimli bir ``enum`` bulundurulmuştur:
+
+.. code-block:: c
+
+    enum zone_stat_item {
+        /* First 128 byte cacheline (assuming 64 bit words) */
+        NR_FREE_PAGES,
+        NR_FREE_PAGES_BLOCKS,
+        NR_ZONE_LRU_BASE, /* Used only for compaction and reclaim retry */
+        NR_ZONE_INACTIVE_ANON = NR_ZONE_LRU_BASE,
+        NR_ZONE_ACTIVE_ANON,
+        NR_ZONE_INACTIVE_FILE,
+        NR_ZONE_ACTIVE_FILE,
+        NR_ZONE_UNEVICTABLE,
+        NR_ZONE_WRITE_PENDING,  /* Count of dirty, writeback and unstable pages */
+        NR_MLOCK,               /* mlock()ed pages found and moved off LRU */
+        /* Second 128 byte cacheline */
+    #if IS_ENABLED(CONFIG_ZSMALLOC)
+        NR_ZSPAGES,             /* allocated in zsmalloc */
+    #endif
+        NR_FREE_CMA_PAGES,
+    #ifdef CONFIG_UNACCEPTED_MEMORY
+        NR_UNACCEPTED,
+    #endif
+        NR_VM_ZONE_STAT_ITEMS
+    };
+
+Yukarıda da belirttiğimiz gibi ``vm_stat`` dizisinin ``NR_FREE_PAGES`` indeksli (0'ıncı indeksli) elemanında
+bölgedeki toplam boş sayfaların sayısı tutulmaktadır. Bu değeri ``/proc/zoneinfo`` dosyasında *"pages free"*
+satırından da görüntüleyebilirsiniz.
+
+Biz bölgeleri incelerken bölgelerdeki ikiz blok sisteminin düzey listelerinin göç türlerinden oluştuğunu
+belirtmiştik. Anımsanacağı gibi ikiz blok düzey listeleri ``zone`` yapısının ``free_area`` elemanında saklanıyordu:
+
+.. code-block:: c
+
+    struct zone {
+        /* ... */
+        unsigned long       _watermark[NR_WMARK];
+        struct free_area    free_area[NR_PAGE_ORDERS];
+        atomic_long_t       vm_stat[NR_VM_ZONE_STAT_ITEMS];
+        /* ... */
+    };
+
+Buradaki ``free_area`` elemanının ``free_area`` isimli bir yapı türünden olduğunu belirtmiştik:
+
+.. code-block:: c
+
+    struct free_area {
+        struct list_head    free_list[MIGRATE_TYPES];
+        unsigned long       nr_free;
+    };
+
+İşte bu yapıdaki ``nr_free`` elemanı her düzey için toplam boş sayfa sayısını tutmaktadır. Bu durumda su seviyesi
+(*watermark*) kontrolünü çekirdek ``zone`` nesnesinden hareketle iki aşamada yapmaktadır: Çekirdek önce ``zone``
+nesnesindeki toplam boş sayfa sayısına bakar (bu ana şalter görevindedir), eğer toplam boş sayfa sayısı talep
+edilen miktarı barındırıyorsa bu durumda hangi ikiz blok tahsisat düzeyinden tahsisat yapılacaksa ayrıca o
+``free_area`` içerisindeki ``nr_free`` elemanını da kontrol eder.
+
+Burada bir noktayı yeniden vurgulamak istiyoruz: *Fallback* mekanizması altında düğümlerin birden fazla bölgesi
+taranmaktadır. Bir düğümün taranan bölgelerinin hepsinde ``WMARK_LOW`` altına düşülmüşse o düğüm için ``kswapd``
+çekirdek thread'i uyandırılıp tarama diğer düğümlerle devam ettirilmektedir.
+
+kswapd Çekirdek Thread'lerinin Uyguladığı Geri Alım İşlemleri
+=============================================================
+
+Şimdi de ``kswapd`` thread'leri tarafından geri alımın nasıl yapıldığı üzerinde duralım. Anımsanacağı gibi ``kswapd``
+thread'leri zamanının önemli bölümünü uykuda geçirmektedir. Bunlar yukarıda belirttiğimiz koşullar oluşunca
+tahsisat fonksiyonları tarafından uyandırılmaktadır. Bu thread'ler düğüm belirten ``pglist_data`` yapısının
+``kswapd_wait`` bekleme kuyruğunu kullanmaktadır. Düğümü temsil eden ``pglist_data`` yapısının ``kswapd`` ile ilgili
+elemanlarını aşağıda veriyoruz:
+
+.. code-block:: c
+
+    typedef struct pglist_data {
+        /* ... */
+        struct task_struct  *kswapd;
+        wait_queue_head_t   kswapd_wait;                /* bekleme kuyruğu */
+        wait_queue_head_t   pfmemalloc_wait;            /* kısma (throttle) bekleme kuyruğu */
+        int                 kswapd_order;               /* istenen düzey */
+        enum zone_type      kswapd_highest_zoneidx;
+        int                 kswapd_failures;            /* ardışık başarısızlık sayacı */
+        /* ... */
+    } pg_data_t;
+
+Aşağıdaki tabloda bu elemanların işlevlerini özetliyoruz:
+
+.. figure:: _static/kswapd-pgdat-fields-table.png
+    :align: center
+    :width: 60%
+
+``kswapd`` thread'lerinin çalışma biçimleri oldukça ayrıntılıdır. Ancak kabaca bu *thread*'ler geri alımlar için
+aşağıdaki iki işlemi yapmaktadır:
+
+| **Evre-1:** ``inode`` nesnelerinin sayfa önbelleklerindeki sayfaları geri alırlar.
+
+| **Evre-2:** Kullanılmayan ``inode`` nesnelerinin yok edilmelerini sağlarlar ve çekirdekteki dilim önbelleklerinden
+    (``inode`` önbelleği, ``dentry`` önbelleği gibi) tahsis edilmiş ve artık kullanılmayan nesnelerin sistemden
+    çıkartılarak (*evict* edilerek) dilim önbelleğine iade edilmesine önayak olurlar. Ancak ``kswapd`` thread'leri
+    bunların dışında sistemdeki tüm büzücüleri (*shrinkers*) de işleme sokmaktadır.
+
+Biz birinci evreye *"sayfa geri alımı (page reclaim)"*, ikinci evreye ise *"dilim geri alımı (slab reclaim)"*
+diyeceğiz. Aşağıda birinci ve ikinci işlemi "evre 1" ve "evre 2" diye isimlendirerek ayrıntılı akışı veriyoruz:
+
+.. figure:: _static/shrink-node-call-tree.png
+    :width: 80%
+
+Bu akışı şekilsel olarak da şöyle betimleyebiliriz:
+
+.. figure:: _static/reclaim-phases-flow.png
+    :align: center
+    :width: 100%
+
+Evre-1: Sayfa Geri Alımı
+------------------------
+
+Şimdi *"Evre-1"* üzerinde duralım. Sayfa önbelleğindeki sayfaların geri alım süreci zaman içerisinde iyileştirilmiş
+ve geliştirilmiştir. Güncel çekirdeklerde bu *"Evre 1"* işlemleri ``shrink_lruvec`` fonksiyonu tarafından
+yapılmaktadır. Çekirdeğin bu konudaki evrimini aşağıdaki tabloyla özetlemek istiyoruz:

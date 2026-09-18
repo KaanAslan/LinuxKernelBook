@@ -271,7 +271,7 @@ aşağıdaki tabloda veriyoruz:
 
 .. image:: _static/gfp-composite-flags-table.png
    :align: center
-   :width: 65%
+   :width: 60%
 
 Programcılar genellikle bu yüksek seviyeli bayrakları kullanmaktadır. Örneğin ``GFP_ATOMIC``,
 ``GFP_KERNEL``, ``GFP_USER``, ``GFP_DMA``, ``GFP_DMA32`` en çok kullanılan yüksek seviyeli
