@@ -306,3 +306,71 @@ listelerinin tutulduğu yeri ve bunlara erişim fonksiyonlarını aşağıda bir
     :align: center
     :width: 70%
 
+``pglist_data`` yapısının ``__lruvec`` elemanı sayfalar için LRU listelerini tutmaktadır:
+
+.. code-block:: c
+
+    typedef struct pglist_data {
+        /* ... */
+
+        struct lruvec           __lruvec;
+
+        /* ... */
+    } pg_data_t;
+
+``lruvec`` yapısı şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct lruvec {
+        struct list_head            lists[NR_LRU_LISTS];
+        /* per lruvec lru_lock for memcg */
+        spinlock_t                  lru_lock;
+        /*
+         * These track the cost of reclaiming one LRU - file or anon -
+         * over the other. As the observed cost of reclaiming one LRU
+         * increases, the reclaim scan balance tips toward the other.
+         */
+        unsigned long               anon_cost;
+        unsigned long               file_cost;
+        /* Non-resident age, driven by LRU movement */
+        atomic_long_t               nonresident_age;
+        /* Refaults at the time of last reclaim cycle */
+        unsigned long               refaults[ANON_AND_FILE];
+        /* Various lruvec state flags (enum lruvec_flags) */
+        unsigned long               flags;
+    #ifdef CONFIG_LRU_GEN
+        /* evictable pages divided into generations */
+        struct lru_gen_folio        lrugen;
+    #ifdef CONFIG_LRU_GEN_WALKS_MMU
+        /* to concurrently iterate lru_gen_mm_list */
+        struct lru_gen_mm_state     mm_state;
+    #endif
+    #endif /* CONFIG_LRU_GEN */
+    #ifdef CONFIG_MEMCG
+        struct pglist_data *pgdat;
+    #endif
+        struct zswap_lruvec_state zswap_lruvec_state;
+    };
+
+Yapının ``lists`` elemanına dikkat ediniz:
+
+.. code-block:: c
+
+    struct list_head    lists[NR_LRU_LISTS];
+
+Bu eleman LRU listelerini tutmaktadır. Ancak gördüğünüz gibi LRU listeleri bir tane değildir. LRU listelerinin türleri
+``lru_list`` isimli ``enum`` türünün içerisinde belirtilmektedir:
+
+.. code-block:: c
+
+    enum lru_list {
+        LRU_INACTIVE_ANON = LRU_BASE,
+        LRU_ACTIVE_ANON = LRU_BASE + LRU_ACTIVE,
+        LRU_INACTIVE_FILE = LRU_BASE + LRU_FILE,
+        LRU_ACTIVE_FILE = LRU_BASE + LRU_FILE + LRU_ACTIVE,
+        LRU_UNEVICTABLE,
+        NR_LRU_LISTS
+    };
+
+Bu bağlı liste türlerini aşağıda tablo halinde de gösterebiliriz:
