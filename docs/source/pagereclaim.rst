@@ -374,3 +374,45 @@ Bu eleman LRU listelerini tutmaktadır. Ancak gördüğünüz gibi LRU listeleri
     };
 
 Bu bağlı liste türlerini aşağıda tablo halinde de gösterebiliriz:
+
+.. figure:: _static/lru-list-types-table.png
+    :align: center
+    :width: 60%
+
+Bir ``folio`` nesnesi bu LRU bağlı listelerinin yalnızca birinde bulunmaktadır. ``folio`` yapısının ``lru`` elemanı
+bu bağlı listelerin düğümlerini oluşturmaktadır:
+
+.. code-block:: c
+
+    struct folio {
+        /* ... */
+        union {
+            struct list_head lru;   /* LRU listesine bağlantı */
+            /* ... */
+        };
+        /* ... */
+    };
+
+Peki bir NUMA düğümünde ya da *memcg*'de neden tek bir LRU listesi yoktur da farklı beş tane LRU listesi
+bulunmaktadır? İşte sayfa önbelleğindeki her sayfanın geri alınma maliyeti aynı değildir. Örneğin bir sayfa (genel
+olarak *folio*) eğer ``mmap`` fonksiyonuyla *anonim (anonymous)* biçimde tahsis edilmişse bu sayfa geri alınırken
+eğer kirli değilse *takas dosyasına (swap file)* geri yazılmak zorundadır. Ancak eğer sayfa bir dosyaya ilişkinse
+(yani anonim değilse) ve kirli değilse bu durumda geri alınan sayfanın takas dosyasına yazılması gerekmez. Çünkü
+zaten o bilgiler ilgili dosyanın içerisinde bulunmaktadır. İşte yukarıdaki LRU liste türlerinde ``_ANON`` sonekiyle
+biten iki tür anonim sayfalar için LRU listesi, ``_FILE`` sonekiyle biten iki tür ise dosyalara ilişkin sayfalar
+için LRU listesi belirtmek
+
+Yukarıda anonim ve dosya tabanlı biçimde tahsis edilmiş sayfaların (genel olarak *folio*'ların) aktif ve aktif
+olmayan biçiminde iki ayrı listede tutulduğunu belirttik. Aktif olmayan liste *"ikinci şans (second chance)"* denilen
+durum için oluşturulmuştur. Aktif olmayan listede bulunan bir sayfaya (genel olarak *folio*'ya) dokunulduğunda bu
+sayfa aktif listeye alınmaktadır. Aktif olmayan liste bellek baskısı altında ilk geri alınacak listedir. Aktif liste
+ise geri alımı geciktirilen ancak yoğun bellek baskısı söz konusu olduğunda geri alım yapılan listedir:
+
+.. figure:: _static/active-inactive-lru-table.png
+    :align: center
+    :width: 60%
+
+``LRU_UNEVICTABLE`` listesi geri alınamaz bir listedir. Bir *folio* üzerinde işlem yapılırken *folio* kilitlendiğinde
+bu listeye alınmaktadır. Kilitli *folio*'ların geri alınması bozucu etkilere yol açmaktadır.tedir. Bu iki tür LRU listesi aynı zamanda *aktif olan* ve *aktif olmayan* biçiminde ikiye
+ayrılmaktadır.
+
