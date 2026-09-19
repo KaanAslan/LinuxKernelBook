@@ -106,7 +106,7 @@ açıklanmaktadır:
 
 .. figure:: _static/alloc-flags-reclaim-behavior-table.png
     :align: center
-    :width: 65%
+    :width: 70%
 
 Sayfa tahsisat fonksiyonlarının başarısız olma olasılığı oldukça zayıftır.
 
@@ -264,5 +264,30 @@ Evre-1: Sayfa Geri Alımı
 ------------------------
 
 Şimdi *"Evre-1"* üzerinde duralım. Sayfa önbelleğindeki sayfaların geri alım süreci zaman içerisinde iyileştirilmiş
-ve geliştirilmiştir. Güncel çekirdeklerde bu *"Evre 1"* işlemleri ``shrink_lruvec`` fonksiyonu tarafından
+ve geliştirilmiştir. Güncel çekirdeklerde bu *"Evre-1"* işlemleri ``shrink_lruvec`` fonksiyonu tarafından
 yapılmaktadır. Çekirdeğin bu konudaki evrimini aşağıdaki tabloyla özetlemek istiyoruz:
+
+.. figure:: _static/lru-evolution-table.png
+    :align: center
+    :width: 55%
+
+Geri alım için geri alımı yapılabilecek olan (her sayfanın geri alımının mümkün olmadığını anımsayınız) sayfalar 
+LRU listelerinde tutulmaktadır. LRU listelerinde tutulan sayfalar şunlardır:
+
+* Anonim sayfalar (*heap*, *stack*, *private mapping*'ler, *copy-on-write (COW)* kopyaları).
+* Sayfa önbelleğindeki sayfalar (dosya içeriği taşıyan sayfalar, ``mmap`` edilmiş olsun ya da olmasın).
+* *shmem/tmpfs* sayfaları (çekirdek bunları *anon* gibi takasa çıkarabilir ama sayfa önbelleğinde tutar).
+* *takas önbelleğindeki* sayfalar (akas önbelleğini takas işlemlerini anlattığımız bölümde ele alacağız).
+    
+Şunlar LRU listelerinde değildir:
+
+* Dilim önbelleğine ilişkin sayfalar. (Yani ``kmem_cache_alloc`` ve dolayısıyla ``kmalloc`` ile tahsis edilmiş olan sayfalar.)
+* Sayfa tablolarına ilişkin sayfalar.
+* Çekirdek *stack* alanları.
+* ``vmalloc`` ve türevileri ile tahsis edilen (yani ``vmalloc`` alanında tahsis edilen) sayfalar).
+* İkiz blok tahsisat sisteminde boşta duran sayfalar.
+* *Reserved* olarak işaretlenmiş sayfalar.
+
+Bunların bir kısmı hiç geri alınamaz; dilim önbelleğindeki olanlar ise LRU üzerinden değil Evre-2'de açıklayacağımız 
+*büzücüler (shrinkers)* yoluyla küçültülmektedir.
+
