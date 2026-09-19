@@ -377,7 +377,7 @@ Bu bağlı liste türlerini aşağıda tablo halinde de gösterebiliriz:
 
 .. figure:: _static/lru-list-types-table.png
     :align: center
-    :width: 60%
+    :width: 55%
 
 Bir ``folio`` nesnesi bu LRU bağlı listelerinin yalnızca birinde bulunmaktadır. ``folio`` yapısının ``lru`` elemanı
 bu bağlı listelerin düğümlerini oluşturmaktadır:
@@ -403,16 +403,179 @@ biten iki tür anonim sayfalar için LRU listesi, ``_FILE`` sonekiyle biten iki 
 için LRU listesi belirtmek
 
 Yukarıda anonim ve dosya tabanlı biçimde tahsis edilmiş sayfaların (genel olarak *folio*'ların) aktif ve aktif
-olmayan biçiminde iki ayrı listede tutulduğunu belirttik. Aktif olmayan liste *"ikinci şans (second chance)"* denilen
-durum için oluşturulmuştur. Aktif olmayan listede bulunan bir sayfaya (genel olarak *folio*'ya) dokunulduğunda bu
-sayfa aktif listeye alınmaktadır. Aktif olmayan liste bellek baskısı altında ilk geri alınacak listedir. Aktif liste
-ise geri alımı geciktirilen ancak yoğun bellek baskısı söz konusu olduğunda geri alım yapılan listedir:
+olmayan biçiminde iki ayrı listede tutulduğunu belirttik. Aktif olmayan liste hem kolay geri alım için hem de 
+*"ikinci şans (second chance)"* denilen durum için oluşturulmuştur. Aktif olmayan listede bulunan bir sayfaya (genel 
+olarak *folio*'ya) dokunulduğunda bu sayfa aktif listeye alınmaktadır. Aktif olmayan liste bellek baskısı altında ilk 
+geri alınacak listedir. Aktif liste ise geri alımı geciktirilen ancak yoğun bellek baskısı söz konusu olduğunda geri 
+alım yapılan listedir:
 
 .. figure:: _static/active-inactive-lru-table.png
     :align: center
-    :width: 60%
+    :width: 65%
 
 ``LRU_UNEVICTABLE`` listesi geri alınamaz bir listedir. Bir *folio* üzerinde işlem yapılırken *folio* kilitlendiğinde
-bu listeye alınmaktadır. Kilitli *folio*'ların geri alınması bozucu etkilere yol açmaktadır.tedir. Bu iki tür LRU listesi aynı zamanda *aktif olan* ve *aktif olmayan* biçiminde ikiye
-ayrılmaktadır.
+bu listeye alınmaktadır. Kilitli *folio*'ların geri alınması bozucu etkilere yol açmaktadır.tedir. Bu iki tür LRU listesi 
+aynı zamanda *aktif olan* ve *aktif olmayan* biçiminde ikiye ayrılmaktadır.
 
+Evre-1'de önce her listeden ne kadar sayfanın geri alınacağı hesaplanmaktadır. Sonra geri alım için döngü
+içerisinde tarama yapılmaktadır. Tarama sırası şöyledir:
+
+.. code-block:: none
+
+    INACTIVE_ANON → ACTIVE_ANON → INACTIVE_FILE → ACTIVE_FILE
+
+Aktif olmayan listeler sürekli kuyruğundan tüketilen, başından beslenen bir kuyruk biçimindedir. Aktif listelerden
+geri alım yapılmaz. Aktif listelerdeki *folio*'lar önce aktif olmayan listelere alınır. Geri alım oradan yapılır.
+Yukarıdaki listelerin taranması bir döngü içerisinde yapılmaktadır. Bu süreci biraz basitleştirerek aşağıdaki gibi
+bir şekille açıklayabiliriz:
+
+.. figure:: _static/shrink-lruvec-flow.png
+    :align: center
+    :width: 80%
+
+Buradaki döngüyü açıklarsak *kswapd*'nin Evre-1 süreci açıklığa kavuşacaktır. Ancak bu döngünün işleyişi oldukça
+sofistikedir. Biz burada çok derine inmeden temel işleyişi açıklayacağız:
+
+- Süreç bellek baskısıyla başlamaktadır. Bu baskı iki nedenden dolayı oluşabilir: Ya bir bölgedeki boş sayfa sayısı
+  LOW su seviyesinin altına düşmüştür ve bunun sonucu olarak ``kswapd`` çekirdek thread'i uyandırılmıştır ya da
+  *doğrudan geri alım (direct reclaim)* süreci başlatılmıştır. Her iki durumda da aynı döngü çalışır; fark yalnızca
+  kimin çalıştırdığı ve ne zaman duracağıdır.
+
+- Döngü ``priority`` değeri ``12`` ile başlatılır. Bu sayı, listelerin ne kadarının taranacağını belirleyen bir sağa
+  kaydırma miktarıdır. Her listeden ``liste_uzunluğu >> priority`` kadar sayfa işlenecektir. ``12`` ile başlamak,
+  listelerin yalnızca ``1/4096``'sına bakılacağı anlamına gelir. Amaç, hafif baskıda çok az iş yaparak yeterli belleği
+  boşaltabilmek, ancak baskı sürerse kademeli olarak daha derine inmektir.
+
+- ``shrink_lruvec`` fonksiyonunun içine girildiğinde ilk işlem ``get_scan_count`` fonksiyonu ile hangi listelerin
+  taranacağına ve her birinden kaç sayfa işleneceğine karar vermektir. Takas alanı yoksa, ``swappiness`` değeri
+  sıfırsa ya da aktif olmayan dosya listesi zaten yeterince büyükse yalnızca ``_FILE`` listeleri seçilir; ``_ANON``
+  listelerinin sayacı sıfır bırakılır. ``_FILE`` sayfaları çok azalmışsa tersine yalnızca ``_ANON`` listeleri seçilir.
+  İkisi de değilse her iki tür de taranır ve pay ``swappiness`` değeri ile birlikte son turlardaki tarama/döndürme
+  maliyetine göre bölüştürülür. Sonuçta dört liste için ``nr[]`` dizisi doldurulur.
+
+Buradaki ``swappiness`` değeri geri alma sırasında çekirdeğin anonim sayfaları mı yoksa dosya sayfalarını mı tercih
+edeceğini belirleyen bir ayardır. ``/proc/sys/vm/swappiness`` dosyasından bu değer elde edilebilir ve
+değiştirilebilir. Varsayılan ``swappiness`` değeri ``60``'tır, aralığı ise ``0–200``'dür (5.8'den önce ``0–100``'dü). 
+``_ANON`` ve ``_FILE`` payları şöyle hesaplanır:
+
+.. code-block:: none
+
+    anon_prio = swappiness
+    file_prio = 200 - swappiness
+
+Örneğin ``swappiness = 60`` ise ``_ANON`` ``60``, ``_FILE`` ``140`` ağırlığa sahiptir. Yani ``_FILE`` sayfaları ``_ANON``
+sayfalardan yaklaşık ``2.3`` kat daha istekli taranacaktır. Ancak bu ağırlıklar tek başına kullanılmaz; her tarafın son
+turlardaki maliyeti ile bölünür:
+
+.. code-block:: none
+
+    anon_payı = anon_prio / (anon_cost + 1)
+    file_payı = file_prio / (file_cost + 1)
+
+``anon_cost`` ve ``file_cost``, o tarafta taranan ve döndürülen (yani boşuna izole edilip geri konan) sayfaların
+ağırlıklı toplamıdır. Bir tarafta çok döndürme oluyorsa oradaki sayfalar gerçekten kullanılıyor demektir; o taraf
+*pahalı* sayılır ve payı düşer. Böylece ``swappiness`` sabit bir oran değil, dinamik bir geri bildirim döngüsünün
+başlangıç eğimidir.
+
+- Ana döngü, sayacı sıfır olmayan listeleri ``enum`` sırasıyla (aktif olmayan ``_ANON``, aktif ``_ANON``, aktif
+  olmayan ``_FILE``, aktif ``_FILE``) dolaşır; ancak hiçbir listeyi tek seferde bitirmez. Her uğrayışta o listeden en
+  fazla ``32`` sayfa işlenir, sonra bir sonraki listeye geçilir. Böylece listeler arasında dönüşümlü, adil bir ilerleme
+  sağlanır ve bir liste diğerinin aleyhine tüketilmez.
+
+- Sıra bir aktif listeye geldiğinde önce tek bir soru sorulur: bu türün aktif olmayan listesi, bellek boyutuna göre
+  belirlenen orana kıyasla küçük kalmış mı? Hayırsa aktif listeye hiç dokunulmaz. Evetse aktif listenin kuyruğundan
+  32 sayfa alınır ve her birinin PTE'lerindeki erişim bitleri okunup temizlenir. Sayfa çalıştırılabilir bir dosya
+  eşlemesine aitse ve erişilmişse aktif listenin başına geri konur; diğer tüm sayfalar, erişilmiş olsun olmasın,
+  ``PG_active`` bayrağı kaldırılarak aktif olmayan listenin başına indirilir. Bu adımda hiçbir sayfa boşaltılmaz;
+  işin tek amacı aktif olmayan listeyi beslemektir.
+
+- Sıra bir aktif olmayan listeye geldiğinde asıl geri alma işi yapılır. Listenin kuyruğundan 32 sayfa alınır ve her
+  sayfa için iki erişim kanıtı toplanır: Sayfa girişlerindeki (PTE) *young biti (Intel'de A (Access) biti)* okunur ve
+  temizlenir, sayfa üzerindeki ``PG_referenced`` bayrağı okunur ve temizlenir. Bu iki bilginin bileşimi sayfanın
+  kaderini belirler.
+
+- *Young* biti (*Access* biti) set edilmemişse sayfa aradan geçen sürede hiç kullanılmamıştır ve geri alınır. Temiz
+  bir sayfa doğrudan serbest bırakılır; kirliyse önce yedek deposuna (dosyaya ya da takas alanına) yazdırılır. Dosya
+  sayfalarında, sayfa önbelleğindeki yerine o anki tahliye sayacını taşıyan bir gölge girdi bırakılır; bu girdi, sayfa
+  kısa süre sonra geri okunursa onun aslında çalışma kümesine ait olduğunu anlamaya yarar.
+
+- *Young* biti (*Access* biti) set edilmişse ama ``PG_referenced`` set edilmemişse, sayfa bir kez kullanılmıştır
+  fakat bunun kalıcı bir ilgi mi yoksa tek seferlik bir erişim mi olduğu belli değildir. Sayfaya ``PG_referenced``
+  bayrağı konur ve aktif olmayan listenin başına geri gönderilir. Bu, ikinci şanstır: sayfa listeyi bir kez daha
+  baştan sona dolaşacak ve kuyruğa yeniden geldiğinde tekrar sorgulanacaktır.
+
+- *Young* biti (*Access* biti) de ``PG_referenced`` de set edilmişse, sayfa iki ayrı turda erişilmiştir ve gerçekten
+  kullanılıyor demektir; aktif listenin başına terfi ettirilir. Anonim sayfalar ile çalıştırılabilir dosya sayfaları
+  için bu ikinci kanıt aranmaz, tek *young* biti terfi için (yani aktif olmayan listeden aktif listeye aktarılması
+  için) yeterlidir; çünkü ``_ANON`` sayfa *fault* ile geldiğinde zaten bir kez erişilmiştir ve takas maliyeti
+  yüksektir, kodun ise yeniden okunması pahalıdır.
+
+- Bir tur tamamlandığında iki koşul kontrol edilir: bütün ``nr[]`` sayaçları tükenmiş mi, ya da hedeflenen sayıda
+  sayfa boşalmış mı? İkisi de sağlanmıyorsa döngü listeleri yeniden dolaşmaya döner. Hedef sağlanmışsa ve tarama her
+  iki türü kapsıyorsa, az taranmış tarafın kalan sayaçları diğerine oranla kırpılır ki bir tür diğerinden orantısız
+  taranmasın; sonra döngüden çıkılır.
+
+- Döngüden çıkmadan hemen önce ``_ANON`` tarafı için son bir denge kontrolü yapılır. Ana döngünün sürme koşulunda
+  aktif ``_ANON`` listesi bilerek yer almadığından, *anon* aktif olmayan listesi tur boyunca beslenmemiş olabilir.
+  Hâlâ küçükse aktif ``_ANON`` listesinden bir kez daha sayfa aktif olmayan ``_ANON`` listesine alınır; böylece bir
+  sonraki çağrıda *anon* aktif olmayan listesi boş yakalanmaz.
+
+- ``shrink_lruvec`` fonksiyonu bittiğinde çağıran taraf yeterli belleğin boşalıp boşalmadığına bakar. Boşaldıysa
+  süreç biter: ``kswapd`` bölgeler HIGH su seviyesine ulaştığında uyur, doğrudan geri alım yapan akış ise bekleyen
+  ayırma isteğine geri döner.
+
+- Yeterli bellek boşalmadıysa ``priority`` bir azaltılır ve ``shrink_lruvec`` fonksiyonu yeniden çağrılır. Her
+  azalışta taranan dilim iki katına çıkar; ``11``'de ``1/2048``, ``10``'da ``1/1024`` ve nihayet ``0``'da listelerin tamamı. 
+  Bu kademeli derinleşme, sistemin hafif baskıda ucuz, ağır baskıda kapsamlı davranmasını sağlar. ``priority`` sıfıra ulaştığında
+  bile yeterli bellek bulunamıyorsa çekirdek *OOM killer*'ı devreye sokmayı değerlendirir.
+
+Yukarıda maddeler halinde açıkladığımız süreci ayrıntıları atlayıp birkaç cümle ile özetlemek istersek şunları
+söyleyebiliriz:
+
+- Geri alım bir döngü içerisinde yapılmaktadır.
+
+- Geri alım her zaman aktif olmayan listelerden yapılır. Süreç içerisinde aktif listelerden aktif olmayan listelere,
+  aktif olmayan listelerden de aktif listelere geçiş aktarım yapılır. Aktif olmayan listelerdeki *folio*'lara koşula
+  bağlı olarak ikinci bir şans verilmektedir.
+
+- Geri alım düşük bir hedef değerden başlatılarak gitgide yükseltilmektedir.
+
+Evre-2: Inode ve Dentry Nesnelerinin Geri Alımı
+-----------------------------------------------
+
+Şimdi kullanılmayan ``inode`` ve ``dentry`` nesnelerinin nasıl geri alındığı (yani *Evre-2*) üzerinde duralım.
+
+Eskiden ``inode`` önbelleğinin geri alımı için tüm ``inode`` nesnelerine ilişkin toplamda bir tane LRU listesi
+tutuluyordu. Güncel çekirdeklerde her süper blok nesnesi için ayrı bir ``inode`` LRU listesi tutulmaktadır. Her dosya
+sistemi için bir ``super_block`` nesnesi oluşturulduğunu anımsayınız. Bu ``super_block`` nesnelerinin içerisinde hem
+o süper blokta bulunan bütün ``inode`` nesneleri hem de "son zamanlarda en az kullanılan" ``inode`` nesneleri bir
+bağlı liste biçiminde bulunmaktadır:
+
+.. code-block:: c
+
+    struct super_block {
+        /* ... */
+        spinlock_t          s_inode_list_lock;  /* s_inodes listesi için kilit */
+        struct list_head    s_inodes;           /* tüm inode nesneleri */
+        struct list_lru     s_inode_lru;        /* inode LRU listesi */
+        /* ... */
+    };
+
+Burada ``s_inode_lru`` elemanı bu süper blok içerisindeki ``inode`` nesnelerinin LRU listesini belirtmektedir. Bu
+listenin başındaki (``list_head`` LRU listelerine göre ters sıra) ``inode`` nesneleri "son zamanlarda en az
+kullanılan" nesnelerdir. Dolayısıyla ``inode`` geri alımı sondan başa doğru yapılmaktadır. ``s_inode_lru``
+elemanının güncel çekirdeklerde ``list_head`` türünden değil ``list_lru`` türünden olduğuna dikkat ediniz. Bu yapı
+LRU bağlı listelerini soyutlamaktadır. Yapının tanımlaması ``include/linux/list_lru.h`` dosyasında, gerçekleştirimi
+ise ``mm/list_lru.c`` dosyasında bulunmaktadır. ``list_head`` ile ``list_lru`` yapıları arasındaki farklılıkları
+aşağıda bir tablo halinde veriyoruz:
+
+.. figure:: _static/list-head-vs-list-lru-table.png
+    :align: center
+    :width: 70%
+
+Süper blok nesnelerinin ``inode`` LRU listelerine (``s_inode_lru``) o süper bloktaki tüm ``inode`` nesneleri
+yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı 0 olan (``i_count`` = 0 olan))
+``inode`` nesneleri bu listeye yerleştirilmektedir. Dolayısıyla örneğin bir dosya açıkken ``inode`` nesnesi dosya
+nesnesi tarafından gösterildiği için ``inode`` nesnesinin referans sayacı (``i_count``) 0 olmaktan çıkacaktır. Bu
+nesne LRU listesinde bulunmayacaktır. Kendisine hiç referans edilmeyen ``inode`` nesneleri bu LRU listesinde
+tutulmaktadır.
