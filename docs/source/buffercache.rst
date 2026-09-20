@@ -209,7 +209,7 @@ nesnesini belirtmektedir:
 
 .. figure:: _static/inode-responsibilities-table.png
    :alt: Dosya Inode ve bdev Inode sorumlulukları
-   :class: fig-mapping4
+   :class: fig-mapping5
    :align: center
    :width: 45%
 
@@ -418,7 +418,7 @@ Blok numarasından tampona erişime ilişkin adımları daha düzenli bir biçim
 
 .. figure:: _static/buffer-lookup-steps-table.png
     :align: center
-    :width: 70%
+    :width: 75%
 
 Peki ``buffer_head`` nesneleri ne zaman oluşturulmaktadır? İşte çekirdek tampon önbelleğindeki bir tampona
 eriştiğinde eğer o tamponun içinde bulunduğu sayfa için (genel olarak *folio* için) ``buffer_head`` nesneleri

@@ -574,8 +574,94 @@ aşağıda bir tablo halinde veriyoruz:
     :width: 70%
 
 Süper blok nesnelerinin ``inode`` LRU listelerine (``s_inode_lru``) o süper bloktaki tüm ``inode`` nesneleri
-yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı 0 olan (``i_count`` = 0 olan))
+yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı ``0`` olan (``i_count = 0`` olan))
 ``inode`` nesneleri bu listeye yerleştirilmektedir. Dolayısıyla örneğin bir dosya açıkken ``inode`` nesnesi dosya
-nesnesi tarafından gösterildiği için ``inode`` nesnesinin referans sayacı (``i_count``) 0 olmaktan çıkacaktır. Bu
+nesnesi tarafından gösterildiği için ``inode`` nesnesinin referans sayacı (``i_count``) ``0`` olmaktan çıkacaktır. Bu
 nesne LRU listesinde bulunmayacaktır. Kendisine hiç referans edilmeyen ``inode`` nesneleri bu LRU listesinde
 tutulmaktadır.
+
+``inode`` LRU listelerinin dolaşılarak ``inode`` nesnelerinin geri alınması süreci zaman içerisinde değiştirilmiş ve
+iyileştirilmiştir. Güncel çekirdeklerde (bir süredir bu sistem uygulanmaktadır) her süper blok nesnesi için bir
+*büzücü (shrinker)* oluşturulmaktadır. Bu *shrinker*'daki fonksiyonlar kendi süper blok ``inode`` nesnelerinin geri alımını
+yapmaktadır:
+
+.. code-block:: c
+
+    struct super_block {
+        /* ... */
+        struct shrinker     *s_shrink;      /* per-sb shrinker handle */
+        /* ... */
+    };
+
+Büzücüler ``shrinker`` yapısıyla temsil edilmektedir. Mevcut çekirdeklerde ``shrinker`` yapısı
+``include/linux/shrinker.h`` dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct shrinker {
+        unsigned long (*count_objects)(struct shrinker *,
+                        struct shrink_control *sc);
+        unsigned long (*scan_objects)(struct shrinker *,
+                        struct shrink_control *sc);
+
+        long batch;     /* reclaim batch size, 0 = default */
+        int seeks;      /* seeks to recreate an obj */
+        unsigned flags;
+
+        /*
+         * The reference count of this shrinker. Registered shrinker have an
+         * initial refcount of 1, then the lookup operations are now allowed
+         * to use it via shrinker_try_get(). Later in the unregistration step,
+         * the initial refcount will be discarded, and will free the shrinker
+         * asynchronously via RCU after its refcount reaches 0.
+         */
+        refcount_t refcount;
+        struct completion done;     /* use to wait for refcount to reach 0 */
+        struct rcu_head rcu;
+
+        void *private_data;
+
+        /* These are for internal use */
+        struct list_head list;
+    #ifdef CONFIG_MEMCG
+        /* ID in shrinker_idr */
+        int id;
+    #endif
+    #ifdef CONFIG_SHRINKER_DEBUG
+        int debugfs_id;
+        const char *name;
+        struct dentry *debugfs_entry;
+    #endif
+        /* objs pending delete, per node */
+        atomic_long_t *nr_deferred;
+    };
+
+    Biz burada büzücüler konusunun ayrıntılarına girmeyeceğiz.
+
+Aslında ``kswapd`` süper blokları doğrudan dolaşmamaktadır. Süper blokların ``shrinker`` nesneleri süper blok nesnesi
+yaratıldığında global bir bağlı listede biriktirilir. ``kswapd`` bu ``shrinker`` listesini dolaşmaktadır. Güncel
+çekirdeklerde bu ``shrinker`` listesi ``mm/shrinker.c`` dosyası içerisinde aşağıdaki gibi tanımlanmıştır:
+
+.. code-block:: c
+
+    LIST_HEAD(shrinker_list);
+
+Buradaki liste ``shrinker`` nesnelerini tutmaktadır. Ancak ``shrinker`` nesneleri de ``super_block`` nesneleri
+içerisinde olduğundan ``container_of`` makrosuyla ``shrinker`` nesnesinin içinde bulunduğu ``super_block`` nesnesine
+erişilebilmektedir:
+
+.. figure:: _static/shrinker-list.png
+    :align: center
+    :width: 100%
+
+İşte ``kswapd`` thread'leri aslında bu ``shrinker`` listesini dolaşıp ``inode`` nesnelerinin geri alımı için
+``shrinker`` nesnesi içerisindeki fonksiyonları çağırmaktadır. ``kswapd`` thread'i belli bir noktada
+``shrink_node`` fonksiyonunu, bu fonksiyon da ``shrinker`` listesini dolaşarak ``shrinker`` nesneleri içerisindeki
+``scan_objects`` fonksiyonunu çağırmaktadır. ``inode`` nesnelerinin yok edilmesi bu yoldan yapılmaktadır. Aşağıda
+``kswapd`` tarafından çağrılan ``shrink_node`` çağrı zincirini veriyoruz:
+
+.. figure:: _static/shrink-node-inode-call-tree.png
+    :width: 70%
+
+Her yeni *mount* işleminde *mount* edilen ``super_block`` nesnesi içerisindeki ``shrinker`` da ``shrinker``
+listesine eklenmektedir.
