@@ -166,3 +166,17 @@ table.docutils th {
     img.fig-mapping5 { width: 90% !important; }
 }
 
+.acknowledge {
+    margin-left: 4.0em;
+    margin-right: 6.0em;
+    font-style: italic;
+    text-align: justify;
+}
+
+@media (max-width: 1024px) {
+    .acknowledge {
+        margin-left: 2em;
+        margin-right: 2em;
+        text-align: justify;
+    }
+}

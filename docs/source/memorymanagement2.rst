@@ -2175,7 +2175,7 @@ ilkdeğerlerin verildiği ``mm_init`` fonksiyonu içerisinde yaratılmaktadır:
 .. figure:: _static/kmem-cache-init-chain.png
    :alt: kmem_cache_init çağrı zinciri
    :align: center
-   :class: fig-mapping3
+   :class: fig-mapping2
    :width: 35%
 
 Tablodaki ``KMALLOC_CGROUP``, *docker* gibi *container* teknolojilerinin kullanımını daha etkin hale
@@ -2319,7 +2319,7 @@ yapılmaktadır:
 .. figure:: _static/obj-to-kmem-cache-chain.png
    :alt: Nesne adresinden kmem_cache nesnesine erişim zinciri
    :align: center
-   :class: fig-mapping4
+   :class: fig-mapping3
    :width: 45%
 
 Dilim Önbelleklerine İlişkin Bilgilerin proc ve sys Dosya Sistemleri Yoluyla Elde Edilmesi
