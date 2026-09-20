@@ -209,6 +209,7 @@ nesnesini belirtmektedir:
 
 .. figure:: _static/inode-responsibilities-table.png
    :alt: Dosya Inode ve bdev Inode sorumlulukları
+   :class: fig-mapping4
    :align: center
    :width: 45%
 
