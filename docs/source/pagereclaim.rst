@@ -252,13 +252,13 @@ Biz birinci evreye *"sayfa geri alımı (page reclaim)"*, ikinci evreye ise *"di
 diyeceğiz. Aşağıda birinci ve ikinci işlemi "evre 1" ve "evre 2" diye isimlendirerek ayrıntılı akışı veriyoruz:
 
 .. figure:: _static/shrink-node-call-tree.png
-    :width: 80%
+    :width: 90%
 
 Bu akışı şekilsel olarak da şöyle betimleyebiliriz:
 
 .. figure:: _static/reclaim-phases-flow.png
     :align: center
-    :width: 100%
+    :width: 90%
 
 Evre-1: Sayfa Geri Alımı
 ------------------------
@@ -540,10 +540,11 @@ söyleyebiliriz:
 
 - Geri alım düşük bir hedef değerden başlatılarak gitgide yükseltilmektedir.
 
-Evre-2: Inode ve Dentry Nesnelerinin Geri Alımı
+Evre-2: Dentry ve INode Nesnelerinin Geri Alımı
 -----------------------------------------------
 
-Şimdi kullanılmayan ``inode`` ve ``dentry`` nesnelerinin nasıl geri alındığı (yani *Evre-2*) üzerinde duralım.
+Şimdi kullanılmayan ``dentry`` ve ``inode`` ve  nesnelerinin nasıl geri alınarak dilime iade edildiği (yani *Evre-2*) üzerinde 
+duralım.
 
 Eskiden ``inode`` önbelleğinin geri alımı için tüm ``inode`` nesnelerine ilişkin toplamda bir tane LRU listesi
 tutuluyordu. Güncel çekirdeklerde her süper blok nesnesi için ayrı bir ``inode`` LRU listesi tutulmaktadır. Her dosya
@@ -652,7 +653,7 @@ erişilebilmektedir:
 
 .. figure:: _static/shrinker-list.png
     :align: center
-    :width: 100%
+    :width: 90%
 
 İşte ``kswapd`` thread'leri aslında bu ``shrinker`` listesini dolaşıp ``inode`` nesnelerinin geri alımı için
 ``shrinker`` nesnesi içerisindeki fonksiyonları çağırmaktadır. ``kswapd`` thread'i belli bir noktada
@@ -665,3 +666,13 @@ erişilebilmektedir:
 
 Her yeni *mount* işleminde *mount* edilen ``super_block`` nesnesi içerisindeki ``shrinker`` da ``shrinker``
 listesine eklenmektedir.
+
+Peki ``inode`` nesnelerinin LRU listeleri geri alınırken geri alım ne kadar ``inode`` nesnesini kapsayacak biçimde
+yapılmaktadır? İşte süper blok ``inode`` LRU listelerindeki her ``inode`` nesnesi geri alıma müsait değildir.
+``inode`` nesnesinin geri alınabilirliği konusundaki kararlar ``inode_lru_isolate`` isimli fonksiyon tarafından
+verilip işlemler bu fonksiyon tarafından yapılmaktadır. Fonksiyon her nesne için *"ben şunu yaptım"* anlamında bir
+``enum lru_status`` değeri döndürmektedir. Geri döndürülen değerler şunlardır:
+
+.. figure:: _static/inode-lru-isolate-status-table.png
+    :align: center
+    :width: 65%
