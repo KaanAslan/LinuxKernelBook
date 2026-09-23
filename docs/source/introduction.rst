@@ -641,8 +641,8 @@ ticari bir versiyonu da vardır. ZYpp, YaST ve RPM paket yöneticilerini kullanm
 **Slackware:** En eski Linux dağıtımıdır. 1993 yılında oluşturulmuştur. Sürdürümü yavaş
 olmakla birlikte hala devam etmektedir.
 
-POSIX Standartları
-===================
+POSIX ve SUS Standartları
+=========================
 
 1980'li yıllarda AT&T ya da BSD kodlarından türetilmiş olan ve çoğunluğu şirketlere ait
 olan pek çok UNIX türevi işletim sistemi oluşturuldu. Bu işletim sistemleri birbirlerine
