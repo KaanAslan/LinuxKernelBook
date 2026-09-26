@@ -720,7 +720,7 @@ istiyoruz:
     };
 
 .. image:: _static/zone-free-area-tree.png
-   :width: 70% 
+   :width: 65% 
 
 Aslında sayfa tahisat işlemlerinde "belli bir düğümün, belli bölgesinin, belli bir göç türü" hedef alınarak süreç 
 başlatılmaktadır. İşte ``alloc_pages`` gibi fonksiyonların birinci parametresindeki bayraklar bu tespitin
@@ -943,7 +943,7 @@ Burada önemli bir noktayı belirtmek istiyoruz. ``node_zonelists`` elemanının
 NUMA düğümlerinin bölgeleri de bu dizi içerisindedir. ``node_zonelists`` dizisinin temsili görüntüsü şöyledir:
 
 .. image:: _static/pgdat-zonelists.png
-   :width: 75%
+   :width: 70%
 
 Bu temsili çizimde örnek olarak 0'ıncı NUMA düğümünün ``node_zonelists`` dizisi gösterilmiştir. Görüldüğü
 gibi bu dizinin 0'ıncı elemanı bölgelerden oluşmaktadır; ancak bölgeler yalnızca 0'ıncı düğümün bölgelerini
@@ -953,7 +953,7 @@ dolaşılmasına 0'ıncı düğümdeki DMA32'den başlatılacaktır:
 
 .. figure:: _static/pgdat-zonelists-search-start.png
    :alt: pg_data_t zonelist yapısı
-   :width: 90%
+   :width: 85%
 
 Eğer bu bölgenin göç *fallback* listesinin hiçbir yerinde talep edilen miktarda boş sayfa bulunamazsa bundan
 sonra arama 0'ıncı düğümün ``ZONE_DMA`` bölgesinden devam edecek, orada da bulunamazsa 1'inci düğümün
@@ -982,17 +982,17 @@ blok tahsisat sistemindedir. Örneğin UMA x86-64 mimarisindeki başlangıç dur
 
 .. figure:: _static/node-zone-free-area-movable.png
    :alt: Açılış anındaki serbest blok dağılımı
-   :width: 70%
+   :width: 65%
 
 Örneğin ARM64 kullanılan Raspberry Pi modelleri için başlangıç durumu şöyledir:
 
 .. image:: _static/rpi-node-zone-free-area.png
-   :width: 80 %
+   :width: 75 %
 
 ARM32 kullanan BeagleBone modelleri için de başlangıç durumu şöyledir:
 
 .. image:: _static/bbb-node-zone-free-area.png
-   :width: 85%
+   :width: 80%
 
 Fallback Mekanizmasında NUMA Düğümlerinin Dolaşım Sırası
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
