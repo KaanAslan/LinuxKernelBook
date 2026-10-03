@@ -288,7 +288,7 @@ LRU listelerinde tutulmaktadır. LRU listelerinde tutulan sayfalar şunlardır:
 * İkiz blok tahsisat sisteminde boşta duran sayfalar.
 * *Reserved* olarak işaretlenmiş sayfalar.
 
-Bunların bir kısmı hiç geri alınamaz; dilim önbelleğindeki olanlar ise LRU üzerinden değil Evre-2'de açıklayacağımız 
+Bunların bir kısmı hiç geri alınamaz; dilim önbelleğinde olan dentry ve inode nesneleri ise LRU üzerinden değil Evre-2'de açıklayacağımız 
 *büzücüler (shrinkers)* yoluyla küçültülmektedir.
 
 Güncel çekirdeklerde sayfalara ilişkin LRU listeleri eğer ``CONFIG_MEMCG`` konfigürasyon seçeneği aktif değilse
@@ -304,7 +304,7 @@ listelerinin tutulduğu yeri ve bunlara erişim fonksiyonlarını aşağıda bir
 
 .. figure:: _static/lruvec-location-api-table.png
     :align: center
-    :width: 70%
+    :width: 65%
 
 ``pglist_data`` yapısının ``__lruvec`` elemanı sayfalar için LRU listelerini tutmaktadır:
 
@@ -424,7 +424,7 @@ içerisinde tarama yapılmaktadır. Tarama sırası şöyledir:
 
     INACTIVE_ANON → ACTIVE_ANON → INACTIVE_FILE → ACTIVE_FILE
 
-Aktif olmayan listeler sürekli kuyruğundan tüketilen, başından beslenen bir kuyruk biçimindedir. Aktif listelerden
+Aktif olmayan listeler kuyruğundan tüketilen, başından beslenen bir kuyruk biçimindedir. Aktif listelerden
 geri alım yapılmaz. Aktif listelerdeki *folio*'lar önce aktif olmayan listelere alınır. Geri alım oradan yapılır.
 Yukarıdaki listelerin taranması bir döngü içerisinde yapılmaktadır. Bu süreci biraz basitleştirerek aşağıdaki gibi
 bir şekille açıklayabiliriz:
@@ -482,7 +482,7 @@ başlangıç eğimidir.
   fazla ``32`` sayfa işlenir, sonra bir sonraki listeye geçilir. Böylece listeler arasında dönüşümlü, adil bir ilerleme
   sağlanır ve bir liste diğerinin aleyhine tüketilmez.
 
-- Sıra bir aktif listeye geldiğinde önce tek bir soru sorulur: bu türün aktif olmayan listesi, bellek boyutuna göre
+- Sıra bir aktif listeye geldiğinde önce tek bir soru sorulur: Bu türün aktif olmayan listesi, bellek boyutuna göre
   belirlenen orana kıyasla küçük kalmış mı? Hayırsa aktif listeye hiç dokunulmaz. Evetse aktif listenin kuyruğundan
   32 sayfa alınır ve her birinin PTE'lerindeki erişim bitleri okunup temizlenir. Sayfa çalıştırılabilir bir dosya
   eşlemesine aitse ve erişilmişse aktif listenin başına geri konur; diğer tüm sayfalar, erişilmiş olsun olmasın,
@@ -540,62 +540,54 @@ söyleyebiliriz:
 
 - Geri alım düşük bir hedef değerden başlatılarak gitgide yükseltilmektedir.
 
-Evre-2: Dentry ve INode Nesnelerinin Geri Alımı
+Evre-2: Dentry ve Inode Nesnelerinin Geri Alımı
 -----------------------------------------------
 
 Şimdi kullanılmayan ``dentry`` ve ``inode`` ve  nesnelerinin nasıl geri alınarak dilime iade edildiği (yani *Evre-2*) üzerinde 
-duralım.
+duralım. *Evre-2*'de önce ``dentry`` nesneleri sonra ``inode`` nesneleri geri alınmaktadır. Biz de bu bölümde önce ``dentry``
+nesnelerinin geri alım mekanizmasını sonra ``inode`` nesnelerinin geri alım mekanizmasını inceleyeceğiz.
 
-Eskiden ``inode`` önbelleğinin geri alımı için tüm ``inode`` nesnelerine ilişkin toplamda bir tane LRU listesi
-tutuluyordu. Güncel çekirdeklerde her süper blok nesnesi için ayrı bir ``inode`` LRU listesi tutulmaktadır. Her dosya
-sistemi için bir ``super_block`` nesnesi oluşturulduğunu anımsayınız. Bu ``super_block`` nesnelerinin içerisinde hem
-o süper blokta bulunan bütün ``inode`` nesneleri hem de "son zamanlarda en az kullanılan" ``inode`` nesneleri bir
-bağlı liste biçiminde bulunmaktadır:
+Dentry Nesnekerinin Geri Alımı
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Eskiden ``dentry`` önbelleğinin geri alımı için tüm ``dentry`` nesnelerine ilişkin ``dentry_unused`` isimli
+tek bir LRU listesi bulunuyordu. Güncel çekirdeklerde her süper blok nesnesi için ayrı bir ``dentry`` LRU listesi
+tutulmaktadır. *Mount* edilmiş her dosya sistemi için bir ``super_block`` nesnesi oluşturulduğunu anımsayınız. Bu
+``super_block`` nesnelerinin içerisinde o süper bloktaki kullanılmayan ``dentry`` nesneleri tutulmaktadır:
 
 .. code-block:: c
 
     struct super_block {
         /* ... */
-        spinlock_t          s_inode_list_lock;  /* s_inodes listesi için kilit */
-        struct list_head    s_inodes;           /* tüm inode nesneleri */
-        struct list_lru     s_inode_lru;        /* inode LRU listesi */
+
+        struct list_lru     s_dentry_lru;
+
         /* ... */
     };
 
-Burada ``s_inode_lru`` elemanı bu süper blok içerisindeki ``inode`` nesnelerinin LRU listesini belirtmektedir. Bu
-listenin başındaki (``list_head`` LRU listelerine göre ters sıra) ``inode`` nesneleri "son zamanlarda en az
-kullanılan" nesnelerdir. Dolayısıyla ``inode`` geri alımı sondan başa doğru yapılmaktadır. ``s_inode_lru``
-elemanının güncel çekirdeklerde ``list_head`` türünden değil ``list_lru`` türünden olduğuna dikkat ediniz. Bu yapı
-LRU bağlı listelerini soyutlamaktadır. Yapının tanımlaması ``include/linux/list_lru.h`` dosyasında, gerçekleştirimi
-ise ``mm/list_lru.c`` dosyasında bulunmaktadır. ``list_head`` ile ``list_lru`` yapıları arasındaki farklılıkları
-aşağıda bir tablo halinde veriyoruz:
+``super_block`` nesnelerinin içerisinde o süper bloktaki bütün ``dentry`` nesnelerini tutan bir liste yoktur.
+``dentry`` nesnelerine global ``dentry_hashtable`` üzerinden erişilmektedir. Eskiden ``s_dentry_lru`` elemanı
+``list_head`` türündendi. 3.12 sürümünden itibaren ``s_dentry_lru`` elemanının türü ``list_lru`` olarak
+değiştirilmiştir. (Aynı versiyonda ``s_inode_lru`` elemanının türü de benzer biçimde değiştirilmiştir.) ``list_lru``
+içinde her NUMA düğümü için (*memcg* etkinse ayrıca her *cgroup* için) ayrı listeler bulunmaktadır.
 
-.. figure:: _static/list-head-vs-list-lru-table.png
-    :align: center
-    :width: 70%
-
-Süper blok nesnelerinin ``inode`` LRU listelerine (``s_inode_lru``) o süper bloktaki tüm ``inode`` nesneleri
-yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı ``0`` olan (``i_count = 0`` olan))
-``inode`` nesneleri bu listeye yerleştirilmektedir. Dolayısıyla örneğin bir dosya açıkken ``inode`` nesnesi dosya
-nesnesi tarafından gösterildiği için ``inode`` nesnesinin referans sayacı (``i_count``) ``0`` olmaktan çıkacaktır. Bu
-nesne LRU listesinde bulunmayacaktır. Kendisine hiç referans edilmeyen ``inode`` nesneleri bu LRU listesinde
-tutulmaktadır.
-
-``inode`` LRU listelerinin dolaşılarak ``inode`` nesnelerinin geri alınması süreci zaman içerisinde değiştirilmiş ve
-iyileştirilmiştir. Güncel çekirdeklerde (bir süredir bu sistem uygulanmaktadır) her süper blok nesnesi için bir
-*büzücü (shrinker)* oluşturulmaktadır. Bu *shrinker*'daki fonksiyonlar kendi süper blok ``inode`` nesnelerinin geri alımını
-yapmaktadır:
+``dentry`` ve ``inode`` LRU listelerinin dolaşılarak ``dentry`` ve ``inode`` nesnelerinin geri alınması süreci zaman
+içerisinde değiştirilmiş ve iyileştirilmiştir. Güncel çekirdeklerde (bir süredir bu sistem uygulanmaktadır) her
+``super_block`` nesnesi için bir *"büzücü (shrinker)"* oluşturulmaktadır. Bu büzücülerdeki fonksiyonlar kendi süper
+blok ``dentry`` ve ``inode`` nesnelerinin geri alımını yapmaktadır:
 
 .. code-block:: c
 
     struct super_block {
         /* ... */
+
         struct shrinker     *s_shrink;      /* per-sb shrinker handle */
+
         /* ... */
     };
 
-Büzücüler ``shrinker`` yapısıyla temsil edilmektedir. Mevcut çekirdeklerde ``shrinker`` yapısı
-``include/linux/shrinker.h`` dosyası içerisinde şöyle tanımlanmıştır:
+Büzücüler ``shrinker`` yapısıyla temsil edilmektedir. Mevcut çekirdeklerde ``shrinker`` yapısı `include/linux/shrinker.h`` 
+dosyası içerisinde şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -639,8 +631,8 @@ Büzücüler ``shrinker`` yapısıyla temsil edilmektedir. Mevcut çekirdeklerde
 
     Biz burada büzücüler konusunun ayrıntılarına girmeyeceğiz.
 
-Aslında ``kswapd`` süper blokları doğrudan dolaşmamaktadır. Süper blokların ``shrinker`` nesneleri süper blok nesnesi
-yaratıldığında global bir bağlı listede biriktirilir. ``kswapd`` bu ``shrinker`` listesini dolaşmaktadır. Güncel
+Aslında ``kswapd`` süper blokları doğrudan dolaşmamaktadır. Süper blokların ``shrinker`` nesneleri ``super_block`` nesnesi
+yaratıldığında global bir bağlı listede biriktirilmektedir, ``kswapd`` de bu ``shrinker`` listesini dolaşmaktadır. Güncel
 çekirdeklerde bu ``shrinker`` listesi ``mm/shrinker.c`` dosyası içerisinde aşağıdaki gibi tanımlanmıştır:
 
 .. code-block:: c
@@ -655,21 +647,72 @@ erişilebilmektedir:
     :align: center
     :width: 90%
 
-İşte ``kswapd`` thread'leri aslında bu ``shrinker`` listesini dolaşıp ``inode`` nesnelerinin geri alımı için
-``shrinker`` nesnesi içerisindeki fonksiyonları çağırmaktadır. ``kswapd`` thread'i belli bir noktada
-``shrink_node`` fonksiyonunu, bu fonksiyon da ``shrinker`` listesini dolaşarak ``shrinker`` nesneleri içerisindeki
-``scan_objects`` fonksiyonunu çağırmaktadır. ``inode`` nesnelerinin yok edilmesi bu yoldan yapılmaktadır. Aşağıda
-``kswapd`` tarafından çağrılan ``shrink_node`` çağrı zincirini veriyoruz:
-
-.. figure:: _static/shrink-node-inode-call-tree.png
-    :width: 70%
-
 Her yeni *mount* işleminde *mount* edilen ``super_block`` nesnesi içerisindeki ``shrinker`` da ``shrinker``
 listesine eklenmektedir.
 
+``kswapd`` thread'leri aslında bu ``shrinker`` listesini dolaşıp ``dentry`` ve ``inode`` nesnelerinin geri alımı için
+``shrinker`` nesnesi içerisindeki fonksiyonları çağırmaktadır. ``kswapd`` thread'i belli bir noktada
+``shrink_node`` fonksiyonunu, bu fonksiyon da ``shrinker`` listesini dolaşarak ``shrinker`` nesneleri içerisindeki
+``scan_objects`` fonksiyon göstericisinin gösterdiği super_cache_scan fonksiyonunu çağırmaktadır. ``dentry`` ve ``inode`` 
+nesnelerinin yok edilmesi bu yoldan yapılmaktadır. Aşağıda ``kswapd`` tarafından çağrılan ``shrink_node`` çağrı 
+zincirini sadeleştirerek veriyoruz:
+
+.. figure:: _static/shrink-node-inode-call-tree.png
+    :width: 75%
+
+Inode Nesnelerinin Geri Alımı
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Eskiden ``inode`` önbelleğinin geri alımı için tüm ``inode`` nesnelerine ilişkin toplamda bir tane LRU listesi
+tutuluyordu. Güncel çekirdeklerde uzunca bir süredir her süper blok nesnesi için ayrı bir ``inode`` LRU listesi tutulmaktadır. 
+Her dosya sistemi için bir ``super_block`` nesnesi oluşturulduğunu anımsayınız. Bu ``super_block`` nesnelerinin içerisinde 
+hem o süper blokta bulunan bütün ``inode`` nesnelerini hem de kullanılmayan ``inode`` nesnelerini tutan alanalr elemanlar 
+bulunmaktadır:
+
+.. code-block:: c
+
+    struct super_block {
+        /* ... */
+        spinlock_t          s_inode_list_lock;  /* s_inodes listesi için kilit */
+        struct list_head    s_inodes;           /* tüm inode nesneleri */
+        struct list_lru     s_inode_lru;        /* inode LRU listesi */
+        /* ... */
+    };
+
+Burada ``s_inode_lru`` elemanı bu süper blok içerisindeki kullanılmayan ``inode`` nesnelerinin LRU listesini
+belirtmektedir. Bu listenin başındaki (``list_head`` LRU listelerine göre ters sıra) ``inode`` nesneleri en eski
+nesnelerdir. Dolayısıyla ``inode`` geri alımı baştan sona doğru yapılmaktadır. ``s_inode_lru`` elemanının güncel
+çekirdeklerde ``list_head`` türünden değil ``list_lru`` türünden olduğuna dikkat ediniz. Bu geçiş de ``dentry`` LRU
+listelerinde olduğu gibi çekirdeğin 3.12 versiyonunda yapılmıştır. Bu yapı *memcg* temelinde bağlı LRU listelerini
+soyutlamaktadır. Bu sayede büzücüler (*shrinkers*) belirli bir düğüm ya da *cgroup* için çağrıldığında yalnızca
+ilgili liste taranır. Her süper bloğun kendi büzücüsü bulunmaktadır. ``list_lru`` yapısının tanımlaması
+``include/linux/list_lru.h`` dosyasında, gerçekleştirimi ise ``mm/list_lru.c`` dosyasında yapılmıştır. ``list_head``
+ile ``list_lru`` yapıları arasındaki farklılıkları aşağıda bir tablo halinde veriyoruz:
+
+.. figure:: _static/list-head-vs-list-lru-table.png
+    :align: center
+    :width: 80%
+
+Süper blok nesnelerinin ``inode`` LRU listelerine (``s_inode_lru``) o süper bloktaki tüm ``inode`` nesneleri
+yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı ``0`` olan (``i_count = 0`` olan))
+``inode`` nesneleri bu listeye yerleştirilmektedir. Dolayısıyla örneğin bir dosya açıkken ``inode`` nesnesi dosya
+nesnesi tarafından gösterildiği için ``inode`` nesnesinin referans sayacı (``i_count``) ``0`` olmaktan çıkacaktır. Bu
+nesne LRU listesinde bulunmayacaktır. Kendisine hiç referans edilmeyen (başka bir deyişle kullanılmayan) ``inode`` nesneleri 
+bu LRU listesinde tutulmaktadır.
+
+Inode LRU listelerinin geri alımı da yine ``super_block`` nesnelerinin içerisindeki ``shrinker`` nesnesi yoluyla
+yapılmaktadır. Büzücüdeki ``scan_objects`` fonksiyon göstericisinin gösterdiği ``super_cache_scan`` fonksiyonu
+``prune_dcache_sb`` fonksiyonundan sonra ``prune_icache_sb`` fonksiyonunu çağırmaktadır. ``inode`` nesnelerinin geri
+alınması bu yoldan yapılmaktadır. Yukarıda vermiş olduğumuz çağrı zincirini yeniden veriyoruz:
+
+.. figure:: _static/shrink-node-inode-call-tree.png
+    :width: 75%
+
 Peki ``inode`` nesnelerinin LRU listeleri geri alınırken geri alım ne kadar ``inode`` nesnesini kapsayacak biçimde
 yapılmaktadır? İşte süper blok ``inode`` LRU listelerindeki her ``inode`` nesnesi geri alıma müsait değildir.
-``inode`` nesnesinin geri alınabilirliği konusundaki kararlar ``inode_lru_isolate`` isimli fonksiyon tarafından
+``inode`` nesnesinin geri alınabilirliği konusundaki kararlar tıpkı ``dentry`` nesnelerinde olduğu gibi 
+``inode_lru_isolate isimli`` fonksiyon tarafından verilip işlemler bu fonksiyon tarafından yapılmaktadır. ``inode`` 
+nesnesinin geri alınabilirliği konusundaki kararlar ``inode_lru_isolate`` isimli fonksiyon tarafından
 verilip işlemler bu fonksiyon tarafından yapılmaktadır. Fonksiyon her nesne için *"ben şunu yaptım"* anlamında bir
 ``enum lru_status`` değeri döndürmektedir. Geri döndürülen değerler şunlardır:
 
