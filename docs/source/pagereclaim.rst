@@ -660,13 +660,106 @@ zincirini sadeleştirerek veriyoruz:
 .. figure:: _static/shrink-node-inode-call-tree.png
     :width: 75%
 
+
+Güncel çekirdeklerde ``dentry`` nesneleri kimse tarafından kullanılmadığında yani referans sayacı 0'a düştüğünde
+(``d_lockref.count`` elemanı) ``dput`` fonksiyonu ``dentry`` nesnesinin ``dentry`` önbelleğinde tutmaya değip
+değmeyeceğine ``retain_dentry`` fonksiyonunu çağırarak karar verir. O ``dentry`` nesnesini ya önbelleğe alır ya da
+dilime iade eder. Eğer ``dentry`` ilk kez kullanılmaz hale geliyorsa nesne LRU listesine eklenir. ``dentry`` zaten
+LRU listesindeyse (yani önbellekteyken yeniden bulunup kullanılmış ve tekrar bırakılmışsa) nesnenin ``d_flags``
+elemanının ``DCACHE_REFERENCED`` biti set edilir. Bu bayrak ``dentry_lru_isolate`` fonksiyonu tarafından nesneye
+ikinci şans (*second chance*) vermektedir.
+
+``dentry`` nesnelerinin hepsi ``prune_dcache_sb`` akışı tarafından taranıp ``dentry_lru_isolate`` fonksiyonuna
+sokulmaktadır. Bu fonksiyon duruma göre nesnenin dilime iade edilmesini sağlayıp uyguladığı işlemin ne olduğu
+bilgisine geri dönmektedir.
+
+``dentry_lru_isolate`` fonksiyonunun geri dönüş değeri ``lru_status`` isimli ``enum`` türündendir. Bu ``enum``
+türünün elemanları şöyledir:
+
+.. code-block:: c
+
+    enum lru_status {
+        LRU_REMOVED,            /* item removed from list */
+        LRU_REMOVED_RETRY,      /* item removed, but lock has been
+                                   dropped and reacquired */
+        LRU_ROTATE,             /* item referenced, give another pass */
+        LRU_SKIP,               /* item cannot be locked, skip */
+        LRU_RETRY,              /* item not freeable. May drop the lock
+                                   internally, but has to return locked. */
+        LRU_STOP,               /* stop lru list walking. May drop the lock
+                                   internally, but has to return locked. */
+    };
+
+Peki ``dentry`` nesnelerinin LRU listeleri geri alınırken geri alım ne kadar ``dentry`` nesnesini kapsayacak biçimde
+yapılmaktadır? İşte süper blok ``dentry`` LRU listelerindeki her ``dentry`` nesnesi geri alıma müsait değildir.
+``dentry`` nesnesinin geri alınabilirliği konusundaki kararlar ``dentry_lru_isolate`` isimli fonksiyon tarafından
+verilip işlemler de bu fonksiyon tarafından yapılmaktadır. Fonksiyon her nesne için *"ben şunu yaptım"* anlamında
+bir ``enum lru_status`` değeri döndürmektedir:
+
+.. figure:: _static/dentry-lru-isolate-status-table.png
+    :align: center
+    :width: 65%
+
+``dentry_lru_isolate`` fonksiyonu ( ``inode_lru_isolate`` fonksiyonundan farklı olarak) ``LRU_RETRY`` değerini hiçbir
+zaman döndürmemektedir. Çünkü ``dentry`` nesnelerinin geri yazılacak bir içeriği, tamponu ya da sayfa önbelleği
+yoktur ve fonksiyon liste kilidini hiçbir zaman bırakmaz. Ayrıca ``dispose`` listesine alınan ``dentry`` nesnesi
+henüz öldürülmüş değildir; asıl öldürme işlemi liste yürüyüşü bittikten sonra ``shrink_dentry_list`` fonksiyonu
+tarafından yapılmaktadır.
+
+``dentry_lru_isolate`` fonksiyonu tarafından yapılan işlemler şunlardır:
+
+1. **Kilit çekişmesi yaşanıyorsa (LRU_SKIP):** Normal kilit sırası önce ``d_lock``, sonra LRU listesinin kilididir.
+   Tarayıcı ise liste kilidini tutarken ``d_lock`` kilidini almak zorundadır; yani sıra terstir. Bu yüzden
+   ``spin_trylock`` kullanılır. Kilit alınamazsa nesne o taramada tamamen atlanır ve listede yerinde kalır.
+
+2. **Listede olduğu halde yeniden referans edilmiş (yani d_lockref.count > 0) nesneler:** Nesne listedeyken bir yol
+   aramasıyla (``__d_lookup_rcu()``, ``__d_lookup()``) bulunup kullanılmaya başlanmış olabilir. Arama nesneyi
+   listeden çıkarmaz, yalnızca sayacı artırır. Nesne, ``dentry_lru_isolate`` fonksiyonu içindeki ``d_lru_isolate()``
+   çağrısıyla listeden tembel biçimde (*lazily*) çıkarılır. Bu çağrı ``DCACHE_LRU_LIST`` bitini siler ve
+   ``nr_dentry_unused`` sayacını düşürür. Fonksiyon ``LRU_REMOVED`` ile döner, ama nesne öldürülmez. Sayaç daha
+   sonra ``dput()`` ile yeniden sıfıra indiğinde ``retain_dentry()`` nesneyi ``d_lru_add()`` ile tekrar listenin
+   sonuna ekler. (``list_lru`` yapısında listenin başındakilerin en eski, sonundakilerin en yeni olduğunu
+   anımsayınız.)
+
+3. **Durum bitleri kontrolü yoktur:** ``inode`` tarafındaki ``I_DIRTY``, ``I_SYNC``, ``I_NEW``, ``I_FREEING``
+   kontrolünün ``dentry`` tarafında bir karşılığı yoktur. ``dentry``'nin geri yazılacak bir içeriği ve yedek deposu
+   olmadığından *"kirli"* durumu da yoktur. *Hash*'ten çıkarılmış, bağlantısız ya da ``DCACHE_DONTCACHE`` bayraklı
+   ``dentry``'ler ise bu fonksiyona hiç ulaşmaz. Bunları ``retain_dentry()`` daha sayaç sıfıra indiği anda öldürür
+   ve listeye hiç eklemez. Yani bu eleme taramada değil, listeye giriş kapısında yapılır.
+
+4. **İkinci şans hakkı verilen nesneler:** Nesne listedeyken kullanılıp bırakıldıysa, ``retain_dentry()`` içinde
+   (6.8 öncesinde ``dput()`` içinde) ``DCACHE_REFERENCED`` biti set edilir. Nesne zaten listede olduğu
+   (``DCACHE_LRU_LIST`` set) için yeniden eklenmez, yalnızca bit işaretlenir. Tarayıcı biti siler, ``d_lock``
+   kilidini bırakır ve ``LRU_ROTATE`` döner. Asıl taşıma işini liste yürüyüşünü yapan kod (``list_move_tail``)
+   yapar ve nesne listenin sonuna, yani en yenilerin bulunduğu kısma alınır. ``d_lock`` bu taşımadan önce
+   bırakılabilir, çünkü liste üzerindeki bütün hareketler liste kilidiyle korunur.
+
+5. **Sayfa önbelleğine ilişkin bir kontrol yoktur:** ``dentry``'nin sayfa önbelleği ya da tamponu yoktur. Bu yüzden
+   ``mapping_shrinkable``, ``remove_inode_buffers`` ve ``invalidate_mapping_pages`` karşılıkları da, ``LRU_RETRY``
+   dönüşü de bulunmaz. Liste kilidi hiçbir zaman bırakılmadığından yürüyüşün baştan başlatılmasına gerek kalmaz.
+   Sayfa önbelleğiyle ilgili iş, ``dentry`` öldürülüp ``inode`` referansını bıraktıktan sonra ``inode`` tarafında
+   yapılır.
+
+6. **Yukarıdaki durumların dışında:** ``dentry_lru_isolate`` fonksiyonu ``d_lru_shrink_move()`` ile nesneyi listeden
+   çıkarır ve ``freeable`` (``dispose``) listesine alır. Bu sırada ``DCACHE_LRU_LIST`` biti silinir,
+   ``DCACHE_SHRINK_LIST`` biti set edilir. Fonksiyon bu durumda ``LRU_REMOVED`` değeri ile geri döner. Nesne henüz
+   öldürülmemiştir. Asıl öldürme, liste yürüyüşü bittikten sonra kilitsiz olarak ``shrink_dentry_list()`` içinde
+   yapılır. Orada ``__dentry_kill()`` ``dentry``'yi *hash*'ten çıkarır, ``inode`` referansını ``iput()`` ile bırakır
+   (``inode``'un sayacı sıfıra inerse ``inode``, ``inode`` LRU'suna girer) ve nesneyi dilime iade eder.
+
+7. **Dispose listesindeyken yeniden bulunan nesneler:** Bu, 2. maddenin ``dispose`` listesindeki karşılığıdır. Nesne
+   ``dispose`` listesine taşındığında hâlâ *hash* tablosundadır ve bu arada bir yol aramasıyla bulunup sayacı
+   artırılabilir. ``shrink_dentry_list()`` bunu ``lock_for_kill()`` başarısız olduğunda anlar. Nesneyi öldürmez,
+   yalnızca ``d_shrink_del()`` ile ``DCACHE_SHRINK_LIST`` bitini silip ``dispose`` listesinden çıkarır. Sayaç
+   sonradan sıfıra indiğinde nesne olağan yoldan tekrar LRU'ya girer.
+
 Inode Nesnelerinin Geri Alımı
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Eskiden ``inode`` önbelleğinin geri alımı için tüm ``inode`` nesnelerine ilişkin toplamda bir tane LRU listesi
 tutuluyordu. Güncel çekirdeklerde uzunca bir süredir her süper blok nesnesi için ayrı bir ``inode`` LRU listesi tutulmaktadır. 
 Her dosya sistemi için bir ``super_block`` nesnesi oluşturulduğunu anımsayınız. Bu ``super_block`` nesnelerinin içerisinde 
-hem o süper blokta bulunan bütün ``inode`` nesnelerini hem de kullanılmayan ``inode`` nesnelerini tutan alanalr elemanlar 
+hem o süper blokta bulunan bütün ``inode`` nesnelerini hem de kullanılmayan ``inode`` nesnelerini tutan elemanlar 
 bulunmaktadır:
 
 .. code-block:: c
@@ -691,7 +784,7 @@ ile ``list_lru`` yapıları arasındaki farklılıkları aşağıda bir tablo ha
 
 .. figure:: _static/list-head-vs-list-lru-table.png
     :align: center
-    :width: 80%
+    :width: 75%
 
 Süper blok nesnelerinin ``inode`` LRU listelerine (``s_inode_lru``) o süper bloktaki tüm ``inode`` nesneleri
 yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı ``0`` olan (``i_count = 0`` olan))
@@ -711,10 +804,9 @@ alınması bu yoldan yapılmaktadır. Yukarıda vermiş olduğumuz çağrı zinc
 Peki ``inode`` nesnelerinin LRU listeleri geri alınırken geri alım ne kadar ``inode`` nesnesini kapsayacak biçimde
 yapılmaktadır? İşte süper blok ``inode`` LRU listelerindeki her ``inode`` nesnesi geri alıma müsait değildir.
 ``inode`` nesnesinin geri alınabilirliği konusundaki kararlar tıpkı ``dentry`` nesnelerinde olduğu gibi 
-``inode_lru_isolate isimli`` fonksiyon tarafından verilip işlemler bu fonksiyon tarafından yapılmaktadır. ``inode`` 
-nesnesinin geri alınabilirliği konusundaki kararlar ``inode_lru_isolate`` isimli fonksiyon tarafından
-verilip işlemler bu fonksiyon tarafından yapılmaktadır. Fonksiyon her nesne için *"ben şunu yaptım"* anlamında bir
-``enum lru_status`` değeri döndürmektedir. Geri döndürülen değerler şunlardır:
+``inode_lru_isolate isimli`` fonksiyon tarafından verilip işlemler bu fonksiyon tarafından yapılmaktadır.  
+Fonksiyon her nesne için *"ben şunu yaptım"* anlamında bir ``enum lru_status`` değeri döndürmektedir. Geri döndürülen 
+değerler şunlardır:
 
 .. figure:: _static/inode-lru-isolate-status-table.png
     :align: center
