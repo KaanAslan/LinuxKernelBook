@@ -772,15 +772,15 @@ bulunmaktadır:
         /* ... */
     };
 
-Burada ``s_inode_lru`` elemanı bu süper blok içerisindeki kullanılmayan ``inode`` nesnelerinin LRU listesini
-belirtmektedir. Bu listenin başındaki (``list_head`` LRU listelerine göre ters sıra) ``inode`` nesneleri en eski
-nesnelerdir. Dolayısıyla ``inode`` geri alımı baştan sona doğru yapılmaktadır. ``s_inode_lru`` elemanının güncel
-çekirdeklerde ``list_head`` türünden değil ``list_lru`` türünden olduğuna dikkat ediniz. Bu geçiş de ``dentry`` LRU
-listelerinde olduğu gibi çekirdeğin 3.12 versiyonunda yapılmıştır. Bu yapı *memcg* temelinde bağlı LRU listelerini
-soyutlamaktadır. Bu sayede büzücüler (*shrinkers*) belirli bir düğüm ya da *cgroup* için çağrıldığında yalnızca
-ilgili liste taranır. Her süper bloğun kendi büzücüsü bulunmaktadır. ``list_lru`` yapısının tanımlaması
-``include/linux/list_lru.h`` dosyasında, gerçekleştirimi ise ``mm/list_lru.c`` dosyasında yapılmıştır. ``list_head``
-ile ``list_lru`` yapıları arasındaki farklılıkları aşağıda bir tablo halinde veriyoruz:
+Burada ``s_inode_lru`` elemanı bu süper blok içerisindeki kullanılmayan yani referans sayacı (``i_count`` elemanı) ``0``'a 
+düşen inode nesnelerinin LRU listesini belirtmektedir. ``inode`` nesnelerinin LRU listesini belirtmektedir. Bu listenin 
+başındaki (``list_head`` LRU listelerine göre ters sıra) ``inode`` nesneleri en eski nesnelerdir. Dolayısıyla ``inode`` 
+geri alımı baştan sona doğru yapılmaktadır. ``s_inode_lru`` elemanının güncel çekirdeklerde ``list_head`` türünden değil 
+``list_lru`` türünden olduğuna dikkat ediniz. Bu geçiş de ``dentry`` LRU listelerinde olduğu gibi çekirdeğin 3.12 versiyonunda 
+yapılmıştır. Bu yapı *memcg* temelinde bağlı LRU listelerini soyutlamaktadır. Bu sayede büzücüler (*shrinkers*) belirli 
+bir düğüm ya da *cgroup* için çağrıldığında yalnızca ilgili liste taranır. Her süper bloğun kendi büzücüsü bulunmaktadır. 
+``list_lru`` yapısının tanımlaması ``include/linux/list_lru.h`` dosyasında, gerçekleştirimi ise ``mm/list_lru.c`` dosyasında 
+yapılmıştır. ``list_head`` ile ``list_lru`` yapıları arasındaki farklılıkları aşağıda bir tablo halinde veriyoruz:
 
 .. figure:: _static/list-head-vs-list-lru-table.png
     :align: center
@@ -815,7 +815,7 @@ değerler şunlardır:
 ``inode_lru_isolate`` fonksiyonu daha önce görmüş olduğumuz ``dentry_lru_isolate`` fonksiyonunun yaptığı işlemlerin
 ``inode`` nesneleri için benzerini yapmaktadır:
 
-| **1. Kilit çekişmesi (``LRU_SKIP``) yaşanıyorsa:** ``lru_lock`` ile ``i_lock`` arasında kilit sırası ters olduğu için
+| **1. Kilit çekişmesi (LRU_SKIP) yaşanıyorsa:** ``lru_lock`` ile ``i_lock`` arasında kilit sırası ters olduğu için
    ``spin_trylock`` fonksiyonu kullanılır; bu fonksiyon başarısız olursa nesne o taramada tamamen atlanır.
 
 | **2. Listede olduğu halde yeniden referans edilmiş (yani i_count > 0) nesneler:** Nesne listedeyken ``iget()`` ile
@@ -838,5 +838,38 @@ değerler şunlardır:
    ``invalidate_mapping_pages`` fonksiyonlarıyla sayfalar atılır, ``inode_lru_isolate`` fonksiyonundan
    ``LRU_RETRY`` döndürülerek tarama tekrarlanır; nesne ancak bir sonraki turda gerçekten dilime iade edilebilir.
 
-| **6.** Yukarıdaki durumların dışında ``inode_lru_isolate`` fonksiyonu ``inode`` nesnesini listeden çıkartır ve onu
+| **6. Yukarıdaki durumların dışında:** ``inode_lru_isolate`` fonksiyonu ``inode`` nesnesini listeden çıkartır ve onu
    ``freeable`` listesine alır. Bu durumda fonksiyon ``LRU_REMOVED`` değeri ile geri dönmektedir.
+
+Burada bir noktaya dikkat ediniz. LRU listesinde bulunup da artık referans edilmeye başlanmış olan (örneğin ona
+ilişkin dosya açılmış olabilir) ``inode`` nesneleri o anda listeden çıkartılmamaktadır. Çekirdek yalnızca ``inode``
+nesnesinin ``i_count`` elemanını artırır ve ``I_REFERENCED`` bitini set eder. Listeden çıkartma işlemi büzücünün
+uyguladığı tarama sırasında yapılmaktadır. Veri yapıları ve algoritmalar dünyasında *"tembel (lazy)"* terimi "o anda
+hemen yapılmayan, daha sonraki bir aşamada yapılan işlemler" için kullanılmaktadır. Buradaki LRU listesinden
+çıkartma işlemi de *tembel* bir işlemdir. LRU listesinde bulunan bir ``inode`` nesnesine referans edildiğinde
+``inode`` nesnesinin ``i_count`` referans sayacı artırılmakla birlikte ``I_REFERENCED`` biti de set edilmektedir.
+Çünkü bazen nesneler hemen kullanılıp bırakılabilmektedir. Bu durumda büzücü (``inode_lru_isolate`` fonksiyonu)
+nesnenin ``i_count`` referans sayacının ``0`` olduğunu ancak ``I_REFERENCED`` bitinin set edildiğini gördüğünde hemen
+nesneyi dilime iade etmez, ``I_REFERENCED`` bitini ``0`` yapar ve nesneyi LRU listesinin sonuna (en yenilerin bulunduğu
+kısma) taşır. Böylece bu nesneye bir şans daha verilmektedir. Bu sürece çekirdek kodlamasında *"ikinci şans (second
+chance)"* de denilmektedir.
+
+Aşağıdaki tabloda LRU listesindeki bir ``inode`` nesnesinin kullanılmaya başlandığındaki süreç aşamalandırılmıştır:
+
+.. figure:: _static/inode-lru-timeline-table.png
+    :align: center
+    :width: 65%
+
+``I_REFERENCED`` bitinin ``iput`` tarafından set edilmesi sürecini aşağıdaki şekille özetlemek istiyoruz:
+
+.. figure:: _static/inode-lru-add-flow.png
+    :align: center
+    :width: 80%
+
+Burada bir noktaya dikkat ediniz. Inode nesnesi LRU listesine ilk kez girdiğinde ``I_REFERENCED`` biti set
+edilmemektedir. Bu bitin reset edilmesi işlemi yukarıda görmüş olduğumuz ``inode_lru_isolate`` fonksiyonu
+içerisinde yapılmaktadır. ``I_REFERENCED`` bitinin reset edilme akışını aşağıda veriyoruz:
+
+.. figure:: _static/i-referenced-reset-flow.png
+   :align: center
+   :width: 80%

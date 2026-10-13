@@ -96,7 +96,7 @@ Bir thread'in yaşam döngüsü yalın bir biçimde şöyle betimlenebilir:
 .. image:: _static/thread-lifecycle.png
    :alt: Thread Yaşam Döngüsü
    :align: center
-   :width: 80%
+   :width: 75%
 
 Buradaki *Running* thread'in CPU'ya atanmış ve çalışmakta olduğu, *Ready* ise thread'in çalışma kuyruğunda 
 bulunduğunu ve sonraki quantum'u beklediği anlamına gelmektedir. Thread dışsal bir olay nedeniyle bloke olduğunda 
