@@ -811,3 +811,32 @@ değerler şunlardır:
 .. figure:: _static/inode-lru-isolate-status-table.png
     :align: center
     :width: 65%
+
+``inode_lru_isolate`` fonksiyonu daha önce görmüş olduğumuz ``dentry_lru_isolate`` fonksiyonunun yaptığı işlemlerin
+``inode`` nesneleri için benzerini yapmaktadır:
+
+| **1. Kilit çekişmesi (``LRU_SKIP``) yaşanıyorsa:** ``lru_lock`` ile ``i_lock`` arasında kilit sırası ters olduğu için
+   ``spin_trylock`` fonksiyonu kullanılır; bu fonksiyon başarısız olursa nesne o taramada tamamen atlanır.
+
+| **2. Listede olduğu halde yeniden referans edilmiş (yani i_count > 0) nesneler:** Nesne listedeyken ``iget()`` ile
+   bulunup kullanılmaya başlanmış olabilir. Listeden tembel biçimde (*lazily*) ``inode_lru_isolate`` fonksiyonu
+   tarafından (``iget`` tarafından değil) çıkarılır, ama sonraki ``iput()`` onu tekrar listenin sonuna ekler.
+   (``list_lru`` yapısında tam ters olarak listenin başındakilerin en eski, sonundakilerin en yeni olduğunu
+   anımsayınız.)
+
+| **3. Durum bitleri temiz değilse:** ``I_DIRTY``, ``I_SYNC``, ``I_NEW``, ``I_FREEING`` gibi durum bitlerinden herhangi
+   biri set edilmiş ise nesne dokunulmadan listeden düşürülür. Geri yazma tamamlandığında yeniden listeye alınır. Bu
+   kontrol ``i_state & ~I_REFERENCED`` ile yapılmaktadır. Bu işlemde ``I_REFERENCED`` biti reset durumdayken diğer
+   durum bitlerinin herhangi birinin set olup olmadığına bakılmaktadır.
+
+| **4. İkinci şans hakkı verilen nesneler:** Nesne listedeyken kullanılıp bırakıldıysa ``inode_lru_list_add`` fonksiyonu
+   içerisinde ``I_REFERENCED`` biti set edilir (çünkü ``list_lru_add()`` zaten listede olan nesne için ``false``
+   döner). Tarayıcı biti siler ve nesneyi listenin sonuna alır (yani en yenilerin kısmına).
+
+| **5. Sayfa önbelleğinin özellikle korunduğu durumlar:** ``mapping_shrinkable`` fonksiyonu çağrıldığında bu fonksiyon
+   sayfa önbelleğinin korunmasını söylüyorsa nesne listeden atılır. Söylemiyorsa önce ``remove_inode_buffers`` ve
+   ``invalidate_mapping_pages`` fonksiyonlarıyla sayfalar atılır, ``inode_lru_isolate`` fonksiyonundan
+   ``LRU_RETRY`` döndürülerek tarama tekrarlanır; nesne ancak bir sonraki turda gerçekten dilime iade edilebilir.
+
+| **6.** Yukarıdaki durumların dışında ``inode_lru_isolate`` fonksiyonu ``inode`` nesnesini listeden çıkartır ve onu
+   ``freeable`` listesine alır. Bu durumda fonksiyon ``LRU_REMOVED`` değeri ile geri dönmektedir.
