@@ -873,3 +873,13 @@ içerisinde yapılmaktadır. ``I_REFERENCED`` bitinin reset edilme akışını a
 .. figure:: _static/i-referenced-reset-flow.png
    :align: center
    :width: 80%
+
+LRU listesinden atılan inode nesneleri hemen dilime iade edilmez. Önce yerel bir ``freeable`` listede toplanır.
+İade işlemi bu listeyi dolaşan ``destroy_inode`` fonksiyonu tarafından RCU mekanizması aracılığıyla ``i_callback``
+çağrısı ile yapılmaktadır. Inode nesnelerinin yok edilmesi sürecini yeniden bir bütün olarak veriyoruz:
+
+.. figure:: _static/inode-destroy-pipeline.png
+   :align: center
+   :width: 95%
+
+   
