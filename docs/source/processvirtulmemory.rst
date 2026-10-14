@@ -37,8 +37,8 @@ alt prosesin çıkış koduyla çıktığını anımsayınız.
 Biz bu süreci zaten ayrı bir bölümde ele alacağız. Bu bölümde biz prosesin bellek alanının nasıl kayıt altında
 tutulduğunu ele alacağız.
 
-Bellek Betimleyicileri
-----------------------
+Bellek Betimleyicileri ve Sanal Bellek Alanları
+===============================================
 
 Prosesin bellek alanına ilişkin tüm bilgiler ``task_struct`` yapısındaki ``mm`` ve/veya ``active_mm`` elemanlarının
 gösterdiği ``mm_struct`` nesnelerinde tutulmaktadır:
@@ -313,4 +313,216 @@ gösterdiği ``mm_struct`` nesnelerinde tutulmaktadır:
         char flexible_array[] __aligned(__alignof__(unsigned long));
     };
 
-    
+``mm_struct`` yapısı prosesin sanal bellek alanına ilişkin tüm bilgileri tutmaktadır. Ancak yukarıda da gördüğünüz gibi
+yapı oldukça karmaşıktır.
+
+Prosesin sanal adres alanına ilişkin bilgileri tutan ``mm_struct`` nesnesine *Understanding the Linux Kernel* kitabında
+*bellek betimleyicisi (memory descriptor)* da denilmektedir. *Bellek betimleyicisi* terimi çekirdek geliştirme
+terminolojisinde kullanılan bir terim değildir. Ancak biz de kursumuzda bu nesneye *bellek betimleyicisi* de diyeceğiz.
+
+Prosesin sanal adres alanı içerisindeki aynı özelliklere sahip sayfalardan oluşan alanlar ``vm_area_struct`` isimli bir
+yapıyla temsil edilmektedir. Güncel çekirdeklerde bu yapı şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct vm_area_struct {
+        /* The first cache line has the info for VMA tree walking. */
+
+        union {
+            struct {
+                /* VMA covers [vm_start; vm_end) addresses within mm */
+                unsigned long vm_start;
+                unsigned long vm_end;
+            };
+            freeptr_t vm_freeptr; /* Pointer used by SLAB_TYPESAFE_BY_RCU */
+        };
+
+        /*
+         * The address space we belong to.
+         * Unstable RCU readers are allowed to read this.
+         */
+        struct mm_struct *vm_mm;
+        pgprot_t vm_page_prot; /* Access permissions of this VMA. */
+
+        /*
+         * Flags, see mm.h.
+         * To modify use vm_flags_{init|reset|set|clear|mod} functions.
+         * Preferably, use vma_flags_xxx() functions.
+         */
+        union {
+            /* Temporary while VMA flags are being converted. */
+            const vm_flags_t vm_flags;
+            vma_flags_t flags;
+        };
+
+    #ifdef CONFIG_PER_VMA_LOCK
+        /*
+         * Can only be written (using WRITE_ONCE()) while holding both:
+         *  - mmap_lock (in write mode)
+         *  - vm_refcnt bit at VM_REFCNT_EXCLUDE_READERS_FLAG is set
+         * Can be read reliably while holding one of:
+         *  - mmap_lock (in read or write mode)
+         *  - vm_refcnt bit at VM_REFCNT_EXCLUDE_READERS_BIT is set or vm_refcnt > 1
+         * Can be read unreliably (using READ_ONCE()) for pessimistic bailout
+         * while holding nothing (except RCU to keep the VMA struct allocated).
+         *
+         * This sequence counter is explicitly allowed to overflow; sequence
+         * counter reuse can only lead to occasional unnecessary use of the
+         * slowpath.
+         */
+        unsigned int vm_lock_seq;
+    #endif
+        /*
+         * A file's MAP_PRIVATE vma can be in both i_mmap tree and anon_vma
+         * list, after a COW of one of the file pages. A MAP_SHARED vma
+         * can only be in the i_mmap tree.  An anonymous MAP_PRIVATE, stack
+         * or brk vma (with NULL file) can only be in an anon_vma list.
+         */
+        struct list_head anon_vma_chain; /* Serialized by mmap_lock &
+                                          * page_table_lock */
+        struct anon_vma *anon_vma; /* Serialized by page_table_lock */
+
+        /* Function pointers to deal with this struct. */
+        const struct vm_operations_struct *vm_ops;
+
+        /* Information about our backing store: */
+        unsigned long vm_pgoff; /* Offset (within vm_file) in PAGE_SIZE
+                                    units */
+        struct file *vm_file; /* File we map to (can be NULL). */
+        void *vm_private_data; /* was vm_pte (shared mem) */
+
+    #ifdef CONFIG_SWAP
+        atomic_long_t swap_readahead_info;
+    #endif
+    #ifndef CONFIG_MMU
+        struct vm_region *vm_region; /* NOMMU mapping region */
+    #endif
+    #ifdef CONFIG_NUMA
+        struct mempolicy *vm_policy; /* NUMA policy for the VMA */
+    #endif
+    #ifdef CONFIG_NUMA_BALANCING
+        struct vma_numab_state *numab_state; /* NUMA Balancing state */
+    #endif
+    #ifdef CONFIG_PER_VMA_LOCK
+        /*
+         * Used to keep track of firstly, whether the VMA is attached, secondly,
+         * if attached, how many read locks are taken, and thirdly, if the
+         * VM_REFCNT_EXCLUDE_READERS_FLAG is set, whether any read locks held
+         * are currently in the process of being excluded.
+         *
+         * This value can be equal to:
+         *
+         * 0 - Detached. IMPORTANT: when the refcnt is zero, readers cannot
+         * increment it.
+         *
+         * 1 - Attached and either unlocked or write-locked. Write locks are
+         * identified via __is_vma_write_locked() which checks for equality of
+         * vma->vm_lock_seq and mm->mm_lock_seq.
+         *
+         * >1, < VM_REFCNT_EXCLUDE_READERS_FLAG - Read-locked or (unlikely)
+         * write-locked with other threads having temporarily incremented the
+         * reference count prior to determining it is write-locked and
+         * decrementing it again.
+         *
+         * VM_REFCNT_EXCLUDE_READERS_FLAG - Detached, pending
+         * __vma_end_exclude_readers() completion which will decrement the
+         * reference count to zero. IMPORTANT - at this stage no further readers
+         * can increment the reference count. It can only be reduced.
+         *
+         * VM_REFCNT_EXCLUDE_READERS_FLAG + 1 - A thread is either write-locking
+         * an attached VMA and has yet to invoke __vma_end_exclude_readers(),
+         * OR a thread is detaching a VMA and is waiting on a single spurious
+         * reader in order to decrement the reference count. IMPORTANT - as
+         * above, no further readers can increment the reference count.
+         *
+         * > VM_REFCNT_EXCLUDE_READERS_FLAG + 1 - A thread is either
+         * write-locking or detaching a VMA is waiting on readers to
+         * exit. IMPORTANT - as above, no further readers can increment the
+         * reference count.
+         *
+         * NOTE: Unstable RCU readers are allowed to read this.
+         */
+        refcount_t vm_refcnt ____cacheline_aligned_in_smp;
+    #ifdef CONFIG_DEBUG_LOCK_ALLOC
+        struct lockdep_map vmlock_dep_map;
+    #endif
+    #endif
+        /*
+         * For areas with an address space and backing store,
+         * linkage into the address_space->i_mmap interval tree.
+         *
+         */
+        struct {
+            struct rb_node rb;
+            unsigned long rb_subtree_last;
+        } shared;
+    #ifdef CONFIG_ANON_VMA_NAME
+        /*
+         * For private and shared anonymous mappings, a pointer to a null
+         * terminated string containing the name given to the vma, or NULL if
+         * unnamed. Serialized by mmap_lock. Use anon_vma_name to access.
+         */
+        struct anon_vma_name *anon_name;
+    #endif
+        struct vm_userfaultfd_ctx vm_userfaultfd_ctx;
+    #ifdef __HAVE_PFNMAP_TRACKING
+        struct pfnmap_track_ctx *pfnmap_track_ctx;
+    #endif
+    } __randomize_layout;
+
+Karmaşık bu iki veri yapısını basite indirgersek bunları söyleyebiliriz: Prosesin tüm sanal bellek alanına ilişkin
+bilgiler ``task_struct`` nesnesinin ``mm`` ve/veya ``active_mm`` elemanlarının gösterdiği ``mm_struct`` nesnesi
+içerisindedir. ``mm_struct`` nesnesi de sanal bellek alanlarını belirten ``vm_area_struct`` nesnelerini tutmaktadır.
+Çekirdek terminolojisinde hem ``vm_area_struct`` nesnesine hem de onun belirttiği bellek aralığına *VMA (Virtual Memory
+Area)* denilmektedir. Biz kursumuzda iki anlamlılığı ortadan kaldırmak için ``vm_area_struct`` nesnesine *sanal bellek
+alanı nesnesi* ya da kısaca *VMA nesnesi*, onun belirttiği bellek aralığına ise *sanal bellek alanı* ya da kısaca *VMA*
+diyeceğiz. (``mm_struct`` ile belirtilen sanal bellek alanları için *Understanding the Linux Kernel* kitabında *memory area* 
+terimi yerine *memory region* terimi kullanılmıştır. *Memory region* terimi çekirdek geliştirme terminolojisinde kullanılan 
+bir terim değildir.)
+
+*VMA*'lar tamamen prosesin sanal bellek alanı ile ilgilidir. *VMA*'lar içerisinde fiziksel belleğe ilişkin hiçbir bilgi
+tutulmamaktadır. Fiziksel bellek eşleştirmeleri doğrudan sayfa tablosu yoluyla yapılmaktadır.
+
+``mm_struct`` yapısı içerisinde alanlar eskiden *kırmızı-siyah ağacı (red-black tree)* ile tutuluyordu. Çekirdeğin 6.1
+versiyonuyla birlikte *maple ağacı (maple tree)* denilen bütünleşik bir veri yapısı kullanılmaya başlanmıştır. Bu
+ağacın kök düğümü ``mm_struct`` içerisindeki ``mm_mt`` elemanında tutulmaktadır:
+
+.. code-block:: c
+
+    struct mm_struct {
+        /* ... */
+        struct {
+            struct maple_tree mm_mt;        /* tek yapı: tüm VMA'lar */
+            /* ... */
+        };
+        /* ... */
+    };
+
+Peki neden iki ayrı gösterici bulundurulmuştur? Çekirdek thread'lerine bağlamsal geçiş daha az maliyetli olsun diye
+``mm`` elemanının yeniden düzenlenmesi yerine ``active_mm`` elemanı kullanılmaktadır. Proses thread'lerinde bu iki
+eleman aslında aynı bellek betimleyicisini göstermektedir.
+
+.. figure:: _static/mm-active-mm-table.png
+   :align: center
+   :width: 60%
+
+Yani ``mm`` göstericisi "bu thread'in sahip olduğu adres alanını", ``active_mm`` göstericisi ise "o anda CPU'nun sayfa
+tablosunda yüklü olan thread'in adres alanını" belirtmektedir. Yukarıda da belirttiğimiz gibi normal proses
+thread'lerinde bu iki gösterici aslında aynı bellek betimleyicisini göstermektedir. Farklılaşma çekirdek thread'lerinde
+söz konusu olmaktadır. Örneğin *kswapd* gibi *ksoftirqd* gibi *kworker* gibi çekirdek thread'lerinin kullanıcı alanı
+yoktur. Bunların ``mm`` göstericileri ``NULL`` durumdadır. Bunların bellek alanları ``active_mm`` göstericisi tarafından
+gösterilmektedir. ``active_mm`` elemanı hiçbir zaman ``NULL`` olmamaktadır. Bu eleman kullanıcı proseslerine ilişkin
+thread'lerde zaten ``mm`` elemanı ile aynı nesneyi göstermektedir. Çekirdek thread'lerinde ise geçişin yapıldığı (yani
+önceki) thread'e ilişkin ``mm_struct`` nesnesini göstermektedir.
+
+Bir proses thread'inden çekirdek thread'ine geçiş yapıldığında sayfa tablosu çekirdek thread'i için değiştirilmez.
+Çünkü zaten çekirdek alanı tüm proses thread'lerinin sayfa tablolarında aynı yerde ve aynı biçimde bulunmaktadır. Yani
+geçilen çekirdek thread'i aslında geçişin yapıldığı önceki proses thread'inin sayfa tablosunu ödünç almaktadır. Buna
+Linux çekirdek terminolojisinde *Lazy TLB* denilmektedir. İşte ``active_mm`` elemanı böylesi bir durumda ödünç alınan
+proses thread'inin bellek alanı bilgilerini göstermektedir. Örneğin *bash* prosesine ilişkin bir thread'ten *kswapd*
+thread'ine geçiliyor olsun. Oradan da *firefox* prosesinin thread'ine geçilsin. Bu senaryodaki ``mm`` ve ``active_mm``
+elemanları aşağıdaki gibi değişecektir:
+
+.. figure:: _static/active-mm-lazy-tlb-timeline.png
+   :align: center
+   :width: 75%
