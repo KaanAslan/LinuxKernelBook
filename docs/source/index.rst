@@ -56,6 +56,7 @@ ilişkin temel bilgilere ve becerilere sahip olduğu varsayılmaktadır.
    pagecache
    buffercache
    pagereclaim
+   processvirtulmemory
    bibliography 
   
 

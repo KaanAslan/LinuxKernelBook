@@ -441,9 +441,9 @@ sofistikedir. Biz burada çok derine inmeden temel işleyişi açıklayacağız:
   *doğrudan geri alım (direct reclaim)* süreci başlatılmıştır. Her iki durumda da aynı döngü çalışır; fark yalnızca
   kimin çalıştırdığı ve ne zaman duracağıdır.
 
-- Döngü ``priority`` değeri ``12`` ile başlatılır. Bu sayı, listelerin ne kadarının taranacağını belirleyen bir sağa
-  kaydırma miktarıdır. Her listeden ``liste_uzunluğu >> priority`` kadar sayfa işlenecektir. ``12`` ile başlamak,
-  listelerin yalnızca ``1/4096``'sına bakılacağı anlamına gelir. Amaç, hafif baskıda çok az iş yaparak yeterli belleği
+- Döngü ``priority`` değeri 12 ile başlatılır. Bu sayı, listelerin ne kadarının taranacağını belirleyen bir sağa
+  kaydırma miktarıdır. Her listeden ``liste_uzunluğu >> priority`` kadar sayfa işlenecektir. 12 ile başlamak,
+  listelerin yalnızca 1/4096'sına bakılacağı anlamına gelir. Amaç, hafif baskıda çok az iş yaparak yeterli belleği
   boşaltabilmek, ancak baskı sürerse kademeli olarak daha derine inmektir.
 
 - ``shrink_lruvec`` fonksiyonunun içine girildiğinde ilk işlem ``get_scan_count`` fonksiyonu ile hangi listelerin
@@ -455,7 +455,7 @@ sofistikedir. Biz burada çok derine inmeden temel işleyişi açıklayacağız:
 
 Buradaki ``swappiness`` değeri geri alma sırasında çekirdeğin anonim sayfaları mı yoksa dosya sayfalarını mı tercih
 edeceğini belirleyen bir ayardır. ``/proc/sys/vm/swappiness`` dosyasından bu değer elde edilebilir ve
-değiştirilebilir. Varsayılan ``swappiness`` değeri ``60``'tır, aralığı ise ``0–200``'dür (5.8'den önce ``0–100``'dü). 
+değiştirilebilir. Varsayılan ``swappiness`` değeri 60'tır, aralığı ise 0–200'dür (5.8'den önce 0–100'dü). 
 ``_ANON`` ve ``_FILE`` payları şöyle hesaplanır:
 
 .. code-block:: none
@@ -464,7 +464,7 @@ değiştirilebilir. Varsayılan ``swappiness`` değeri ``60``'tır, aralığı i
     file_prio = 200 - swappiness
 
 Örneğin ``swappiness = 60`` ise ``_ANON`` ``60``, ``_FILE`` ``140`` ağırlığa sahiptir. Yani ``_FILE`` sayfaları ``_ANON``
-sayfalardan yaklaşık ``2.3`` kat daha istekli taranacaktır. Ancak bu ağırlıklar tek başına kullanılmaz; her tarafın son
+sayfalardan yaklaşık 2.3 kat daha istekli taranacaktır. Ancak bu ağırlıklar tek başına kullanılmaz; her tarafın son
 turlardaki maliyeti ile bölünür:
 
 .. code-block:: none
@@ -525,7 +525,7 @@ başlangıç eğimidir.
   ayırma isteğine geri döner.
 
 - Yeterli bellek boşalmadıysa ``priority`` bir azaltılır ve ``shrink_lruvec`` fonksiyonu yeniden çağrılır. Her
-  azalışta taranan dilim iki katına çıkar; ``11``'de ``1/2048``, ``10``'da ``1/1024`` ve nihayet ``0``'da listelerin tamamı. 
+  azalışta taranan dilim iki katına çıkar; 11'de 1/2048, 10'da 1/1024 ve nihayet 0'da listelerin tamamı. 
   Bu kademeli derinleşme, sistemin hafif baskıda ucuz, ağır baskıda kapsamlı davranmasını sağlar. ``priority`` sıfıra ulaştığında
   bile yeterli bellek bulunamıyorsa çekirdek *OOM killer*'ı devreye sokmayı değerlendirir.
 
@@ -772,7 +772,7 @@ bulunmaktadır:
         /* ... */
     };
 
-Burada ``s_inode_lru`` elemanı bu süper blok içerisindeki kullanılmayan yani referans sayacı (``i_count`` elemanı) ``0``'a 
+Burada ``s_inode_lru`` elemanı bu süper blok içerisindeki kullanılmayan yani referans sayacı (``i_count`` elemanı) 0'a 
 düşen inode nesnelerinin LRU listesini belirtmektedir. ``inode`` nesnelerinin LRU listesini belirtmektedir. Bu listenin 
 başındaki (``list_head`` LRU listelerine göre ters sıra) ``inode`` nesneleri en eski nesnelerdir. Dolayısıyla ``inode`` 
 geri alımı baştan sona doğru yapılmaktadır. ``s_inode_lru`` elemanının güncel çekirdeklerde ``list_head`` türünden değil 
@@ -787,9 +787,9 @@ yapılmıştır. ``list_head`` ile ``list_lru`` yapıları arasındaki farklıl�
     :width: 75%
 
 Süper blok nesnelerinin ``inode`` LRU listelerine (``s_inode_lru``) o süper bloktaki tüm ``inode`` nesneleri
-yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı ``0`` olan (``i_count = 0`` olan))
+yerleştirilmemektedir. Yalnızca geri alıma aday olan yani kullanılmayan (nesne sayacı 0 olan (i_count = 0 olan))
 ``inode`` nesneleri bu listeye yerleştirilmektedir. Dolayısıyla örneğin bir dosya açıkken ``inode`` nesnesi dosya
-nesnesi tarafından gösterildiği için ``inode`` nesnesinin referans sayacı (``i_count``) ``0`` olmaktan çıkacaktır. Bu
+nesnesi tarafından gösterildiği için ``inode`` nesnesinin referans sayacı (``i_count``) 0 olmaktan çıkacaktır. Bu
 nesne LRU listesinde bulunmayacaktır. Kendisine hiç referans edilmeyen (başka bir deyişle kullanılmayan) ``inode`` nesneleri 
 bu LRU listesinde tutulmaktadır.
 
@@ -849,8 +849,8 @@ hemen yapılmayan, daha sonraki bir aşamada yapılan işlemler" için kullanıl
 çıkartma işlemi de *tembel* bir işlemdir. LRU listesinde bulunan bir ``inode`` nesnesine referans edildiğinde
 ``inode`` nesnesinin ``i_count`` referans sayacı artırılmakla birlikte ``I_REFERENCED`` biti de set edilmektedir.
 Çünkü bazen nesneler hemen kullanılıp bırakılabilmektedir. Bu durumda büzücü (``inode_lru_isolate`` fonksiyonu)
-nesnenin ``i_count`` referans sayacının ``0`` olduğunu ancak ``I_REFERENCED`` bitinin set edildiğini gördüğünde hemen
-nesneyi dilime iade etmez, ``I_REFERENCED`` bitini ``0`` yapar ve nesneyi LRU listesinin sonuna (en yenilerin bulunduğu
+nesnenin ``i_count`` referans sayacının 0 olduğunu ancak ``I_REFERENCED`` bitinin set edildiğini gördüğünde hemen
+nesneyi dilime iade etmez, ``I_REFERENCED`` bitini 0 yapar ve nesneyi LRU listesinin sonuna (en yenilerin bulunduğu
 kısma) taşır. Böylece bu nesneye bir şans daha verilmektedir. Bu sürece çekirdek kodlamasında *"ikinci şans (second
 chance)"* de denilmektedir.
 
@@ -881,5 +881,3 @@ LRU listesinden atılan inode nesneleri hemen dilime iade edilmez. Önce yerel b
 .. figure:: _static/inode-destroy-pipeline.png
    :align: center
    :width: 95%
-
-   
