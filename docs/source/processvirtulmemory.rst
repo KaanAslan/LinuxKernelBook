@@ -549,6 +549,135 @@ kullanmaya devam etmektedir.
 Çekirdek kodlarında prosesin sanal bellek alanına erişmek için her zaman ``mm`` göstericisi kullanılmaktadır.
 ``active_mm`` göstericisi çekirdekte yalnızca bazı yerlerde kullanılmaktadır.
 
+Linux'ta thread'lerin de sanki prosesler gibi ``task_struct`` nesnesine sahip olduğunu ancak prosesin thread'lerinin
+aynı bellek alanını kullandığını anımsayınız. İşte prosesin tüm thread'leri aslında aynı bellek betimleyicisini (yani
+``mm_struct`` nesnesini) göstermektedir. Bunu bir şekille şöyle gösterebiliriz:
 
+.. figure:: _static/thread-mm-sharing.png
+   :align: center
+   :width: 80%
 
+Burada aynı prosesin üç thread'i temsili olarak gösterilmiştir. Anımsanacağı gibi bunların hepsinin farklı ``pid``
+değerleri vardır. ``tgid`` değeri prosesin ana thread'ine ilişkin ``pid`` değerini tutmaktadır. Zaten bu değer prosesin
+``pid`` değeri olarak kullanılmaktadır. Şekilde bu üç thread'in de aynı ``mm_struct`` nesnesini gösterdiğini
+görüyorsunuz. ``mm_struct`` yapısı içerisindeki ``pgd`` elemanı sayfa tablosunun sanal bellek adresini tutmaktadır.
 
+Bellek betimleyicisi (yani ``mm_struct`` nesnesi) içerisindeki ``mm_users`` isimli eleman bir referans sayacı görevini
+görmektedir. Bu eleman kendisine kaç farklı ``task_struct`` nesnesinden referans edildiği bilgisini tutmaktadır.
+Yukarıdaki şekilde bellek betimleyicisine üç farklı ``task_struct`` içerisinden referans edildiğinden dolayı
+``mm_users`` sayacı da ``3`` değerindedir.
+
+Bellek betimleyicisi içerisinde ``mm_users`` sayacının dışında bir de ``mm_count`` isimli bir sayaç da bulunmaktadır.
+``mm_count`` sayacı ``mm_struct`` nesnesi her kullanılmaya başlandığında bir artırılmaktadır. Ancak kullanıcı alanındaki
+birden fazla thread tarafından ``mm_struct`` nesnesinin gösterilmesi durumunda (yukarıdaki şekildeki gibi) bu
+``mm_count`` sayacı yalnızca ``1`` artırılmaktadır. ``mm_count`` ile ``mm_users`` arasındaki ilişki şöyledir:
+"``mm_users > 0`` olduğu sürece ``mm_count`` sayacına yalnızca 1 katkı sağlar." ``mm_count`` sayacının değerini sembolik
+olarak aşağıdaki gibi de belirtebiliriz:
+
+.. code-block:: text
+
+    mm_count = (mm_users > 0 ? 1 : 0) + (ödünç alan çekirdek thread'i sayısı) + (geçici referanslar)
+
+Bellek Betimleyicilerinde Sanal Adres Alanlarının Tutulması
+===========================================================
+
+Şimdi de sanal bellek alanlarının (VMA'ların) bellek betimleyicisi (``mm_struct`` nesnesi) içerisindeki tutuluş biçimini
+gözden geçirelim. Eskiden *VMA*'lar bellek betimleyicileri içerisinde *kırmızı-siyah ağacı* ile tutuluyordu. Anımsanacağı
+gibi kırmızı-siyah ağacı belli bir aralık bilgisini de tutabilecek bir yapıdaydı. Ancak çekirdeğin 6.1 versiyonu ile
+birlikte kırmızı-siyah ağacı yerine *maple ağacı* kullanılmaya başlanmıştır. Güncel çekirdeklerde *maple ağacı*
+kullanılmaktadır. (*Maple* sözcüğü *akçaağaç* anlamına gelmektedir. Kanada bayrağında akçaağaç yaprağı bulunmaktadır.)
+
+Maple ağacı bir çeşit B-Tree varyantıdır. Bilindiği gibi B-Tree özellikle *dışsal aramalarda (external search)* yoğun
+kullanılan *çok yönlü (multiway)* yani çok düğümlü bir arama ağacıdır. MySQL, Oracle, SQL Server gibi veri tabanı
+yönetim sistemleri motor kısımlarında hep B-Tree ve varyantlarını kullanmaktadır. B-Tree'de düğümlerde tek bir anahtar
+yoktur. N tane anahtar vardır. Aranacak değer hangi anahtar aralığına düşüyorsa o alt düğüme gidilmektedir. Böylece
+ağacın yüksekliği ikili arama ağacına göre düşürülmektedir. Tabii ağacın yüksekliğinin düşürülmesi ek birtakım
+maliyetler de doğurmaktadır. Bu nedenle içsel aramalarda (internal search) B-Tree çok seyrek kullanılmaktadır. Disk
+tabanlı aramalarda (external search) her düğüm geçişi bir disk okuması gerektirdiği için ağacın yüksekliğinin
+düşürülmesi ikili arama ağacına göre ciddi bir hız kazancı sağlamaktadır. Üç anahtarlı bir B-Tree düğümünün yapısı
+aşağıdakine benzemektedir:
+
+Maple ağacı bir çeşit B-Tree varyantıdır. Bilindiği gibi B-Tree özellikle *dışsal aramalarda (external search)* yoğun
+kullanılan *çok yönlü (multiway)* yani çok düğümlü bir arama ağacıdır. MySQL, Oracle, SQL Server gibi veri tabanı
+yönetim sistemleri motor kısımlarında hep B-Tree ve varyantlarını kullanmaktadır. B-Tree'de düğümlerde tek bir anahtar
+yoktur. N tane anahtar vardır. Aranacak değer hangi anahtar aralığına düşüyorsa o alt düğüme gidilmektedir. Böylece
+ağacın yüksekliği ikili arama ağacına göre düşürülmektedir. Tabii ağacın yüksekliğinin düşürülmesi ek birtakım
+maliyetler de doğurmaktadır. Bu nedenle içsel aramalarda (internal search) B-Tree çok seyrek kullanılmaktadır. Disk
+tabanlı aramalarda (external search) her düğüm geçişi bir disk okuması gerektirdiği için ağacın yüksekliğinin
+düşürülmesi ikili arama ağacına göre ciddi bir hız kazancı sağlamaktadır. Üç anahtarlı bir B-Tree düğümünün yapısı
+aşağıdakine benzemektedir:
+
+.. figure:: _static/btree-node.png
+   :align: center
+   :width: 70%
+
+Burada üç anahtar için 4 alt düğümün bulundurulduğuna dikkat ediniz. Arama yapılırken aranacak değer hangi anahtarlar
+arasında kalıyorsa o alt düğüme gidilmektedir. Örneğin burada ``75`` değerinin arandığını varsayalım. Bu değer ``60``
+anahtarı ile ``90`` anahtarı arasındadır. Bu durumda ``p2`` göstericisinin gösterdiği alt düğüme gidilecektir.
+
+.. figure:: _static/btree-pointer-ranges-table.png
+   :align: center
+   :width: 50%
+
+Gerçekleştirimde tipik olarak anahtarlar ve düğümler birer dizi içerisinde tutulmaktadır. 
+
+Çekirdeğin prosesin *VMA*'ları üzerindeki şu iki işlemi etkin biçimde yapabilmesi gerekir:
+
+| **1.** Belli bir adresin tahsis edilmiş bir *VMA* içerisinde olup olmadığının belirlenmesi. Örneğin bir gösterici ile bir
+   adrese erişilmiş olsun. Bu sanal adrese ilişkin sayfa tablosunda bir yönlendirme yapılmadıysa *sayfalama hatası (page
+   fault)* oluşacaktır. Bu sayfalama hatasına ilişkin kesme kodunda işletim sisteminin erişilen yerin programın sanal
+   adres alanı içerisinde geçerli bir yer olup olmadığını tespit etmesi gerekir.
+
+| **2.** İşletim sisteminin tahsis edilmiş tüm *VMA*'ları dolaşabilmesi gerekir. Burada bir arama değil dolaşma söz konusudur.
+
+Eskiden daha önce de belirttiğimiz arama amacıyla *kırmızı-siyah ağacı* ve dolaşma amacıyla da bir bağlı liste
+kullanılıyordu. Örneğin çekirdeğin eski versiyonlarında ``mm_struct`` nesnesinin ilgili elemanları şöyleydi:
+
+.. code-block:: c
+
+    struct mm_struct {
+        /* ... */
+        struct vm_area_struct *mmap;    /* list of VMAs */
+        struct rb_root mm_rb;
+        /* ... */
+    };
+
+Burada ``mm_rb`` elemanı *VMA*'ların tutulduğu kırmızı-siyah arama ağacının kökünü, ``mmap`` elemanı ise *VMA*'ları
+dolaşmakta kullanılan bağlı listenin kökünü belirtmektedir. Bu bağlı listenin düğümleri doğrudan ``vm_area_struct``
+nesnelerinden oluşmaktadır. ``vm_area_struct`` yapısındaki ``vm_next`` göstericisi de sonraki elemanı göstermektedir.
+Ancak bu tasarım yukarıda da belirttiğimiz gibi çekirdeğin 6.1 versiyonunda (2022) değiştirilmiş ve *maple ağacı*
+kullanılmaya başlanmıştır. Maple ağacının kendisi dolaşıma da izin verdiği için artık ayrı bir listeye gerek de
+kalmamıştır.
+
+Maple ağacı bu bakımdan B-Tree organizasyonunun benzerini kullanmaktadır. Ancak anahtarlar yerine sanal bellek adresleri
+bulunmaktadır. Çünkü *VMA*'lar için kullanılan bu ağacın amacı tek bir anahtar tutmak değil bir adres aralığı tutmaktır.
+Maple ağacında her zaman adres alanları ardışıl bir biçimde tutulmaktadır. Güncel çekirdeklerde ``mm_struct``
+içerisindeki maple ağacının kökü ``maple_tree`` isimli bir yapıyla temsil edilmiştir:
+
+.. code-block:: c
+
+    struct mm_struct {
+        /* ... */
+
+        struct maple_tree mm_mt;    /* Maple ağacı */
+        int map_count;              /* VMA sayısı */
+
+        /* ... */
+    };
+
+``mm_struct`` yapısının ``mm_mt`` elemanı maple ağacını temsil etmektedir. ``map_count`` elemanı prosesin sanal bellek
+alanında toplam kaç *VMA* (``vm_area_struct``) olduğunu belirtmektedir. ``maple_tree`` yapısı güncel çekirdeklerde
+``include/linux/maple_tree.h`` başlık dosyası içerisinde şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct maple_tree {
+        union {
+            spinlock_t ma_lock;
+    #ifdef CONFIG_LOCKDEP
+            struct lockdep_map *ma_external_lock;
+    #endif
+        };
+        unsigned int ma_flags;
+        void __rcu *ma_root;
+    };
