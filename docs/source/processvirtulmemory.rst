@@ -681,3 +681,92 @@ alanında toplam kaç *VMA* (``vm_area_struct``) olduğunu belirtmektedir. ``map
         unsigned int ma_flags;
         void __rcu *ma_root;
     };
+
+Burada ``ma_lock`` elemanı erişimler için kullanılan spinlock nesnesini, ``ma_root`` elemanı ise kök düğümün yerini
+belirtmektedir. Maple ağacının düğümlerini temsil eden yapı da ``include/linux/maple_tree.h`` başlık dosyası içerisinde
+şöyle tanımlanmıştır:
+
+.. code-block:: c
+
+    struct maple_node {
+        union {
+            struct {
+                struct maple_pnode *parent;
+                void __rcu *slot[MAPLE_NODE_SLOTS];
+            };
+            struct {
+                void *pad;
+                struct rcu_head rcu;
+                struct maple_enode *piv_parent;
+                unsigned char parent_slot;
+                enum maple_type type;
+                unsigned char slot_len;
+                unsigned int ma_flags;
+            };
+            struct maple_range_64 mr64;
+            struct maple_arange_64 ma64;
+            struct maple_copy cp;
+        };
+    };
+
+Görüldüğü gibi ``maple_node`` yapısı aslında çakışık yapılardan oluşan bir birlik görünümündedir. Yukarıdaki yapının
+içerisinde bulunan birliğin içerisindeki yapılar (anonymous struct) ve yapı nesneleri çakışıktır. Örneğin aşağıdaki üç
+eleman aynı anda bulunmamaktadır:
+
+.. code-block:: c
+
+    struct maple_range_64 mr64;
+    struct maple_arange_64 ma64;
+    struct maple_copy cp;
+
+Peki bu kadar çakışıklığın nedeni nedir? İşte bu çakışıklık tek bir düğüm veri yapısının çeşitli konfigürasyonlara göre
+değiştirilebilirliğini sağlamaktadır.
+
+Güncel çekirdeklerdeki maple ağacının düğümlerindeki gösterici sayısı (slot da denilmektedir) konfigürasyon
+parametresine göre değişebilmektedir. 64 bit sistemlerde şöyledir:
+
+.. figure:: _static/maple-node-slots-64bit-table.png
+   :align: center
+   :width: 60%
+
+32 bit sistemlerde ise şöyledir:
+
+.. figure:: _static/maple-node-slots-32bit-table.png
+   :align: center
+   :width: 60%
+
+Burada pivot sözcüğü anahtar anlamında kullanılmaktadır. pivot sayısının gösterici sayısından (slot sayısından) bir
+eksik olduğuna dikkat ediniz. Çekirdek kodlarında kullanılan slot sayısına ilişkin makrolar şunlardır:
+
+.. code-block:: c
+
+    #if defined(CONFIG_64BIT) || defined(BUILD_VDSO32_64)
+    #define MAPLE_NODE_SLOTS        31  /* 256 bytes including ->parent */
+    #define MAPLE_RANGE64_SLOTS     16  /* 256 bytes */
+    #define MAPLE_ARANGE64_SLOTS    10  /* 240 bytes */
+    #else
+    #define MAPLE_NODE_SLOTS        63  /* 256 bytes including ->parent */
+    #define MAPLE_RANGE64_SLOTS     32  /* 256 bytes */
+    #define MAPLE_ARANGE64_SLOTS    21  /* 240 bytes */
+    #endif
+
+Maple ağacı genel biçimde tasarlanmıştır. Maple ağacındaki düğümler farklı bilgileri taşıyabilmektedir. Düğümün içeriği
+onun türüne bağlı olarak değişmektedir. Düğüm türleri de aşağıdaki ``enum`` yapısıyla belirtilmiştir:
+
+.. code-block:: c
+
+    enum maple_type {
+        maple_dense,
+        maple_leaf_64,
+        maple_range_64,
+        maple_arange_64,
+        maple_copy,
+    };
+
+Düğümlerin tür bilgisi düğümün içinde değil, onu gösteren göstericinin (encoded node, ``maple_enode``) düşük anlamlı
+bitlerinde kodlanmaktadır. *VMA*'lar için oluşturulan ve şu anda ele aldığımız maple ağaçlarında yalnızca iki farklı
+düğüm türü bulunmaktadır:
+
+.. figure:: _static/mm-mt-node-types-table.png
+   :align: center
+   :width: 45%
