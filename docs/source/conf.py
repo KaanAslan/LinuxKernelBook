@@ -70,7 +70,9 @@ html_meta = {
     "description": "Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi",
     "keywords": (
         "linux kernel, işletim sistemleri, işletim sistemlerinin tasarımı, dosya sistemi, çekirdek senkronizasayonu, " +
-        "proses yönetimi, çizelgeleme, bekleme kuyrukları"
+        "proses yönetimi, çizelgeleme, bekleme kuyrukları, sayfa önbelleği, page cache, tampon önbelleği, buffer cache, "
+        "Linux programlama, sanal bellek, buddy allocator, slab allocator, "
+        "bağlamsal geçiş, sayfalama"
     )
 }
 
