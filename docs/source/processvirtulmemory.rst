@@ -770,3 +770,53 @@ düğüm türü bulunmaktadır:
 .. figure:: _static/mm-mt-node-types-table.png
    :align: center
    :width: 45%
+
+Maple ağacı gerçekleştiriminde yaprak düğümlerdeki slotlarda (yani göstericilerde) *VMA* nesnelerinin adresleri
+tutulmaktadır. Maple ağaçları B-Tree türevi olduğu için tüm yapraklar aynı derinliktedir. Yapraklardaki bir slotun
+(göstericinin) ``NULL`` olması ilgili aralığın tahsis edilmediğini yani boş olduğunu belirtmektedir. ``NULL`` slot
+yalnızca yapraklarda bulunabilir. Bir ara düğümde bir alt aralık "burası boş" biçiminde ``NULL`` gösterici ile
+belirtilemez. O aralık da bir alt düğümle temsil edilmek zorundadır. Aralık ne kadar büyük olursa olsun, en altta onu
+kaplayan bir yaprak ve o yaprakta bir ``NULL`` gösterici bulunmaktadır. Tabii bir düğümün tüm slotları dolu olmak
+zorunda da değildir. Bir düğümün son geçerli slotunun indeksi ara düğümler için ``maple_node`` yapısı içerisindeki
+``maple_arange_64`` yapısının ``maple_metadata`` türünden elemanında, yaprak düğümler için ``maple_node`` yapısı
+içerisindeki ``maple_range_64`` yapısının ``maple_metadata`` türünden elemanında tutulmaktadır.
+
+Düğümlerin çakışık iki ayrı yapı ile temsil edildiğine dikkat ediniz: ``maple_arange_64`` ve ``maple_range_64``. *VMA*
+ağaçlarında ara düğümler ``maple_arange_64`` elemanını kullanırken yaprak düğümler ``maple_range_64`` elemanını
+kullanmaktadır. Yani düğümün türü ``maple_arange_64`` ise yapının ``maple_arange_64`` elemanı, düğümün türü
+``maple_leaf_64`` ise yapının ``maple_range_64`` elemanı kullanılmaktadır. Yukarıda da belirttiğimiz gibi zaten *VMA*
+için oluşturulan maple ağaçlarında başka türden düğümler bulunmamaktadır. ``maple_range_64`` yapısıyla
+``maple_arange_64`` yapısının tanımlamalarını aşağıda veriyoruz:
+
+.. code-block:: c
+
+    struct maple_range_64 {
+        struct maple_pnode *parent;
+        unsigned long pivot[MAPLE_RANGE64_SLOTS - 1];
+        union {
+            void __rcu *slot[MAPLE_RANGE64_SLOTS];
+            struct {
+                void __rcu *pad[MAPLE_RANGE64_SLOTS - 1];
+                struct maple_metadata meta;
+            };
+        };
+    };
+
+    struct maple_arange_64 {
+        struct maple_pnode *parent;
+        unsigned long pivot[MAPLE_ARANGE64_SLOTS - 1];
+        void __rcu *slot[MAPLE_ARANGE64_SLOTS];
+        unsigned long gap[MAPLE_ARANGE64_SLOTS];
+        struct maple_metadata meta;
+    };
+
+``maple_arange_64`` yapısında bir ``gap`` alanı olduğuna dikkat ediniz. Bu ``gap`` alanı alt düğümlerdeki yani her
+slotun gösterdiği alt ağaçtaki en büyük boş (``NULL``) aralığın uzunluğunu tutan bir dizidir. Böylece tahsisat için
+arama yapılırken eğer alt ağaçta yeteri kadar yer yoksa boşuna aşağıya doğru gidilmemektedir.
+
+Yukarıda düğümlerin türlerinin slot içerisindeki göstericilerde saklandığını belirtmiştik. Bu göstericilerin gösterdiği
+yerdeki düğüm nesneleri belli uzunluklara hizalanmıştır. Buradaki slot göstericilerinin formatı şöyledir:
+
+.. figure:: _static/maple-enode-format.png
+   :align: center
+   :width: 70%
