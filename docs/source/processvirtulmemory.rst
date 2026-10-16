@@ -820,3 +820,24 @@ yerdeki düğüm nesneleri belli uzunluklara hizalanmıştır. Buradaki slot gö
 .. figure:: _static/maple-enode-format.png
    :align: center
    :width: 70%
+
+Görüldüğü gibi alt düğümlerin yerlerini belirten göstericilerin düşük anlamlı 8 biti bayraklar için ayrılmıştır. Maple
+ağacının düğümleri de 256 byte'a hizalanmış durumdadır. Düşük anlamlı 8 bitin ``[6:3]`` bitleri (toplam 4 bit) alt
+düğümün türünü tutmaktadır. Yani bu değer sağa 3 kez ötelenirse yukarıda verdiğimiz ``enum`` değerleri elde
+edilmektedir:
+
+.. code-block:: c
+
+    enum maple_type {
+        maple_dense,
+        maple_leaf_64,
+        maple_range_64,
+        maple_arange_64,
+        maple_copy,
+    };
+
+Bir byte'lık alan içerisindeki değerleri de aşağıdaki tabloda belirtiyoruz:
+
+.. figure:: _static/maple-enode-flag-values-table.png
+   :align: center
+   :width: 60%
