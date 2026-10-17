@@ -592,19 +592,10 @@ kullanılan *çok yönlü (multiway)* yani çok düğümlü bir arama ağacıdı
 yönetim sistemleri motor kısımlarında hep B-Tree ve varyantlarını kullanmaktadır. B-Tree'de düğümlerde tek bir anahtar
 yoktur. N tane anahtar vardır. Aranacak değer hangi anahtar aralığına düşüyorsa o alt düğüme gidilmektedir. Böylece
 ağacın yüksekliği ikili arama ağacına göre düşürülmektedir. Tabii ağacın yüksekliğinin düşürülmesi ek birtakım
-maliyetler de doğurmaktadır. Bu nedenle içsel aramalarda (internal search) B-Tree çok seyrek kullanılmaktadır. Disk
+maliyetler de doğurmaktadır. B-Tree Bu nedenle içsel aramalarda (internal search) B-Tree çok seyrek kullanılmaktadır. Disk
 tabanlı aramalarda (external search) her düğüm geçişi bir disk okuması gerektirdiği için ağacın yüksekliğinin
-düşürülmesi ikili arama ağacına göre ciddi bir hız kazancı sağlamaktadır. Üç anahtarlı bir B-Tree düğümünün yapısı
-aşağıdakine benzemektedir:
-
-Maple ağacı bir çeşit B-Tree varyantıdır. Bilindiği gibi B-Tree özellikle *dışsal aramalarda (external search)* yoğun
-kullanılan *çok yönlü (multiway)* yani çok düğümlü bir arama ağacıdır. MySQL, Oracle, SQL Server gibi veri tabanı
-yönetim sistemleri motor kısımlarında hep B-Tree ve varyantlarını kullanmaktadır. B-Tree'de düğümlerde tek bir anahtar
-yoktur. N tane anahtar vardır. Aranacak değer hangi anahtar aralığına düşüyorsa o alt düğüme gidilmektedir. Böylece
-ağacın yüksekliği ikili arama ağacına göre düşürülmektedir. Tabii ağacın yüksekliğinin düşürülmesi ek birtakım
-maliyetler de doğurmaktadır. Bu nedenle içsel aramalarda (internal search) B-Tree çok seyrek kullanılmaktadır. Disk
-tabanlı aramalarda (external search) her düğüm geçişi bir disk okuması gerektirdiği için ağacın yüksekliğinin
-düşürülmesi ikili arama ağacına göre ciddi bir hız kazancı sağlamaktadır. Üç anahtarlı bir B-Tree düğümünün yapısı
+düşürülmesi ikili arama ağacına göre ciddi bir hız kazancı sağlamaktadır. B-Tree dengelenmiş (balanced) bir ağaç yapısıdır. 
+Ağacın yaprakları hep aynı düzeyde bulunmaktadır. Üç anahtarlı bir B-Tree düğümünün yapısı
 aşağıdakine benzemektedir:
 
 .. figure:: _static/btree-node.png
@@ -613,11 +604,11 @@ aşağıdakine benzemektedir:
 
 Burada üç anahtar için 4 alt düğümün bulundurulduğuna dikkat ediniz. Arama yapılırken aranacak değer hangi anahtarlar
 arasında kalıyorsa o alt düğüme gidilmektedir. Örneğin burada ``75`` değerinin arandığını varsayalım. Bu değer ``60``
-anahtarı ile ``90`` anahtarı arasındadır. Bu durumda ``p2`` göstericisinin gösterdiği alt düğüme gidilecektir.
+anahtarı ile ``90`` anahtarı arasındadır. Bu durumda ``p2`` göstericisinin gösterdiği alt düğüme gidilecektir:
 
 .. figure:: _static/btree-pointer-ranges-table.png
    :align: center
-   :width: 50%
+   :width: 45%
 
 Gerçekleştirimde tipik olarak anahtarlar ve düğümler birer dizi içerisinde tutulmaktadır. 
 
