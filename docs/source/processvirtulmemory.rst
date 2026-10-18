@@ -832,3 +832,60 @@ Bir byte'lık alan içerisindeki değerleri de aşağıdaki tabloda belirtiyoruz
 .. figure:: _static/maple-enode-flag-values-table.png
    :align: center
    :width: 60%
+
+Burada üçüncü sütuna dikkat ediniz. B-Tree gerçekleştirimlerinde üst düğümün yeri tutulmak zorundadır. İşte üst
+düğümün yeri de aynı zamanda ``parent`` göstericisinde tür bilgisiyle tutulmaktadır. Üçüncü sütun bu ``parent``
+göstericisine ilişkindir. Üst düğüm göstericisinin bayraklarını şöyle de gösterebiliriz:
+
+.. figure:: _static/maple-parent-format.png
+   :align: center
+   :width: 75%
+
+Yukarıda da belirttiğimiz gibi arama sonucunda yapraklara inilip *VMA* nesnelerinin adresleri yapraklardaki slotlardan
+elde edilmektedir. Yaprak düğümlerdeki slotlarda bulunan adreslerin düşük anlamlı 8 biti her zaman ``0``'dır. Bu
+slottaki adres artık doğrudan ``vm_area_struct`` nesnesini göstermektedir. Burada temsili bir adresle durumu şekilsel
+olarak gösterelim:
+
+.. figure:: _static/vma-slot-address-bytes.png
+   :align: center
+   :width: 70%
+
+Üst düğümü gösteren parent göstericisinin içeriisndeki adres de aşağıdakine benzemektedir:
+
+.. figure:: _static/parent-slot-address-bytes.png
+   :align: center
+   :width: 70%
+
+Maple ağacında her zaman prosesin tüm adres alanı kesiksiz tutulmaktadır. Yani prosesin adres alanında dolu ya da boş
+her alan maple ağacının kökünden girilip yapraklara kadar ilerlendiğinde yapraklarda bulunmaktadır.
+
+Şimdi maple ağacının görünümünü kafanızda canlandırabilmeniz için bazı örnekler verelim. Aşağıda en alt düzeydeki bir
+yaprak düğümü görüyorsunuz:
+
+.. figure:: _static/maple-leaf-node-example.png
+   :align: center
+   :width: 80%
+
+Bu düğümden ne anlaşılmaktadır? Bu düğüm ``0x405000`` ile ``0x627FFF`` arasındaki bölgeyi tutmaktadır. ``pivot[0]``
+değerinin ``0x5FFFFF`` olduğuna ve ``slot[0]``'ın ``NULL`` adres içerdiğine dikkat ediniz. Bu durumda ``0x405000`` ile
+``0x5FFFFF`` arasındaki bölge sanal adres alanında tahsis edilmemiştir. ``pivot[1]`` değerinin ``0x600FFF`` olduğuna
+dikkat ediniz. İşte ``0x600FFF`` ile ``0x601FFF`` arasındaki bölge tahsis edilmiştir ve o bölgeyi belirten *VMA*
+``slot[1]`` tarafından gösterilmektedir. ``pivot[2]`` değerinin ``0x601FFF`` olduğuna ve buna karşı gelen
+``slot[2]``'nin ``NULL`` adres içerdiğine dikkat ediniz. Bu durumda ``0x601FFF`` ile ``0x624FFF`` arasındaki bölge
+boştur. İşte bu düğüm belli bir sanal adres aralığının durumunu yansıtmaktadır.
+
+Şimdi de boş bir sanal adres alanına *VMA*'lar eklendiğinde maple ağacının bu alanları nasıl gösterdiğine ilişkin bir
+örnek verelim. Çekirdekte kullanılan maple ağacının düğümlerinde 16 slot bulunmaktadır. Ancak biz örneğimizde ağacın
+kolay anlaşılabilmesi için düğümlerdeki slot sayısının 3 olduğunu varsayacağız.
+
+Örneğin başlangıçta çekirdekteki ``mtree_store_range`` fonksiyonu ile aşağıdaki aralığın tahsis edildiğini düşünelim:
+
+.. code-block:: c
+
+    mtree_store_range(&mm_mt, 0x400000, 0x400FFF, vma_text, GFP_KERNEL);
+
+Prosesin sanal adres alanının sembolik görüntüsü şöyledir:
+
+.. figure:: _static/address-space-first-vma.png
+   :align: center
+   :width: 70%
