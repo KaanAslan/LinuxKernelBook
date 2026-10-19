@@ -269,6 +269,7 @@ yapılmaktadır. Çekirdeğin bu konudaki evrimini aşağıdaki tabloyla özetle
 
 .. figure:: _static/lru-evolution-table.png
     :align: center
+    :class: fig-mapping4
     :width: 55%
 
 Geri alım için geri alımı yapılabilecek olan (her sayfanın geri alımının mümkün olmadığını anımsayınız) sayfalar 
@@ -377,6 +378,7 @@ Bu bağlı liste türlerini aşağıda tablo halinde de gösterebiliriz:
 
 .. figure:: _static/lru-list-types-table.png
     :align: center
+    :class: fig-mapping4
     :width: 55%
 
 Bir ``folio`` nesnesi bu LRU bağlı listelerinin yalnızca birinde bulunmaktadır. ``folio`` yapısının ``lru`` elemanı

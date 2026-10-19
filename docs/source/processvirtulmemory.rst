@@ -504,6 +504,7 @@ eleman aslında aynı bellek betimleyicisini göstermektedir.
 
 .. figure:: _static/mm-active-mm-table.png
    :align: center
+   :class: fig-mapping5
    :width: 60%
 
 Yani ``mm`` göstericisi "bu thread'in sahip olduğu adres alanını", ``active_mm`` göstericisi ise "o anda işlemcinin sayfa
@@ -608,6 +609,7 @@ anahtarı ile ``90`` anahtarı arasındadır. Bu durumda ``p2`` göstericisinin 
 
 .. figure:: _static/btree-pointer-ranges-table.png
    :align: center
+   :class: fig-mapping4
    :width: 45%
 
 Gerçekleştirimde tipik olarak anahtarlar ve düğümler birer dizi içerisinde tutulmaktadır. 
@@ -888,4 +890,90 @@ Prosesin sanal adres alanının sembolik görüntüsü şöyledir:
 
 .. figure:: _static/address-space-first-vma.png
    :align: center
-   :width: 70%
+   :class: fig-mapping5
+   :width: 55%
+
+Burada kök düğümdeki üç slot şöyledir:
+
+.. figure:: _static/maple-root-node-single.png
+   :align: center
+   :width: 75%
+
+Şimdi prosesin adres alanına ``vma_data`` ile isimlendirdiğimiz yeni bir *VMA* ekleyelim:
+
+.. code-block:: c
+
+    mtree_store_range(&mm_mt, 0x600000, 0x600FFF, vma_data, GFP_KERNEL);
+
+Şimdi prosesin sanal adres alanının görünümü şöyle olacaktır:
+
+.. figure:: _static/address-space-second-vma.png
+   :align: center
+   :class: fig-mapping5
+   :width: 45%
+
+Bizim örneğimizde slot sayısı üç olduğu için artık buradaki 5 bölge 3 slota sığmayacağından alt düğüm
+oluşturulacaktır:
+
+.. figure:: _static/maple-two-level-tree.png
+   :align: center
+   :width: 85%
+
+Şimdi prosesin adres alanına ``vma_heap`` ile temsil ettiğimiz bir *VMA* daha ekleyelim:
+
+.. code-block:: c
+
+    mtree_store_range(&mm_mt, 0x602000, 0x624FFF, vma_heap, GFP_KERNEL);
+
+.. figure:: _static/address-space-third-vma.png
+   :align: center
+   :class: fig-mapping5
+   :width: 50%
+
+Bu eklemeden sonra maple ağacının görünümü şöyle olacaktır:
+
+.. figure:: _static/maple-tree-three-leaves.png
+   :align: center
+   :width: 90%
+
+Biz örneğimizde düğümlerdeki slot sayısını (yani ``MT_SLOTS`` değerini) 3 yaptığımız için üç *VMA* eklemekle iki bölünme
+yaşadık. Gerçekte ``MAPLE_RANGE64_SLOTS`` = 16'dır ve bir yaprak, aralarındaki ``NULL`` aralıklarla birlikte yaklaşık 8
+*VMA* taşımaktadır. Tipik bir prosesin yaklaşık 100 *VMA*'sı için ağaç yüksekliği 2'de kalır; bölünme yalnızca yüzlerce
+*VMA*'lı proseslerde ara sıra olmaktadır.
+
+Şimdi yine düğümlerde 3 slot içeren bir maple ağacı örneği daha verelim. Prosesin sanal bellek alanı şöyle olsun:
+
+.. figure:: _static/address-space-typical-32bit.png
+   :align: center
+   :class: fig-mapping5
+   :width: 55%
+
+Buradaki maple ağacı şu biçimde oluşturulacaktır:
+
+.. figure::     _static/maple-tree-32bit-process.png
+   :align: center
+   :width: 65%
+
+Yukarıda biz maple ağacının bazı ayrıntılarına değindik. Ancak ayrıntıların büyük resmi bulanıklaştırmasını engellemek
+için maple ağacının ne işe yaradığını ve hangi işlevler için bulundurulduğunu özetlemek istiyoruz:
+
+- Maple ağacı prosesin bellek alanı içerisindeki *VMA*'ların yerlerini tutmaktadır.
+
+- Maple ağacı sayesinde belli bir adresin prosesin bellek alanı içerisinde tahsis edilmiş bir *VMA* içerisinde olup
+  olmadığı hızlı bir biçimde sorgulanabilmektedir.
+
+- Maple ağacı prosesin sanal bellek alanında yeni bir *VMA* tahsisatı yapılırken boş alanların hızlı bir biçimde tespit
+  edilmesini sağlamaktadır.
+
+- Maple ağacı sayesinde artık prosesin bütün *VMA*'larının ayrı bir listede saklanmasına da gerek kalmamaktadır.
+
+Prosesin sanal bellek alanı ile işlemcinin o proses için kullandığı sayfa tablosunu birbirine karıştırmayınız. Bir
+program dosyası ``exec`` fonksiyonlarıyla yüklendiğinde ELF formatındaki bölümlerden (segments) hareketle prosesin sanal
+bellek alanında *VMA*'lar (yani ``vm_area_struct`` nesneleri) oluşturulmaktadır. Ancak ``exec`` işlemi sonrasında
+prosesin sayfa tablosu hemen hemen boş durumdadır. Prosesin sayfa tablosunda sanal sayfalara karşı fiziksel sayfaların
+oluşturulması işlemi *sayfalama hatası (page fault)* ile yapılmaktadır. Bir sayfalama hatası (page fault) oluştuğunda
+işletim sistemi hataya yol açan adresi inceler. Bu adresin prosesin sanal bellek alanında bir *VMA* tarafından
+gösterilip gösterilmediğini maple ağacını kullanarak tespit eder. Eğer erişilmek istenen adres sanal bellek alanı
+içerisindeyse bu durumda erişilen bölgeyi diskten belleğe yükler. Yani görüldüğü gibi maple ağacının işlevi *VMA*'nın
+bulunmasından ibarettir. Bu sayfanın fiziksel RAM'e yüklenmesi *VMA* nesnesinden (yani ``vm_area_struct`` nesnesinden)
+hareketle yapılmaktadır.
