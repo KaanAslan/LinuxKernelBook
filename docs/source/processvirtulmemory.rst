@@ -977,3 +977,107 @@ gösterilip gösterilmediğini maple ağacını kullanarak tespit eder. Eğer er
 içerisindeyse bu durumda erişilen bölgeyi diskten belleğe yükler. Yani görüldüğü gibi maple ağacının işlevi *VMA*'nın
 bulunmasından ibarettir. Bu sayfanın fiziksel RAM'e yüklenmesi *VMA* nesnesinden (yani ``vm_area_struct`` nesnesinden)
 hareketle yapılmaktadır.
+
+VMA'lar İle İlgili İşlem Yapan Çekirdek Fonksiyonları
+=====================================================
+
+Şimdi de *VMA*'lar üzerinde işlem yapan çekirdek fonksiyonlarından bahsedelim.  
+
+*VMA* nesnelerinin tahsisatına ilişkin temel çekirdek fonksiyonları şunlardır:
+
+.. code-block:: c
+
+    struct vm_area_struct *vm_area_alloc(struct mm_struct *mm);
+    struct vm_area_struct *vm_area_dup(struct vm_area_struct *orig);
+    void vm_area_free(struct vm_area_struct *vma);
+    void vma_init(struct vm_area_struct *vma, struct mm_struct *mm);
+
+- ``vm_area_alloc``: ``vm_area_cachep`` dilim önbelleğinden bir *VMA* nesnesi tahsis eder ve ``vma_init`` ile ilk
+  değerlerini verir, ancak ağaca eklemez.
+
+- ``vm_area_dup``: Var olan bir *VMA* nesnesinin kopyasını oluşturur. Bölme ve ``fork`` işlemlerinde kullanılır.
+
+- ``vm_area_free``: *VMA* nesnesini serbest bırakır (per-VMA kilit kullanılan sistemlerde RCU gecikmesiyle).
+
+- ``vma_init``: *VMA* nesnesini sıfırlar, ``vm_mm`` alanını ayarlar ve per-VMA kilidini hazırlar.
+
+Bu fonksiyonlar ``mm/vma_init.c`` dosyasında tanımlanmıştır.
+
+Ağaca ekleme yapan fonksiyonlar şunlardır:
+
+.. code-block:: c
+
+    int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma);
+    int vma_link(struct mm_struct *mm, struct vm_area_struct *vma);
+
+- ``insert_vm_struct``: Hazırlanmış bir *VMA*'yı adres alanına ekler. Aralığın boş olduğunu ve bellek sınırlarını
+  denetler, ardından ``vma_link`` çağırır. Örneğin ``exec`` sırasında ilk yığın *VMA*'sı bu yolla eklenir.
+
+- ``vma_link``: *VMA*'yı maple ağacına yazar, eğer *VMA* dosya tabanlıysa ``i_mmap`` ağacına bağlar ve ``mm->map_count``
+  değerini artırır.
+
+Bölme, birleştirme, genişletme ve daraltma yapan fonksiyonlar şunlardır:
+
+.. code-block:: c
+
+    int split_vma(struct vma_iterator *vmi, struct vm_area_struct *vma,
+            unsigned long addr, int new_below);
+    struct vm_area_struct *vma_merge_new_range(struct vma_merge_struct *vmg);
+    int vma_expand(struct vma_merge_struct *vmg);
+    int vma_shrink(struct vma_iterator *vmi, struct vm_area_struct *vma,
+            unsigned long start, unsigned long end, pgoff_t pgoff);
+
+- ``split_vma``: *VMA*'yı ``addr`` adresinden ikiye böler. ``new_below`` sıfırdan farklıysa yeni *VMA* alt parçayı,
+  sıfırsa üst parçayı oluşturur. Yeni parça ``vm_area_dup`` ile oluşturulur ve iki parça maple ağacına yeni sınırlarıyla
+  yazılır.
+
+- ``vma_merge_new_range``: Henüz *VMA*'sı olmayan yeni bir aralığın komşu *VMA*'larla (önceki ve/veya sonraki)
+  birleştirilip birleştirilemeyeceğine bakar. Birleştirilebiliyorsa yeni *VMA* oluşturmadan komşuyu genişletir ve onu
+  döndürür. Birleştirilemiyorsa ``NULL`` döndürür.
+
+- ``vma_expand``: Bir *VMA*'yı (gerekirse sonraki *VMA*'yı yutarak) daha büyük bir aralığa genişletir ve ağacı
+  günceller.
+
+- ``vma_shrink``: Bir *VMA*'yı ``[start, end)`` aralığına daraltır. Dışarıda kalan kısım ağaçtan temizlenir.
+
+*VMA*'nın özelliklerini değiştiren ``vma_modify_flags`` isimli bir fonksiyon bulunmaktadır:
+
+.. code-block:: c
+
+    struct vm_area_struct *vma_modify_flags(
+            struct vma_iterator *vmi, struct vm_area_struct *prev,
+            struct vm_area_struct *vma, unsigned long start,
+            unsigned long end, unsigned long new_flags);
+
+- Bu fonksiyon *VMA*'nın ``[start, end)`` kısmının bayraklarını değiştirmek için gereken yapısal işlemleri yapar: Önce
+  komşularla birleştirmeyi dener. Birleştirme olmazsa ve gerekiyorsa *VMA*'yı bir ya da iki yerinden böler. Bayrakların
+  değiştirileceği *VMA*'yı döndürür (bayrakların kendisini çağıran ayarlar). Benzer amaçlı ``vma_modify_policy``,
+  ``vma_modify_flags_name`` ve ``vma_modify_flags_uffd`` fonksiyonları da vardır.
+
+Aşağıdaki fonksiyonlar *VMA* için alan aramaktadır:
+
+.. code-block:: c
+
+    unsigned long get_unmapped_area(
+            struct file *file, unsigned long addr,
+            unsigned long len, unsigned long pgoff,
+            unsigned long flags);
+
+    unsigned long vm_unmapped_area(struct vm_unmapped_area_info *info);
+
+    unsigned long mmap_region(
+            struct file *file, unsigned long addr,
+            unsigned long len, vm_flags_t vm_flags,
+            unsigned long pgoff, struct list_head *uf);
+
+- ``get_unmapped_area``: Yeni eşleme için uygun bir sanal adres seçer. Dosyanın, mimarinin ya da ``mm`` nesnesinin kendi
+  ``get_unmapped_area`` fonksiyonuna yönlendirir.
+
+- ``vm_unmapped_area``: ``info`` ile belirtilen kısıtlara (uzunluk, alt/üst sınır, hizalama, yön) göre boş alan arar.
+  İçeride ``mas_empty_area`` ya da ``mas_empty_area_rev`` kullanır.
+
+- ``mmap_region``: Seçilen adreste eşlemeyi gerçekten oluşturur: Aralıkta eski eşleme varsa onu kaldırır,
+  ``vma_merge_new_range`` ile birleştirmeyi dener, olmazsa ``vm_area_alloc`` ile yeni *VMA* oluşturup ağaca yazar ve
+  dosyanın ``mmap`` mekanizmasını kullanır.
+
+  
