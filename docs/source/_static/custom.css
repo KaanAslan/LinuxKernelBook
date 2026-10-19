@@ -180,3 +180,19 @@ table.docutils th {
         text-align: justify;
     }
 }
+
+.rst-content h1 {
+    position: relative;
+    padding-bottom: 0.5em;
+    margin-bottom: 1.2em;
+}
+.rst-content h1::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;          /* kısa bir bant için örn. 120px */
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #2c3e50, #4a6484, #cfe2f3);
+}

@@ -1054,7 +1054,7 @@ Bölme, birleştirme, genişletme ve daraltma yapan fonksiyonlar şunlardır:
   değiştirileceği *VMA*'yı döndürür (bayrakların kendisini çağıran ayarlar). Benzer amaçlı ``vma_modify_policy``,
   ``vma_modify_flags_name`` ve ``vma_modify_flags_uffd`` fonksiyonları da vardır.
 
-Aşağıdaki fonksiyonlar *VMA* için alan aramaktadır:
+Aşağıdaki fonksiyonlar *VMA* için alan eşlemektedir:
 
 .. code-block:: c
 
@@ -1080,4 +1080,34 @@ Aşağıdaki fonksiyonlar *VMA* için alan aramaktadır:
   ``vma_merge_new_range`` ile birleştirmeyi dener, olmazsa ``vm_area_alloc`` ile yeni *VMA* oluşturup ağaca yazar ve
   dosyanın ``mmap`` mekanizmasını kullanır.
 
-  
+Eşlemeleri kaldırmak için aşağıdaki fonksiyonlar bulundurulmuştur:
+
+.. code-block:: c
+
+    int do_munmap(
+            struct mm_struct *mm, unsigned long start,
+            size_t len, struct list_head *uf);
+
+    int do_vmi_munmap(
+            struct vma_iterator *vmi, struct mm_struct *mm,
+            unsigned long start, size_t len,
+            struct list_head *uf, bool unlock);
+
+    int do_vmi_align_munmap(
+            struct vma_iterator *vmi, struct vm_area_struct *vma,
+            struct mm_struct *mm, unsigned long start,
+            unsigned long end, struct list_head *uf,
+            bool unlock);
+
+- ``do_munmap``: ``[start, start + len)`` aralığındaki eşlemeleri kaldırır. Kendi dolaşıcısını (iterator) oluşturup
+  ``do_vmi_munmap`` çağırır.
+
+- ``do_vmi_munmap``: Aralığı sayfa sınırına hizalar, aralıktaki ilk *VMA*'yı bulur ve ``do_vmi_align_munmap`` çağırır.
+  ``unlock`` ``true`` ise işin sonunda yazma kilidi okuma kilidine düşürülür.
+
+- ``do_vmi_align_munmap``: Asıl işi yapar: Aralığın uçlarındaki *VMA*'ları gerekirse böler, aradaki *VMA*'ları ayrı bir
+  yan ağaçta (detached tree) toplar, ana ağaçtan aralığı temizler, ardından sayfa tablolarını ve *VMA*'ları serbest
+  bırakır.
+
+Linux 6.12 ile bu işlem ``vms_gather_munmap_vmas`` ve ``vms_complete_munmap_vmas`` adımlarına (``struct vma_munmap_struct``) 
+ayrılmıştır. Ancak dışarıdan çağrılan fonksiyonlar aynı kalmıştır.
