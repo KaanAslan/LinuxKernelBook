@@ -981,7 +981,8 @@ hareketle yapılmaktadır.
 VMA'lar İle İlgili İşlem Yapan Çekirdek Fonksiyonları
 =====================================================
 
-Şimdi de *VMA*'lar üzerinde işlem yapan çekirdek fonksiyonlarından bahsedelim.  
+Bu başlıkta  *VMA*'lar üzerinde işlem yapan temel çekirdek fonksiyonlarından bahsedeceğiz. Ancak maple ağacı üzerinde işlem 
+yapan fonksiyonları ele almayacağız.
 
 *VMA* nesnelerinin tahsisatına ilişkin temel çekirdek fonksiyonları şunlardır:
 
@@ -1111,3 +1112,34 @@ Eşlemeleri kaldırmak için aşağıdaki fonksiyonlar bulundurulmuştur:
 
 Linux 6.12 ile bu işlem ``vms_gather_munmap_vmas`` ve ``vms_complete_munmap_vmas`` adımlarına (``struct vma_munmap_struct``) 
 ayrılmıştır. Ancak dışarıdan çağrılan fonksiyonlar aynı kalmıştır.
+
+*VMA* araması yapan temel fonksiyonlar şunlardır:
+
+.. code-block:: c
+
+    struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr);
+    struct vm_area_struct *vma_lookup(struct mm_struct *mm, unsigned long addr);
+    struct vm_area_struct *find_vma_prev(struct mm_struct *mm, unsigned long addr,
+            struct vm_area_struct **pprev);
+    struct vm_area_struct *find_vma_intersection(struct mm_struct *mm, unsigned long start_addr,
+            unsigned long end_addr);
+    struct vm_area_struct *lock_vma_under_rcu(struct mm_struct *mm, unsigned long address);
+    struct vm_area_struct *lock_mm_and_find_vma(struct mm_struct *mm, unsigned long address,
+            struct pt_regs *regs);
+
+- ``find_vma``: ``vm_end > addr`` koşulunu sağlayan ilk *VMA*'yı döndürür. Dönen *VMA* ``addr`` adresini içermeyebilir
+  (``addr`` bir boşluktaysa, boşluğun üstündeki *VMA* döner).
+
+- ``vma_lookup``: Yalnızca ``addr`` adresini içeren *VMA*'yı döndürür. Yoksa ``NULL`` döndürür. İçeride ``mtree_load``
+  kullanır.
+
+- ``find_vma_prev``: ``find_vma`` ile aynı *VMA*'yı döndürür. Ayrıca ondan önceki *VMA*'yı ``*pprev`` ile verir.
+
+- ``find_vma_intersection``: ``[start_addr, end_addr)`` aralığıyla kesişen ilk *VMA*'yı döndürür.
+
+- ``lock_vma_under_rcu``: ``mmap_lock`` almadan, RCU altında maple ağacında arama yapar ve bulduğu *VMA*'nın per-VMA
+  okuma kilidini almaya çalışır. Başarısız olursa ``NULL`` döner ve çağıran ``mmap_lock`` yoluna geçer. Sayfa
+  hatalarının hızlı yoludur.
+
+- ``lock_mm_and_find_vma``: ``mmap_read_lock`` alarak *VMA*'yı bulur. Adres bir yığın (stack) *VMA*'sının hemen
+  altındaysa yığını genişletmeyi de dener. Mimari sayfa hatası işleyicilerinin yavaş yoludur.
