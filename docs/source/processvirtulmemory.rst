@@ -504,7 +504,6 @@ eleman aslında aynı bellek betimleyicisini göstermektedir.
 
 .. figure:: _static/mm-active-mm-table.png
    :align: center
-   :class: fig-mapping5
    :width: 60%
 
 Yani ``mm`` göstericisi "bu thread'in sahip olduğu adres alanını", ``active_mm`` göstericisi ise "o anda işlemcinin sayfa
@@ -762,6 +761,7 @@ düğüm türü bulunmaktadır:
 
 .. figure:: _static/mm-mt-node-types-table.png
    :align: center
+   :class: fig-mapping4
    :width: 45%
 
 Maple ağacı gerçekleştiriminde yaprak düğümlerdeki slotlarda (yani göstericilerde) *VMA* nesnelerinin adresleri
@@ -909,7 +909,7 @@ Burada kök düğümdeki üç slot şöyledir:
 
 .. figure:: _static/address-space-second-vma.png
    :align: center
-   :class: fig-mapping5
+   :class: fig-mapping4
    :width: 45%
 
 Bizim örneğimizde slot sayısı üç olduğu için artık buradaki 5 bölge 3 slota sığmayacağından alt düğüm

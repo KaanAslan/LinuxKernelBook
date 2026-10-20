@@ -591,7 +591,7 @@ bit ARM işlemcilerinin sayfalama aşamalarını aşağıdaki tabloyla karşıla
 .. image:: _static/x86-64-aarch64-paging-comparison.png
    :align: center
    :class: fig-mapping5
-   :width: 55%
+   :width: 50%
 
 Translation Lookaside Buffer (TLB)
 ----------------------------------
