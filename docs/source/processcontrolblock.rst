@@ -794,9 +794,9 @@ Aygıt dosyaları komut satırında *mknod* isimli programla yaratılmaktadır:
 
    $ sudo mknod -m 666 mydriver c 250 0
 
-Tipik olarak sistem programcısı bir *kabuk betiği (shell script)* yazarak bu işlemi otomatize eder. Bu
-betik önce *insmod* ile aygıt sürücüyü yükler, ``/proc/devices`` dosyasına başvurup onun majör numarasını
-elde eder ve aygıt dosyasını *mknod* komutuyla dinamik bir biçimde oluşturur. Biz de denemelerimizde
+Klasik aygıt sürücü geliştirme sürecinde tipik olarak sistem programcısı bir *kabuk betiği (shell script)* yazarak 
+bu işlemi otomatize eder. Bu betik önce *insmod* ile aygıt sürücüyü yükler, ``/proc/devices`` dosyasına başvurup onun 
+majör numarasını elde eder ve aygıt dosyasını *mknod* komutuyla dinamik bir biçimde oluşturur. Biz de denemelerimizde
 böyle yapacağız. Bunun için aşağıdaki gibi bir ``load`` betiği kullanacağız:
 
 .. code-block:: bash
@@ -834,6 +834,10 @@ yazılabilir:
 
    $ chmod +x unload
    $ sudo ./unload mydriver
+
+Çekirdeğin 2.6 versiyonlarında yapılan eklemelerle ve kullanıcı modundaki araçlarla aygıt dosyalarının otomatik
+yaratılması da mümkün hâle getirilmiştir. Bugün artık yukarıdaki betikler kullanılmadan aygıt sürücü yüklendiğinde
+``/dev`` dizini içerisinde aygıt dosyaları otomatik yaratılabilmektedir.
 
 İskelet Karakter Aygıt Sürücüsü Örneği
 --------------------------------------
@@ -1072,6 +1076,234 @@ görülmelidir:
    [  450.631953] test_driver_ioctl...
    [  450.631958] IOC_test_driver_TEST1
    [  450.631967] test-driver closed...
+
+Aşağıda da aygıt dosyasının ``/dev`` dizininde otomatik yaratıldığı bir iskelet aygıt sürücüsü örneği veriyoruz. Burada
+artık *load* ve *unload* betiklerinin kullanılmasına gerek kalmamaktadır. Artık aygıt sürücüsünü doğrudan *insmod*
+komutuyla yükleyebiliriz:
+
+.. code-block:: bash
+
+    $ sudo insmod test-driver.ko
+
+Boşaltma işlemini de doğrudan *rmmod* komutuyla yapabiliriz:
+
+.. code-block:: bash
+
+    $ sudo rmmod test-driver.ko
+
+Aygıt dosyasının ``open`` fonksiyonunda aşağıdaki gibi açıldığına dikkat ediniz:
+
+.. code-block:: c
+
+    if ((fd = open("/dev/test-driver", O_RDONLY)) == -1)
+        exit_sys("open");
+
+``test-driver.h``
+
+.. code-block:: c
+
+    #ifndef TEST_DRIVER_H_
+    #define TEST_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    #define TEST_DRIVER_MAGIC    't'
+    #define IOC_TEST             _IO(TEST_DRIVER_MAGIC, 0)
+
+    #endif
+
+``test-driver.c`` 
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/device.h>
+    #include "test-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static long ioctl_test(struct file *filp, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);  /* EKLENDİ */
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "test-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        /* EKLENDİ: class ve device yaratımı */
+        g_class = class_create("test-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+        printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "test-driver opened...\n");
+
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "test-driver closed...\n");
+
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        printk(KERN_INFO "test-driver read...\n");
+
+        return 0;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        printk(KERN_INFO "test-driver write...\n");
+
+        return 0;
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        printk(KERN_INFO "test_driver_ioctl...\n");
+
+        switch (cmd) {
+            case IOC_TEST:
+                result = ioctl_test(filp, arg);
+                break;
+            default:
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    long ioctl_test(struct file *filp, unsigned long arg)
+    {
+        printk(KERN_INFO "IOC_test_driver_TEST1\n");
+
+        return 0;
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+``Makefile`` 
+
+.. code-block:: make
+
+    obj-m += ${file}.o
+
+    all:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``app.c`` 
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+    #include "test-driver.h"
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        int fd;
+
+        if ((fd = open("/dev/test-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if (ioctl(fd, IOC_TEST) == -1)
+            exit_sys("ioctl");
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
 
 RCU Mekanizması ile task_struct Listelerinin Dolaşılması
 ------------------------------------------------------------
