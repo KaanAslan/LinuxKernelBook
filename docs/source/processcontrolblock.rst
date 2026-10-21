@@ -1343,7 +1343,7 @@ ana thread'lerine ilişkin ``task_struct`` nesneleri aşağıdaki gibi güvenli 
        lh = rcu_dereference(init_task.tasks.next);
        while (lh != &init_task.tasks) {
            ts = container_of(lh, struct task_struct, tasks);
-           printk(KERN_INFO "PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "PID = %d, COMM = %s\n", ts->pid, ts->comm);
            lh = rcu_dereference(ts->tasks.next);
        }
 
@@ -1378,7 +1378,7 @@ Bu makro kullanılarak *walk_process* fonksiyonu şöyle de yazılabilir:
 
        ts = next_task(&init_task);
        while (ts != &init_task) {
-           printk(KERN_INFO "PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "PID = %d, COMM = %s\n", ts->pid, ts->comm);
            ts = next_task(ts);
        }
 
@@ -1420,7 +1420,7 @@ Aşağıda tüm proseslerin ana thread'lerini dolaşan örnek bir çekirdek mod�
 
        ts = next_task(&init_task);
        while (ts != &init_task) {
-           printk(KERN_INFO "PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "PID = %d, COMM = %s\n", ts->pid, ts->comm);
            ts = next_task(ts);
        }
 
@@ -1480,7 +1480,7 @@ Aşağıda çekirdek modülünün kodlarını bütünsel olarak veriyoruz:
        rcu_read_lock();
 
        for_each_process(ts) {
-           printk(KERN_INFO "PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "PID = %d, COMM = %s\n", ts->pid, ts->comm);
        }
 
        rcu_read_unlock();
@@ -1514,7 +1514,7 @@ Bu makroyu kullanarak tüm proseslerin ana thread'lerini dolaşan fonksiyon şö
        rcu_read_lock();
 
        list_for_each_entry_rcu(ts, &init_task.tasks, tasks) {
-           printk(KERN_INFO "PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "PID = %d, COMM = %s\n", ts->pid, ts->comm);
        }
 
        rcu_read_unlock();
@@ -1554,7 +1554,7 @@ Prosesin thread'leri aşağıdaki gibi dolaşılabilir:
        rcu_read_lock();
 
        list_for_each_entry_rcu(ts, &current->signal->thread_head, thread_node) {
-           printk(KERN_INFO "Thread PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "Thread PID = %d, COMM = %s\n", ts->pid, ts->comm);
        }
 
        rcu_read_unlock();
@@ -1584,7 +1584,7 @@ Bu fonksiyon ile prosesin herhangi bir thread'inden başlayarak tüm thread'leri
 
        ts = current;
        do {
-           printk(KERN_INFO "Thread PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "Thread PID = %d, COMM = %s\n", ts->pid, ts->comm);
            ts = next_thread(ts);
        } while (ts != current);
 
@@ -1611,7 +1611,7 @@ parametreyle belirtilen göstericinin içerisine yerleştirilmektedir:
        rcu_read_lock();
 
        for_each_thread(current, ts) {
-           printk(KERN_INFO "Thread PID = %d, COMM = %s", ts->pid, ts->comm);
+           printk(KERN_INFO "Thread PID = %d, COMM = %s\n", ts->pid, ts->comm);
        }
 
        rcu_read_unlock();
@@ -1758,7 +1758,7 @@ sonra ``app`` programı çalıştırmalısınız. Bu program önce 10 tane threa
         rcu_read_lock();
 
         for_each_thread(current, ts) {
-            printk(KERN_INFO "Thread PID = %d, COMM = %s", ts->pid, ts->comm);
+            printk(KERN_INFO "Thread PID = %d, COMM = %s\n", ts->pid, ts->comm);
         }
 
         rcu_read_unlock();
