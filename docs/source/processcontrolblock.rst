@@ -2227,6 +2227,360 @@ Aşağıda bu işlemi yapan çekirdek modülünün tüm kodları verilmiştir.
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
+Prosesin Alt Proseslerine İlişkin task_struct Nesnelerinin Dolaşılması
+----------------------------------------------------------------------
+
+Şimdi de son olarak bir prosesin alt proseslerini dolaşalım. Anımsanacağı gibi prosesin alt proses listesinin kök düğümü
+ana prosesin ana thread'ine ilişkin ``task_struct`` nesnesinin ``children`` elemanında tutuluyordu. Bu ``children``
+elemanı ``task_struct`` içerisindeki ``sibling`` düğümlerini dolaşmakta kullanılıyordu. ``children``/``sibling``
+listesinde yalnızca alt proseslerin ana thread'lerine ilişkin ``task_struct`` nesnelerinin bulunduğunu da anımsayınız.
+
+Alt prosesleri dolaşan hazır bir döngü makrosu yoktur. Ancak biz yukarıdaki tekniklerle dolaşımı yapabiliriz. Örneğin
+bunun için RCU mekanizmasıyla bağlı listeyi dolaşan ``list_for_each_entry_rcu`` döngü makrosundan faydalanabiliriz:
+
+.. code-block:: c
+
+    static void walk_child_processes(void)
+    {
+        struct task_struct *ts;
+
+        rcu_read_lock();
+
+        list_for_each_entry_rcu(ts, &current->children, sibling) {
+            printk(KERN_INFO "Child Process Main Thread PID = %d, COMM = %s\n", ts->pid, ts->comm);
+        }
+
+        rcu_read_unlock();
+    }
+
+Bu kodda ``current`` makrosunun belirttiği prosesin alt proses listesi dolaşılmaktadır. Tabii daha önce de belirttiğimiz
+gibi alt proseslerin dolaşılması prosesin ana thread'inden hareketle yapılmalıdır. Yukarıdaki fonksiyonda ``current``
+makrosu kullanıldığı için biz dolaşımı basit bir çekirdek modülü ile yapamayız, ancak bir aygıt sürücüsü yoluyla
+yapabiliriz. Bir karakter aygıt sürücüsü oluşturarak yukarıdaki fonksiyonu onun ``ioctl`` kodu içerisinden
+çağırabiliriz:
+
+.. code-block:: c
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        printk(KERN_INFO "test_driver_ioctl...\n");
+
+        switch (cmd) {
+            case IOC_TEST:
+                result = ioctl_test(filp, arg);
+                break;
+            default:
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    long ioctl_test(struct file *filp, unsigned long arg)
+    {
+        walk_child_processes();
+
+        return 0;
+    }
+
+Kodu önce çeşitli alt prosesler yarattıktan sonra aygıt sürücüsü üzerinde ``ioctl`` çağrısı yapan bir programla test
+edebilirsiniz. Biz test işlemini yapan ``app.c`` programında 10 tane alt proses ve her alt proseste 3 tane thread
+yarattık. Aygıt sürücüyü yükleyip ``app.c`` programını derleyip çalıştırdıktan sonra *dmesg* komutunu uygulayarak
+çıktıyı incelemelisiniz.
+
+Aşağıda tüm kodları bütünsel olarak veriyoruz. Aşağıdaki adımlarla test işlemini yapabilirsiniz:
+
+.. code-block:: console
+
+    $ make file=test-driver
+    $ sudo insmod ./test-driver.ko
+    $ gcc -o app app.c
+    $ ./app
+    $ sudo dmesg | tail -20
+    $ sudo rmmod test-driver
+
+``test-driver.h``
+
+.. code-block:: c
+
+    #ifndef TEST_DRIVER_H_
+    #define TEST_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    #define TEST_DRIVER_MAGIC    't'
+    #define IOC_TEST             _IO(TEST_DRIVER_MAGIC, 0)
+
+    #endif
+
+``test-driver.c`` 
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/fs.h>
+    #include <linux/cdev.h>
+    #include <linux/device.h>
+    #include "test-driver.h"
+
+    MODULE_LICENSE("GPL");
+    MODULE_AUTHOR("Kaan Aslan");
+    MODULE_DESCRIPTION("test-driver");
+
+    static int test_driver_open(struct inode *inodep, struct file *filp);
+    static int test_driver_release(struct inode *inodep, struct file *filp);
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
+
+    static long ioctl_test(struct file *filp, unsigned long arg);
+    static void walk_child_processes(void);
+
+    static dev_t g_dev;
+    static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
+    static struct file_operations g_fops = {
+        .owner = THIS_MODULE,
+        .open = test_driver_open,
+        .read = test_driver_read,
+        .write = test_driver_write,
+        .release = test_driver_release,
+        .unlocked_ioctl = test_driver_ioctl
+    };
+
+    static int __init test_driver_init(void)
+    {
+        int result;
+
+        printk(KERN_INFO "test-driver module initialization...\n");
+
+        if ((result = alloc_chrdev_region(&g_dev, 0, 1, "test-driver")) < 0) {
+            printk(KERN_INFO "cannot alloc char driver!...\n");
+            return result;
+        }
+        cdev_init(&g_cdev, &g_fops);
+        if ((result = cdev_add(&g_cdev, g_dev, 1)) < 0) {
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot add device!...\n");
+            return result;
+        }
+
+        g_class = class_create("test-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
+        return 0;
+    }
+
+    static void __exit test_driver_exit(void)
+    {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
+        cdev_del(&g_cdev);
+        unregister_chrdev_region(g_dev, 1);
+
+        printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
+    }
+
+    static int test_driver_open(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "test-driver opened...\n");
+
+        return 0;
+    }
+
+    static int test_driver_release(struct inode *inodep, struct file *filp)
+    {
+        printk(KERN_INFO "test-driver closed...\n");
+
+        return 0;
+    }
+
+    static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off)
+    {
+        printk(KERN_INFO "test-driver read...\n");
+
+        return 0;
+    }
+
+    static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off)
+    {
+        printk(KERN_INFO "test-driver write...\n");
+
+        return 0;
+    }
+
+    static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+    {
+        long result;
+
+        printk(KERN_INFO "test_driver_ioctl...\n");
+
+        switch (cmd) {
+            case IOC_TEST:
+                result = ioctl_test(filp, arg);
+                break;
+            default:
+                result = -ENOTTY;
+        }
+
+        return result;
+    }
+
+    static long ioctl_test(struct file *filp, unsigned long arg)
+    {
+        walk_child_processes();
+
+        return 0;
+    }
+
+    static void walk_child_processes(void)
+    {
+        struct task_struct *ts;
+
+        rcu_read_lock();
+
+        list_for_each_entry_rcu(ts, &current->children, sibling) {
+            printk(KERN_INFO "Child Process Main Thread PID = %d, COMM = %s\n", ts->pid, ts->comm);
+        }
+
+        rcu_read_unlock();
+    }
+
+    module_init(test_driver_init);
+    module_exit(test_driver_exit);
+
+``Makefile`` dosyası:
+
+.. code-block:: make
+
+    obj-m += ${file}.o
+
+    all:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
+``app.c`` dosyası:
+
+.. code-block:: c
+
+    #define _GNU_SOURCE
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <stdint.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/wait.h>
+    #include <pthread.h>
+    #include <sys/ioctl.h>
+    #include "test-driver.h"
+
+    #define NCHILDS     10
+    #define NTHREADS    3
+
+    void exit_sys(const char *msg);
+    void *thread_proc(void *param);
+
+    int main(void)
+    {
+        int fd;
+        int result;
+        pid_t pid;
+
+        for (int i = 0; i < NCHILDS; ++i) {
+            if ((pid = fork()) == -1) {
+                perror("fork");
+                exit(EXIT_FAILURE);
+            }
+
+            if (pid == 0) {
+                pthread_t tids[NTHREADS];
+
+                for (int k = 0; k < NTHREADS; ++k) {
+                    if ((result = pthread_create(&tids[k], NULL, thread_proc, NULL)) != 0) {
+                        fprintf(stderr, "pthread_create: %s\n", strerror(result));
+                        exit(EXIT_FAILURE);
+                    }
+                }
+
+                for (int k = 0; k < NTHREADS; ++k)
+                    pthread_join(tids[k], NULL);
+
+                _exit(0);
+            }
+            else {
+                printf("Child PID = %jd\n", (intmax_t)pid);
+            }
+        }
+
+        if ((fd = open("/dev/test-driver", O_RDONLY)) == -1)
+            exit_sys("open");
+
+        if (ioctl(fd, IOC_TEST) == -1)
+            exit_sys("ioctl");
+
+        close(fd);
+
+        for (int i = 0; i < NCHILDS; ++i)
+            if (wait(NULL) == -1) {
+                perror("wait");
+                exit(EXIT_FAILURE);
+            }
+
+        return 0;
+    }
+
+    void *thread_proc(void *param)
+    {
+        sleep(60);
+
+        return NULL;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+
+Çekirdeğin uyguladığı RCU mekanizması tek bir yazan ve birden fazla okuyan akışın bulunduğu durumda beklemeyi ortadan
+kaldırmaktadır. Ancak veri yapısına birden fazla yazanın (güncellemeyi kastediyoruz) olması durumunda yazan tarafların
+bir kilit mekanizmasıyla (tipik olarak okuma yazma kilitleri yoluyla) senkronize edilmesi gerekir. İşte güncel
+çekirdekler hâlâ ``task_struct`` bağlı listelerine yazma için daha önce sözünü etmiş olduğumuz ``tasklist_lock``
+kilidini kullanmaktadır. Daha önceden de belirttiğimiz ``tasklist_lock`` okuma yazma kilidi artık çekirdek modülleri ve
+aygıt sürücüleri için export edilmemektedir.
+
 PID Tahsisatı
 ==============
 
@@ -2243,7 +2597,6 @@ biliyor olması gerekir:
    nasıl üretmektedir?
 | **2.** Çekirdek belli bir pid değerine ilişkin proses ya da thread'in ``task_struct`` nesnesine nasıl
    ulaşmaktadır?
-
 
 PID Üretim Mekanizmasının Tarihsel Gelişimi
 --------------------------------------------
@@ -2421,13 +2774,13 @@ için çekirdek önce hash tablosundan o pid değerine ilişkin ``pid`` nesnesin
 
 Bu versiyonlardaki durumu şöyle özetleyebiliriz:
 
-1. Çekirdek her pid için bir ``pid`` nesnesi (``struct pid`` nesnesi) oluşturup onu bir hash
+| **1.** Çekirdek her pid için bir ``pid`` nesnesi (``struct pid`` nesnesi) oluşturup onu bir hash
    tablosunda saklamaktadır. Yani ``pid`` nesneleri için bir hash tablosu kullanılmıştır.
 
-2. ``pid`` yapısının içerisindeki ``tasks`` elemanı o pid değerine ilişkin bağlı liste zincirlerinin
+| **2.** ``pid`` yapısının içerisindeki ``tasks`` elemanı o pid değerine ilişkin bağlı liste zincirlerinin
    kök düğümlerini tutmaktadır.
 
-3. Sistem bir pid değerine ilişkin ``task_struct`` nesnesini elde etmek için önce o pid değerine
+| **3.** Sistem bir pid değerine ilişkin ``task_struct`` nesnesini elde etmek için önce o pid değerine
    ilişkin ``pid`` nesnesini hash tablosundan bulmakta, sonra onun içerisindeki ilgili bağlı listede
    arama yapmaktadır.
 
