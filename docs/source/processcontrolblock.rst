@@ -2227,8 +2227,8 @@ Aşağıda bu işlemi yapan çekirdek modülünün tüm kodları verilmiştir.
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-Prosesin Alt Proseslerine İlişkin task_struct Nesnelerinin Dolaşılması
-----------------------------------------------------------------------
+Proseslerin Alt Proseslerine İlişkin task_struct Nesnelerinin Dolaşılması
+-------------------------------------------------------------------------
 
 Şimdi de son olarak bir prosesin alt proseslerini dolaşalım. Anımsanacağı gibi prosesin alt proses listesinin kök düğümü
 ana prosesin ana thread'ine ilişkin ``task_struct`` nesnesinin ``children`` elemanında tutuluyordu. Bu ``children``

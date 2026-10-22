@@ -2605,14 +2605,16 @@ Bir süre önceye kadar ``fdget`` ve ``fdput`` export edilmemişti. Ancak günce
 Her ne kadar yeni çekirdeklerde ``fdget`` ve ``fdput`` daha hızlı çalışıyorsa da ``fget`` ve ``fput``
 basit arayüzü ve kullanım kolaylığı ve eskiden beri aynı biçimde bulunması nedeniyle tercih edilebilir.
 
-dup Fonksiyonunun Gerçekleştirimi
--------------------------------------
+dup Fonksiyonunun Test Amaçlı Gerçekleştirimi
+---------------------------------------------
 
-Şimdi de ``dup`` POSIX fonksiyonunun işlevini yerine getiren (yani ``sys_dup`` sistem fonksiyonu gibi
-çalışan) bir fonksiyonu kendimiz yazalım. Çekirdeği yeniden derlememek için bu işlemi de bir aygıt
-sürücüye yaptırabiliriz. Bunun için bir ``ioctl`` kodu oluşturacağız. Bu ``ioctl`` kodu kullanıcı
-modundan çağrılırken ``ioctl`` fonksiyonunun üçüncü parametresine aşağıdaki gibi bir yapı nesnesinin
-adresini geçireceğiz:
+Dosya Betimleyicisinin Çiftlenmesi
+----------------------------------
+
+Şimdi de ``dup`` POSIX fonksiyonunun işlevini yerine getiren (yani ``sys_dup`` sistem fonksiyonu gibi çalışan) bir
+fonksiyonu kendimiz yazalım. Çekirdeği yeniden derlememek için bu işlemi de bir aygıt sürücüsüne yaptırabiliriz. Bunun
+için bir ``ioctl`` kodu oluşturacağız. Bu ``ioctl`` kodu kullanıcı modundan çağrılırken ``ioctl`` fonksiyonunun üçüncü
+parametresine aşağıdaki gibi bir yapı nesnesinin adresini geçireceğiz:
 
 .. code-block:: c
 
@@ -2621,18 +2623,17 @@ adresini geçireceğiz:
         int fd_dup;
     };
 
-Burada yapının ``fd`` elemanı çiftlenecek dosya betimleyicisini belirtmektedir. ``fd_dup`` elemanı ise
-çiftleme sonucunda elde edilecek yeni betimleyiciyi belirtmektedir. (Yani biz fonksiyonu çağırmadan
-önce yapının ``fd`` elemanına çiftlenecek betimleyiciyi yerleştireceğiz, fonksiyon da bunu çiftleyip
-yeni betimleyiciyi yapının ``fd_dup`` elemanına yerleştirecek.) Bu elemanların ``dup`` fonksiyonu ile
-ilişkisini şöyle temsil edebiliriz:
+Burada yapının ``fd`` elemanı çiftlenecek dosya betimleyicisini belirtmektedir. ``fd_dup`` elemanı ise çiftleme
+sonucunda elde edilecek yeni betimleyiciyi belirtmektedir. (Yani biz fonksiyonu çağırmadan önce yapının ``fd`` elemanına
+çiftlenecek betimleyiciyi yerleştireceğiz, fonksiyon da bunu çiftleyip yeni betimleyiciyi yapının ``fd_dup`` elemanına
+yerleştirecek.) Bu elemanların ``dup`` fonksiyonu ile ilişkisini şöyle temsil edebiliriz:
 
 .. code-block:: c
 
     fd_dup = dup(fd);
 
-Dosya betimleyicisini çiftleyen ``ioctl`` kodu düz bir biçimde test amaçlı olarak (yani bazı
-kusurlarla) şöyle yazılabilir:
+Dosya betimleyicisini çiftleyen ``ioctl`` kodu düz bir biçimde test amaçlı olarak (yani bazı kusurlarla) şöyle
+yazılabilir:
 
 .. code-block:: c
 
@@ -2661,7 +2662,7 @@ kusurlarla) şöyle yazılabilir:
             if (fd_table[i] == NULL) {
                 f = fd_table[fddup.fd];
                 fd_table[i] = f;
-                ++f->f_count.counter;       /* atomic_long_inc(&f->f_count); */
+                ++f->f_count.counter;    /* atomic_long_inc(&f->f_count); */
                 fddup.fd_dup = i;
                 break;
             }
@@ -2674,16 +2675,15 @@ kusurlarla) şöyle yazılabilir:
         return 0;
     }
 
-Fonksiyonumuzda önce kullanıcı modundaki ``fddup`` nesnesini çekirdek moduna ``copy_from_user``
-fonksiyonu ile kopyaladık:
+Fonksiyonumuzda önce kullanıcı modundaki ``fddup`` nesnesini çekirdek moduna ``copy_from_user`` fonksiyonu ile
+kopyaladık:
 
 .. code-block:: c
 
     if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
         return -EFAULT;
 
-Sonra fonksiyonumuzda çiftlenecek dosya betimleyicisinin geçerli bir betimleyici olup olmadığına
-baktık:
+Sonra fonksiyonumuzda çiftlenecek dosya betimleyicisinin geçerli bir betimleyici olup olmadığına baktık:
 
 .. code-block:: c
 
@@ -2695,9 +2695,9 @@ baktık:
     if (fd_table[fddup.fd] == NULL)
         return -EBADF;
 
-Bu işlemden sonra fonksiyonumuzda bir döngü içerisinde ilk boş betimleyiciyi bulup, çiftlenecek olan
-betimleyicinin gösterdiği dosya nesnesinin adresini bu boş betimleyiciye yerleştirdik. Bu tür
-işlemlerde dosya nesnesinin sayacının artırılması gerektiğini anımsayınız:
+Bu işlemden sonra fonksiyonumuzda bir döngü içerisinde ilk boş betimleyiciyi bulup, çiftlenecek olan betimleyicinin
+gösterdiği dosya nesnesinin adresini bu boş betimleyiciye yerleştirdik. Bu tür işlemlerde dosya nesnesinin sayacının
+artırılması gerektiğini anımsayınız:
 
 .. code-block:: c
 
@@ -2705,21 +2705,23 @@ işlemlerde dosya nesnesinin sayacının artırılması gerektiğini anımsayın
         if (fd_table[i] == NULL) {
             f = fd_table[fddup.fd];
             fd_table[i] = f;
-            ++f->f_count.counter;       /* atomic_long_inc(&f->f_count); */
+            ++f->f_count.counter;    /* atomic_long_inc(&f->f_count); */
             fddup.fd_dup = i;
             break;
         }
     if (f == NULL)
         return -EMFILE;
 
-Kursumuzun yapıldığı 6.9.2 çekirdeğinde dosya nesnesinin sayacının ``file`` yapısının içerisinde şöyle
-tutulduğunu yeniden anımsatmak istiyoruz:
+Kursumuzun yapıldığı 6.9.2 çekirdeğinde dosya nesnesinin sayacının ``file`` yapısının içerisinde şöyle tutulduğunu
+yeniden anımsatmak istiyoruz:
 
 .. code-block:: c
 
     struct file {
         /* ... */
-        atomic_long_t   f_count;
+
+        atomic_long_t    f_count;
+
         /* ... */
     };
 
@@ -2731,13 +2733,12 @@ Burada aslında ``atomic_long_t`` türü bir yapı biçiminde tanımlanmıştır
         long counter;
     } atomic_long_t;
 
-Neden bu sayacın doğrudan ``long`` bir yapı elemanında tutulmayıp başka bir yapının elemanı yapıldığını
-merak edebilirsiniz. Bunun amacı aslında bu elemanın gizlenmek istenmesidir. Bu ``atomic_long_t``
-türüyle belirtilen değerler üzerinde işlemler atomik düzeyde özel fonksiyonlarla yapılmaktadır. Aslında
-``atomic_long_t`` türünün ``atomic_t`` isimli ``int`` türden versiyonu da vardır. Eskiden çekirdeklerde
-``atomic_long_t`` yerine yalnızca ``atomic_t`` türü bulunuyordu. Sonra ``atomic_long_t`` türü de
-eklendi. ``atomic_long_t`` türü üzerinde atomik işlem yapan fonksiyonların bizim için bu konu bağlamında
-önemli olan birkaçını aşağıda veriyoruz:
+Neden bu sayacın doğrudan ``long`` bir yapı elemanında tutulmayıp başka bir yapının elemanı yapıldığını merak
+edebilirsiniz. Bunun amacı aslında bu elemanın gizlenmek istenmesidir. Bu ``atomic_long_t`` türüyle belirtilen değerler
+üzerinde işlemler atomik düzeyde özel fonksiyonlarla yapılmaktadır. Aslında ``atomic_long_t`` türünün ``atomic_t``
+isimli ``int`` türden versiyonu da vardır. Eskiden çekirdeklerde ``atomic_long_t`` yerine yalnızca ``atomic_t`` türü
+bulunuyordu. Sonra ``atomic_long_t`` türü de eklendi. ``atomic_long_t`` türü üzerinde atomik işlem yapan fonksiyonların
+bizim için bu konu bağlamında önemli olan birkaçını aşağıda veriyoruz:
 
 .. code-block:: c
 
@@ -2748,30 +2749,29 @@ eklendi. ``atomic_long_t`` türü üzerinde atomik işlem yapan fonksiyonların 
 
 ``atomic_t`` ve ``atomic_long_t`` türleri hakkında ayrıntıları başka bir başlıkta ele alacağız.
 
-Fonksiyonumuzda en sonunda yeniden çekirdek modundaki ``fddup`` nesnesi kullanıcı modundaki prosesin
-``fddup`` nesnesine ``copy_to_user`` fonksiyonu ile kopyalanmıştır:
+Fonksiyonumuzda en sonunda yeniden çekirdek modundaki ``fddup`` nesnesi kullanıcı modundaki prosesin ``fddup`` nesnesine
+``copy_to_user`` fonksiyonu ile kopyalanmıştır:
 
 .. code-block:: c
 
     if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0)
         return -EFAULT;
 
-Fonksiyonumuzdaki döngüde aslında mantıksal bir kusur da vardır. Biz döngüde yalnızca o andaki dosya
-betimleyici tablosunda arama yaptık. Halbuki çekirdek aslında başlangıçta küçük bir dosya betimleyici
-tablosunu tutarken daha sonra bunu gerektiğinde proses limitinin izin verdiği kadar yükseltebilmektedir.
-Halbuki bizim kodumuz bunu göz ardı etmiştir. Yani aslında işin başında anımsayacağınız gibi
-``max_fds`` 64 bit sistemlerde 64 elemanlı bir dosya betimleyici tablosunun uzunluğunu tutmaktadır.
-Halbuki default durumda prosesin dosya betimleyici tablosu 1024 geçerli uzunluğa sahiptir. O halde
-aslında bizim ``max_fds`` ile belirtilen dosya betimleyici tablosu elemanlarının hepsi doluysa dosya
-betimleyici tablosunu prosesin kaynak limitlerinde belirtilen değere (default durumda 1024) büyütüp
-arama işlemini oradan devam ettirmemiz gerekirdi. Ancak bunu biz yapmadık.
+Fonksiyonumuzdaki döngüde aslında mantıksal bir kusur da vardır. Biz döngüde yalnızca o andaki dosya betimleyici
+tablosunda arama yaptık. Halbuki çekirdek aslında başlangıçta küçük bir dosya betimleyici tablosunu tutarken daha sonra
+bunu gerektiğinde proses limitinin izin verdiği kadar yükseltebilmektedir. Halbuki bizim kodumuz bunu göz ardı etmiştir.
+Yani aslında işin başında anımsayacağınız gibi ``max_fds`` 64 bit sistemlerde 64 elemanlı bir dosya betimleyici
+tablosunun uzunluğunu tutmaktadır. Halbuki default durumda prosesin dosya betimleyici tablosu 1024 geçerli uzunluğa
+sahiptir. O halde aslında bizim ``max_fds`` ile belirtilen dosya betimleyici tablosu elemanlarının hepsi doluysa dosya
+betimleyici tablosunu prosesin kaynak limitlerinde belirtilen değere (default durumda 1024) büyütüp arama işlemini
+oradan devam ettirmemiz gerekirdi. Ancak bunu biz yapmadık.
 
-Fonksiyonumuzda ilk boş betimleyicinin aranmasının düz mantıkla bir ``for`` döngüsü içerisinde —tıpkı
-çekirdeğin ilkel versiyonlarındaki gibi— yapıldığına dikkat ediniz. Aslında testi yaptığımız makinedeki
-Linux çekirdeğinde anımsayacağınız gibi ilk boş betimleyiciyi hızlı bir biçimde bulabilmek için iki
-düzey bitmap kullanılıyordu. Bu versiyonlarda ilk boş betimleyiciyi bulan ``get_unused_fd_flags``
-isimli daha yüksek seviyeli bir çekirdek fonksiyonu bulunmaktadır. Bu fonksiyon export edildiği için
-aygıt sürücülerden de kullanılabilmektedir. Fonksiyon şöyle yazılmıştır:
+Fonksiyonumuzda ilk boş betimleyicinin aranmasının düz mantıkla bir ``for`` döngüsü içerisinde -tıpkı çekirdeğin ilkel
+versiyonlarındaki gibi- yapıldığına dikkat ediniz. Aslında testi yaptığımız makinedeki Linux çekirdeğinde
+anımsayacağınız gibi ilk boş betimleyiciyi hızlı bir biçimde bulabilmek için iki düzey bitmap kullanılıyordu. Bu
+versiyonlarda ilk boş betimleyiciyi bulan ``get_unused_fd_flags`` isimli daha yüksek seviyeli bir çekirdek fonksiyonu
+bulunmaktadır. Bu fonksiyon export edildiği için aygıt sürücülerden de kullanılabilmektedir. Fonksiyon şöyle
+yazılmıştır:
 
 .. code-block:: c
 
@@ -2781,17 +2781,16 @@ aygıt sürücülerden de kullanılabilmektedir. Fonksiyon şöyle yazılmışt�
     }
     EXPORT_SYMBOL(get_unused_fd_flags);
 
-Fonksiyonun başka bir fonksiyonu çağırdığını görüyorsunuz. Fonksiyonun ``flags`` parametresi boş dosya
-betimleyicisini bulurken aynı zamanda dosyaya ilişkin ``O_CLOEXEC`` bayrağının da set edilmesini
-sağlayabilmektedir. Tabii böyle bir şeyi istemiyorsanız bu parametreye 0 geçebilirsiniz. (Yani bu
-fonksiyonun parametresi ya ``O_CLOEXEC`` biçiminde ya da 0 biçiminde geçilebilmektedir.)
-``get_unused_fd_flags`` fonksiyonu aynı zamanda *gerektiğinde dosya betimleyici tablosunu büyütme
-işlemini de* kendisi yapmaktadır. Dolayısıyla bu yüksek seviyeli fonksiyon hem aygıt sürücüler
-tarafından hem de çekirdek kodları üzerinde değişiklik yapacak kişiler tarafından bu tür durumlarda
-tercih edilmektedir. ``get_unused_fd_flags`` fonksiyonu başarı durumunda yeni boş betimleyiciye,
-başarısızlık durumunda ise ``-EMFILE`` ya da ``-ENOMEM`` değerlerinden birine geri dönmektedir.
-Eskiden (örneğin çekirdeğin 2.2, 2.4 ve 2.6 versiyonlarında) ``get_unused_fd_flags`` fonksiyonu
-yerine ``flags``'siz ``get_unused_fd`` fonksiyonu bulunuyordu:
+Fonksiyonun başka bir fonksiyonu çağırdığını görüyorsunuz. Fonksiyonun ``flags`` parametresi boş dosya betimleyicisini
+bulurken aynı zamanda dosyaya ilişkin ``O_CLOEXEC`` bayrağının da set edilmesini sağlayabilmektedir. Tabii böyle bir
+şeyi istemiyorsanız bu parametreye 0 geçebilirsiniz. (Yani bu fonksiyonun parametresi ya ``O_CLOEXEC`` biçiminde ya da 0
+biçiminde geçilebilmektedir.) ``get_unused_fd_flags`` fonksiyonu aynı zamanda
+*gerektiğinde dosya betimleyici tablosunu büyütme işlemini de* kendisi yapmaktadır. Dolayısıyla bu yüksek seviyeli
+fonksiyon hem aygıt sürücüler tarafından hem de çekirdek kodları üzerinde değişiklik yapacak kişiler tarafından bu tür
+durumlarda tercih edilmektedir. ``get_unused_fd_flags`` fonksiyonu başarı durumunda yeni boş betimleyiciye başarısızlık
+durumunda ise ``-EMFILE`` ya da ``-ENOMEM`` değerlerinden birine geri dönmektedir. Eskiden (örneğin çekirdeğin 2.2, 2.4
+ve 2.6 versiyonlarında) ``get_unused_fd_flags`` fonksiyonu yerine ``flags``'siz ``get_unused_fd`` fonksiyonu
+bulunuyordu:
 
 .. code-block:: c
 
@@ -2799,29 +2798,27 @@ yerine ``flags``'siz ``get_unused_fd`` fonksiyonu bulunuyordu:
 
 ``get_unused_fd_flags`` fonksiyonu çekirdeğin 2.6.23 versiyonunda eklenmiştir.
 
-Aslında çekirdek içerisinde RCU mekanizması eşliğinde ``files_struct`` yapısının adresini alarak
-``current->files->fdt`` gösterisini elde eden ``files_fdtable`` isimli bir çekirdek fonksiyonu da
-bulunmaktadır. Bu durumda dosya betimleyici tablosuna şöyle de erişebilirdik:
+Aslında çekirdek içerisinde RCU mekanizması eşliğinde ``files_struct`` yapısının adresini alarak ``current->files->fdt``
+göstericisini elde eden ``files_fdtable`` isimli bir çekirdek fonksiyonu da bulunmaktadır. Bu durumda dosya betimleyici
+tablosuna şöyle de erişebilirdik:
 
 .. code-block:: c
 
     fdt = files_fdtable(current->files);
     fd_table = fdt->fd;
 
-RCU mekanizması eşliğinde dosya nesnesini (``struct file`` nesnesini) dosya betimleyici tablosuna
-yerleştiren ``fd_install`` isimli export edilmiş yüksek seviyeli bir çekirdek fonksiyonu da
-bulunmaktadır:
+RCU mekanizması eşliğinde dosya nesnesini (``struct file`` nesnesini) dosya betimleyici tablosuna yerleştiren
+``fd_install`` isimli export edilmiş yüksek seviyeli bir çekirdek fonksiyonu da bulunmaktadır:
 
 .. code-block:: c
 
     void fd_install(unsigned int fd, struct file *file);
 
-Eğer işlemler RCU mekanizmasına uyumlu olacaksa dosya betimleyicisinin dosya betimleyici tablosuna
-yerleştirilmesi için ``fd_install`` fonksiyonu tercih edilmelidir. Linux çekirdeğinde dosyalar kapatılması 
-close_fd fonksiyonu ile sağlanmatadır. Biz örneğimizde bu fonksiyonu kullandık fakat bu fonksiyonun açıklamasını 
-başka bir başlık altında yapacağız.
+Eğer işlemler RCU mekanizmasına uyumlu olacaksa dosya betimleyicisinin dosya betimleyici tablosuna yerleştirilmesi için
+``fd_install`` fonksiyonu tercih edilmelidir.
 
-Böylece yukarıdaki fonksiyonu şu hale getirebiliriz:
+Biz bir kez daha dikkatinizi çekmek istiyoruz: ``ioctl_test3`` kodunda çeşitli kusurlar vardır. Biz burada kusurlu olsa
+da konunun anlaşılması için bu örneği verdik. Fonksiyonun düzeltilmiş hâlini ``ioctl_test4`` ismiyle aşağıda veriyoruz:
 
 .. code-block:: c
 
@@ -2830,7 +2827,7 @@ Böylece yukarıdaki fonksiyonu şu hale getirebiliriz:
         struct file *f;
         struct FDDUP fddup;
 
-        if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
+        if (copy_from_user(&fddup, (struct FDDUP __user *)arg, sizeof(fddup)) != 0)
             return -EFAULT;
 
         if ((f = fget(fddup.fd)) == NULL)
@@ -2841,27 +2838,33 @@ Böylece yukarıdaki fonksiyonu şu hale getirebiliriz:
             return fddup.fd_dup;
         }
 
-        fd_install(fddup.fd_dup, f);
-
-        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0) {
-            close_fd(fddup.fd_dup);
+        if (copy_to_user((struct FDDUP __user *)arg, &fddup, sizeof(fddup)) != 0) {
+            put_unused_fd(fddup.fd_dup);
+            fput(f);
             return -EFAULT;
-        }      
+        }
 
-        /*
-        fd_table = current->files->fdt->fd;
-        fd_table[fddup.fd_dup] = f;
-        */
+        fd_install(fddup.fd_dup, f);
 
         return 0;
     }
 
-Alıştırmalara İlişkin Aygıt Sürücünün Kaynak Kodu
--------------------------------------------------
+Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir bütün olarak aşağıda veriyoruz. Test işlemlerini
+aşağıdaki adımlardan geçerek yapabilirsiniz:
 
-Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir bütün olarak aşağıda veriyoruz:
+.. code-block:: console
 
-``test-driver.h``
+    $ make file=test-driver
+    $ sudo insmod test-driver.ko
+    $ ls -l /dev/test-driver
+    $ gcc -o app app.c
+    $ echo "deneme" > test.txt
+    $ ./app test.txt
+    $ sudo dmesg | tail -10
+    $ sudo rmmod test-driver
+    $ ls -l /dev/test-driver
+
+``test-driver.h`` dosyası:
 
 .. code-block:: c
 
@@ -2876,15 +2879,15 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
         int fd_dup;
     };
 
-    #define TEST_DRIVER_MAGIC       't'
-    #define IOC_TEST1               _IOR(TEST_DRIVER_MAGIC, 0, int)
-    #define IOC_TEST2               _IOR(TEST_DRIVER_MAGIC, 1, int)
-    #define IOC_TEST3               _IOWR(TEST_DRIVER_MAGIC, struct FDDUP)
-    #define IOC_TEST4               _IOWR(TEST_DRIVER_MAGIC, 3, struct FDDUP)
+    #define TEST_DRIVER_MAGIC    't'
+    #define IOC_TEST1            _IOR(TEST_DRIVER_MAGIC, 0, int)
+    #define IOC_TEST2            _IOR(TEST_DRIVER_MAGIC, 1, int)
+    #define IOC_TEST3            _IOWR(TEST_DRIVER_MAGIC, 2, struct FDDUP)
+    #define IOC_TEST4            _IOWR(TEST_DRIVER_MAGIC, 3, struct FDDUP)
 
     #endif
 
-``test-driver.c``
+``test-driver.c`` 
 
 .. code-block:: c
 
@@ -2892,8 +2895,10 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include <linux/fdtable.h>
     #include <linux/file.h>
+    #include <linux/sched.h>
     #include "test-driver.h"
 
     MODULE_LICENSE("GPL");
@@ -2905,6 +2910,7 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
     static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
     static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
 
     static long ioctl_test1(struct file *filp, unsigned long arg);
     static long ioctl_test2(struct file *filp, unsigned long arg);
@@ -2913,6 +2919,8 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .open = test_driver_open,
@@ -2939,15 +2947,43 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
             return result;
         }
 
+        g_class = class_create("test-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit test_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
 
         printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int test_driver_open(struct inode *inodep, struct file *filp)
@@ -3007,10 +3043,10 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
     static long ioctl_test1(struct file *filp, unsigned long arg)
     {
         struct file *f;
-        loff_t fpos;
+        loff_t pos;
         int fd;
 
-        fd = (int) arg;
+        fd = (int)arg;
         if (fd < 0 || fd >= current->files->fdt->max_fds) {
             printk(KERN_INFO "file descriptor is not valid!..\n");
             return -EBADF;
@@ -3022,9 +3058,9 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
             return -EBADF;
         }
 
-        spin_lock(&fd_file(f)->f_lock);
+        spin_lock(&f->f_lock);
         pos = f->f_pos;
-        spin_unlock(&fd_file(f)->f_lock);
+        spin_unlock(&f->f_lock);
 
         printk(KERN_INFO "File pointer offset: %lld\n", (long long)pos);
 
@@ -3073,7 +3109,7 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
             if (fd_table[i] == NULL) {
                 f = fd_table[fddup.fd];
                 fd_table[i] = f;
-                ++f->f_count.counter;       /* atomic_long_inc(&f->f_count); */
+                get_file(f);
                 fddup.fd_dup = i;
                 break;
             }
@@ -3091,7 +3127,7 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
         struct file *f;
         struct FDDUP fddup;
 
-        if (copy_from_user(&fddup, (struct FDDUP *)arg, sizeof(fddup)) != 0)
+        if (copy_from_user(&fddup, (struct FDDUP __user *)arg, sizeof(fddup)) != 0)
             return -EFAULT;
 
         if ((f = fget(fddup.fd)) == NULL)
@@ -3102,17 +3138,13 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
             return fddup.fd_dup;
         }
 
-        fd_install(fddup.fd_dup, f);
-
-        /*
-        fd_table = current->files->fdt->fd;
-        fd_table[fddup.fd_dup] = f;
-        */
-
-        if (copy_to_user((struct FDDUP *)arg, &fddup, sizeof(fddup)) != 0) {
-            close_fd(fddup.fd_dup);
+        if (copy_to_user((struct FDDUP __user *)arg, &fddup, sizeof(fddup)) != 0) {
+            put_unused_fd(fddup.fd_dup);
+            fput(f);
             return -EFAULT;
         }
+
+        fd_install(fddup.fd_dup, f);
 
         return 0;
     }
@@ -3120,45 +3152,18 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-``Makefile``
+``Makefile`` dosyası:
 
-.. code-block:: makefile
+.. code-block:: make
 
     obj-m += ${file}.o
 
     all:
-        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
     clean:
-        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-
-``unload``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
-
-
-``app.c``
+``app.c`` 
 
 .. code-block:: c
 
@@ -3184,7 +3189,7 @@ Yukarıdaki alıştırma işlemlerine ilişkin aygıt sürücü kodunu bir büt�
             exit(EXIT_FAILURE);
         }
 
-        if ((fd_dev = open("test-driver", O_RDONLY)) == -1)
+        if ((fd_dev = open("/dev/test-driver", O_RDONLY)) == -1)
             exit_sys("open");
 
         if ((fd = open(argv[1], O_RDONLY)) == -1)
