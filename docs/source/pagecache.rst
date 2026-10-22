@@ -1367,37 +1367,38 @@ yoksa okunabilen kadar bilgi okunup okuma işlemi hemen sonlandırılmaktadır. 
 kodunda birden fazla akışın bu işlemi aynı anda yaptığı bir durumda bir senkronizasyon sorunu
 oluşmayacaktır. Çünkü buradaki kodda ağırlıklı olarak zaten yerel değişkenler kullanılmıştır.
 
+
 Yukarıdaki örneği bir bütün olarak aşağıda veriyoruz. Örneğimizde test kodunda ``test.txt`` isimli
 bir dosyayı açıp onun ilk 8192 byte'lık kısmı sayfa önbelleğine girsin diye bir okuma yaptık. Yine
 önce aygıt sürücüyü aşağıdaki gibi derlemelisiniz:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ make file=pcache-driver
 
-Sonra ``load`` betiği ile yüklemelisiniz:
+Sonra aygıt sürücüyü yüklemelisiniz:
 
-.. code-block:: bash
+.. code-block:: console
 
-    $ sudo ./load pcache-driver
+    $ sudo insmod pcache-driver.ko
 
 Test programını da şöyle derleyebilirsiniz:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ gcc -Wall -o pcache-driver-test pcache-driver-test.c
 
 Test programını şöyle çalıştırabilirsiniz:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ ./pcache-driver-test
 
-Test işlemi bittikten sonra aygıt sürücüyü ``unload`` betiği ile sistemden atabilirsiniz:
+Test işlemi bittikten sonra aygıt sürücüyü *rmmod* komutuyla sistemden atabilirsiniz:
 
-.. code-block:: bash
+.. code-block:: console
 
-    $ sudo ./unload pcache-driver
+    $ sudo rmmod pcache-driver
 
 ``pcache-driver.h``
 

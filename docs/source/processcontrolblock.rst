@@ -670,10 +670,11 @@ yükleyebilmek için *root* önceliğine sahip olmak gerekir. Örneğin:
 
 .. code-block:: bash
 
-   $ sudo rmmod mydriver.ko
+   $ sudo rmmod mydriver
+
+Burada ``.ko`` uzantısının belirtilmediğine dikkat ediniz. (Ancak belirtilmesi de bir soruna yol açmayacaktır.)
 
 Aygıt sürücünün yüklenip yüklenmediğini anlayabilmek için ``/proc/devices`` dosyasına başvurabilirsiniz.
-
 
 Çekirdek Modülü ve Aygıt Sürücü Kavramları
 --------------------------------------------
@@ -827,7 +828,7 @@ yazılabilir:
  
    module=$1
 
-   /sbin/rmmod ./${module}.ko || exit 1
+   /sbin/rmmod ./${module} || exit 1
    rm -f $module
 
 .. code-block:: bash
@@ -1008,7 +1009,7 @@ kodu da hazırlanmıştır.
 
     module=$1
 
-    /sbin/rmmod ./${module}.ko || exit 1
+    /sbin/rmmod ./${module} || exit 1
     rm -f $module
 
 
@@ -1089,7 +1090,7 @@ Boşaltma işlemini de doğrudan *rmmod* komutuyla yapabiliriz:
 
 .. code-block:: bash
 
-    $ sudo rmmod test-driver.ko
+    $ sudo rmmod test-driver
 
 Aygıt dosyasının ``open`` fonksiyonunda aşağıdaki gibi açıldığına dikkat ediniz:
 
@@ -1821,7 +1822,7 @@ sonra *app* programını çalıştırmalısınız. Bu program önce 10 tane thre
 
 .. code-block:: bash
 
-    $ sudo rmmod test-driver.ko
+    $ sudo rmmod test-driver
 
 ``test-driver.h`` 
 
