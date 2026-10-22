@@ -2519,7 +2519,7 @@ tahsis ederken hangi bayrakları kullandığı belirtilmektedir:
 .. figure:: _static/vmalloc-gfp-table.png
    :alt: vmalloc ailesi GFP bayrakları
    :align: center
-   :width: 60%
+   :width: 55%
 
 ``vmalloc`` ailesi fonksiyonlar tahsisatları arka planda *ikiz blok tahsisat sistemini (buddy
 allocator)* kullanarak sayfa düzeyinde yapmaktadır. Dolayısıyla bu fonksiyonlar tarafından yapılan
