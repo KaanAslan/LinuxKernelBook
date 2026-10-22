@@ -336,24 +336,18 @@ kodu oluşturulmuştur. ``IOCTL_TEST1`` kodunda mutex'in sahipliği alınıp 30 
 ``IOCTL_TEST2`` kodunda ise bekleme yapılmadan mutex'in sahipliği alınmak istenmiştir. Test için farklı terminallerde önce
 *test-sync1* programını sonra da *test-sync2* programını çalıştırmalısınız. Mesajları *dmesg* komutuyla inceleyebilirsiniz.
 
-Aygıt sürücüyü şöyle derleyebilirsiniz:
+Test işlemini sürücü üzerinde şu adımlardan geçerek yapabilirsiniz:
 
 .. code-block:: console
 
     $ make file=test-driver
-
-Aşağıdaki gibi yükleyebilirsiniz:
-
-.. code-block:: console
-
-    $ sudo ./load test-driver
-
-Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştırdıktan sonra aygıt sürücüyü
-çekirdekten çıkarmalısınız:
-
-.. code-block:: console
-
-    $ sudo ./unload test-driver
+    $ sudo insmod ./test-driver.ko
+    $ gcc -o test-sync1 test-sync1.c
+    $ gcc -o test-sync2 test-sync2.c
+    $ ./test-sync1 &
+    $ ./test-sync2
+    $ sudo dmesg | tail
+    $ sudo rmmod test-driver
 
 ``test-driver.h``
 
@@ -365,9 +359,9 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     #include <linux/stddef.h>
     #include <linux/ioctl.h>
 
-    #define TEST_DRIVER_MAGIC   't'
-    #define IOC_TEST1           _IO(TEST_DRIVER_MAGIC, 0)
-    #define IOC_TEST2           _IO(TEST_DRIVER_MAGIC, 1)
+    #define TEST_DRIVER_MAGIC    't'
+    #define IOC_TEST1            _IO(TEST_DRIVER_MAGIC, 0)
+    #define IOC_TEST2            _IO(TEST_DRIVER_MAGIC, 1)
 
     #endif
 
@@ -379,6 +373,7 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include <linux/delay.h>
     #include "test-driver.h"
 
@@ -391,12 +386,15 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
     static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
 
     static long ioctl_test1(struct file *filp, unsigned long arg);
     static long ioctl_test2(struct file *filp, unsigned long arg);
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .open = test_driver_open,
@@ -425,15 +423,43 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
             return result;
         }
 
+        g_class = class_create("test-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit test_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
 
         printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int test_driver_open(struct inode *inodep, struct file *filp)
@@ -469,6 +495,7 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
                 break;
             default:
                 result = -ENOTTY;
+                break;
         }
 
         return result;
@@ -507,9 +534,9 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-``Makefile``
+``Makefile`` dosyası:
 
-.. code-block:: makefile
+.. code-block:: make
 
     obj-m += ${file}.o
 
@@ -517,31 +544,6 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
-
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-``unload``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
 
 ``test-sync1.c``
 
@@ -560,7 +562,7 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     {
         int fd;
 
-        if ((fd = open("test-driver", O_RDONLY)) == -1)
+        if ((fd = open("/dev/test-driver", O_RDONLY)) == -1)
             exit_sys("open");
 
         if (ioctl(fd, IOC_TEST1) == -1)
@@ -594,7 +596,7 @@ Farklı terminallerden *test-sync1* ve *test-sync2* programlarını çalıştır
     {
         int fd;
 
-        if ((fd = open("test-driver", O_RDONLY)) == -1)
+        if ((fd = open("/dev/test-driver", O_RDONLY)) == -1)
             exit_sys("open");
 
         if (ioctl(fd, IOC_TEST2) == -1)
@@ -821,7 +823,19 @@ Bu durumda semaphore nesneleri ile kritik kod bloğu tipik olarak şöyle oluşt
 Binary Semaphore Örneği
 ------------------------
 
-Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu veriyoruz.
+Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu veriyoruz. Test işlemini şu adımlardan geçerek
+yapabilirsiniz:
+
+.. code-block:: console
+
+    $ make file=test-driver
+    $ sudo insmod test-driver.ko
+    $ gcc -o test-sync1 test-sync1.c
+    $ gcc -o test-sync2 test-sync2.c
+    $ ./test-sync1 &
+    $ ./test-sync2
+    $ sudo dmesg | tail
+    $ sudo rmmod test-driver.ko
 
 ``test-driver.h``
 
@@ -833,9 +847,9 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
     #include <linux/stddef.h>
     #include <linux/ioctl.h>
 
-    #define TEST_DRIVER_MAGIC   't'
-    #define IOC_TEST1           _IO(TEST_DRIVER_MAGIC, 0)
-    #define IOC_TEST2           _IO(TEST_DRIVER_MAGIC, 1)
+    #define TEST_DRIVER_MAGIC    't'
+    #define IOC_TEST1            _IO(TEST_DRIVER_MAGIC, 0)
+    #define IOC_TEST2            _IO(TEST_DRIVER_MAGIC, 1)
 
     #endif
 
@@ -847,7 +861,9 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include <linux/delay.h>
+    #include <linux/semaphore.h>
     #include "test-driver.h"
 
     MODULE_LICENSE("GPL");
@@ -859,12 +875,15 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
     static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
     static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
 
     static long ioctl_test1(struct file *filp, unsigned long arg);
     static long ioctl_test2(struct file *filp, unsigned long arg);
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .open = test_driver_open,
@@ -893,15 +912,43 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
             return result;
         }
 
+        g_class = class_create("test-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit test_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
 
         printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int test_driver_open(struct inode *inodep, struct file *filp)
@@ -937,6 +984,7 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
                 break;
             default:
                 result = -ENOTTY;
+                break;
         }
 
         return result;
@@ -977,7 +1025,7 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
 
 ``Makefile``
 
-.. code-block:: makefile
+.. code-block:: make
 
     obj-m += ${file}.o
 
@@ -986,32 +1034,7 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-``unload``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
-
-``test-sync1.c``
+``test-sync1.c`` dosyası:
 
 .. code-block:: c
 
@@ -1028,7 +1051,7 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
     {
         int fd;
 
-        if ((fd = open("test-driver", O_RDONLY)) == -1)
+        if ((fd = open("/dev/test-driver", O_RDONLY)) == -1)
             exit_sys("open");
 
         if (ioctl(fd, IOC_TEST1) == -1)
@@ -1062,7 +1085,7 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
     {
         int fd;
 
-        if ((fd = open("test-driver", O_RDONLY)) == -1)
+        if ((fd = open("/dev/test-driver", O_RDONLY)) == -1)
             exit_sys("open");
 
         if (ioctl(fd, IOC_TEST2) == -1)
@@ -1078,23 +1101,23 @@ Aşağıda daha önce yapmış olduğumuz örneğin binary semaphore versiyonunu
         perror(msg);
         exit(EXIT_FAILURE);
     }
-
+    
 Mutex ile Binary Semaphore Arasındaki Farklılıklar
 --------------------------------------------------
 
 Peki mutex nesneleriyle binary semaphore'lar arasında ne fark vardır? İki nesne arasındaki tipik farklılıklar
 şunlardır:
 
-1. Mutex nesnelerinin sahipliği thread temelinde alınmaktadır. Dolayısıyla mutex nesnelerini hangi thread
+| **1.** Mutex nesnelerinin sahipliği thread temelinde alınmaktadır. Dolayısıyla mutex nesnelerini hangi thread
    kilitlemişse kilidini aynı thread açmak zorundadır. Halbuki semaphore'larda ``up`` işlemleri herhangi
    bir thread tarafından yapılabilmektedir. Bu da semaphore'ların *üretici-tüketici problemi
    (producer-consumer problem)* gibi klasik senkronizasyon kalıplarında kullanılabilmesini sağlamaktadır.
 
-2. Linux çekirdeğinde semaphore nesneleri spin yapmamaktadır. Bir kez semaphore sayacına bakılmakta, eğer
+| **2.** Linux çekirdeğinde semaphore nesneleri spin yapmamaktadır. Bir kez semaphore sayacına bakılmakta, eğer
    sayaç sıfırsa hemen thread bloke edilmektedir. Halbuki mutex nesnelerinde *optimistic spinning* işlemi
    yapılmaktadır. Yani "kilit belki açılır" diye bloke biraz ertelenmektedir.
 
-3. Mutex nesnelerinin kilidi alındığında çekirdek yüksek öncelikli bloke olmuş thread'lerin önceliklerini
+| **3.** Mutex nesnelerinin kilidi alındığında çekirdek yüksek öncelikli bloke olmuş thread'lerin önceliklerini
    biraz yükseltmektedir. Ancak semaphore nesnelerinde bu yapılmamaktadır.
 
 Spinlock Nesneleri
@@ -4192,9 +4215,18 @@ Makronun son parametresi genellikle ``true`` biçimde geçilmektedir.
 
 Yukarıdaki örnek RCU uygulamasını bir aygıt sürücü yoluyla test edebiliriz. Tabii test için kullanıcı
 modundaki thread'lerin iç içe girmesini sağlamalıyız. Biz testi rastgele beklemelerle yüzeysel olarak
-yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
+yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir. Test işlemini aşağıdaki gibi yapabilirsiniz:
 
-``rcu-test-driver.h``
+.. code-block:: console
+
+    $ make file=rcu-test-driver
+    $ sudo insmod ./rcu-test-driver.ko
+    $ gcc -o rcu-test rcu-test.c -pthread
+    $ ./rcu-test
+    $ sudo dmesg | tail -30
+    $ sudo rmmod rcu-test-driver.ko
+
+``rcu-test-driver.h`` 
 
 .. code-block:: c
 
@@ -4219,12 +4251,15 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
 
 ``rcu-test-driver.c``
 
+``rcu-test-driver.c`` dosyası:
+
 .. code-block:: c
 
     #include <linux/module.h>
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include "rcu-test-driver.h"
 
     MODULE_LICENSE("GPL");
@@ -4236,12 +4271,15 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
     static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
     static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
 
     static long ioctl_read_device(struct file *filp, unsigned long arg);
     static long ioctl_update_device(struct file *filp, unsigned long arg);
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .open = test_driver_open,
@@ -4271,26 +4309,55 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
             return result;
         }
 
-        if ((g_device_info = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO),
-                GFP_KERNEL)) == NULL) {
-            unregister_chrdev_region(g_dev, 1);
+        if ((g_device_info = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO), GFP_KERNEL)) == NULL) {
             cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
             return -ENOMEM;
         }
 
         g_device_info->id = 100;
         strscpy(g_device_info->name, "Sample", MAX_NAME);
 
+        g_class = class_create("rcu-test-driver");
+        if (IS_ERR(g_class)) {
+            kfree(g_device_info);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "rcu-test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            kfree(g_device_info);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit test_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
         kfree(g_device_info);
 
         printk(KERN_INFO "rcu-test-driver exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int test_driver_open(struct inode *inodep, struct file *filp)
@@ -4326,6 +4393,7 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
                 break;
             default:
                 result = -ENOTTY;
+                break;
         }
 
         return result;
@@ -4334,17 +4402,23 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
     static long ioctl_read_device(struct file *filp, unsigned long arg)
     {
         struct DEVICE_INFO *di;
+        struct DEVICE_INFO di_local;
 
         rcu_read_lock();
 
         di = rcu_dereference(g_device_info);
-        if (di != NULL) {
-            if (copy_to_user((struct DEVICE_INFO *)arg, di, sizeof(struct DEVICE_INFO)) != 0)
-                return -EFAULT;
-            printk(KERN_INFO "Device: id=%d Name=%s\n", di->id, di->name);
+        if (di == NULL) {
+            rcu_read_unlock();
+            return -ENODATA;
         }
+        di_local = *di;
 
         rcu_read_unlock();
+
+        if (copy_to_user((struct DEVICE_INFO *)arg, &di_local, sizeof(struct DEVICE_INFO)) != 0)
+            return -EFAULT;
+
+        printk(KERN_INFO "Device: id=%d Name=%s\n", di_local.id, di_local.name);
 
         return 0;
     }
@@ -4354,19 +4428,17 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
         struct DEVICE_INFO *di_new, *di_old;
         struct DEVICE_INFO di_user;
 
-        if (copy_from_user(&di_user, (struct DEVICE_INFO *)arg,
-                sizeof(struct DEVICE_INFO)) != 0)
+        if (copy_from_user(&di_user, (struct DEVICE_INFO *)arg, sizeof(struct DEVICE_INFO)) != 0)
             return -EFAULT;
 
-        if ((di_new = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO),
-                GFP_KERNEL)) == NULL)
+        if ((di_new = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO), GFP_KERNEL)) == NULL)
             return -ENOMEM;
 
         di_new->id = di_user.id;
         strscpy(di_new->name, di_user.name, MAX_NAME);
 
         spin_lock(&g_dev_lock);
-        di_old = rcu_dereference(g_device_info);
+        di_old = rcu_dereference_protected(g_device_info, lockdep_is_held(&g_dev_lock));
         rcu_assign_pointer(g_device_info, di_new);
         spin_unlock(&g_dev_lock);
 
@@ -4392,32 +4464,6 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir.
         make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
     clean:
         make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
-
-
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-Aşağıdaki ``unload`` betiği sürücüyü sistemden kaldırır:
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
 
 ``rcu-test.c``
 
@@ -4446,7 +4492,7 @@ Aşağıdaki ``unload`` betiği sürücüyü sistemden kaldırır:
 
         srand(time(NULL));
 
-        if ((fd = open("rcu-test-driver", O_RDWR)) == -1)
+        if ((fd = open("/dev/rcu-test-driver", O_RDWR)) == -1)
             exit_sys("open");
 
         if ((result = pthread_create(&tid_update, NULL, thread_proc_update,
