@@ -1305,8 +1305,8 @@ Aygıt dosyasının ``open`` fonksiyonunda aşağıdaki gibi açıldığına dik
         exit(EXIT_FAILURE);
     }
 
-Sistemdeki Tüm Proseslerin (Ana Thread'lerinin) task_struct Nesnelerinin Dolaşılması
-------------------------------------------------------------------------------------
+Sistemdeki Tüm Proseslere İlişkin task_struct Nesnelerinin Dolaşılması
+----------------------------------------------------------------------    
 
 Biz ``task_struct`` listelerini dolaşırken çekirdek bu listelere eleman eklerse ya da bu listelerden eleman silerse
 bizim dolaşım yapan kodumuzda *tanımsız davranışlar (undefined behaviours)* oluşabilir. Bu da tüm sistemin çökmesine yol
@@ -1658,8 +1658,8 @@ Aslında önceki paragraflarda gördüğümüz ``next_task`` makrosu da bu makro
     #define next_task(p) \
         list_entry_rcu((p)->tasks.next, struct task_struct, tasks)
 
-Prosesin Thread'lerine İlişkin task_struct Nesnelerinin Dolaşılması
--------------------------------------------------------------------
+Proseslerin Thread'lerine İlişkin task_struct Nesnelerinin Dolaşılması
+----------------------------------------------------------------------
 
 Şimdi de prosesin thread'lerine ilişkin ``task_struct`` nesnelerinin dolaşılmasına örnekler verelim. Anımsanacağı gibi
 yeni çekirdeklerde belli bir prosesin thread'lerine ilişkin ``task_struct`` nesneleri ``signal`` nesnesindeki
@@ -1822,6 +1822,21 @@ sonra *app* programını çalıştırmalısınız. Bu program önce 10 tane thre
 .. code-block:: bash
 
     $ sudo rmmod test-driver.ko
+
+``test-driver.h`` 
+
+.. code-block:: c
+
+    #ifndef TEST_DRIVER_H_
+    #define TEST_DRIVER_H_
+
+    #include <linux/stddef.h>
+    #include <linux/ioctl.h>
+
+    #define TEST_DRIVER_MAGIC		't'
+    #define IOC_TEST				_IO(TEST_DRIVER_MAGIC, 0)
+
+    #endif
 
 ``test-driver.c`` 
 
@@ -2060,10 +2075,158 @@ sonra *app* programını çalıştırmalısınız. Bu program önce 10 tane thre
         exit(EXIT_FAILURE);
     }
 
-Sistemdeki Tüm task_struct Nesnelerinin Dolaşılması
----------------------------------------------------
+Tüm task_struct Nesnelerinin Dolaşılması
+----------------------------------------
 
-XXXXXS
+Peki sistemdeki bütün ``task_struct`` nesnelerini dolaşabilir miyiz? Bunu yapmanın en pratik yolu ``init_task``
+nesnesinden hareketle tüm proseslerin ana thread'lerine ilişkin ``task_struct`` nesnelerini elde edip o ana
+thread'lerden faydalanarak onların diğer thread'lerine ilişkin ``task_struct`` nesnelerini elde etmektir. Aslında bunu
+iç içe iki döngü oluşturarak RCU mekanizması eşliğinde yapan ``for_each_process_thread`` isimli bir makro vardır:
+
+.. code-block:: c
+
+    #include <linux/sched/signal.h>
+
+    #define for_each_process_thread(p, t)	        \
+        for_each_process(p) for_each_thread(p, t)
+
+Makroya biz iki ``task_struct`` göstericisi veririz. Makro her yinelemede prosesin ana thread'ine ilişkin
+``task_struct`` nesnesinin adresini birinci parametreyle verilen göstericinin içerisine, o prosesin thread'lerine
+ilişkin ``task_struct`` nesnelerinin adresleri de ikinci parametreyle verilen göstericinin içerisine yerleştirmektedir.
+O halde tüm thread'lere ilişkin ``task_struct`` nesneleri aşağıdaki gibi elde edilebilir:
+
+.. code-block:: c
+
+    static void walk_all_threads(void)
+    {
+        struct task_struct *tsp;
+        struct task_struct *tst;
+
+        rcu_read_lock();
+
+        for_each_process_thread(tsp, tst) {
+            printk(KERN_INFO "Process Main Thread PID = %d, Thread PID == %d COMM = %s\n",
+                tsp->pid, tst->pid, tst->comm);
+        }
+
+        rcu_read_unlock();
+    }
+
+Tabii proseslerin thread'lerini girintili biçimde göstermek için kodu aşağıdaki gibi de düzenleyebiliriz:
+
+.. code-block:: c
+
+    static void walk_all_threads(void)
+    {
+        struct task_struct *tsp;
+        struct task_struct *tst;
+
+        rcu_read_lock();
+
+        for_each_process_thread(tsp, tst) {
+            if (tsp == tst) {
+                printk(KERN_INFO "Process Main Thread PID = %d, COMM = %s\n", tsp->pid, tst->comm);
+            }
+            else {
+                printk(KERN_INFO "Thread PID = %d COMM = %s\n", tst->pid, tst->comm);
+            }
+        }
+
+        rcu_read_unlock();
+    }
+
+*dmesg* çıktısı aşağıdakine benzer biçimde elde edilecektir:
+
+.. code-block:: text
+
+    ...
+    [ 6022.928026] Process Main Thread PID = 3494, COMM = kworker/u257:2
+    [ 6022.928027] Process Main Thread PID = 3997, COMM = kworker/1:0
+    [ 6022.928042] Process Main Thread PID = 4271, COMM = kworker/0:0
+    [ 6022.928044] Process Main Thread PID = 4279, COMM = kworker/u259:0
+    [ 6022.928045] Process Main Thread PID = 4543, COMM = kworker/3:1
+    [ 6022.928048] Process Main Thread PID = 4546, COMM = kworker/5:2
+    [ 6022.928049] Process Main Thread PID = 4547, COMM = kworker/u264:2
+    [ 6022.928051] Process Main Thread PID = 4565, COMM = bash
+    [ 6022.928053] Process Main Thread PID = 4599, COMM = app
+    [ 6022.928054]     Thread PID = 4600 COMM = app
+    [ 6022.928056]     Thread PID = 4601 COMM = app
+    [ 6022.928057]     Thread PID = 4602 COMM = app
+    [ 6022.928059]     Thread PID = 4603 COMM = app
+    [ 6022.928060]     Thread PID = 4604 COMM = app
+    [ 6022.928062]     Thread PID = 4605 COMM = app
+    [ 6022.928064]     Thread PID = 4606 COMM = app
+    [ 6022.928081]     Thread PID = 4607 COMM = app
+    [ 6022.928083]     Thread PID = 4608 COMM = app
+    [ 6022.928084]     Thread PID = 4609 COMM = app
+    [ 6022.928087] Process Main Thread PID = 4610, COMM = sudo
+    [ 6022.928089] Process Main Thread PID = 4611, COMM = sudo
+    [ 6022.928090] Process Main Thread PID = 4612, COMM = insmod
+    ...
+
+Aşağıda bu işlemi yapan çekirdek modülünün tüm kodları verilmiştir.
+
+``test-module.c`` 
+
+.. code-block:: c
+
+    #include <linux/module.h>
+    #include <linux/kernel.h>
+    #include <linux/sched/signal.h>
+
+    MODULE_LICENSE("GPL");
+
+    static int test_module_init(void);
+    static void test_module_exit(void);
+    static void walk_all_threads(void);
+
+    static int test_module_init(void)
+    {
+        printk(KERN_INFO "test_module_init...\n");
+
+        walk_all_threads();
+
+        return 0;
+    }
+
+    static void walk_all_threads(void)
+    {
+        struct task_struct *tsp;
+        struct task_struct *tst;
+
+        rcu_read_lock();
+
+        for_each_process_thread(tsp, tst) {
+            if (tsp == tst) {
+                printk(KERN_INFO "Process Main Thread PID = %d, COMM = %s\n", tsp->pid, tst->comm);
+            }
+            else {
+                printk(KERN_INFO "Thread PID = %d COMM = %s\n", tst->pid, tst->comm);
+            }
+        }
+
+        rcu_read_unlock();
+    }
+
+    static void test_module_exit(void)
+    {
+        printk(KERN_INFO "test_module_exit...\n");
+    }
+
+    module_init(test_module_init);
+    module_exit(test_module_exit);
+
+``Makefile`` 
+
+.. code-block:: make
+
+    obj-m += ${file}.o
+
+    all:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    clean:
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+
 PID Tahsisatı
 ==============
 
@@ -2076,9 +2239,9 @@ O halde çekirdeğin pid değerinden hareketle o pid değerine ilişkin ``task_s
 biçimde elde etmesi gerekmektedir. Bu bağlamda çekirdek geliştiricisinin aşağıdaki iki sorunun yanıtını
 biliyor olması gerekir:
 
-1. Yeni bir proses ya da thread yaratıldığında çekirdek o proses ya da thread'e ilişkin pid değerini
+| **1.** Yeni bir proses ya da thread yaratıldığında çekirdek o proses ya da thread'e ilişkin pid değerini
    nasıl üretmektedir?
-2. Çekirdek belli bir pid değerine ilişkin proses ya da thread'in ``task_struct`` nesnesine nasıl
+| **2.** Çekirdek belli bir pid değerine ilişkin proses ya da thread'in ``task_struct`` nesnesine nasıl
    ulaşmaktadır?
 
 
