@@ -955,7 +955,7 @@ Burada önemli bir noktayı belirtmek istiyoruz. ``node_zonelists`` elemanının
 NUMA düğümlerinin bölgeleri de bu dizi içerisindedir. ``node_zonelists`` dizisinin temsili görüntüsü şöyledir:
 
 .. image:: _static/pgdat-zonelists.png
-   :width: 70%
+   :width: 65%
 
 Bu temsili çizimde örnek olarak 0'ıncı NUMA düğümünün ``node_zonelists`` dizisi gösterilmiştir. Görüldüğü
 gibi bu dizinin 0'ıncı elemanı bölgelerden oluşmaktadır; ancak bölgeler yalnızca 0'ıncı düğümün bölgelerini
@@ -965,7 +965,7 @@ dolaşılmasına 0'ıncı düğümdeki DMA32'den başlatılacaktır:
 
 .. figure:: _static/pgdat-zonelists-search-start.png
    :alt: pg_data_t zonelist yapısı
-   :width: 85%
+   :width: 80%
 
 Eğer bu bölgenin göç *fallback* listesinin hiçbir yerinde talep edilen miktarda boş sayfa bulunamazsa bundan
 sonra arama 0'ıncı düğümün ``ZONE_DMA`` bölgesinden devam edecek, orada da bulunamazsa 1'inci düğümün
@@ -985,7 +985,7 @@ yalnızca ilgili düğümün bölümleri vardır. Yani ``alloc_pages_node`` ça�
 ``__GFP_THISNODE`` varsa ``node_zonelists[1]`` (``ZONELIST_NOFALLBACK``) seçilir. Bu liste yalnızca o düğümün
 kendi bölgelerini içerdiği için arama diğer düğümlere hiçbir koşulda taşmaz.
 
-Bölgelerdeki Boş sayfa Listelerinin Başlangıç Durumu
+Bölgelerdeki Boş Sayfa Listelerinin Başlangıç Durumu
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Şimdi de başlangıçta (yani boot işleminden sonra) boş sayfa listelerinin durumu hakkında bilgi verelim.
@@ -994,17 +994,17 @@ blok tahsisat sistemindedir. Örneğin UMA x86-64 mimarisindeki başlangıç dur
 
 .. figure:: _static/node-zone-free-area-movable.png
    :alt: Açılış anındaki serbest blok dağılımı
-   :width: 65%
+   :width: 60%
 
 Örneğin ARM64 kullanılan Raspberry Pi modelleri için başlangıç durumu şöyledir:
 
 .. image:: _static/rpi-node-zone-free-area.png
-   :width: 75 %
+   :width: 70 %
 
 ARM32 kullanan BeagleBone modelleri için de başlangıç durumu şöyledir:
 
 .. image:: _static/bbb-node-zone-free-area.png
-   :width: 80%
+   :width: 75%
 
 Fallback Mekanizmasında NUMA Düğümlerinin Dolaşım Sırası
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1571,7 +1571,7 @@ Buradaki elemanları ve işlevlerini aşağıdaki tabloda listeliyoruz:
 
 .. image:: _static/struct-slab-fields-table.png
    :align: center
-   :width: 80%
+   :width: 85%
 
 ``slab`` yapısının önemli elemanları ``freelist_counters`` yapısına taşınmıştır. Yani bir süre önceye
 kadar aslında bu ``freelist_counters`` yapısının elemanları ``slab`` yapısının içindeydi. Fakat zaten
@@ -1732,7 +1732,7 @@ belirtmektedir. Aşağıda ``slab`` veri yapısına ilişkin örnek bir çizim v
 .. figure:: _static/slab-struct-diagram.png
    :alt: Dilim için ayrılan sayfa düzeni
    :align: center
-   :width: 60%
+   :width: 55%
 
 Dilim Önbelleklerinin Yaratılması
 ---------------------------------
@@ -1764,7 +1764,7 @@ olabilmektedir:
 .. image:: _static/kmalloc-minalign-table.png
    :align: center
    :class: fig-mapping5
-   :width: 50%
+   :width: 45%
 
 ``kmem_cache_create`` fonksiyonunun kullanımına şöyle bir örnek verebiliriz:
 
@@ -2051,8 +2051,7 @@ yaratılmaktadır. Bunların yaratıldığı yerleri aşağıdaki tablolarda ver
 Bu nesnelerin yaratıldığı yerlere ilişkin çağrı zincirini de aşağıda veriyoruz:
 
 .. image:: _static/kmem-cache-init-boot-sequence.png
-   :align: center
-   :width: 65%
+   :width: 55%
 
 Dilim Önbelleklerinden Tahsisat İşlemleri
 -----------------------------------------
@@ -2299,7 +2298,7 @@ büyüklüğü içerecek kadar boş yer varsa ya da blok küçültülüyorsa ayn
 .. figure:: _static/krealloc-behavior-table.png
    :alt: krealloc davranış tablosu
    :align: center
-   :width: 65%
+   :width: 60%
 
 ``krealloc_array`` fonksiyonu 6.1 çekirdekleriyle eklenmiştir. ``kmalloc_array`` fonksiyonunun
 *realloc* biçimi gibidir:
@@ -2545,6 +2544,7 @@ tahsisat yöntemini birbirleriyle karşılaştırıyoruz:
 
 .. figure:: _static/alloc-comparison-table.png
    :alt: kmalloc, vmalloc ve alloc_pages karşılaştırması
+   :width: 85%
    :align: center
 
 vmalloc Ailesi Fonksiyonların Gerçekleştirimleri
@@ -2622,6 +2622,7 @@ Aşağıda yapı elemanlarını bir tablo halinde veriyoruz:
 .. figure:: _static/vm-struct-fields-table.png
    :alt: vm_struct yapısı elemanları
    :align: center
+   :width: 75%
 
 ``vmalloc`` fonksiyonu ``VMALLOC_START`` ve ``VMALLOC_END`` sembolik sabitleriyle belirtilen sanal
 adres aralığında tahsisatlar yapmaktadır. ``VMALLOC_START`` ve ``VMALLOC_END`` bölgesinin yeri ve
