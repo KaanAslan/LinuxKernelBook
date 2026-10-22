@@ -2544,7 +2544,7 @@ tahsisat yöntemini birbirleriyle karşılaştırıyoruz:
 
 .. figure:: _static/alloc-comparison-table.png
    :alt: kmalloc, vmalloc ve alloc_pages karşılaştırması
-   :width: 85%
+   :width: 82%
    :align: center
 
 vmalloc Ailesi Fonksiyonların Gerçekleştirimleri
@@ -2631,7 +2631,7 @@ büyüklüğü x86 ve ARM işlemcilerinde tipik olarak aşağıdaki gibidir:
 .. figure:: _static/vmalloc-regions-table.png
    :alt: Mimariye göre VMALLOC_START ve VMALLOC_END bölgeleri
    :align: center
-   :width: 75%
+   :width: 70%
 
 ``vmalloc`` fonksiyonu çağrıldığında fonksiyonun boş bir sanal adres verebilmesi için çekirdeğin
 sanal adres alanı içerisindeki tahsisatları bir biçimde izlemesi gerekir. İşte ``vmalloc`` tarafından
@@ -2829,7 +2829,8 @@ Aşağıdaki tabloda AVL ağacı ile kırmızı-siyah ağacı çeşitli özellik
 .. figure:: _static/rbtree-avl-comparison-table.png
    :align: center
    :alt: Kırmızı-siyah ağaç ve AVL ağacı karşılaştırması
-
+   :width: 70%
+    
 Linux çekirdeğinde ekleme silme işlemleri daha yoğun olduğu için AVL ağacı yerine kırmızı-siyah ağacı tercih
 edilmiştir.
 
