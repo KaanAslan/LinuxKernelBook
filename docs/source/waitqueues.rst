@@ -1184,34 +1184,36 @@ yapılıp sonra uyandırma işlemi yapılmıştır.
 
 Aygıt sürücünün kodlarını bütünsel biçimde aşağıda veriyoruz. Derleme işlemini şöyle yapabilirsiniz:
 
-.. code-block:: c
+Aygıt sürücüsünün kodlarını bütünsel biçimde aşağıda veriyoruz. Test işlemini aşağıdaki adımlardan geçerek
+yapabilirsiniz:
+
+.. code-block:: console
 
     $ make file=wait-driver
+    $ sudo insmod wait-driver.ko
+    $ gcc -o wait-driver-test-read wait-driver-test-read.c
+    $ gcc -o wait-driver-test-write wait-driver-test-write.c
 
-Aşağıdaki gibi yükleyebilirsiniz:
+Bundan sonra farklı terminallerde *wait-driver-test-read* ve *wait-driver-test-write* programlarını çalıştırmalısınız:
 
-.. code-block:: c
-
-    $ sudo ./load wait-driver
-
-Farklı terminallerden önce ``wait-driver-test-read.c`` programını sonra da ``wait-driver-test-rwrite.c`` programını 
-çalıştırıp durumu gözlemleyebilirsiniz:
-
-.. code-block:: c
+.. code-block:: console
 
     $ ./wait-driver-test-read
-
-.. code-block:: c
-
     $ ./wait-driver-test-write
- 
-Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
 
-.. code-block:: c
+*dmesg* ile basılan mesajları görüntüleyebilirsiniz:
 
-     $ sudo ./unload wait-driver
+.. code-block:: console
 
-``wait-driver.c``
+    $ sudo dmesg | tail
+
+Aygıt sürücüyü de sistemden şöyle çıkartabilirsiniz:
+
+.. code-block:: console
+
+    $ sudo rmmod wait-driver
+
+``wait-driver.c`` dosyası:
 
 .. code-block:: c
 
@@ -1219,6 +1221,7 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include <linux/wait.h>
 
     MODULE_LICENSE("GPL");
@@ -1229,9 +1232,12 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
     static int generic_release(struct inode *inodep, struct file *filp);
     static ssize_t generic_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t generic_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static char *generic_devnode(const struct device *dev, umode_t *mode);
 
     static dev_t g_dev;
     static struct cdev *g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .open = generic_open,
@@ -1258,6 +1264,7 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
         }
 
         if ((g_cdev = cdev_alloc()) == NULL) {
+            unregister_chrdev_region(g_dev, 1);
             printk(KERN_INFO "cannot allocate cdev!...\n");
             return -ENOMEM;
         }
@@ -1273,15 +1280,43 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
 
         init_waitqueue_head(&g_wq);
 
+        g_class = class_create("wait-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = generic_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "wait-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit generic_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(g_cdev);
         unregister_chrdev_region(g_dev, 1);
 
         printk(KERN_INFO "wait-driver module exit...\n");
+    }
+
+    static char *generic_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int generic_open(struct inode *inodep, struct file *filp)
@@ -1303,7 +1338,7 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
         size_t esize;
 
         if (wait_event_interruptible(g_wq, atomic_read(&g_len) > 0) != 0)
-            return -ERESTARTSYS;   
+            return -ERESTARTSYS;
 
         esize = size < atomic_read(&g_len) ? size : atomic_read(&g_len);
         if (copy_to_user(buf, g_buf, esize) != 0)
@@ -1331,9 +1366,9 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
     module_init(generic_init);
     module_exit(generic_exit);
 
-``Makefile``
+``Makefile`` dosyası:
 
-.. code-block:: makefile
+.. code-block:: make
 
     obj-m += ${file}.o
 
@@ -1342,32 +1377,7 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-``unload``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
-
-``wait-driver-test-read.c``
+``wait-driver-test-read.c`` dosyası:
 
 .. code-block:: c
 
@@ -1384,7 +1394,7 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
         char buf[4096];
         ssize_t result;
 
-        if ((fd = open("wait-driver", O_RDONLY)) == -1)
+        if ((fd = open("/dev/wait-driver", O_RDONLY)) == -1)
             exit_sys("open");
 
         printf("Buffer empty, thread is sleeping...\n");
@@ -1406,7 +1416,7 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
         exit(EXIT_FAILURE);
     }
 
-``wait-driver-test-write.c``
+``wait-driver-test-write.c`` dosyası:
 
 .. code-block:: c
 
@@ -1427,7 +1437,7 @@ Test bitince aygıt sürücüyü çekirdekten şöyle çıkartabilirsiniz:
         char *str;
         ssize_t result;
 
-        if ((fd = open("wait-driver", O_WRONLY)) == -1)
+        if ((fd = open("/dev/wait-driver", O_WRONLY)) == -1)
             exit_sys("open");
 
         printf("Enter text:");
@@ -2164,25 +2174,25 @@ Yüklemeyi şöyle yapabilirsiniz:
 
 .. code-block:: console
 
-    $ sudo ./load pipe-driver
+    $ sudo insmod pipe-driver
 
 Borudan okuma yapan programı şöyle çalıştırabilirsiniz:
 
 .. code-block:: console
 
-    $ ./pipe-read mypipe
+    $ ./pipe-read /dev/pipe-driver
 
 Boruya yazma yapan programı farklı bir terminalden çalıştırmalısınız:
 
 .. code-block:: console
 
-    $ ./pipe-write mypipe
+    $ ./pipe-write /dev/pipe-driver
 
 Test işleminizi bitirdikten sonra aygıt sürücüyü ``unload`` betiği ile kaldırabilirsiniz:
 
 .. code-block:: console
 
-    $ sudo ./unload pipe-driver
+    $ sudo rmmod pipe-driver
 
 ``pipe-driver.c``
 
@@ -2192,8 +2202,10 @@ Test işleminizi bitirdikten sonra aygıt sürücüyü ``unload`` betiği ile ka
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include <linux/semaphore.h>
     #include <linux/wait.h>
+    #include <linux/sched/signal.h>
 
     #define PIPE_BUFFER_SIZE    10
     #define MIN(a, b)           ((a) < (b) ? (a) : (b))
@@ -2206,14 +2218,17 @@ Test işleminizi bitirdikten sonra aygıt sürücüyü ``unload`` betiği ile ka
     static int pipe_driver_release(struct inode *inodep, struct file *filp);
     static ssize_t pipe_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t pipe_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static char *pipe_driver_devnode(const struct device *dev, umode_t *mode);
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
-        .owner   = THIS_MODULE,
-        .open    = pipe_driver_open,
-        .read    = pipe_driver_read,
-        .write   = pipe_driver_write,
+        .owner = THIS_MODULE,
+        .open = pipe_driver_open,
+        .read = pipe_driver_read,
+        .write = pipe_driver_write,
         .release = pipe_driver_release
     };
 
@@ -2253,15 +2268,43 @@ Test işleminizi bitirdikten sonra aygıt sürücüyü ``unload`` betiği ile ka
         init_waitqueue_head(&g_wqread);
         init_waitqueue_head(&g_wqwrite);
 
+        g_class = class_create("pipe-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = pipe_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "pipe-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit pipe_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
 
         printk(KERN_INFO "pipe-driver exit...\n");
+    }
+
+    static char *pipe_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int pipe_driver_open(struct inode *inodep, struct file *filp)
@@ -2408,8 +2451,7 @@ Test işleminizi bitirdikten sonra aygıt sürücüyü ``unload`` betiği ile ka
             up(&g_sem);
             if (filp->f_flags & O_NONBLOCK)
                 return -EAGAIN;
-            if (wait_event_interruptible(g_wqwrite,
-                    PIPE_BUFFER_SIZE - g_count >= size || g_nreaders == 0) != 0)
+            if (wait_event_interruptible(g_wqwrite, PIPE_BUFFER_SIZE - g_count >= size || g_nreaders == 0) != 0)
                 return -ERESTARTSYS;
             if (down_interruptible(&g_sem) != 0)
                 return -ERESTARTSYS;
@@ -2460,31 +2502,6 @@ Test işleminizi bitirdikten sonra aygıt sürücüyü ``unload`` betiği ile ka
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-``unload``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
-
 ``pipe-read.c``
 
 .. code-block:: c
@@ -2532,8 +2549,6 @@ Test işleminizi bitirdikten sonra aygıt sürücüyü ``unload`` betiği ile ka
 ``pipe-write.c``
 
 .. code-block:: c
-
-    /* pipe-write.c */
 
     #include <stdio.h>
     #include <stdlib.h>

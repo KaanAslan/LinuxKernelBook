@@ -381,6 +381,8 @@ Aygıt sürücünün ``init`` fonksiyonunda sayfa tahsisatı şöyle yapılmış
 
         g_pageaddr = page_address(page);
 
+        /* ... */
+
         return 0;
     }
 
@@ -426,8 +428,10 @@ ile test edebilirsiniz.
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include <linux/gfp.h>
     #include <linux/mm.h>
+    #include <linux/uaccess.h>
 
     MODULE_LICENSE("GPL");
     MODULE_AUTHOR("Kaan Aslan");
@@ -437,9 +441,12 @@ ile test edebilirsiniz.
     static int test_driver_release(struct inode *inodep, struct file *filp);
     static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .open = test_driver_open,
@@ -476,16 +483,46 @@ ile test edebilirsiniz.
 
         g_pageaddr = page_address(page);
 
+        g_class = class_create("test-driver");
+        if (IS_ERR(g_class)) {
+            __free_pages(page, 0);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            __free_pages(page, 0);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit test_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         __free_pages(virt_to_page(g_pageaddr), 0);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
 
         printk(KERN_INFO "test-driver module exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int test_driver_open(struct inode *inodep, struct file *filp)
@@ -517,7 +554,7 @@ ile test edebilirsiniz.
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-``makefile``
+``Makefile``
 
 .. code-block:: makefile
 
@@ -527,31 +564,6 @@ ile test edebilirsiniz.
         make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
     clean:
         make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
-
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-``unload```
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
 
 ``page-test.c``
 
@@ -572,7 +584,7 @@ ile test edebilirsiniz.
         char rbuf[4096 + 1];
         size_t result;
 
-        if ((fd = open("test-driver", O_RDWR)) == -1)
+        if ((fd = open("/dev/test-driver", O_RDWR)) == -1)
             exit_sys("open");
 
         if (write(fd, wbuf, strlen(wbuf)) == -1)

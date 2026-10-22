@@ -650,10 +650,8 @@ içerisindeki maple ağacının kökü ``maple_tree`` isimli bir yapıyla temsil
 
     struct mm_struct {
         /* ... */
-
         struct maple_tree mm_mt;    /* Maple ağacı */
         int map_count;              /* VMA sayısı */
-
         /* ... */
     };
 
