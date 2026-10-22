@@ -3152,7 +3152,7 @@ aşağıdaki adımlardan geçerek yapabilirsiniz:
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-``Makefile`` dosyası:
+``Makefile`` 
 
 .. code-block:: make
 

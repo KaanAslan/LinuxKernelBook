@@ -2478,7 +2478,7 @@ Aşağıda tüm kodları bütünsel olarak veriyoruz. Aşağıdaki adımlarla te
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-``Makefile`` dosyası:
+``Makefile``
 
 .. code-block:: make
 
@@ -2489,7 +2489,7 @@ Aşağıda tüm kodları bütünsel olarak veriyoruz. Aşağıdaki adımlarla te
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-``app.c`` dosyası:
+``app.c``
 
 .. code-block:: c
 
