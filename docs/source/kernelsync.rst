@@ -4560,19 +4560,18 @@ yapacağız. Aşağıda bu aygıt sürücü kodları verilmiştir. Test işlemin
 call_rcu Fonksiyonu ve kfree_rcu Makrosu
 ----------------------------------------
 
-Yukarıda da belirttiğimiz gibi yazan taraflar ``synchronize_rcu`` fonksiyonunu çağırdığında *grace
-period* kadar bir bloke oluşabilmektedir. Bunun ``call_rcu`` fonksiyonu ile engellenebileceğini
-söylemiştik. ``call_rcu`` fonksiyonu bir callback fonksiyonu argüman olarak alır ve bunu saklar;
-çekirdek de *grace period* bittiğinde bu callback fonksiyonu çağırır. ``call_rcu`` fonksiyonunun
-parametrik yapısını anımsatmak istiyoruz:
+Yukarıda da belirttiğimiz gibi yazan taraflar ``synchronize_rcu`` fonksiyonunu çağırdığında *grace period* kadar bir
+bloke oluşabilmektedir. Bunun ``call_rcu`` fonksiyonu ile engellenebileceğini söylemiştik. ``call_rcu`` fonksiyonu bir
+callback fonksiyonu argüman olarak alır ve bunu saklar, çekirdek de *grace period* bittiğinde bu callback fonksiyonunu
+çağırır. ``call_rcu`` fonksiyonunun parametrik yapısını anımsatmak istiyoruz:
 
 .. code-block:: c
 
     void call_rcu(struct rcu_head *head, rcu_callback_t func);
 
-Buradaki ``rcu_head`` yapısı callback mekanizmasının işletilmesinde kullanılmaktadır. Sistem
-programcısı paylaşılan nesneye ilişkin yapının içerisine ``rcu_head`` isimli yapı türünden bir eleman
-yerleştirmeli ve fonksiyonun birinci parametresine bu elemanın adresini vermelidir. Örneğin:
+Buradaki ``rcu_head`` yapısı callback mekanizmasının işletilmesinde kullanılmaktadır. Sistem programcısı paylaşılan
+nesneye ilişkin yapının içerisine ``rcu_head`` isimli yapı türünden bir eleman yerleştirmeli ve fonksiyonun birinci
+parametresine bu elemanın adresini vermelidir. Örneğin:
 
 .. code-block:: c
 
@@ -4582,19 +4581,17 @@ yerleştirmeli ve fonksiyonun birinci parametresine bu elemanın adresini vermel
         struct rcu_head rcu;
     };
 
-İşte ``call_rcu`` fonksiyonunun birinci parametresine paylaşılan alana ilişkin yapının içerisindeki
-``rcu_head`` türünden elemanın adresi (örneğimizde yapının ``rcu`` elemanı), ikinci parametresine de
-callback fonksiyonun adresi geçirilmelidir. Fonksiyonun ikinci parametresindeki türün typedef bildirimine
-dikkat ediniz:
+İşte ``call_rcu`` fonksiyonunun birinci parametresine paylaşılan alana ilişkin yapının içerisindeki ``rcu_head``
+türünden elemanın adresi (örneğimizde yapının ``rcu`` elemanı), ikinci parametresine de callback fonksiyonunun adresi
+geçirilmelidir. Fonksiyonun ikinci parametresindeki türün ``typedef`` bildirimine dikkat ediniz:
 
 .. code-block:: c
 
     typedef void (*rcu_callback_t)(struct rcu_head *head);
 
-Bu durumda sistem programcısının ``call_rcu`` fonksiyonunun ikinci parametresine geri dönüş değeri
-``void`` olan, parametresi ``struct rcu_head *`` türünden olan bir fonksiyonun adresini geçmesi gerekir.
-``struct rcu_head`` yapısı çekirdeğin callback mekanizmasının yönetebilmesi için gereken elemanları
-barındırmaktadır. Bu yapı şöyle tanımlanmıştır:
+Bu durumda sistem programcısının ``call_rcu`` fonksiyonunun ikinci parametresine geri dönüş değeri ``void`` olan,
+parametresi ``struct rcu_head *`` türünden olan bir fonksiyonun adresini geçmesi gerekir. ``struct rcu_head`` yapısı
+çekirdeğin callback mekanizmasını yönetebilmesi için gereken elemanları barındırmaktadır. Bu yapı şöyle tanımlanmıştır:
 
 .. code-block:: c
 
@@ -4612,16 +4609,22 @@ barındırmaktadır. Bu yapı şöyle tanımlanmıştır:
     /* ... */
 
     spin_lock(&g_dev_lock);
-    di_old = rcu_dereference(g_device_info);
+    di_old = rcu_dereference_protected(g_device_info, lockdep_is_held(&g_dev_lock));
     rcu_assign_pointer(g_device_info, di_new);
     spin_unlock(&g_dev_lock);
 
     if (di_old != NULL)
         call_rcu(&di_old->rcu, device_rcu_callback);
 
-``call_rcu`` fonksiyonunun ikinci parametresine geçirdiğimiz callback fonksiyonun parametresi aslında
-kendi yapı nesnemizin içerisindeki ``rcu_head`` elemanının adresidir. Biz de bu adresten hareketle asıl
-nesne adresini ``container_of`` makrosuyla elde edebiliriz. Örneğin:
+Burada yazan taraf göstericiyi ``rcu_read_lock`` bölümü içerisinde değil spinlock koruması altında okuduğu için
+``rcu_dereference`` yerine ``rcu_dereference_protected`` makrosu kullanılmıştır. Makronun ikinci parametresi
+göstericinin hangi koşul altında güvenli biçimde okunduğunu belirtir. ``CONFIG_PROVE_RCU`` seçeneği açık olan
+çekirdeklerde ``rcu_dereference`` makrosunun ``rcu_read_lock`` dışında kullanılması
+``suspicious rcu_dereference_check() usage`` biçiminde uyarıya yol açmaktadır.
+
+``call_rcu`` fonksiyonunun ikinci parametresine geçirdiğimiz callback fonksiyonun parametresi aslında kendi yapı
+nesnemizin içerisindeki ``rcu_head`` elemanının adresidir. Biz de bu adresten hareketle asıl nesne adresini
+``container_of`` makrosuyla elde edebiliriz. Örneğin:
 
 .. code-block:: c
 
@@ -4633,15 +4636,33 @@ nesne adresini ``container_of`` makrosuyla elde edebiliriz. Örneğin:
         kfree(di);
     }
 
-Ayrıca Linux çekirdeğinde ``call_rcu`` işlemi ile ``kfree`` işlemini birlikte yapan ``kfree_rcu`` isimli
-bir makro da bulunmaktadır. ``kfree_rcu`` makrosu iki parametre almaktadır:
+``call_rcu`` kullanan modüllerde dikkat edilmesi gereken önemli bir nokta vardır. ``call_rcu`` fonksiyonu callback
+fonksiyonunu hemen çağırmadığı için modül *rmmod* ile boşaltıldığı sırada henüz çağrılmamış callback fonksiyonlar
+bulunuyor olabilir. Modülün kodu bellekten kaldırıldıktan sonra çekirdek bu callback fonksiyonunu çağırmaya çalışırsa
+sistem çöker. Bu nedenle ``call_rcu`` kullanan modüllerin ``exit`` fonksiyonlarında ``rcu_barrier`` fonksiyonu
+çağrılmalıdır. ``rcu_barrier`` fonksiyonu o ana kadar ``call_rcu`` ile kaydettirilmiş tüm callback fonksiyonların
+çalışıp bitmesini bekler. ``synchronize_rcu`` fonksiyonu bu işi görmez. Çünkü ``synchronize_rcu`` yalnızca
+*grace period* bitene kadar bekler, callback fonksiyonların çağrılmasını beklemez. Örneğin:
+
+.. code-block:: c
+
+    static void __exit test_driver_exit(void)
+    {
+        /* ... */
+
+        rcu_barrier();
+        kfree(g_device_info);
+    }
+
+Ayrıca Linux çekirdeğinde ``call_rcu`` işlemi ile ``kfree`` işlemini birlikte yapan ``kfree_rcu`` isimli bir makro da
+bulunmaktadır. ``kfree_rcu`` makrosu iki parametre almaktadır:
 
 .. code-block:: c
 
     kfree_rcu(ptr, rcu_head_fieldname);
 
-Makronun birinci parametresi serbest bırakılacak nesnenin adresini, ikinci parametresi de nesneye ilişkin
-yapıdaki ``rcu_head`` elemanının ismini almaktadır. Örneğin:
+Makronun birinci parametresi serbest bırakılacak nesnenin adresini, ikinci parametresi de nesneye ilişkin yapıdaki
+``rcu_head`` elemanının ismini almaktadır. Örneğin:
 
 .. code-block:: c
 
@@ -4649,19 +4670,12 @@ yapıdaki ``rcu_head`` elemanının ismini almaktadır. Örneğin:
     /* ... */
 
     spin_lock(&g_dev_lock);
-    di_old = rcu_dereference(g_device_info);
+    di_old = rcu_dereference_protected(g_device_info, lockdep_is_held(&g_dev_lock));
     rcu_assign_pointer(g_device_info, di_new);
-    spin_unlock(&g_dev_lock);
-
-    if (di_old != NULL)
-        kfree_rcu(di_old, rcu);
 
 Yukarıda yaptığımız örneği aşağıda ``call_rcu`` kullanarak yeniden veriyoruz.
 
-Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasını kullanan tam bir çekirdek modülü
-örneği verilmektedir:
-
-``rcu-test-driver.c``
+``rcu-test-driver.c`` dosyası:
 
 .. code-block:: c
 
@@ -4669,6 +4683,7 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include "rcu-test-driver.h"
 
     MODULE_LICENSE("GPL");
@@ -4680,6 +4695,7 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
     static ssize_t test_driver_read(struct file *filp, char *buf, size_t size, loff_t *off);
     static ssize_t test_driver_write(struct file *filp, const char *buf, size_t size, loff_t *off);
     static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
 
     static long ioctl_read_device(struct file *filp, unsigned long arg);
     static long ioctl_update_device(struct file *filp, unsigned long arg);
@@ -4688,6 +4704,8 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .open = test_driver_open,
@@ -4710,7 +4728,7 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
     {
         int result;
 
-        printk(KERN_INFO "rcu-test-driver module initialization...\n");
+        printk(KERN_INFO "rcu-test-driver initialization...\n");
 
         if ((result = alloc_chrdev_region(&g_dev, 0, 1, "rcu-test-driver")) < 0) {
             printk(KERN_INFO "cannot alloc char driver!...\n");
@@ -4724,24 +4742,56 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
         }
 
         if ((g_device_info = (struct DEVICE_INFO *)kmalloc(sizeof(struct DEVICE_INFO), GFP_KERNEL)) == NULL) {
-            unregister_chrdev_region(g_dev, 1);
             cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
             return -ENOMEM;
         }
 
         g_device_info->id = 100;
         strscpy(g_device_info->name, "Sample", MAX_NAME);
 
+        g_class = class_create("rcu-test-driver");
+        if (IS_ERR(g_class)) {
+            kfree(g_device_info);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "rcu-test-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            kfree(g_device_info);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit test_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
+
+        rcu_barrier();
         kfree(g_device_info);
 
-        printk(KERN_INFO "rcu-test-driver module exit...\n");
+        printk(KERN_INFO "rcu-test-driver exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static int test_driver_open(struct inode *inodep, struct file *filp)
@@ -4778,6 +4828,7 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
             default:
                 printk(KERN_INFO "invalid ioctl code!..\n");
                 result = -ENOTTY;
+                break;
         }
 
         return result;
@@ -4789,15 +4840,21 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
         struct DEVICE_PARAM di_param;
 
         rcu_read_lock();
+
         di = rcu_dereference(g_device_info);
-        if (di != NULL) {
-            di_param.id = di->id;
-            strscpy(di_param.name, di->name, MAX_NAME);
-            if (copy_to_user((struct DEVICE_PARAM *)arg, &di_param, sizeof(struct DEVICE_PARAM)) != 0)
-                return -EFAULT;
-            printk(KERN_INFO "Device: id=%d Name=%s\n", di->id, di->name);
+        if (di == NULL) {
+            rcu_read_unlock();
+            return -ENODATA;
         }
+        di_param.id = di->id;
+        strscpy(di_param.name, di->name, MAX_NAME);
+
         rcu_read_unlock();
+
+        if (copy_to_user((struct DEVICE_PARAM *)arg, &di_param, sizeof(struct DEVICE_PARAM)) != 0)
+            return -EFAULT;
+
+        printk(KERN_INFO "Device: id=%d Name=%s\n", di_param.id, di_param.name);
 
         return 0;
     }
@@ -4817,7 +4874,7 @@ Aşağıda, önceki bölümlerde açıkladığımız ``call_rcu`` mekanizmasın�
         strscpy(di_new->name, di_param.name, MAX_NAME);
 
         spin_lock(&g_dev_lock);
-        di_old = rcu_dereference(g_device_info);
+        di_old = rcu_dereference_protected(g_device_info, lockdep_is_held(&g_dev_lock));
         rcu_assign_pointer(g_device_info, di_new);
         spin_unlock(&g_dev_lock);
 
