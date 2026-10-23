@@ -178,7 +178,7 @@ Aslında ``i_mapping`` elemanı genellikle aynı yapıdaki ``i_data`` nesnesini 
 
 .. figure:: _static/inode-imapping-idata.png
    :alt: i_mapping elemanının i_data elemanını göstermesi
-   :width: 40%
+   :width: 37%
 
 Bazı seyrek durumlarda ``i_mapping`` elemanı başka bir ``inode`` nesnesindeki ``i_data`` elemanını gösterir duruma da 
 getirilebilmektedir. Ancak çekirdek her zaman ``i_mapping`` göstericisinden  hareketle ``address_space`` nesnesine erişmektedir. 
@@ -209,7 +209,7 @@ elemanı blok aygıtı için yaratılan ``address_space`` nesnesini göstermekte
 özetleyerek aşağıda veriyoruz:
 
 .. figure:: _static/open-f-mapping-call-path.png
-    :width: 70%
+    :width: 80%
 
 Dosya nesnesinden hareketle ilgili dosyaya ilişkin önbellek bilgilerine erişimin nasıl yapıldığını aşağıdaki
 şekille de betimleyebiliriz:
@@ -414,7 +414,7 @@ Bir sayfadan büyük önbellek birimleri kullanan başlıca kaynaklar şunlardı
 .. figure:: _static/large-folio-users-table.png
    :alt: Büyük folio kullanan dosya sistemleri ve mekanizmalar
    :align: center
-   :width: 75%
+   :width: 80%
 
 folio Yapısı
 ------------
@@ -615,7 +615,7 @@ oradan 72128 % 65536 = 6592'inci offset'e erişir. Bu süreci şekilsel olarak �
 .. figure:: _static/folio-offset-lookup.png
    :alt: folio offset arama süreci
    :align: center
-   :width: 60%
+   :width: 55%
 
 *XArray* ağacının organizasyonu hakkında bir anımsatma yapmak istiyoruz. *XArray* ağacında yapraklar
 için ayrı düğümlerin tutulmasına gerek yoktur. Zaten arama son kademeye geldiğinde son kademedeki
@@ -640,7 +640,7 @@ düşük anlamlı 2 bit 0'dır. Düşük anlamlı 2 bitin değerleri şöyle yor
    :alt: XArray slot düşük 2 bit anlamları
    :align: center
    :class: fig-mapping5
-   :width: 40%
+   :width: 42%
 
 Düşük anlamlı 2 bit 10 durumundaysa ve yüksek anlamlı bitler 0 ile 62 arasındaysa slot bir kardeş
 slottur ve yüksek anlamlı bitler 64 slot içerisindeki baş slotun indeksini belirtmektedir. Burada
@@ -651,7 +651,7 @@ indekste olabilir.) Yüksek anlamlı bitlerin ifade ettiği anlamlar da şöyled
 .. figure:: _static/xarray-internal-entries-table.png
    :alt: XArray içsel giriş türleri
    :align: center
-   :width: 45%
+   :width: 50%
 
 Çekirdek içerisinde erişilen slotun kardeş slot olup olmadığı ``xa_is_sibling`` fonksiyonuyla test
 edilebilmektedir:
@@ -799,7 +799,7 @@ kullanacağız. Aşağıda önemli çekirdek fonksiyonlarını tablo halinde ver
 .. figure:: _static/pagecache-functions-table.png
    :alt: Sayfa önbelleği çekirdek fonksiyonları
    :align: center
-   :width: 70%
+   :width: 75%
 
 Buradaki fonksiyonların prototiplerini de veriyoruz:
 
@@ -955,9 +955,6 @@ birkaç turda sisteme iade edilmektedir.
 
 Sayfa Önbelleğine Erişime İlişkin Örnek Bir Uygulama
 ====================================================
-
-Sayfa Önbelleğinin Elle Kullanılmasına İlişkin Bir Çalışma
-----------------------------------------------------------
 
 Biz sayfa önbelleğinin veri yapısını ve kullanılan algoritmaları gördük. Şimdi küçük bir çalışma yapalım. Bu çalışmada
 bir karakter aygıt sürücüsü oluşturalım. Karakter aygıt sürücüsünün içerisinde ``ioctl`` işlemiyle prosesin açmış olduğu
@@ -1176,11 +1173,11 @@ Biz ``address_space`` nesnesini elde ettik. Artık o ``address_space`` nesnesini
 ilişkin sayfanın bulunup bulunmadığını anlayabiliriz ve o sayfanın içeriğini sayfa önbelleğinden elde edebiliriz. Ancak
 burada çözmemiz gereken iki sorun vardır:
 
-1) Bizim dosyadan okuyacağımız kısım tek bir önbellek sayfası içerisinde olmayabilir. Örneğin bir kısmı bir önbellek
+| **1.** Bizim dosyadan okuyacağımız kısım tek bir önbellek sayfası içerisinde olmayabilir. Örneğin bir kısmı bir önbellek
    sayfası içerisinde diğer kısmı başka bir sayfanın içerisinde olabilir. Bu durumda bizim okuma işlemini bir döngü
    içerisinde yapmamız gerekir.
 
-2) Okumak istediğimiz yerin tamamı ya da bir kısmı sayfa önbelleğinde bulunmayabilir. Bu durumda biz işlemi kesebiliriz
+| **2.** Okumak istediğimiz yerin tamamı ya da bir kısmı sayfa önbelleğinde bulunmayabilir. Bu durumda biz işlemi kesebiliriz
    ya da ``kernel_read`` gibi bir çekirdek fonksiyonuyla olmayan kısmın çekirdek tarafından okunmasını sağlayabiliriz.
 
 Okuma döngüsü şöyle oluşturulabilir:
@@ -1330,7 +1327,6 @@ Kodumuz şu hâle gelmiştir:
         else
             chunk = min_t(u64, chunk, folio_size(folio) - foff);
         offaddr = kmap_local_folio(folio, foff);
-
         /* ... */
     }
 
@@ -1429,7 +1425,7 @@ Test işlemi bittikten sonra aygıt sürücüyü *rmmod* komutuyla sistemden ata
 
     #endif
 
-``pcache-driver.c```
+``pcache-driver.c``
 
 .. code-block:: c
 
@@ -1855,7 +1851,7 @@ mesajı görülür:
     printf("bytes read: %zu\n", ri.count);
 
 `
-``pcache-driver.h`` dosyası:
+``pcache-driver.h``
 
 .. code-block:: c
 
@@ -1878,7 +1874,7 @@ mesajı görülür:
 
     #endif
 
-``pcache-driver.c`` dosyası:
+``pcache-driver.c``
 
 .. code-block:: c
 
@@ -2100,7 +2096,7 @@ mesajı görülür:
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-``Makefile`` dosyası:
+``Makefile``
 
 .. code-block:: make
 
@@ -2111,7 +2107,7 @@ mesajı görülür:
     clean:
     	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-``pcache-driver-test.c`` dosyası:
+``pcache-driver-test.c``
 
 .. code-block:: c
 
@@ -2185,11 +2181,12 @@ için bu işlemi yapan akışlara *flusher thread*'ler de diyeceğiz.
 
 Bir önbellek bloğunun kirli hale getirilmesi üç işlemle düzgün biçimde yapılabilmektedir:
 
-1. ``folio`` nesnesinin ``memdesc_flags_t`` elemanındaki ``PG_dirty`` biti 1 yapılmalıdır. Bu
+| **1.** ``folio`` nesnesinin ``memdesc_flags_t`` elemanındaki ``PG_dirty`` biti 1 yapılmalıdır. Bu
    ilgili ``folio`` nesnesinin belirttiği önbellek bloğunun kirli olduğu anlamına gelmektedir. Bir
    önbellek bloğu bu biçimde "kirli" yapıldığında güncellenen kısım çok küçük bile olsa geri yazım
    sırasında o önbellek bloğunun tamamı blok aygıtına geri yazılmaktadır.
-2. *Flusher thread*'ler kirli önbellek bloklarını XArray ağacından arayıp bulmaktadır. Anımsanacağı
+
+| **2.** *Flusher thread*'ler kirli önbellek bloklarını XArray ağacından arayıp bulmaktadır. Anımsanacağı
    gibi XArray ağacındaki düğümler ``xa_node`` isimli yapıyla temsil edilmekteydi. ``xa_node``
    yapısı ``include/linux/xarray.h`` dosyasında şöyle tanımlanmıştır:
 
@@ -2232,7 +2229,8 @@ Bir önbellek bloğunun kirli hale getirilmesi üç işlemle düzgün biçimde y
    XArray üzerinde kirli ``folio`` nesnelerinin çabuk tespit edilebilmesi için bu "kirlenme" bilgisi
    ağacın üst düğümlerine de yansıtılmaktadır. Çünkü büyük ağaçlarda her düzeye inmeden "aşağıdaki
    düzeyde kirlenmiş folio varsa" o düzeye inmek hız kazancı sağlamaktadır.
-3. Çekirdeğin ``inode`` nesnesini de kirli hale getirmesi gerekir. Çünkü yazma yapılmış bir
+
+| **3.** Çekirdeğin ``inode`` nesnesini de kirli hale getirmesi gerekir. Çünkü yazma yapılmış bir
    ``inode`` nesnesi de diske geri yazılmalıdır. (``inode`` nesnesinin içerisinde dosyanın
    uzunluğu, son yazma zamanı gibi bilgilerin bulunduğunu anımsayınız.) ``inode`` nesnelerinin
    kirlilik bilgisi ``inode`` yapısının ``i_state`` elemanında birkaç alt durumla tutulmaktadır:
@@ -2287,13 +2285,8 @@ ulaşılabilmektedir. Ulaşım yolunu şöyle gösterebiliriz:
         return ret;
     }
 
-Güncel çekirdeklerde kilit işlemi için spinlock kullanılmamıştır, kilit mekanizması ``folio``
-nesnesindeki ``memdesc_flags_t`` elemanının ``PG_locked`` biti ile manuel biçimde
-oluşturulmuştur. Bunun gerekçesi bellek maliyetini azaltmak ve uykuya dalma mekanizmasını daha
-etkin hale getirmektir.
-
-Aşağıdaki örnekte oluşturduğumuz aygıt sürücüye yazma desteği de verdik. Burada yazma işlemini
-yapan ``ioctl`` fonksiyonu şöyledir:
+Aşağıdaki örnekte oluşturduğumuz aygıt sürücüsüne yazma desteği de verdik. Burada yazma işlemini yapan ``ioctl``
+fonksiyonu şöyledir:
 
 .. code-block:: c
 
@@ -2303,20 +2296,20 @@ yapan ``ioctl`` fonksiyonu şöyledir:
         struct inode *inode;
         struct address_space *mapping;
         struct folio *folio;
-        struct read_info ri;
+        struct write_info wi;
         pgoff_t index;
         loff_t pos, isize;
         u64 left, chunk;
         size_t foff;
         void *offaddr;
-        void *kbuf;
+        void *kbuf = NULL;
         int result;
 
-        if (copy_from_user(&ri, (void *)arg, sizeof(struct read_info)) != 0)
+        if (copy_from_user(&wi, (void *)arg, sizeof(struct write_info)) != 0)
             return -EFAULT;
-        ri.count = 0;
+        wi.count = 0;
 
-        filp = fget(ri.fd);
+        filp = fget(wi.fd);
         if (!filp)
             return -EBADF;
 
@@ -2333,18 +2326,27 @@ yapan ``ioctl`` fonksiyonu şöyledir:
         }
         mapping = inode->i_mapping;
 
-        pos = ri.offset;
-        left = ri.size;
+        pos = wi.offset;
+        left = wi.size;
 
         while (left > 0) {
             isize = i_size_read(inode);
             if (pos >= isize)
-                goto EXIT;
+                break;
 
             index = pos >> PAGE_SHIFT;
             chunk = min_t(u64, left, isize - pos);
 
             folio = filemap_get_folio(mapping, index);
+            if (!IS_ERR(folio)) {
+                folio_lock(folio);
+                if (unlikely(folio->mapping != mapping) || !folio_test_uptodate(folio)) {
+                    folio_unlock(folio);
+                    folio_put(folio);
+                    folio = ERR_PTR(-ENOENT);
+                }
+            }
+
             if (!IS_ERR(folio)) {
                 printk(KERN_INFO "cache hit...\n");
 
@@ -2354,24 +2356,19 @@ yapan ``ioctl`` fonksiyonu şöyledir:
                 else
                     chunk = min_t(u64, chunk, folio_size(folio) - foff);
 
-                folio_lock(folio);
-                if (unlikely(folio->mapping != mapping)) {
-                    folio_unlock(folio);
-                    folio_put(folio);
-                    result = -EAGAIN;
-                    goto EXIT;
-                }
                 offaddr = kmap_local_folio(folio, foff);
 
-                if (copy_from_user(offaddr, ri.buf, chunk) != 0) {
+                if (copy_from_user(offaddr, wi.buf, chunk) != 0) {
                     kunmap_local(offaddr);
+                    folio_unlock(folio);
                     folio_put(folio);
                     result = -EFAULT;
                     goto EXIT;
                 }
+                kunmap_local(offaddr);
+                flush_dcache_folio(folio);
                 folio_mark_dirty(folio);
                 folio_unlock(folio);
-                kunmap_local(offaddr);
                 folio_put(folio);
             }
             else {
@@ -2384,18 +2381,17 @@ yapan ``ioctl`` fonksiyonu şöyledir:
                     struct page *pg;
 
                     if ((pg = alloc_pages(GFP_KERNEL, 0)) == NULL) {
-                            result = -ENOMEM;
-                            goto EXIT;
+                        result = -ENOMEM;
+                        goto EXIT;
                     }
                     kbuf = page_address(pg);
                 }
-                if (copy_from_user(kbuf, ri.buf, n)) {
-                    free_page((unsigned long)kbuf);
+                chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+                if (copy_from_user(kbuf, wi.buf, chunk)) {
                     result = -EFAULT;
                     goto EXIT;
                 }
                 if ((n = kernel_write(filp, kbuf, chunk, &rpos)) < 0) {
-                    free_page((unsigned long)kbuf);
                     result = n;
                     goto EXIT;
                 }
@@ -2405,20 +2401,23 @@ yapan ``ioctl`` fonksiyonu şöyledir:
                 chunk = n;
             }
             left -= chunk;
-            ri.count += chunk;
+            wi.count += chunk;
             pos += chunk;
-            ri.buf += chunk;
+            wi.buf += chunk;
         }
 
-        if (copy_to_user((void *)arg, &ri, sizeof(struct read_info)) != 0)
+        if (copy_to_user((void *)arg, &wi, sizeof(struct write_info)) != 0)
             result = -EFAULT;
     EXIT:
+        if (kbuf != NULL)
+            free_page((unsigned long)kbuf);
         fput(filp);
+
         return result;
     }
 
-Fonksiyonun akışı okuma işlemindekine çok benzemektedir. Önce betimleyiciye ilişkin dosyanın yazma
-modunda açılıp açılmadığına bakılmıştır:
+Fonksiyonun akışı okuma işlemindekine çok benzemektedir. Önce betimleyiciye ilişkin dosyanın yazma modunda açılıp
+açılmadığına bakılmıştır:
 
 .. code-block:: c
 
@@ -2428,56 +2427,70 @@ modunda açılıp açılmadığına bakılmıştır:
         goto EXIT;
     }
 
-Sonra yine dosya nesnesinden hareketle ``address_space`` nesnesi elde edilmiştir. Daha sonra sayfa
-önbelleğinde dosya offset'ine ilişkin sayfaya erişilmiş ve güncelleme uygun yere yapılmıştır:
+Sonra yine dosya nesnesinden hareketle ``address_space`` nesnesi elde edilmiştir. Daha sonra sayfa önbelleğinde dosya
+offset'ine ilişkin sayfaya erişilmiş ve güncelleme uygun yere yapılmıştır:
 
 .. code-block:: c
 
     folio_lock(folio);
-    if (unlikely(folio->mapping != mapping)) {
+    if (unlikely(folio->mapping != mapping) || !folio_test_uptodate(folio)) {
         folio_unlock(folio);
         folio_put(folio);
-        result = -EAGAIN;
-        goto EXIT;
+        folio = ERR_PTR(-ENOENT);
     }
+    /* ... */
     offaddr = kmap_local_folio(folio, foff);
 
-    if (copy_from_user(offaddr, ri.buf, chunk) != 0) {
+    if (copy_from_user(offaddr, wi.buf, chunk) != 0) {
         kunmap_local(offaddr);
+        folio_unlock(folio);
         folio_put(folio);
         result = -EFAULT;
         goto EXIT;
     }
+    kunmap_local(offaddr);
+    flush_dcache_folio(folio);
     folio_mark_dirty(folio);
     folio_unlock(folio);
+
+``copy_from_user`` başarısız olduğunda da ``folio`` kilidinin bırakıldığına dikkat ediniz. Aksi takdirde ``folio``
+kilitli kalır ve o sayfaya erişmek isteyen sonraki akışlar sonsuza kadar bloke olur. ``flush_dcache_folio`` fonksiyonu
+ise çekirdeğin sayfaya kendi sanal adresi üzerinden yazması durumunda, bazı mimarilerde (örneğin ARM) veri önbelleği ile
+aynı sayfanın kullanıcı alanındaki eşlemeleri arasındaki tutarlılığı sağlamak için çağrılmaktadır. Çekirdeğin kendi
+yazma yolu da bu fonksiyonu çağırmaktadır. x86 sistemlerinde bu fonksiyon bir şey yapmamaktadır.
 
 Aşağıdaki kontrole dikkat ediniz:
 
 .. code-block:: c
 
-    if (unlikely(folio->mapping != mapping)) {
+    if (unlikely(folio->mapping != mapping) || !folio_test_uptodate(folio)) {
         folio_unlock(folio);
         folio_put(folio);
-        result = -EAGAIN;
-        goto EXIT;
+        folio = ERR_PTR(-ENOENT);
     }
 
-Burada kilit alınmadan önce başka bir akış tarafından ``folio`` nesnesinin ortadan kaldırılıp
-kaldırılmadığı kontrol edilmiştir. (``folio`` nesnesinin yok edilmesinin çeşitli nedenleri
-olabilir. Bunun en bariz nedeni ``truncate`` işlemidir.) Buradaki ``unlikely`` makrosu yapılan
-karşılaştırmanın düşük bir olasılıkla doğru olacağını belirtmektedir. Aslında bu ``unlikely``
-makrosu ``__builtin_expect`` isimli içsel (internal) bir gcc fonksiyonunu kullanmakta, gcc de bu
-fonksiyonla ``if`` deyimine ilişkin makine komutlarını işlemcilerin boru hattı (pipeline)
-mekanizması için daha etkin bir biçimde düzenlemektedir. Biz gcc'ye özgü bu tür makroları ve içsel
-(internal) fonksiyonları kursumuzda ayrı bir bölümde ele alacağız.
+Burada kilit alındıktan sonra, kilit alınmadan önceki süre içerisinde başka bir akış tarafından ``folio`` nesnesinin
+ortadan kaldırılıp kaldırılmadığı kontrol edilmiştir. (``folio`` nesnesinin yok edilmesinin çeşitli nedenleri olabilir.
+Bunun en bariz nedeni ``truncate`` işlemidir.) Ayrıca ``folio`` nesnesinin güncel olup olmadığına da bakılmıştır. Güncel
+olmayan bir ``folio`` nesnesine kısmi yazma yapılıp nesne kirli (dirty) olarak işaretlenirse ``folio`` nesnesinin
+yazılmayan kısımlarındaki geçersiz bilgiler de diske aktarılır. Bu nedenle okuma işleminin tersine yazma işleminde bu
+kontrol zorunludur. Her iki durumda da ``folio`` nesnesi bırakılmakta ve ``folio`` göstericisine ``ERR_PTR(-ENOENT)``
+değeri atanmaktadır. Böylece akış, sayfa önbellekte hiç bulunmamış gibi aşağıdaki ``kernel_write`` kısmına
+yönlendirilmektedir. Buradaki ``unlikely`` makrosu yapılan karşılaştırmanın düşük bir olasılıkla doğru olacağını
+belirtmektedir. Aslında bu ``unlikely`` makrosu ``__builtin_expect`` isimli içsel (internal) bir gcc fonksiyonunu
+kullanmakta, gcc de bu fonksiyonla ``if`` deyimine ilişkin makine komutlarını işlemcilerin boru hattı (pipeline)
+mekanizması için daha etkin bir biçimde düzenlemektedir. Biz gcc'ye özgü bu tür makroları ve içsel (internal)
+fonksiyonları kursumuzda ayrı bir bölümde ele alacağız.
 
-Örneğimizde yine eğer yazma yapılacak yer sayfa önbelleğinde yoksa yazma işlemi çekirdeğin
-``kernel_write`` fonksiyonuna devredilmiştir:
+Örneğimizde yine eğer yazma yapılacak yer sayfa önbelleğinde yoksa yazma işlemi çekirdeğin ``kernel_write`` fonksiyonuna
+devredilmiştir:
 
 .. code-block:: c
 
     if (!IS_ERR(folio)) {
+
         /* ... */
+
     }
     else {
         ssize_t n;
@@ -2489,18 +2502,17 @@ mekanizması için daha etkin bir biçimde düzenlemektedir. Biz gcc'ye özgü b
             struct page *pg;
 
             if ((pg = alloc_pages(GFP_KERNEL, 0)) == NULL) {
-                    result = -ENOMEM;
-                    goto EXIT;
+                result = -ENOMEM;
+                goto EXIT;
             }
             kbuf = page_address(pg);
         }
-        if (copy_from_user(kbuf, ri.buf, n)) {
-            free_page((unsigned long)kbuf);
+        chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+        if (copy_from_user(kbuf, wi.buf, chunk)) {
             result = -EFAULT;
             goto EXIT;
         }
         if ((n = kernel_write(filp, kbuf, chunk, &rpos)) < 0) {
-            free_page((unsigned long)kbuf);
             result = n;
             goto EXIT;
         }
@@ -2510,11 +2522,13 @@ mekanizması için daha etkin bir biçimde düzenlemektedir. Biz gcc'ye özgü b
         chunk = n;
     }
 
-``kernel_write`` fonksiyonu çekirdek alanı içerisindeki tampondaki verileri dosyaya aktarmaktadır.
-Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yapılacak yer sayfa
-önbelleğinde yoksa onu da sayfa önbelleğine çekmektedir.
+Okuma işleminde olduğu gibi burada da tampon tek bir sayfa uzunluğunda olduğu için kopyalanacak miktar ``pos``
+konumundan sayfa sonuna kadar olan kısımla sınırlandırılmıştır. Tampon ``EXIT`` etiketinde tek bir yerde serbest
+bırakılmaktadır. ``kernel_write`` fonksiyonu çekirdek alanı içerisindeki tampondaki verileri dosyaya aktarmaktadır.
+Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yapılacak yer sayfa önbelleğinde yoksa onu da
+sayfa önbelleğine çekmektedir.
 
-``pcache-driver.h``
+``pcache-driver.h`` 
 
 .. code-block:: c
 
@@ -2525,24 +2539,24 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
     #include <linux/ioctl.h>
 
     struct read_info {
-        int fd;              /* okunacak dosyanin betimleyicisi  */
-        char *buf;            /* kullanici tamponunun adresi      */
-        size_t size;          /* okunacak bayt sayisi             */
-        off_t offset;         /* dosya icindeki baslangıç konumu  */
-        size_t count;         /* gerçekte okunan miktar           */
+        int fd;              
+        char *buf;           
+        size_t size;         
+        long long offset;    
+        size_t count;        
     };
 
     struct write_info {
-        int fd;              /* yazılacak dosyanin betimleyicisi */
-        const char *buf;      /* kullanici tamponunun adresi      */
-        size_t size;          /* okunacak bayt sayisi             */
-        off_t offset;         /* dosya icindeki baslangıç konumu  */
-        size_t count;         /* gerçekte okunan miktar           */
+        int fd;              
+        const char *buf;  
+        size_t size;   
+        long long offset; 
+        size_t count; 
     };
 
-    #define PCACHE_DRIVER_MAGIC     'c'
-    #define IOC_CACHE_READ          _IOR(PCACHE_DRIVER_MAGIC, 0, struct read_info)
-    #define IOC_CACHE_WRITE         _IOR(PCACHE_DRIVER_MAGIC, 1, struct write_info)
+    #define PCACHE_DRIVER_MAGIC    'c'
+    #define IOC_CACHE_READ         _IOWR(PCACHE_DRIVER_MAGIC, 0, struct read_info)
+    #define IOC_CACHE_WRITE        _IOWR(PCACHE_DRIVER_MAGIC, 1, struct write_info)
 
     #endif
 
@@ -2554,6 +2568,7 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
     #include <linux/kernel.h>
     #include <linux/fs.h>
     #include <linux/cdev.h>
+    #include <linux/device.h>
     #include <linux/fdtable.h>
     #include <linux/file.h>
     #include <linux/pagemap.h>
@@ -2564,12 +2579,15 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
     MODULE_DESCRIPTION("pcache-driver");
 
     static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode);
 
     static long ioctl_cache_read(unsigned long arg);
     static long ioctl_cache_write(unsigned long arg);
 
     static dev_t g_dev;
     static struct cdev g_cdev;
+    static struct class *g_class;
+    static struct device *g_device;
     static struct file_operations g_fops = {
         .owner = THIS_MODULE,
         .unlocked_ioctl = test_driver_ioctl
@@ -2592,15 +2610,43 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
             return result;
         }
 
+        g_class = class_create("pcache-driver");
+        if (IS_ERR(g_class)) {
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create class!...\n");
+            return PTR_ERR(g_class);
+        }
+        g_class->devnode = test_driver_devnode;
+
+        g_device = device_create(g_class, NULL, g_dev, NULL, "pcache-driver");
+        if (IS_ERR(g_device)) {
+            class_destroy(g_class);
+            cdev_del(&g_cdev);
+            unregister_chrdev_region(g_dev, 1);
+            printk(KERN_ERR "cannot create device!...\n");
+            return PTR_ERR(g_device);
+        }
+
         return 0;
     }
 
     static void __exit test_driver_exit(void)
     {
+        device_destroy(g_class, g_dev);
+        class_destroy(g_class);
         cdev_del(&g_cdev);
         unregister_chrdev_region(g_dev, 1);
 
         printk(KERN_INFO "pcache-driver module exit...\n");
+    }
+
+    static char *test_driver_devnode(const struct device *dev, umode_t *mode)
+    {
+        if (mode != NULL)
+            *mode = 0666;
+
+        return NULL;
     }
 
     static long test_driver_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -2635,7 +2681,7 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         u64 left, chunk;
         size_t foff;
         void *offaddr;
-        void *kbuf;
+        void *kbuf = NULL;
         int result;
 
         if (copy_from_user(&ri, (void *)arg, sizeof(struct read_info)) != 0)
@@ -2665,7 +2711,7 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         while (left > 0) {
             isize = i_size_read(inode);
             if (pos >= isize)
-                goto EXIT;
+                break;
 
             index = pos >> PAGE_SHIFT;
             chunk = min_t(u64, left, isize - pos);
@@ -2691,7 +2737,7 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
                 kunmap_local(offaddr);
                 folio_put(folio);
             }
-            else {                  /* önbellekte yoksa */
+            else {    /* önbellekte yoksa */
                 ssize_t n;
                 loff_t rpos = pos;
 
@@ -2701,21 +2747,20 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
                     struct page *pg;
 
                     if ((pg = alloc_pages(GFP_KERNEL, 0)) == NULL) {
-                            result = -ENOMEM;
-                            goto EXIT;
+                        result = -ENOMEM;
+                        goto EXIT;
                     }
                     kbuf = page_address(pg);
                 }
+                chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
                 if ((n = kernel_read(filp, kbuf, chunk, &rpos)) < 0) {
-                    free_page((unsigned long)kbuf);
                     result = n;
                     goto EXIT;
                 }
-                if (n == 0)          /* EOF */
+                if (n == 0)    /* EOF */
                     break;
 
                 if (copy_to_user(ri.buf, kbuf, n)) {
-                    free_page((unsigned long)kbuf);
                     result = -EFAULT;
                     goto EXIT;
                 }
@@ -2730,7 +2775,10 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         if (copy_to_user((void *)arg, &ri, sizeof(struct read_info)) != 0)
             result = -EFAULT;
     EXIT:
+        if (kbuf != NULL)
+            free_page((unsigned long)kbuf);
         fput(filp);
+
         return result;
     }
 
@@ -2740,20 +2788,20 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         struct inode *inode;
         struct address_space *mapping;
         struct folio *folio;
-        struct write_info wi;
+        struct write_info ri;
         pgoff_t index;
         loff_t pos, isize;
         u64 left, chunk;
         size_t foff;
         void *offaddr;
-        void *kbuf;
+        void *kbuf = NULL;
         int result;
 
-        if (copy_from_user(&wi, (void *)arg, sizeof(struct write_info)) != 0)
+        if (copy_from_user(&ri, (void *)arg, sizeof(struct write_info)) != 0)
             return -EFAULT;
-        wi.count = 0;
+        ri.count = 0;
 
-        filp = fget(wi.fd);
+        filp = fget(ri.fd);
         if (!filp)
             return -EBADF;
 
@@ -2770,18 +2818,27 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         }
         mapping = inode->i_mapping;
 
-        pos = wi.offset;
-        left = wi.size;
+        pos = ri.offset;
+        left = ri.size;
 
         while (left > 0) {
             isize = i_size_read(inode);
             if (pos >= isize)
-                goto EXIT;
+                break;
 
             index = pos >> PAGE_SHIFT;
             chunk = min_t(u64, left, isize - pos);
 
             folio = filemap_get_folio(mapping, index);
+            if (!IS_ERR(folio)) {
+                folio_lock(folio);
+                if (unlikely(folio->mapping != mapping) || !folio_test_uptodate(folio)) {
+                    folio_unlock(folio);
+                    folio_put(folio);
+                    folio = ERR_PTR(-ENOENT);
+                }
+            }
+
             if (!IS_ERR(folio)) {
                 printk(KERN_INFO "cache hit...\n");
 
@@ -2791,27 +2848,22 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
                 else
                     chunk = min_t(u64, chunk, folio_size(folio) - foff);
 
-                folio_lock(folio);
-                if (unlikely(folio->mapping != mapping)) {
-                    folio_unlock(folio);
-                    folio_put(folio);
-                    result = -EAGAIN;
-                    goto EXIT;
-                }
                 offaddr = kmap_local_folio(folio, foff);
 
-                if (copy_from_user(offaddr, wi.buf, chunk) != 0) {
+                if (copy_from_user(offaddr, ri.buf, chunk) != 0) {
                     kunmap_local(offaddr);
+                    folio_unlock(folio);
                     folio_put(folio);
                     result = -EFAULT;
                     goto EXIT;
                 }
+                kunmap_local(offaddr);
+                flush_dcache_folio(folio);
                 folio_mark_dirty(folio);
                 folio_unlock(folio);
-                kunmap_local(offaddr);
                 folio_put(folio);
             }
-            else {
+            else {    /* önbellekte yoksa */
                 ssize_t n;
                 loff_t rpos = pos;
 
@@ -2821,18 +2873,17 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
                     struct page *pg;
 
                     if ((pg = alloc_pages(GFP_KERNEL, 0)) == NULL) {
-                            result = -ENOMEM;
-                            goto EXIT;
+                        result = -ENOMEM;
+                        goto EXIT;
                     }
                     kbuf = page_address(pg);
                 }
-                if (copy_from_user(kbuf, wi.buf, chunk)) {
-                    free_page((unsigned long)kbuf);
+                chunk = min_t(u64, chunk, PAGE_SIZE - offset_in_page(pos));
+                if (copy_from_user(kbuf, ri.buf, chunk)) {
                     result = -EFAULT;
                     goto EXIT;
                 }
                 if ((n = kernel_write(filp, kbuf, chunk, &rpos)) < 0) {
-                    free_page((unsigned long)kbuf);
                     result = n;
                     goto EXIT;
                 }
@@ -2842,58 +2893,36 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
                 chunk = n;
             }
             left -= chunk;
-            wi.count += chunk;
+            ri.count += chunk;
             pos += chunk;
-            wi.buf += chunk;
+            ri.buf += chunk;
         }
 
-        if (copy_to_user((void *)arg, &wi, sizeof(struct write_info)) != 0)
+        if (copy_to_user((void *)arg, &ri, sizeof(struct write_info)) != 0)
             result = -EFAULT;
     EXIT:
+        if (kbuf != NULL)
+            free_page((unsigned long)kbuf);
         fput(filp);
+
         return result;
     }
 
     module_init(test_driver_init);
     module_exit(test_driver_exit);
 
-``Makefile``
+``Makefile`` 
 
-.. code-block:: makefile
+.. code-block:: make
 
     obj-m += ${file}.o
 
     all:
-        make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} modules
     clean:
-        make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
+    	make -C /lib/modules/$(shell uname -r)/build M=${PWD} clean
 
-``load``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-    mode=666
-
-    /sbin/insmod ./${module}.ko ${@:2} || exit 1
-    major=$(awk "\$2 == \"$module\" {print \$1}" /proc/devices)
-    rm -f $module
-    mknod -m $mode $module c $major 0
-
-``unload``
-
-.. code-block:: bash
-
-    #!/bin/bash
-
-    module=$1
-
-    /sbin/rmmod ./${module}.ko || exit 1
-    rm -f $module
-
-``pcache-driver-test.c``
+``pcache-driver-test.c`` 
 
 .. code-block:: c
 
@@ -2917,7 +2946,7 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
         if ((fd_file = open("test.txt", O_RDWR)) == -1)
             exit_sys("open");
 
-        if ((fd_dev = open("pcache-driver", O_RDONLY)) == -1)
+        if ((fd_dev = open("/dev/pcache-driver", O_RDONLY)) == -1)
             exit_sys("open");
 
         ri.fd = fd_file;
@@ -2927,7 +2956,7 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
 
         if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
             exit_sys("ioctl");
-        buf[10] = '\0';
+        buf[ri.count] = '\0';
         printf("%s\n", buf);
         printf("bytes read: %zu\n", ri.count);
 
@@ -2946,7 +2975,7 @@ Tabii bu yüksek seviyeli bir çekirdek fonksiyonu olduğu için eğer yazma yap
 
         if (ioctl(fd_dev, IOC_CACHE_READ, &ri) == -1)
             exit_sys("ioctl");
-        buf[10] = '\0';
+        buf[ri.count] = '\0';
         printf("%s\n", buf);
         printf("bytes read: %zu\n", ri.count);
 
@@ -3132,7 +3161,7 @@ aynı yolu izlemektedir, yalnızca ``fsync`` callback fonksiyonuna geçirilen ar
 
 .. figure:: _static/fdatasync-callchain.png
    :alt: fdatasync çağrı zinciri
-   :width: 55%
+   :width: 50%
 
 Son olarak ``sync`` isimli POSIX fonksiyonundan da bahsetmek istiyoruz. ``sync`` fonksiyonu tüm
 dosya sistemlerinin önbellek bloklarını ve metadata alanlarını diske flush etmektedir. Fonksiyonun
