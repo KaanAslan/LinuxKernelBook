@@ -864,7 +864,7 @@ yaprak düğümü görüyorsunuz:
 
 .. figure:: _static/maple-leaf-node-example.png
    :align: center
-   :width: 80%
+   :width: 77%
 
 Bu düğümden ne anlaşılmaktadır? Bu düğüm ``0x405000`` ile ``0x627FFF`` arasındaki bölgeyi tutmaktadır. ``pivot[0]``
 değerinin ``0x5FFFFF`` olduğuna ve ``slot[0]``'ın ``NULL`` adres içerdiğine dikkat ediniz. Bu durumda ``0x405000`` ile
@@ -895,7 +895,7 @@ Burada kök düğümdeki üç slot şöyledir:
 
 .. figure:: _static/maple-root-node-single.png
    :align: center
-   :width: 75%
+   :width: 70%
 
 Şimdi prosesin adres alanına ``vma_data`` ile isimlendirdiğimiz yeni bir *VMA* ekleyelim:
 
@@ -915,7 +915,7 @@ oluşturulacaktır:
 
 .. figure:: _static/maple-two-level-tree.png
    :align: center
-   :width: 85%
+   :width: 80%
 
 Şimdi prosesin adres alanına ``vma_heap`` ile temsil ettiğimiz bir *VMA* daha ekleyelim:
 
@@ -950,7 +950,7 @@ Buradaki maple ağacı şu biçimde oluşturulacaktır:
 
 .. figure::     _static/maple-tree-32bit-process.png
    :align: center
-   :width: 65%
+   :width: 60%
 
 Yukarıda biz maple ağacının bazı ayrıntılarına değindik. Ancak ayrıntıların büyük resmi bulanıklaştırmasını engellemek
 için maple ağacının ne işe yaradığını ve hangi işlevler için bulundurulduğunu özetlemek istiyoruz:
