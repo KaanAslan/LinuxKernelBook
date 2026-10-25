@@ -616,8 +616,8 @@ Gerçekleştirimde tipik olarak anahtarlar ve düğümler birer dizi içerisinde
 Çekirdeğin prosesin *VMA*'ları üzerindeki şu iki işlemi etkin biçimde yapabilmesi gerekir:
 
 | **1.** Belli bir adresin tahsis edilmiş bir *VMA* içerisinde olup olmadığının belirlenmesi. Örneğin bir gösterici ile bir
-   adrese erişilmiş olsun. Bu sanal adrese ilişkin sayfa tablosunda bir yönlendirme yapılmadıysa *sayfalama hatası (page
-   fault)* oluşacaktır. Bu sayfalama hatasına ilişkin kesme kodunda işletim sisteminin erişilen yerin programın sanal
+   adrese erişilmiş olsun. Bu sanal adrese ilişkin sayfa tablosunda bir yönlendirme yapılmadıysa *sayfa hatası (page
+   fault)* oluşacaktır. Bu sayfa hatasına ilişkin kesme kodunda işletim sisteminin erişilen yerin programın sanal
    adres alanı içerisinde geçerli bir yer olup olmadığını tespit etmesi gerekir.
 
 | **2.** İşletim sisteminin tahsis edilmiş tüm *VMA*'ları dolaşabilmesi gerekir. Burada bir arama değil dolaşma söz konusudur.
@@ -969,7 +969,7 @@ Prosesin sanal bellek alanı ile işlemcinin o proses için kullandığı sayfa 
 program dosyası ``exec`` fonksiyonlarıyla yüklendiğinde ELF formatındaki bölümlerden (segments) hareketle prosesin sanal
 bellek alanında *VMA*'lar (yani ``vm_area_struct`` nesneleri) oluşturulmaktadır. Ancak ``exec`` işlemi sonrasında
 prosesin sayfa tablosu hemen hemen boş durumdadır. Prosesin sayfa tablosunda sanal sayfalara karşı fiziksel sayfaların
-oluşturulması işlemi *sayfalama hatası (page fault)* ile yapılmaktadır. Bir sayfalama hatası (page fault) oluştuğunda
+oluşturulması işlemi *sayfa hatası (page fault)* ile yapılmaktadır. Bir sayfa hatası (page fault) oluştuğunda
 işletim sistemi hataya yol açan adresi inceler. Bu adresin prosesin sanal bellek alanında bir *VMA* tarafından
 gösterilip gösterilmediğini maple ağacını kullanarak tespit eder. Eğer erişilmek istenen adres sanal bellek alanı
 içerisindeyse bu durumda erişilen bölgeyi diskten belleğe yükler. Yani görüldüğü gibi maple ağacının işlevi *VMA*'nın
@@ -1140,4 +1140,24 @@ ayrılmıştır. Ancak dışarıdan çağrılan fonksiyonlar aynı kalmıştır.
   hatalarının hızlı yoludur.
 
 - ``lock_mm_and_find_vma``: ``mmap_read_lock`` alarak *VMA*'yı bulur. Adres bir yığın (stack) *VMA*'sının hemen
-  altındaysa yığını genişletmeyi de dener. Mimari sayfa hatası işleyicilerinin yavaş yoludur.
+  altındaysa yığını genişletmeyi de dener. 
+
+Proseslerin Heap Alanlarının Organizasyonu
+==========================================
+
+Şimdi de proseslerin heap alanlarının nasıl organize edildiği üzerinde duralım. Anımsanacağı gibi *heap alanı* dinamik
+tahsisatların yapıldığı deposal bir alandır. Pek çok modern işletim sisteminde heap alanı prosese özgü bir biçimde
+prosesin sanal bellek alanı içerisinde oluşturulmaktadır. Bu nedenle proses sonlandığında prosesin heap alanı da yok
+edilmektedir. (Ancak C standartlarında bellek tahsisat fonksiyonlarının prosese özgü bir alanda tahsisat yaptığına
+ilişkin bir açıklamada bulunulmamıştır. Yani C standartlarında ``malloc`` gibi tahsisat fonksiyonlarının prosese özgü
+bir biçimde tahsisat yapması garanti edilmiş bir davranış değildir.)
+
+Linux çekirdeğinde prosesin heap alanı başlangıçta sabit uzunluklu biçimde belirlenmiş bir alan değildir. Heap alanı
+belli bir yerden başlatılarak gerektikçe aşağıya doğru (düşük adresten yüksek adrese doğru) büyütülmektedir. Heap alanı
+için de bir ya da birden fazla *VMA* (``vm_area_struct``) nesnesi oluşturulmaktadır. Neden heap alanının başlangıçta
+belli büyüklükte yaratılmadığını merak edebilirsiniz. Eğer böyle olsaydı o alanın tamamı için bir *VMA* oluşturulurdu ve
+henüz tahsis edilmemiş heap alanlarına yapılan erişimler sayfa hatası (page fault) sırasında tespit edilemezdi. Ayrıca
+heap için baştan yer ayrılması izleyen bölümde açıklayacağımız ``mmap`` alanı üzerinde de gereksiz bir baskı
+oluşturabilirdi. Aşağıdaki şekilde 32 bit sistemlerde heap alanının prosesin bellek alanındaki konumu betimlenmektedir:
+ 
+
