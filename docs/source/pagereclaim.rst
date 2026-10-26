@@ -433,7 +433,7 @@ bir şekille açıklayabiliriz:
 
 .. figure:: _static/shrink-lruvec-flow.png
     :align: center
-    :width: 80%
+    :width: 85%
 
 Buradaki döngüyü açıklarsak *kswapd*'nin Evre-1 süreci açıklığa kavuşacaktır. Ancak bu döngünün işleyişi oldukça
 sofistikedir. Biz burada çok derine inmeden temel işleyişi açıklayacağız:
@@ -874,7 +874,7 @@ içerisinde yapılmaktadır. ``I_REFERENCED`` bitinin reset edilme akışını a
 
 .. figure:: _static/i-referenced-reset-flow.png
    :align: center
-   :width: 80%
+   :width: 85%
 
 LRU listesinden atılan inode nesneleri hemen dilime iade edilmez. Önce yerel bir ``freeable`` listede toplanır.
 İade işlemi bu listeyi dolaşan ``destroy_inode`` fonksiyonu tarafından RCU mekanizması aracılığıyla ``i_callback``
@@ -882,4 +882,4 @@ LRU listesinden atılan inode nesneleri hemen dilime iade edilmez. Önce yerel b
 
 .. figure:: _static/inode-destroy-pipeline.png
    :align: center
-   :width: 95%
+   :width: 100%

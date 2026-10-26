@@ -68,7 +68,7 @@ okuma yazma işlemleri de disk birimi tarafından yapılır:
    :alt: Disk erişim hiyerarşisi
    :align: center
    :class: fig-mapping0
-   :width: 20%
+   :width: 18%
 
 Bugünkü masaüstü bilgisayarlarımızda *SATA* ve *NVMe* en çok kullanılan disk denetleyicileridir.
 
@@ -294,7 +294,7 @@ Yukarıda maddeler halinde açıkladığımız süreci bir şekille de özetleye
 
 .. image:: _static/io-pipeline.png
    :align: center
-   :width: 40%
+   :width: 45%
 
 Linux sistemlerinde yukarıda özetlediğimiz olaylar silsilesi zaman içerisinde değişikliklere
 uğratılarak ve sürekli geliştirilerek bugünkü durumuna getirilmiştir.
@@ -333,7 +333,7 @@ Buradaki süreci aşağıdaki şekille özetleyebiliriz:
 .. image:: _static/delayed-write-flow.png
    :align: center
    :class: fig-mapping2
-   :width: 35%
+   :width: 30%
 
 Peki işletim sistemi transfer işlemlerini ne kadar süre bekletmektedir? Eğer transfer çok uzun süre bekletilirse 
 elektrik kesilmesi gibi durumlarda kayıplar fazlalaşır. İşte modern işletim sistemlerinde kirlenmiş sayfaların 
@@ -351,7 +351,7 @@ artık her blok aygıt sürücüsü için ayrı bir *flush* thread'i oluşturulm
 olan sektörleri ilgili blok aygıt sürücüsüne gönderir. Peki bu işleyişte yazma gecikmesi takriben kaç saniye 
 civarında olmaktadır? Aslında bu gecikme süresi başka faktörlere de bağlı olarak değişebilmektedir Burada fikir 
 vermek amacıyla modern Linux sistemleri için bu sürenin ortalama 5 saniye civarında olduğunu söyleyebiliriz. 
-Ancak bu değerler de değiştirilebilmektedir. *flush thread'lerinin parametreleri hakkında aşağıda tabloda özet bir 
+Ancak bu değerler de değiştirilebilmektedir. *flush* thread'lerinin parametreleri hakkında aşağıda tabloda özet bir 
 bilgi veriyoruz:
 
 .. figure:: _static/dirty-writeback-params-table.png
@@ -473,7 +473,7 @@ yapılan tipik bir okuma işlemi şöyle gerçekleşmektedir:
 
 .. image:: _static/read-chain.png
    :align: center
-   :width: 30%
+   :width: 33%
 
 Tabii biz kursumuzda okuma ve yazma süreçleri üzerinde dururken olaylar silsilesini standart C fonksiyonlarından 
 başlatmayacağız. POSIX fonksiyonlarından ya da sistem fonksiyonlarından başlatacağız.
@@ -2605,11 +2605,8 @@ Bir süre önceye kadar ``fdget`` ve ``fdput`` export edilmemişti. Ancak günce
 Her ne kadar yeni çekirdeklerde ``fdget`` ve ``fdput`` daha hızlı çalışıyorsa da ``fget`` ve ``fput``
 basit arayüzü ve kullanım kolaylığı ve eskiden beri aynı biçimde bulunması nedeniyle tercih edilebilir.
 
-dup Fonksiyonunun Test Amaçlı Gerçekleştirimi
----------------------------------------------
-
-Dosya Betimleyicisinin Çiftlenmesi
-----------------------------------
+dup Fonksiyonunun Alıştıma Amaçlı Gerçekleştirimi
+-------------------------------------------------
 
 Şimdi de ``dup`` POSIX fonksiyonunun işlevini yerine getiren (yani ``sys_dup`` sistem fonksiyonu gibi çalışan) bir
 fonksiyonu kendimiz yazalım. Çekirdeği yeniden derlememek için bu işlemi de bir aygıt sürücüsüne yaptırabiliriz. Bunun
@@ -3330,7 +3327,7 @@ gösterebiliriz:
    :align: center
    :alt: sys_open çağrı zinciri
    :class: fig-mapping-1
-   :width: 20%
+   :width: 15%
 
 Akış ``do_filp_open`` fonksiyonuna geldiğinde artık dosya betimleyici tablosunda boş betimleyici bulunmuştur.
 *filp* sözcüğü Linux çekirdeklerinde dosya nesnesini (yani ``struct file`` nesnesi) gösteren göstericiler için
