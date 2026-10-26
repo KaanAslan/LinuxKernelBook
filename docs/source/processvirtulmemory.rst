@@ -1160,4 +1160,51 @@ henüz tahsis edilmemiş heap alanlarına yapılan erişimler sayfa hatası (pag
 heap için baştan yer ayrılması izleyen bölümde açıklayacağımız ``mmap`` alanı üzerinde de gereksiz bir baskı
 oluşturabilirdi. Aşağıdaki şekilde 32 bit sistemlerde heap alanının prosesin bellek alanındaki konumu betimlenmektedir:
  
+.. image:: _static/heap-address-space-32bit.png
+   :align: center
+   :width: 60%
+
+64 bit sistemlerde de benzer organizasyon söz konusudur:
+
+.. image:: _static/heap-address-space-64bit.png
+   :align: center
+   :width: 60%
+
+Burada prosesin sanal bellek alanının ilk 64K'lık kısmının NULL adres atamalarının tespiti için kullanıldığını
+görüyorsunuz. Belli bir boşluktan sonra ELF formatının bölümlerinin yüklendiği alanlar gelmektedir. ELF formatının
+yerleşik alanlarından sonra heap alanının başlangıcını kötü niyetli yazılımların bulmasını zorlaştırmak için rastgele
+bir boşluk bulundurulmaktadır. Bu rastgele boşluktan sonra heap alanı başlamaktadır. Heap alanının büyütülmesi aşağıya
+doğru, ``malloc``, ``calloc``, ``realloc`` çağrılarında heap alanı yetmediği zaman ``brk`` ve ``sbrk`` isimli
+fonksiyonlarla yapılmaktadır. Bu fonksiyonlar doğrudan Linux sistemlerinde ``sys_brk`` isimli sistem fonksiyonunu
+çağırmaktadır. Ancak ``brk`` ve ``sbrk`` fonksiyonları POSIX standartlarında bulunmamaktadır. Tabii heap büyüdükçe ya da
+küçüldükçe heap alanına ilişkin *VMA*'lar da güncellenmektedir. UNIX dünyasında geleneksel olarak tahsis edilmiş heap 
+alanının bittiği noktaya *program break address* de denilmektedir. Başlangıç durumunda heap alanı 0 uzunluktadır. 
+Yani *program break address* rastgele boşluktan hemen sonrayı göstermektedir. (Başka bir deyişle ``start_brk`` 
+ile ``brk`` adresleri aynıdır.) ``malloc`` gibi tahsisatlar yapıldıkça heap alanı
+büyütülmektedir.
+
+Yukarıdaki çizimlerde heap bölgesinin başlangıç sanal bellek adresi ``start_brk`` ile bitiş sanal bellek adresi de
+``brk`` ile gösterilmiştir. İşte ``malloc`` gibi bir tahsisat fonksiyonu yeterli alanı bulamayınca bu ``brk`` adresini
+``brk`` ya da ``sbrk`` fonksiyonlarıyla aşağıya kaydırarak heap alanını büyütmekte ve büyüyen alanı da heap
+organizasyonuna dahil etmektedir. ``brk`` ve ``sbrk`` fonksiyonları kullanıcı modundan kullanılabilmektedir.
+Fonksiyonların prototipleri şöyledir:
+
+.. code-block:: c
+
+    #include <unistd.h>
+
+    int brk(void *addr);
+    void *sbrk(intptr_t increment);
+
+``brk`` fonksiyonu heap alanının yeni bitiş noktasını adres olarak almaktadır. ``sbrk`` fonksiyonu ise bu break adresini
+belirlenen miktarda artırmakta ya da azaltmaktadır. ``sbrk`` fonksiyonu 0 argümanı ile çağrılırsa o andaki break adresi
+elde edilebilir. ``brk`` fonksiyonu başarı durumunda 0 değerine, başarısızlık durumunda -1 değerine geri dönmektedir.
+``sbrk`` fonksiyonu ise başarı durumunda yeni break adresine, başarısızlık durumunda ``(void *)-1`` değerine (başka bir
+deyişle en yüksek adres değerine) geri dönmektedir.
+
+``brk`` ve ``sbrk`` fonksiyonları her ne kadar Linux sistemlerinde kullanıcı modundan çağrılabilir durumdaysa da
+programcının bu fonksiyonları çağırması tavsiye edilmemektedir. Bu fonksiyonlar ``malloc``, ``realloc`` gibi tahsisat
+fonksiyonları tarafından çağrılmaktadır. Biz örneğin ``sbrk`` fonksiyonu ile heap alanını küçültürsek bu ``sbrk``
+fonksiyonu (``sys_brk`` sistem fonksiyonu) ``malloc`` ile yapılan tahsisatları bilmediği için C'nin tüm tahsisat
+sisteminin bozulmasına yol açabilir.
 
