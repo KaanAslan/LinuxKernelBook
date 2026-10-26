@@ -1208,3 +1208,141 @@ fonksiyonları tarafından çağrılmaktadır. Biz örneğin ``sbrk`` fonksiyonu
 fonksiyonu (``sys_brk`` sistem fonksiyonu) ``malloc`` ile yapılan tahsisatları bilmediği için C'nin tüm tahsisat
 sisteminin bozulmasına yol açabilir.
 
+Peki heap alanı en fazla ne kadar büyüyebilir? İşte break adresi aşağıya doğru, izleyen paragraflarda göreceğimiz
+``mmap`` alanı da yukarı doğru büyümektedir. Bunların arasına da en az 1 sayfa boşluk bırakılmaktadır. Bunların
+kesiştiği noktada artık heap ve ``mmap`` alanları daha fazla büyütülemeyecektir:
+
+.. figure:: _static/heap-mmap-sinir.png
+   :align: center
+   :width: 60%
+
+UNIX türevi sistemlerde ``malloc`` ve ``realloc`` fonksiyonları taban bir fonksiyon durumundadır. ``calloc`` fonksiyonu
+zaten ``malloc`` fonksiyonunu çağırmaktadır. Bu fonksiyonlar break adresini gerektiğinde artırmaktadır. Burada bir
+noktaya dikkat ediniz. C'nin bu temel tahsisat fonksiyonları kendi içerisinde daha önce de sözünü ettiğimiz gibi
+tahsisat algoritmalarını uygulamaktadır. Heap alanının büyütülmesi ise blok blok yapılmaktadır. Örneğin gcc
+kütüphanesindeki ``malloc`` fonksiyonu büyütmeyi 128K'lık bloklarla yapmaktadır. Linux sistemlerinde ``malloc`` ve
+``realloc`` fonksiyonları 128K'dan daha büyük tahsisat yapılmak istendiğinde artık bu tahsisatları heap alanını
+büyüterek değil izleyen paragraflarda göreceğimiz ``mmap`` fonksiyonu yoluyla yapar. ``mmap`` fonksiyonu da yeni bir
+*VMA* oluşturmaktadır.
+
+Proseslerin önemli bölümlerinin başlangıç ve bitiş adresleri bellek betimleyicisinde (``mm_struct`` nesnesinde)
+tutulmaktadır. Bu bilgileri tutan ``mm_struct`` elemanlarını aşağıda veriyoruz:
+
+.. code-block:: c
+
+    struct mm_struct {
+        /* ... */
+
+        unsigned long start_code, end_code, start_data, end_data;
+        unsigned long start_brk, brk, start_stack;
+        unsigned long arg_start, arg_end, env_start, env_end;
+
+        /* ... */
+    };
+
+Görüldüğü gibi yalnızca heap alanına ilişkin değil programın kod, data ve stack alanlarına ilişkin bilgiler de
+``mm_struct`` yapısının içerisinde tutulmaktadır.
+
+Peki C++ ve diğer doğal kodlu çalışma sistemlerindeki bellek tahsisatları nasıl yapılmaktadır? Yukarıda da belirttiğimiz
+gibi aslında ``malloc`` ve ``realloc`` taban fonksiyonlardır. Çünkü bunlar heap alanını büyütebilmektedir. Bu nedenle
+Linux'taki C++ derleyicilerinin (``g++`` ve ``clang++``) kullandığı standart C++ kütüphaneleri aslında tahsisatları arka
+planda ``malloc`` fonksiyonu ile yapmaktadır. Örneğin C++'ta ``new`` operatörüyle aşağıdaki gibi tahsisat yapılmış
+olsun:
+
+.. code-block:: c++
+
+    char *str = new char[1024];
+
+Bu durumda bilindiği gibi ``new`` operatörü aslında ``operator new`` isimli global fonksiyonu çağırmaktadır. İşte bu
+fonksiyon da aslında tahsisatı ``malloc`` fonksiyonuyla yapmaktadır. Aşağıda *libstdc++* kütüphanesindeki
+``operator new`` fonksiyonunun gerçekleştirimini veriyoruz:
+
+.. code-block:: c++
+
+    _GLIBCXX_WEAK_DEFINITION void *
+    operator new (std::size_t sz) _GLIBCXX_THROW (std::bad_alloc)
+    {
+        void *p;
+
+        /* malloc (0) is unpredictable; avoid it.  */
+        if (__builtin_expect (sz == 0, false))
+            sz = 1;
+
+        while ((p = malloc (sz)) == nullptr)
+            {
+            new_handler handler = std::get_new_handler ();
+            if (! handler)
+                _GLIBCXX_THROW_OR_ABORT(bad_alloc());
+            handler ();
+            }
+
+        return p;
+    }
+
+Görüldüğü gibi aslında taban fonksiyon ``malloc`` fonksiyonudur. Diğer doğal kod üreten programlama dillerindeki durum
+da benzerdir. Tabii Java ve C# gibi programlama dillerinde dinamik tahsisatlar bu dillerin çalışma ortamları (JVM, CLR
+gibi) tarafından organize edilen bir heap sisteminden yapılmaktadır.
+
+mmap fonksiyonu
+===============
+
+Şimdi de ``mmap`` POSIX fonksiyonunun çekirdek gerçekleştirimi üzerinde duracağız. ``mmap`` fonksiyonu Linux
+sistemlerinde ``sys_mmap`` isimli sistem fonksiyonunu çağırmaktadır. ``mmap``, *VMA* tahsis eden yüksek seviyeli bir
+fonksiyondur. Bu fonksiyon *VMA* tahsisatını bir dosyayla da ilişkilendirebilmektedir. Linux çekirdeğinde ``sys_mmap``
+sistem fonksiyonunun gerçekleştirimi zaman içerisinde çekirdek veri yapılarının değiştirilmesinin de etkisiyle evrim
+geçirmiştir. Biz burada güncel çekirdeklerdeki gerçekleştirimi temel alacağız.
+
+Güncel çekirdeklerde ``sys_mmap`` fonksiyonunun işlevselliği büyük ölçüde ``vm_mmap_pgoff`` ve onun çağırdığı
+``do_mmap`` fonksiyonu tarafından sağlanmaktadır. Bu fonksiyonlar dışarıya export edilmemiştir. Çekirdek modülleri ve
+aygıt sürücüler ``mmap`` işlevselliğini export edilmiş olan ``vm_mmap`` fonksiyonu yoluyla sağlamaktadır.
+
+Biz öncelikle ``mmap`` POSIX fonksiyonunu anımsatmak istiyoruz. Bu anımsatmayı yapmazsak izleyen paragraflardaki
+açıklamalar yeterince anlaşılmayacaktır. ``mmap`` POSIX fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+    #include <sys/mman.h>
+
+    void *mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off);
+
+Fonksiyonun birinci parametresi, *haritalama (mapping) için* önerilen (preferred) sanal adresi belirtmektedir. Programcı
+bu parametre yoluyla belli bir sanal adresin haritalama için kullanılmasını isteyebilir. Ancak POSIX standartlarına göre
+``mmap`` fonksiyonu ``flags`` parametresinde ``MAP_FIXED`` bayrağı belirtilmemişse bu adresi tam (exact) olarak yani
+verildiği gibi kullanmayabilir. Fonksiyon bu önerilen adresin yakınlarındaki sayfaları tahsis edebilir ya da bu adresi
+hiç dikkate almayabilir. Yani buradaki adres eğer fonksiyonun ``flags`` parametresinde ``MAP_FIXED`` bayrağı
+belirtilmemişse bir ipucu niteliğindedir. Eğer bu adres ``NULL`` olarak geçilirse bu durumda haritalama işlemi işletim
+sisteminin kendi belirlediği bir adresten itibaren yapılır. Kullanıcı modundaki programlarda genellikle bu parametreye
+``NULL`` geçilmektedir. Linux sistemlerinde çekirdek tarafından bu birinci adres ya olduğu gibi (yani tam olarak) 
+kullanılmakta ya da hiç kullanılmamaktadır.
+
+Fonksiyonun üçüncü parametresi (``prot`` parametresi), haritalama işleminin koruma özelliklerini belirtmektedir. Burada
+belirtilen koruma özelliği *VMA* nesnesine (``vm_area_struct`` nesnesinin ``vm_page_prot`` elemanına) aktarılmakta ve
+ilgili sanal bellek alanı sayfa tablosuna yazıldığında onun işlemci düzeyinde koruma özelliğinin belirlenmesinde de
+etkili olmaktadır. Bu özellikler aşağıdaki sembolik sabitlerin bit düzeyinde OR işlemine sokulmasıyla
+oluşturulabilmektedir:
+
+.. figure:: _static/mmap-prot-flags-table.png
+   :align: center
+   :width: 50%
+
+``PROT_READ`` sayfaların *read only* olduğunu belirtir. Anımsanacağı gibi böyle sayfalara yazma yapılırsa, işlemci
+exception oluşturur ve proses ``SIGSEGV`` sinyali ile sonlandırılır. ``PROT_WRITE``, sayfalara yazma yapılabileceğini
+belirtmektedir. Örneğin ``PROT_READ|PROT_WRITE`` hem okuma hem de yazma anlamına gelmektedir. ``PROT_EXEC`` ilgili
+sayfada bir kod varsa (örneğin oraya bir fonksiyon yerleştirilmişse) o kodun çalıştırılabilirliği üzerinde etkili
+olmaktadır. Örneğin Intel ve ARM işlemcilerinde, fiziksel sayfa ``PROT_EXEC`` ile özelliklendirilmemişse o sayfadaki
+kodlar çalıştırılamamaktadır. ``PROT_NONE`` o sayfaya herhangi bir erişimin mümkün olamayacağını belirtmektedir. Yani
+``PROT_NONE`` olan bir sayfa ne okunabilir ne de yazılabilir. Bu tür sayfa özellikleri *guard page* oluşturmak için
+kullanılabilmektedir. Bir sayfanın koruma özelliği daha sonra da değiştirilebilmektedir. Aslında bütün işlemciler
+buradaki koruma özelliklerinin hepsini desteklemeyebilir. Örneğin Intel işlemcilerinde ``PROT_WRITE`` zaten okuma
+özelliğini de kapsamaktadır. Bazı işlemciler sayfalarda ``PROT_EXEC`` özelliğini hiç bulundurmamaktadır. Ancak ne olursa
+olsun programcı sanki bu özelliklerin hepsi kodun çalıştırıldığı işlemcide varmış gibi bu parametreyi oluşturmalıdır.
+Böylece kodun başka bir işlemcinin bulunduğu sistemde de düzgün çalışması sağlanacaktır.
+
+Fonksiyonun dördüncü parametresi (``flags`` parametresi) çeşitli bayrakların bileşimleriyle oluşturulmaktadır. Bu
+bayrakların listesini aşağıda bir tablo hâlinde veriyoruz. Linux POSIX'te belirtilen bayraklardan daha fazlasını
+desteklemektedir. Tablonun üçüncü sütununda ilgili bayrağın POSIX tarafından desteklenip desteklenmediği
+belirtilmektedir:
+
+.. figure:: _static/mmap-flags-table.png
+   :align: center
+   :width: 80%
