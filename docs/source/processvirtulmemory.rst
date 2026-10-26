@@ -1346,3 +1346,23 @@ belirtilmektedir:
 .. figure:: _static/mmap-flags-table.png
    :align: center
    :width: 80%
+
+Aşağıdaki iki bayraktan yalnızca biri kullanılabilir, bu bayraklar birlikte kullanılmaz:
+
+.. code-block:: c
+
+    MAP_PRIVATE
+    MAP_SHARED
+
+``MAP_PRIVATE`` ile oluşturulan haritalamaya *özel haritalama (private mapping)*, ``MAP_SHARED`` ile oluşturulan
+haritalamaya ise *paylaşımlı haritalama (shared mapping)* denilmektedir. ``MAP_PRIVATE`` *copy-on-write* denilen
+semantik için kullanılmaktadır. Copy-on-write işlemi *yazma yapılana kadar sanal sayfaların aynı fiziksel sayfalara yönl
+endirilmesi ancak yazmayla birlikte o sayfaların kopyalarının çıkartılıp yazmaların o prosese özel olarak yapılması*
+anlamına gelmektedir. ``MAP_PRIVATE`` bayrağı birden fazla proses tarafından paylaşılan *VMA*'ların söz konusu olduğu
+durumda yazma yapıldığında bunların ayrıştırılması amacıyla kullanılmaktadır. Başka bir deyişle ``MAP_PRIVATE`` bayrağı
+şunlara yol açmaktadır:
+
+- *VMA*'dan okuma yapıldığında paylaşılan bellek alanından okuma yapılır.
+
+- *VMA*'ya yazma yapıldığında bu yazma paylaşılan bellek alanına yansıtılmaz. O anda yazılan sayfanın bir kopyası
+  çıkartılarak yazma o kopya üzerine yapılır. Dolayısıyla başka bir proses bu yazma işlemini göremez.
