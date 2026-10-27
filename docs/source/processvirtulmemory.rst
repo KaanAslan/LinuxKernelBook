@@ -1495,3 +1495,89 @@ sağlamaktadır.
 ``MAP_UNINITIALIZED``: Yalnızca gömülü, MMU'suz sistemlerde (sayfa tablosu ve sayfa koruması olmayan sistemlerde) ve
 ``CONFIG_MMAP_ALLOW_UNINITIALIZED`` konfigürasyon parametresi aktif olacak biçimde derleme yapılmışsa anonim sayfaların
 sıfırlanmamasına izin verir; normal Linux çekirdeklerinde bu bayrak dikkate alınmamaktadır.
+
+munmap Fonksiyonu
+=================
+
+``mmap`` POSIX fonksiyonuyla tahsis edilen *VMA* ``munmap`` fonksiyonuyla serbest bırakılabilir. ``munmap``
+fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+    #include <sys/mman.h>
+
+    int munmap(void *addr, size_t len);
+
+Fonksiyonun birinci parametresi, daha önce tahsis edilen *VMA*'da bulunan kısmın adresini almaktadır, ikinci parametresi
+ise unmap edilecek alanın uzunluğunu belirtmektedir. Fonksiyon birinci parametresiyle belirtilen adresten itibaren
+ikinci parametresinde belirtilen miktardaki byte'ı içeren kısmı serbest bırakmaktadır. POSIX standartları işletim
+sistemlerinin birinci parametrede belirtilen adresin sayfa katlarında olmasını zorlayabileceğini (may require)
+belirtmektedir. Linux'ta birinci parametrede belirtilen adres sayfa katlarında olmak zorundadır. Ancak uzunluğun sayfa
+katlarında olma zorunluluğu yoktur. Uzunluk sayfa katlarında değilse sayfa katlarına yukarıya doğru yuvarlanmaktadır.
+Fonksiyon başarı durumunda 0 değerine, başarısızlık durumunda -1 değerine geri döner ve ``errno`` değişkeni
+uygun biçimde set edilir. ``munmap`` ile zaten tahsis edilmemiş olan bir alan serbest bırakılmaya çalışılırsa fonksiyon
+bir şey yapmaz. Bu durumda fonksiyon başarısızlıkla geri dönmemektedir.
+
+``munmap`` fonksiyonu Linux sistemlerinde ``sys_munmap`` isimli sistem fonksiyonunu çağırmaktadır.
+
+``munmap`` ile serbest bırakma işlemi tahsis edilen *VMA*'nın bir kısmı için de yapılabilmektedir. Bu durumda çekirdek
+*VMA*'yı ardışıl olmayan parçalara kendisi bölmektedir. Örneğin:
+
+.. figure:: _static/vma-strip-before.png
+   :width: 40%
+
+Burada *m* sanal bellekteki *VMA*'yı, *x* ise diğer alanları göstermektedir. Şimdi biz bu *VMA*'nın arasında iki
+sayfalık bir bölgeyi serbest bırakalım. Çekirdek bu durumda *VMA*'yı o alan boş olacak biçimde iki parçaya bölmektedir:
+
+.. figure:: _static/vma-strip-after.png
+   :width: 40%
+
+Görüldüğü gibi artık sanki iki ayrı *VMA* varmış gibi işlem uygulanmaktadır.
+
+Proses bittiğinde tüm *VMA*'lar zaten işletim sistemi tarafından serbest bırakılmaktadır.
+
+Örneğin:
+
+.. code-block:: c
+
+    char *vma;
+
+    if ((vma = (char *)mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)) == MAP_FAILED)
+        exit_sys("mmap");
+
+    strcpy(vma, "this is a test");
+    puts(vma);
+
+    if (munmap(vma, 8192) == -1)
+        exit_sys("munmap");
+
+Aşağıda örneği bütünsel olarak veriyoruz.
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <sys/mman.h>
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        char *vma;
+
+        if ((vma = (char *)mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)) == MAP_FAILED)
+            exit_sys("mmap");
+
+        strcpy(vma, "this is a test");
+        puts(vma);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+    
