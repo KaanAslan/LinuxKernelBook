@@ -1356,13 +1356,142 @@ Aşağıdaki iki bayraktan yalnızca biri kullanılabilir, bu bayraklar birlikte
 
 ``MAP_PRIVATE`` ile oluşturulan haritalamaya *özel haritalama (private mapping)*, ``MAP_SHARED`` ile oluşturulan
 haritalamaya ise *paylaşımlı haritalama (shared mapping)* denilmektedir. ``MAP_PRIVATE`` *copy-on-write* denilen
-semantik için kullanılmaktadır. Copy-on-write işlemi *yazma yapılana kadar sanal sayfaların aynı fiziksel sayfalara yönl
+semantik için kullanılmaktadır. *Copy-on-write* işlemi *yazma yapılana kadar sanal sayfaların aynı fiziksel sayfalara yönl
 endirilmesi ancak yazmayla birlikte o sayfaların kopyalarının çıkartılıp yazmaların o prosese özel olarak yapılması*
 anlamına gelmektedir. ``MAP_PRIVATE`` bayrağı birden fazla proses tarafından paylaşılan *VMA*'ların söz konusu olduğu
 durumda yazma yapıldığında bunların ayrıştırılması amacıyla kullanılmaktadır. Başka bir deyişle ``MAP_PRIVATE`` bayrağı
 şunlara yol açmaktadır:
 
 - *VMA*'dan okuma yapıldığında paylaşılan bellek alanından okuma yapılır.
-
 - *VMA*'ya yazma yapıldığında bu yazma paylaşılan bellek alanına yansıtılmaz. O anda yazılan sayfanın bir kopyası
   çıkartılarak yazma o kopya üzerine yapılır. Dolayısıyla başka bir proses bu yazma işlemini göremez.
+
+``MAP_PRIVATE`` ile tahsis edilen alan dosya tabanlı ise ya da paylaşılan bir bellek alanı ise, diğer bir proses o alana
+yazma yaptığında onun yazdığını ``MAP_PRIVATE`` yapan prosesin görüp görmeyeceği POSIX standartlarında
+*belirsiz (unspecified)* bırakılmıştır. Linux sistemlerinin man sayfasında da bu durum *belirsiz (unspecified)* olarak
+belirtilmiş olsa da mevcut Linux çekirdeklerinde başka bir proses özel haritalanmış bir *VMA*'ya yazma yaptığında bu
+yazma özel haritalanmış proseste görülmektedir. Ancak özel haritalama yapan proses sayfaya yazma yaptığında artık o
+sayfanın kopyası çıkartılacağı için bu yazma işleminden sonraki diğer prosesin yaptığı yazma işlemleri görülmemektedir.
+
+``MAP_SHARED`` bayrağı ise paylaşılan bellek alanı söz konusu olduğunda yazma işleminin paylaşılan bellek alanına
+yapılacağını yani *copy-on-write* yapılmayacağını belirtmektedir. Dolayısıyla ``MAP_SHARED`` bir haritalamada paylaşılan
+alana yazılanlar diğer prosesler tarafından görülür. Normal olarak programcılar proseslerarası haberleşme için
+paylaşımlı haritalama kullanırlar. Özel haritalama (yani *copy-on-write*) bazı özel durumlarda tercih edilmektedir.
+Örneğin çekirdek (``exec`` fonksiyonları) çalıştırılabilir dosyanın ``.data`` bölümünü özel haritalama yaparak belleğe
+yüklemektedir.
+
+Yukarıda da belirttiğimiz gibi fonksiyonun ``flags`` parametresinde ``MAP_PRIVATE`` ve ``MAP_SHARED`` değerlerinin
+yalnızca biri kullanılabilir. Ancak bu değerlerden biri ile ``MAP_FIXED`` değeri bit düzeyinde OR işlemine de
+sokulabilmektedir. ``MAP_FIXED`` bayrağı fonksiyonun birinci parametresindeki adres ``NULL`` geçilmemişse bu adresin
+kendisinin aynen (hiç değiştirilmeden) kullanılması gerektiğini belirtmektedir. Yani bu adresin yakınındaki herhangi bir
+yer değil tam olarak bu adresten itibaren tahsisat yapılmaya çalışılacak ve fonksiyon bu adresin aynısıyla geri
+dönecektir. (Tabii bu durumda programcının verdiği adres uygun olmayabilir. Bu durumda fonksiyon da başarısız olur.)
+Eğer ``MAP_FIXED`` bayrağı belirtilmişse Linux sistemlerinde birinci parametredeki adresin sayfa katlarında olma
+zorunluluğu vardır. Ancak POSIX standartları *may require* ifadesiyle işletim sisteminin bunu zorunlu tutmayabileceğini
+belirtmektedir. ``MAP_FIXED`` ile belirtilen adreste daha önce bir haritalama yapıldıysa ``MAP_FIXED`` bayrağı o
+haritalamayı sessizce kaldırıp (``munmap`` mekanizmasıyla) tahsisatı yine yapmaktadır. Bu nedenle ``MAP_FIXED``
+kullanırken dikkat etmek gerekir.
+
+``MAP_ANONYMOUS`` bayrağı *anonim haritalama (anonymous mapping)* yapmak için kullanılmaktadır. Anonim haritalama dosya
+tabanlı olmayan (yani bellek tabanlı dosya biçiminde olmayan) *VMA* tahsisatları için kullanılmaktadır. Dolayısıyla
+anonim haritalama yapılırken ``mmap`` fonksiyonunun ``fd`` ve ``offset`` parametreleri dikkate alınmamaktadır. Ancak
+POSIX standartlarında ``MAP_ANONYMOUS`` bayrağı kullanıldığında ``fd`` parametresinin ``-1``, ``offset`` parametresinin
+ise ``0`` olarak girilmesi gerektiği belirtilmektedir. Bu durum sağlanmazsa fonksiyon başarısız olmaktadır.
+
+``mmap`` fonksiyonunun son iki parametresi (yani ``fd`` ve ``offset`` parametreleri) oluşturulan *VMA* için kullanılacak
+dosyayı (backing store) belirtmektedir. Bir *VMA* bir dosyanın belli bir kısmını tutuyor olabilir. Bu duruma işletim
+sistemleri dünyasında *bellek tabanlı dosyalar (memory-mapped file)* denilmektedir. Biz bu son iki parametreye bir
+dosya betimleyicisi ve offset girersek artık sanki dosyanın o parçası bellekte o *VMA* içerisine çekilmiş gibi bir 
+etki oluşmaktadır.``mmap`` fonksiyonu başarı durumunda tahsis edilen *VMA*'nın sanal bellek adresiyle, başarısızlık durumunda
+``MAP_FAILED`` (genellikle ``(void *)-1`` biçiminde define edilmektedir) özel değeriyle geri dönmektedir.
+
+Şimdi kullanıcı modunda anonim haritalama ile *VMA* oluşturma örneğini verelim. Burada ``mmap`` fonksiyonunda ``flags``
+parametresine ``MAP_PRIVATE|MAP_ANONYMOUS`` geçeceğiz. ``fd`` parametresi ve ``offset`` parametresi ``MAP_ANONYMOUS``
+nedeniyle artık fonksiyon tarafından kullanılmayacaktır, onlara da sırasıyla ``-1`` ve ``0`` değerlerini geçeceğiz:
+
+.. code-block:: c
+
+    char *vma;
+
+    if ((vma = (char *)mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)) == MAP_FAILED)
+        exit_sys("mmap");
+
+    strcpy(vma, "this is a test");
+    puts(vma);
+
+Burada biz prosesin sanal bellek alanında 8192 byte uzunluğunda (tipik olarak 2 sayfa) bir *VMA* oluşturduk. Bu
+*VMA*'daki sayfaların ``PROT_READ|PROT_WRITE`` özelliğine sahip olduğuna dikkat ediniz. Bu sayfalardan hem okuma
+yapılabilecek hem de yazma yapılabilecektir. Tabii aslında izleyen paragraflarda da göreceğimiz gibi tahsis edilen *VMA*, dosyanın sayfa önbelleği 
+ile ilişkilendirilmektedir.
+
+``mmap`` fonksiyonu başarı durumunda tahsis edilen *VMA*'nın sanal bellek adresiyle, başarısızlık durumunda
+``MAP_FAILED`` (genellikle ``(void *)-1`` biçiminde define edilmektedir) özel değeriyle geri dönmektedir.
+
+Şimdi kullanıcı modunda anonim haritalama ile *VMA* oluşturma örneğini verelim. Burada ``mmap`` fonksiyonunda ``flags``
+parametresine ``MAP_PRIVATE|MAP_ANONYMOUS`` geçeceğiz. ``fd`` parametresi ve ``offset`` parametresi ``MAP_ANONYMOUS``
+nedeniyle artık fonksiyon tarafından kullanılmayacaktır, onlara da sırasıyla ``-1`` ve ``0`` değerlerini geçeceğiz:
+
+.. code-block:: c
+
+    char *vma;
+
+    if ((vma = (char *)mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)) == MAP_FAILED)
+        exit_sys("mmap");
+
+    strcpy(vma, "this is a test");
+    puts(vma);
+
+Burada biz prosesin sanal bellek alanında 8192 byte uzunluğunda (tipik olarak 2 sayfa) bir *VMA* oluşturduk. Bu
+*VMA*'daki sayfaların ``PROT_READ|PROT_WRITE`` özelliğine sahip olduğuna dikkat ediniz. Bu sayfalardan hem okuma
+yapılabilecek hem de yazma yapılabilecektir.
+
+Normal olarak bir *VMA* ``mmap`` fonksiyonuyla tahsis edildiğinde henüz o alan için fiziksel bellek tahsis
+edilmemektedir ve bazı istisna durumlar dışında prosesin sayfa tablosunda ilgili sayfalar için bir ayarlama
+yapılmamaktadır. Zaten sayfa tablosu kurulduğunda tüm kademe tablolarının girişlerinin hepsinin P biti ``0``'dır.
+Fiziksel bellekteki tahsisat *VMA* alanına erişildiğinde oluşan *sayfa hatası (page fault)* yoluyla yapılmaktadır. İşte
+Linux'a özgü ``MAP_POPULATE`` bayrağı girilirse bu durumda fiziksel bellek tahsisatı işin başında yapılıp sayfa tablosu
+girişleri de tahsisat sırasında oluşturulmaya çalışılır. Eğer haritalama dosya tabanlı yapılıyorsa ``MAP_POPULATE``
+ilgili dosyaya ilişkin parçaların sayfa önbelleğine çekilmesi anlamına da gelmektedir. Fakat ``MAP_POPULATE`` tek başına
+*VMA* sayfalarının fiziksel belleğe çekilmesini garanti de etmemektedir. Bu bayrak *VMA* sayfalarına erişme işlemini
+simüle etmektedir. Bu erişme ilgili sayfanın fiziksel belleğe çekilmesini sağlıyorsa sayfa fiziksel belleğe çekilir,
+sağlamıyorsa çekilmez. Çekirdek bayraklara bakarak *VMA* sayfaları için *okuma veya yazma işlemlerini* simüle
+eder. Aşağıda ``MAP_POPULATE`` bayrağı girildiğinde diğer bayrakların durumuna göre sayfa tablosu girişlerinde ne
+olacağının bir özeti verilmiştir.
+
+.. figure:: _static/map-populate-pte-table.png
+   :align: center
+   :width: 80%
+
+Copy-on-write özelliği ile (yani ``MAP_PRIVATE`` ile) haritalama ile tahsis edilen bellek alanına yazma yapıldığında
+yazılanlar sayfa flush edileceği zaman ya da bellekten atılacağı zaman takas dosyalarına aktarılmaktadır. Normal copy-
+on-write tahsisatlarında işin başında takas dosyalarında yeterli boş yerin olup olmadığı da sorgulanmaktadır. Buna
+İngilizce *commit* işlemi denilmektedir. İşte ``MAP_NORESERVE`` bayrağı bu *commit* işleminin yapılmamasına yol
+açmaktadır. Tabii takas dosyalarında baştan bir *commit* yapılmadığı için doğrudan geri alım (direct reclaim) işlemi
+sırasında uç bir durum olarak *OOM Killer* mekanizması devreye sokularak yer açmak isteyen proses
+sonlandırılabilmektedir. Flusher thread'lerin yalnızca dosya sayfalarını flush ettiğini anımsayınız. ``MAP_PRIVATE``
+haritalamada hiçbir durumda (dosya tabanlı olsa bile) sayfalar flusher thread'lerin ilgi alanında değildir. Aşağıda
+haritalama türü ile flusher thread'lerin ilişkisini bir tablo hâlinde veriyoruz:
+
+.. figure:: _static/flusher-haritalama-table.png
+   :align: center
+   :width: 70%
+
+``MAP_HUGE_2MB`` ve ``MAP_HUGE_1GB`` bayrakları standart sayfa boylarında değil (yani tipik 4K) 2 MB'lik ve 1 GB'lik
+sayfaların tahsis edilmesini sağlamaktadır.
+
+``MAP_LOCKED`` bayrağı tahsis edilen *VMA*'daki sayfaların fiziksel bellekten sayfa geri alımı sırasında atılmamasını
+sağlamaktadır.
+
+``MAP_GROWSDOWN`` bayrağı bir çeşit stack etkisi yaratmaktadır. Bu bayrakla tahsisat yapıldığında bellekte stack gibi bu
+alanın yukarısına (yani düşük adrese) erişildiğinde otomatik olarak *VMA* büyütülmektedir. ``MAP_STACK`` bayrağı artık
+işlevselliğini kaybetmiştir, geçmişe doğru uyum için bulundurulmaktadır.
+
+``MAP_SYNC`` bayrağı haritalama dosya tabanlı yapılıyorsa dosyanın metadata verilerinin yazma ve okuma sırasında disk
+ile güncel hâle getirilmesini sağlamaktadır.
+
+``MAP_32BIT`` bayrağı 64 bit sistemlerdeki 32 bit programlar için tahsisatın ilk 2 GB içerisinde yapılmasını
+sağlamaktadır.
+
+``MAP_UNINITIALIZED``: Yalnızca gömülü, MMU'suz sistemlerde (sayfa tablosu ve sayfa koruması olmayan sistemlerde) ve
+``CONFIG_MMAP_ALLOW_UNINITIALIZED`` konfigürasyon parametresi aktif olacak biçimde derleme yapılmışsa anonim sayfaların
+sıfırlanmamasına izin verir; normal Linux çekirdeklerinde bu bayrak dikkate alınmamaktadır.
