@@ -1551,7 +1551,7 @@ Proses bittiğinde tüm *VMA*'lar zaten işletim sistemi tarafından serbest bı
     if (munmap(vma, 8192) == -1)
         exit_sys("munmap");
 
-Aşağıda örneği bütünsel olarak veriyoruz.
+Aşağıda örneği bütünsel olarak veriyoruz:
 
 .. code-block:: c
 
@@ -1580,4 +1580,128 @@ Aşağıda örneği bütünsel olarak veriyoruz.
         perror(msg);
         exit(EXIT_FAILURE);
     }
-    
+
+VMA'ların Dosylarla İlişkilendirilmesi
+======================================
+
+Şimdi de ``mmap`` fonksiyonu ile tahsis ettiğimiz *VMA*'yı bir dosya ile ilişkilendirelim. Yukarıda da belirttiğimiz
+gibi bu işleme işletim sistemleri terminolojisinde *bellek tabanlı dosyalar (memory-mapped file)* denilmektedir. Bir
+dosyanın belli bir kısmını bellek tabanlı hâle getirdikten sonra artık o bellek alanından okuma yaptığımızda dosyadan okuma yapmış
+oluruz, o bellek alanına yazma yaptığımızda dosyaya yazmış oluruz. Bellek tabanlı dosya oluşturmak için ``mmap``
+fonksiyonunun son iki parametresine sırasıyla ilgili dosyanın betimleyicisinin ve haritalamanın dosyanın hangi
+offset'inden itibaren yapılacağına ilişkin offset değerinin geçirilmesi gerekir. Tabii dosyanın ``mmap`` fonksiyonuna
+girilen ``prot`` parametresine uygun olacak biçimde açılmış olması gerekir. Örneğin:
+
+.. code-block:: c
+
+    char *vma;
+    int fd;
+    struct stat finfo;
+
+    if ((fd = open("test.txt", O_RDWR)) == -1)
+        exit_sys("open");
+
+    if (fstat(fd, &finfo) == -1)
+        exit_sys("fstat");
+
+    if ((vma = (char *)mmap(NULL, finfo.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED)
+        exit_sys("mmap");
+
+    printf("%.10s", vma);
+    memcpy(vma, "xxxxx", 5);
+
+    if (msync(vma, finfo.st_size, MS_SYNC) == -1)   /* POSIX'te gerekli Linux'ta gerek yok */
+        exit_sys("msync");
+
+    if (munmap(vma, 8192) == -1)
+        exit_sys("munmap");
+
+    if (munmap(vma, finfo.st_size) == -1)
+        exit_sys("munmap");
+
+    close(fd);
+
+Burada ``test.txt`` dosyası ``O_RDWR`` bayrağıyla read/write biçimde açılmıştır. ``mmap`` fonksiyonuna bu betimleyici
+geçirilmiştir. Bu örnekte dosyanın tamamının haritalanması için önce dosya uzunluğu ``fstat`` fonksiyonuyla elde
+edilmiştir. Artık ilgili bellek alanına yazma yapıldığında dosyaya yazma yapılmış gibi işlem uygulanacaktır. Bunun
+çekirdek tarafında nasıl sağlandığını izleyen paragraflarda ele alacağız.
+
+Aşağıda bellek tabanlı dosya örneğini bütünsel olarak veriyoruz:
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <fcntl.h>
+    #include <sys/stat.h>
+    #include <unistd.h>
+    #include <sys/mman.h>
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        char *vma;
+        int fd;
+        struct stat finfo;
+
+        if ((fd = open("test.txt", O_RDWR)) == -1)
+            exit_sys("open");
+
+        if (fstat(fd, &finfo) == -1)
+            exit_sys("fstat");
+
+        if ((vma = (char *)mmap(NULL, finfo.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED)
+            exit_sys("mmap");
+
+        printf("%.10s", vma);
+        memcpy(vma, "xxxxx", 5);
+
+        if (msync(vma, finfo.st_size, MS_SYNC) == -1)   /* POSIX'te gerekli Linux'ta gerek yok */
+            exit_sys("msync");
+
+        if (munmap(vma, finfo.st_size) == -1)
+            exit_sys("munmap");
+
+        close(fd);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+
+Linux çekirdeği pek çok UNIX türevi sistemin çekirdeğinde olduğu gibi bellek tabanlı dosya işlemlerinde arka planda
+aslında tahsis edilen *VMA*'nın sanal sayfa numaralarını sayfa tablosunda dosyaya ilişkin sayfa önbelleğindeki fiziksel
+sayfalarla eşlemektedir. Yani Linux'ta biz bellek tabanlı dosyayı ``mmap`` ile oluşturduktan sonra o alana yazma
+yaptığımızda aslında dosyanın sayfa önbelleğine yazma yapmış oluruz. Sayfa önbellekleri de anımsayacağınız gibi arka
+planda periyodik biçimde flush edilmektedir. Bu tasarıma işletim sistemlerinde İngilizce *unified buffer cache*
+ya da *unified page cache* de denilmektedir. 
+
+msync Fonksiyonu
+----------------
+
+Her ne kadar Linux gibi modern işletim sistemleri yukarıda belirttiğimiz gibi bir işlevselliğe sahipse de POSIX
+standartlarında tahsis edilen sanal bellek alanının çekirdek tarafından doğrudan sayfa önbelleğiyle ilişkilendirileceği
+yönünde bir garanti verilmemiştir. Bu nedenle POSIX standartlarında bellek tabanlı dosya açılıp o bellek alanına yazma
+yapıldıktan sonra yazılanların dosyaya aktarılması için ve dosyaya betimleyici yoluyla yazılanların haritalanan bellek
+alanına aktarılabilmesi için ``msync`` fonksiyonunun çağrılması gerektiği belirtilmiştir. Tabii yukarıda da
+belirttiğimiz gibi Linux sistemlerinde bu fonksiyonun kullanılmasına çoğu zaman gerek yoktur. Ancak ``msync`` fonksiyonu
+aynı zamanda bir flush işleminin yapılmasına da yol açmaktadır. Sayfa önbelleğinin flusher thread'lerle tazelendiğini
+anımsayınız. ``msync`` çağrıldığı zaman *VMA*'ya ilişkin dosya sayfaları diske flush edilmektedir.
+
+``msync`` fonksiyonunun prototipi şöyledir:
+
+.. code-block:: c
+
+    #include <sys/mman.h>
+
+    int msync(void *addr, size_t len, int flags);
+
+
+
+
