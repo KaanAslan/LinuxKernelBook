@@ -1572,6 +1572,9 @@ Aşağıda örneği bütünsel olarak veriyoruz:
         strcpy(vma, "this is a test");
         puts(vma);
 
+        if (munmap(vma, 8192) == -1)
+            exit_sys("munmap");
+
         return 0;
     }
 
@@ -1580,6 +1583,41 @@ Aşağıda örneği bütünsel olarak veriyoruz:
         perror(msg);
         exit(EXIT_FAILURE);
     }
+
+mprotect Fonksiyonu
+===================
+
+``mmap`` ile oluşturulan *VMA*'nın koruma bayrakları daha sonra ``mprotect`` isimli POSIX fonksiyonuyla
+değiştirilebilmektedir. ``mprotect`` fonksiyonunun parametrik yapısı şöyledir:
+
+.. code-block:: c
+
+    #include <sys/mman.h>
+
+    int mprotect(void *addr, size_t len, int prot);
+
+Fonksiyonun birinci parametresi koruma özelliği değiştirilecek alanın başlangıç adresini belirtmektedir. POSIX
+standartlarında bu adresin sayfa katlarında olması zorunlu tutulmamıştır. Ancak işletim sisteminin bunu zorunlu
+tutabileceği (may require) belirtilmiştir. İkinci parametre uzunluğu belirtmektedir. Verilen adres ve uzunluğu etkileyen
+*VMA*'nın koruma özellikleri değiştirilmektedir. Bu değiştirme Linux sistemlerinde önceki *VMA*'nın parçalanması
+sonucunu da doğurabilmektedir. Son parametre değiştirilecek yeni koruma bayraklarını belirtmektedir.
+
+Ayrıca POSIX standartlarında da bulunan *VMA*'nın fiziksel bellekte kalıcılığını sağlayan (yani takas dosyasına
+aktarılmasını engelleyen) ``mlock`` fonksiyonu da bulunmaktadır. Biz bu fonksiyondan daha önce de bahsetmiştik:
+
+.. code-block:: c
+
+    #include <sys/mman.h>
+
+    int mlock(const void *addr, size_t len);
+
+Lock edilen kısım ``munlock`` fonksiyonuyla eski hâline getirilebilir:
+
+.. code-block:: c
+
+    #include <sys/mman.h>
+
+    int munlock(const void *addr, size_t len);
 
 VMA'ların Dosylarla İlişkilendirilmesi
 ======================================
@@ -1612,9 +1650,6 @@ girilen ``prot`` parametresine uygun olacak biçimde açılmış olması gerekir
 
     if (msync(vma, finfo.st_size, MS_SYNC) == -1)   /* POSIX'te gerekli Linux'ta gerek yok */
         exit_sys("msync");
-
-    if (munmap(vma, 8192) == -1)
-        exit_sys("munmap");
 
     if (munmap(vma, finfo.st_size) == -1)
         exit_sys("munmap");
@@ -1702,6 +1737,62 @@ anımsayınız. ``msync`` çağrıldığı zaman *VMA*'ya ilişkin dosya sayfala
 
     int msync(void *addr, size_t len, int flags);
 
+Fonksiyonun birinci parametresi senkronize edilecek bellek tabanlı dosyaya ilişkin bellek adresini, ikinci parametresi
+bunun uzunluğunu belirtmektedir. POSIX standartlarına göre birinci parametrede belirtilen adresin
+*sayfa katlarında olması zorunlu değildir, ancak işletim sistemi bunu zorunlu yapabilir (may require)*. Linux
+sistemlerinde bu adresin sayfa katlarında olması zorunlu tutulmuştur. Fonksiyonun ikinci parametresi senkronize edilecek
+byte miktarını belirtmektedir. POSIX standartlarına göre senkronizasyon işlemine burada belirtilen byte miktarı ve
+girilen adresi kapsayan tüm sayfalar sokulmaktadır. (Örneğin birinci parametrede belirtilen adres sayfa katlarında
+olsun. Biz ikinci parametre için 7000 değerini girersek sayfa uzunluğu 4K ise sanki 8192 girmiş gibi etki oluşacaktır.)
+Fonksiyonun son parametresi flush işleminin yönünü belirtmektedir. Bu parametre aşağıdaki bayraklardan yalnızca birini
+alabilir:
+
+``MS_SYNC``: Burada senkronizasyon yönü bellekten diske doğrudur. Yani biz bellek tabanlı dosyanın bellek alanında
+değişiklik yaptığımızda bunun diskteki dosyaya yansıtılabilmesi için ``MS_SYNC`` kullanabiliriz. Bu bayrak aynı zamanda
+``msync`` fonksiyonu geri döndüğünde flush işleminin bitmiş olmasını garanti etmektedir.
+
+``MS_ASYNC``: ``MS_SYNC`` bayrağı gibidir. Ancak bu bayrakta flush işlemi başlatılıp ``msync`` fonksiyonu hemen geri
+döner. Yani bu bayrakta ``msync`` geri döndüğünde flush işlemi başlatılmıştır ancak bitmiş olmak zorunda değildir.
+
+``MS_INVALIDATE``: Bu bayrak dosyanın bellekteki kısmını geçersiz hale getirmektedir. Böylece ilgili bellek alanına 
+erişildiğinde dosyanın ilgili kısmı yine belleğe çekilir. Dolaylı olarak bu bayrak diskten belleğe senkronizasyon 
+işlevini yerine getirmektedir. 
+
+``munmap`` işlemi ile bellek tabanlı dosyanın bellek alanı serbest bırakılırken ``msync`` işlemi yapılmamaktadır. Ancak
+Linux gibi *unified page cache* tasarımına sahip olan sistemlerde bu durum bir soruna yol açmamaktadır.
+
+Fonksiyon başarı durumunda ``0`` değerine, başarısızlık durumunda ``-1`` değerine geri dönmektedir.
+
+Bu durumda biz POSIX standartlarına uygunluk bakımından örneğin bir bellek tabanlı dosyanın bellek alanına bir şeyler
+yazdığımızda o alanın flush edilmesi için ``MS_SYNC`` ya da ``MS_ASYNC`` bayraklarıyla ``msync`` çağrısını yapmamız
+gerekir:
+
+.. code-block:: c
+
+    if ((maddr = (char *)mmap(NULL, finfo.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED)
+        exit_sys("mmap");
+
+    memcpy(maddr, "ankara", 6);
+
+    if (msync(maddr, finfo.st_size, MS_SYNC) == -1)        /* bellekteki değişiklikler diske yansıtılıyor */
+        exit_sys("msync");
+
+Yine POSIX standartlarına uygunluk bakımından dışarıdan bir prosesin bellek tabanlı dosyada değişiklik yapması durumunda
+onun bellek tabanlı dosyanın bellek alanına yansıtılabilmesi için ``MS_INVALIDATE`` bayrağı ile ``msync`` fonksiyonunun
+çağrılması gerekmektedir. Örneğin:
+
+.. code-block:: c
+
+    if ((maddr = (char *)mmap(NULL, finfo.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED)
+        exit_sys("mmap");
+
+    /* başka bir proses dosya üzerinde değişiklik yapmış olsun */
+
+    if (msync(maddr, finfo.st_size, MS_INVALIDATE) == -1)        /* diskteki değişiklikler belleğe yansıtılıyor */
+        exit_sys("msync");
+
+``msync`` fonksiyonunda yalnızca tek bir bayrak kullanılabilmektedir. Bu nedenle iki işlemi ``MS_SYNC|MS_INVALIDATE``
+biçiminde birlikte yapmaya çalışmayınız.
 
 
 
