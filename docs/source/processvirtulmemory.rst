@@ -1619,8 +1619,8 @@ Lock edilen kısım ``munlock`` fonksiyonuyla eski hâline getirilebilir:
 
     int munlock(const void *addr, size_t len);
 
-VMA'ların Dosylarla İlişkilendirilmesi
-======================================
+VMA'ların Dosyalarla İlişkilendirilmesi
+=======================================
 
 Şimdi de ``mmap`` fonksiyonu ile tahsis ettiğimiz *VMA*'yı bir dosya ile ilişkilendirelim. Yukarıda da belirttiğimiz
 gibi bu işleme işletim sistemleri terminolojisinde *bellek tabanlı dosyalar (memory-mapped file)* denilmektedir. Bir
