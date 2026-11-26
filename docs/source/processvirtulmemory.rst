@@ -1794,5 +1794,58 @@ onun bellek tabanlı dosyanın bellek alanına yansıtılabilmesi için ``MS_INV
 ``msync`` fonksiyonunda yalnızca tek bir bayrak kullanılabilmektedir. Bu nedenle iki işlemi ``MS_SYNC|MS_INVALIDATE``
 biçiminde birlikte yapmaya çalışmayınız.
 
+mmap Fonksiyonunun Çekirdek Gerçekleştirimi
+===========================================
 
+Biz yukarıda ``mmap`` fonksiyonunun kullanıcı modundaki kullanımını ele aldık. Şimdi de bu fonksiyonun çekirdek
+tasarımında nasıl işlev gördüğünü inceleyeceğiz. Şu sorulara yanıtlar vermeye çalışacağız:
+
+- Anonim haritalama (bir dosyaya referans etmeyen haritalama) çekirdek tarafından nasıl gerçekleştirilmektedir?
+
+- *Özel haritalama (private mapping)*, *paylaşımlı haritalama (shared mapping)* çekirdek tarafından nasıl
+  gerçekleştirilmektedir?
+
+- Bellek tabanlı dosyaların çekirdek gerçekleştirimi nasıldır?
+
+Kullanıcı modundaki ``mmap`` POSIX fonksiyonu bazı işlemlerden sonra Linux sistemlerinde çekirdeğin ``mmap`` sistem
+fonksiyonunu çağırmaktadır. 32 bit sistemlerde eskiden ``sys_mmap`` fonksiyonu offset değerini byte cinsinden 32 bit
+olarak alıyordu. Bu nedenle bir dosyanın ancak ilk 4 GB'lik kısmı haritalanabiliyordu. Sonra (Linux 2.3.31) o fonksiyon
+muhafaza edilip ``sys_mmap2`` fonksiyonu da sisteme dahil edildi. (``sys_mmap2`` fonksiyonunda offset parametresi yine
+32 bittir. Ancak bu değer byte cinsinden değil, 4096 byte'lık birimler cinsinden belirtilmektedir. Böylece 2^44 byte'a
+(16 TB) kadar offset'ler ifade edilebilmektedir.) i386 gibi eski 32 bit mimarilerde geçmişe doğru uyum için her iki
+fonksiyon da hâlâ bulunmaktadır. Linux'a daha sonra eklenen 32 bit mimarilerde ve ABI'lerde ise yalnızca ``sys_mmap2``
+sistem fonksiyonu bulundurulmuştur. 64 bit Linux sistemlerinde offset zaten 64 bit olduğu için yalnızca ``sys_mmap``
+fonksiyonu bulunmaktadır (parisc bunun istisnasıdır). Ancak 64 bit çekirdekler 32 bit programları çalıştırabilmek için
+(compat) ilgili 32 bit mimarinin sistem fonksiyonlarını da bulundurmaktadır. Biz anlatımda bu sistem fonksiyonunu
+``sys_mmap`` ismiyle belirteceğiz. Aşağıda hangi sistemlerde hangi ``mmap`` sistem fonksiyonunun bulunduğunu bir tablo
+biçiminde veriyoruz. Tablodaki numaralar sistem fonksiyonlarının numaralarını belirtmektedir:
+
+.. figure:: _static/mmap-syscall-numbers-table.png
+   :align: center
+   :width: 55%
+
+Aynı numaradaki sistem fonksiyonunun çekirdekteki giriş ismi mimariye göre değişebilmektedir (``sys_mmap``,
+``sys_old_mmap``, ``sys_mips_mmap``, ``sys_osf_mmap``, ``sys_mmap_pgoff`` gibi). Örneğin i386 ve s390x sistemlerindeki
+90 numaralı ``sys_old_mmap`` fonksiyonu argümanlarını tek tek değil, bir yapının adresi olarak almaktadır.
+
+Tabii çekirdek ``sys_mmap`` sistem fonksiyonunu doğrudan kullanmaz ancak bu sistem fonksiyonunun çağırdığı birkaç
+fonksiyonu kullanmaktadır. Kullanıcı modundaki ``mmap`` POSIX fonksiyonunun güncel Linux sistemlerinde çağrılmasıyla
+oluşan çekirdekteki çağrı zincirini aşağıda veriyoruz:
+
+.. figure:: _static/mmap-call-flow.png
+   :align: center
+   :width: 90%
+
+Bu akış içerisindeki en önemli işlemler ``do_mmap`` fonksiyonu içerisinde yapılmaktadır.
+
+Yukarıda biz ``sys_mmap`` sistem fonksiyonunun akışını verdik. Çekirdek kendi içerisinde haritalama yaparken bu sistem
+fonksiyonunu kullanamaz. Onun yerine ``mm/util.c`` içerisinde bulunan ``vm_mmap`` fonksiyonunu kullanmaktadır. Örneğin
+``exec`` fonksiyonları çalıştırılabilir dosyanın bölütlerini (segments) belleğe yüklerken ``vm_mmap`` fonksiyonunu
+kullanmaktadır. ``vm_mmap`` fonksiyonu zaten kendi içerisinde ``sys_mmap`` tarafından da çağrılan ``vm_mmap_pgoff``
+fonksiyonunu çağırmaktadır. Yani fonksiyonun işlevselliği sistem fonksiyonuyla aynıdır. Aşağıda sistem fonksiyonunun ve
+``vm_mmap`` fonksiyonunun akışlarını aynı şekil üzerinde veriyoruz:
+
+.. figure:: _static/mmap-vm-mmap-flow.png
+   :align: center
+   :width: 60%
 

@@ -69,7 +69,8 @@ latex_additional_files = ['_static/fontawesome7.sty']
 html_meta = {
     "description": "Linux Kernel - İşletim Sistemlerinin Tasarımı ve Gerçekleştirilmesi",
     "keywords": (
-        "linux kernel, linux çekirdeği, işletim sistemleri, işletim sistemlerinin tasarımı, dosya sistemi, çekirdek senkronizasayonu, " +
+        "linux kernel, linux çekirdeği, çekirdek, işletim sistemleri, işletim sistemlerinin tasarımı, dosya sistemi, " 
+        "çekirdek senkronizasyonu, çekirdek veri yapıları, aygıt sürücüler, çekirdek modülleri, " 
         "proses yönetimi, çizelgeleme, bekleme kuyrukları, sayfa önbelleği, page cache, tampon önbelleği, buffer cache, "
         "Linux programlama, sanal bellek, buddy allocator, slab allocator, "
         "bağlamsal geçiş, sayfalama, işletim sistemi nedir, kernel"
