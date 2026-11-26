@@ -1847,5 +1847,189 @@ fonksiyonunu çağırmaktadır. Yani fonksiyonun işlevselliği sistem fonksiyon
 
 .. figure:: _static/mmap-vm-mmap-flow.png
    :align: center
+   :width: 55%
+
+Biz yukarıdaki fonksiyonların işleyişlerinin ayrıntıları üzerinde durmayacağız. Ancak bu fonksiyonların kullandığı
+mekanizmaları açıklayacağız. Neticede bu fonksiyonlar bir *VMA* (``vm_area_struct``) nesnesinin oluşturulmasını ve
+prosesin sanal bellek alanına bu *VMA* nesnesinin bağlanmasını sağlamaktadır. Ancak bu fonksiyonlar işlemi dosya tabanlı
+bir biçimde de yapmaktadır. Bu nedenle ``mmap`` fonksiyonu ve ``vm_mmap`` fonksiyonu yüksek seviyeli fonksiyonlardır.
+``vm_mmap`` fonksiyonu export edilmiştir, dolayısıyla çekirdek modülleri ve aygıt sürücüler tarafından da
+kullanılabilir. Ancak diğer aşağı seviyeli fonksiyonlar export edilmemiştir.
+
+Çekirdek içerisinde ``vm_mmap`` fonksiyonundan daha düşük seviyeli *VMA* tahsisatını bütünsel bir biçimde yapan bir
+fonksiyon yoktur. Ancak *VMA* tahsisat işlemleri aşağı seviyeli çekirdek fonksiyonlarının çağrılmasıyla adım adım da
+yapılabilmektedir. Örneğin güncel çekirdeklerde ``mm/vma_init.c`` dosyasındaki ``vm_area_alloc`` fonksiyonu bir
+``vm_area_struct`` nesnesini yaratıp ona ilkdeğer vermektedir:
+
+.. code-block:: c
+
+    struct vm_area_struct *vm_area_alloc(struct mm_struct *mm)
+    {
+        struct vm_area_struct *vma;
+
+        vma = kmem_cache_alloc(vm_area_cachep, GFP_KERNEL);
+        if (!vma)
+            return NULL;
+
+        vma_init(vma, mm);
+
+        return vma;
+    }
+
+Oluşturulan ``vm_area_struct`` nesnesinin çeşitli özelliklerini set eden fonksiyonlar bulunmaktadır. Aşağıda güncel
+çekirdeklerde bulunan bu setter fonksiyonlarının listesini veriyoruz:
+
+.. figure:: _static/vma-setter-functions-table.png
+   :align: center
    :width: 60%
+
+Diğer temel işlemleri yapan aşağı seviyel, çekirdek fonksiyonları şunlardır:
+
+.. figure:: _static/vm-flags-functions-table.png
+   :align: center
+   :width: 55%
+
+Aşağıda çekirdeğin aşağı seviyeli fonksiyonları kullanılarak temel düzeyde *VMA* tahsisatı yapan bir fonksiyon örneği
+verilmiştir:
+
+.. code-block:: c
+
+    #include <linux/mm.h>
+    #include <linux/mman.h>
+    #include <linux/sched/mm.h>
+
+    /*
+     * Create a minimal anonymous VMA in @mm.
+     * Returns the start address on success, or a negative errno value.
+     */
+    static unsigned long minimal_vma_create(struct mm_struct *mm,
+                                            unsigned long len, vm_flags_t vm_flags)
+    {
+        struct vm_area_struct *vma;
+        unsigned long addr;
+        int err;
+
+        len = PAGE_ALIGN(len);
+        if (!len)
+            return -EINVAL;
+
+        /* Same defaults that do_mmap() adds */
+        vm_flags |= mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC;
+
+        /* 1. Allocate and initialise the struct from the slab cache */
+        vma = vm_area_alloc(mm);
+        if (!vma)
+            return -ENOMEM;
+        vma_set_anonymous(vma);             /* vm_ops = NULL */
+
+        if (mmap_write_lock_killable(mm)) {
+            err = -EINTR;
+            goto out_free;
+        }
+
+        /* 2. Pick a free range (walks the maple tree, needs the lock) */
+        addr = __get_unmapped_area(NULL, 0, len, 0, 0, vm_flags);
+        if (IS_ERR_VALUE(addr)) {
+            err = (int)addr;
+            goto out_unlock;
+        }
+
+        /* 3. Fill in the fields */
+        vma_set_range(vma, addr, addr + len, addr >> PAGE_SHIFT);
+        vm_flags_init(vma, vm_flags);       /* not yet linked: no write lock needed */
+        vma->vm_page_prot = vm_get_page_prot(vm_flags);
+
+        /* 4. Link into the address space (maple tree + map_count) */
+        err = insert_vm_struct(mm, vma);
+        if (err)
+            goto out_unlock;
+
+        vm_stat_account(mm, vm_flags, len >> PAGE_SHIFT);
+        mmap_write_unlock(mm);
+
+        pr_debug("minimal VMA created: %#lx-%#lx\n", addr, addr + len);
+        return addr;
+
+    out_unlock:
+        mmap_write_unlock(mm);
+    out_free:
+        vm_area_free(vma);
+        return err;
+    }
+
+Buradaki aşağı seviyeli fonksiyonların neler yaptığı koddan anlaşılabilir. Örneğin ``__get_unmapped_area`` fonksiyonu
+prosesin adres alanında maple ağacında belli uzunlukta boş yer aramaktadır. ``insert_vm_struct`` fonksiyonu bu alanı
+prosesin sanal belleğine bağlamaktadır.
+
+Dosya Tabanlı mmap İşlemlerinin Çekirdek Gerçekleştirimi
+--------------------------------------------------------
+
+Şimdi ``mmap`` fonksiyonu ile dosya tabanlı *VMA* tahsisatının genel işleyişi üzerinde durmak istiyoruz. Yukarıda da
+belirttiğimiz gibi bir *VMA*'yı bir dosya ile ilişkilendirdiğimizde (buna kullanıcı modunda
+*bellek tabanlı dosya (memory mapped file)* dendiğini anımsayınız) artık *VMA*'ya ilişkin bellek alanları aslında dosya
+önbelleğine yönlendirilmektedir. Böylece dosya üzerinde read/write ile işlem yapıldığında da doğrudan *VMA* üzerinde
+işlem yapıldığında da aslında işlemler aynı sayfa önbelleği üzerinde yapılmaktadır. Yani aslında ``mmap`` fonksiyonunun
+bize verdiği adres dosya önbelleğindeki sayfa adresleriyle aynıdır. Bu durumu aşağıdaki şekille betimleyebiliriz:
+
+.. figure:: _static/read-write-vs-mmap-model.png
+   :align: center
+   :width: 85%
+
+``vm_area_struct`` yapısının dosya ilişkilendirmesi için iki elemanı bulunmaktadır:
+
+.. code-block:: c
+
+    struct vm_area_struct {
+        /* ... */
+
+        unsigned long    vm_pgoff;       /* dosya ofseti (sayfa)        */
+        struct file      *vm_file;       /* haritalanan dosya           */
+
+        /* ... */
+    };
+
+Buradaki ``vm_file`` elemanı *VMA*'nın ilişkilendirildiği dosyaya ilişkin dosya nesnesini göstermektedir. ``vm_pgoff``
+elemanı ise ilgili alanın dosyanın hangi offset'inden itibaren haritalandığını belirtmektedir. Bu iki alan bize şu
+bilgiyi vermektedir: *Bu VMA vm_file dosyasının vm_pgoff offset'inden itibaren olan kısmını bellekte temsil etmektedir.*
+*VMA*'nın uzunluğu zaten yapının ``vm_start`` ve ``vm_end`` elemanlarıyla belirtiliyordu:
+
+.. code-block:: c
+
+    struct vm_area_struct {
+        unsigned long    vm_start, vm_end;/* [vm_start, vm_end)         */
+        /* ... */
+        unsigned long    vm_pgoff;       /* dosya ofseti (sayfa)        */
+        struct file      *vm_file;       /* haritalanan dosya           */
+
+        /* ... */
+    };
+
+Şimdi iki ayrı prosesin aynı dosyayı ``MAP_SHARED`` ile haritaladığını varsayalım. Bu durumda iki proseste farklı sanal
+adresler elde edilecektir. Ancak bunlar aynı dosyanın aynı önbellek sayfalarına yönlendirilecektir. Yani iki prosesteki
+``file`` nesnesinden hareketle erişilen ``address_space`` nesneleri aslında aynı nesnelerdir. Dolayısıyla *VMA* üzerinde
+erişim yapılırken aynı ``address_space`` nesnesi dolayısıyla da aynı sayfa önbelleği kullanılmaktadır. Bunu şekilsel
+olarak aşağıda belirtiyoruz:
+
+.. figure:: _static/shared-file-mapping.png
+   :align: center
+   :width: 100%
+
+Çekirdek başta program yükleme olmak üzere ``mmap`` fonksiyonunu dosya tabanlı bir biçimde çeşitli yerlerde
+kullanmaktadır. Biz kursumuzun ``exec`` işlemlerini ele aldığımız bölümünde ELF dosyalarının nasıl yüklendiğini
+anlatacağız. Ancak burada konu bağlamında bu konuda birkaç açıklama yapmak istiyoruz. ``exec`` fonksiyonları ile bir
+program dosyası yüklenirken çekirdek önce ELF dosyasının formatının yüklenecek kısımlarını *Program Header Table*
+bölümünden elde etmektedir. ELF dosyasının *Program Header Table* bölümünde yüklenecek program bölütlerinin (segments)
+uzunlukları, sanal bellekte nereye yükleneceği, haritalama ve koruma özellikleri gibi bilgiler de bulunmaktadır.
+Çekirdek çalıştırılabilir bir ELF dosyasının bölütlerinin bazılarını dosya tabanlı bir biçimde bazılarını ise anonim
+biçimde yüklemektedir. Örneğin programın makine kodlarının bulunduğu bölüt (``.text`` bölümü) dosya tabanlı bir biçimde
+read-only olarak belleğe haritalanmaktadır. Dolayısıyla dosyanın bu bölütünün sayfaları dosyanın inode önbelleğinde
+bulunacaktır. Eğer bellek baskısı altında bu önbellekten sayfalar alınırsa ilk erişim yapıldığında yeniden sayfa
+önbelleğine çekilecektir. Örneğin programın ilkdeğer verilmiş statik verilerinin bulunduğu bölüt (``.data`` kısmı)
+``MAP_PRIVATE`` bayrağı ile yine dosya tabanlı bir biçimde haritalanmaktadır. Program çalışırken bu bölüme bir yazma
+yapıldığında copy-on-write mekanizması devreye girip yazma yapılan kısım için ayrı kopya oluşturulacak ve bu kopya
+gerektiğinde artık takas dosyasında saklanacaktır.
+
+
+
+
 
