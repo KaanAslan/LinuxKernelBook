@@ -2017,8 +2017,8 @@ olarak aşağıda belirtiyoruz:
 Çekirdek başta program yükleme olmak üzere ``mmap`` fonksiyonunu dosya tabanlı bir biçimde çeşitli yerlerde
 kullanmaktadır. Biz kursumuzun ``exec`` işlemlerini ele aldığımız bölümünde ELF dosyalarının nasıl yüklendiğini
 anlatacağız. Ancak burada konu bağlamında bu konuda birkaç açıklama yapmak istiyoruz. ``exec`` fonksiyonları ile bir
-program dosyası yüklenirken çekirdek önce ELF dosyasının formatının yüklenecek kısımlarını *Program Header Table*
-bölümünden elde etmektedir. ELF dosyasının *Program Header Table* bölümünde yüklenecek program bölütlerinin (segments)
+program dosyası yüklenirken çekirdek önce ELF dosyasının formatının yüklenecek bölütlerini *Program Başlık Tablosu (Program Header Table)*
+kısmından elde etmektedir. ELF dosyasının *Program Başlık Tablosu* kısmında yüklenecek program bölütlerinin (segments)
 uzunlukları, sanal bellekte nereye yükleneceği, haritalama ve koruma özellikleri gibi bilgiler de bulunmaktadır.
 Çekirdek çalıştırılabilir bir ELF dosyasının bölütlerinin bazılarını dosya tabanlı bir biçimde bazılarını ise anonim
 biçimde yüklemektedir. Örneğin programın makine kodlarının bulunduğu bölüt (``.text`` bölümü) dosya tabanlı bir biçimde
@@ -2029,6 +2029,12 @@ bulunacaktır. Eğer bellek baskısı altında bu önbellekten sayfalar alınır
 yapıldığında copy-on-write mekanizması devreye girip yazma yapılan kısım için ayrı kopya oluşturulacak ve bu kopya
 gerektiğinde artık takas dosyasında saklanacaktır.
 
+Aşağıdaki tabloda *Program Başlık Tablosu (Program Header Table)* içerisindeki tipik bölütlerin hangi koruma bilgilerine
+sahip olduğu belirtilmektedir. 
+
+.. figure:: _static/elf-segment-prot-table.png
+   :align: center
+   :width: 70%
 
 
 

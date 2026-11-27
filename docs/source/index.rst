@@ -57,6 +57,7 @@ ilişkin temel bilgilere ve becerilere sahip olduğu varsayılmaktadır.
    buffercache
    pagereclaim
    processvirtulmemory
+   forkandclone
    bibliography 
   
 
