@@ -71,8 +71,166 @@ aşıldığı durumda ``fork`` başarısız olabilir.) ``fork`` başarısızlık
 
 Yukarıda da belirttiğimiz gibi yeni yaratılan prosesin (alt prosesin) akışı da ``fork`` fonksiyonunun içerisinden
 başlatılmaktadır. Bu durumda her iki proses de ``fork`` fonksiyonunun içerisinden çıkacaktır. İşte üst proses (yani
-``fork`` işlemini yapan proses) *alt prosesin ID değeri ile*, alt proses ise *0 değeri ile* ``fork`` fonksiyonundan
+``fork`` işlemini yapan proses) alt prosesin ID değeri ile, alt proses ise 0 değeri ile ``fork`` fonksiyonundan
 çıkar. Böylece programcı ``fork`` çıkışında üst proses ile alt prosese farklı işlemler yaptırabilmektedir. (Alt prosesin
 ``fork`` içerisinden ``0`` ile çıkması alt prosesin proses ID'sinin ``0`` olduğu anlamına gelmemektedir. Alt prosesin
 proses ID'si alt proses içerisinden ``getpid`` POSIX fonksiyonuyla elde edilebilmektedir.)
 
+``fork`` kullanımına ilişkin tipik kalıp şöyledir:
+
+.. code-block:: c
+
+    pid_t pid;
+    /* ... */
+
+    if ((pid = fork()) == -1)
+        exit_sys("fork");
+
+    if (pid != 0) {         /* parent process */
+        /* ... */
+    }
+    else {                  /* child process */
+        /* ... */
+    }
+
+Aşağıdaki örnekte ``fork`` fonksiyonu ile bir proses yaratılmış ve proses ID'ler üst ve alt proseslerde yazdırılmıştır.
+Bu örnekte üst proseste ``fork`` fonksiyonunun alt prosesin proses ID değeri ile geri döndüğüne dikkat ediniz. Denemenin
+yapıldığı makinede şöyle bir çıktı elde edilmiştir:
+
+.. code-block:: text
+
+    Parent PID: 110303
+    Parent's parent PID: 106380
+    fork return value: 110304
+    Common code...
+    Child PID: 110304
+    Child's parent PID: 110303
+    Common code...
+
+Görüldüğü gibi alt prosesin üst proses ID'si ile üst prosesin proses ID'si aynıdır. Programı kabuk üzerinden
+çalıştırdığımız için üst prosesin üst proses ID'si kabuk prosesinin (tipik olarak bash) proses ID'si olacaktır:
+
+.. code-block:: console
+
+    $ ps
+       PID TTY        TIME CMD
+    106380 pts/2    00:00:00 bash
+    110308 pts/2    00:00:00 ps
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <stdint.h>
+    #include <unistd.h>
+
+    void exit_sys(const char *msg);
+
+    int main(void)
+    {
+        pid_t pid;
+
+        if ((pid = fork()) == -1)
+            exit_sys("fork");
+
+        if (pid != 0) {         /* parent process */
+            printf("Parent PID: %jd\n", (intmax_t)getpid());
+            printf("Parent's parent PID: %jd\n", (intmax_t)getppid());
+            printf("fork return value: %jd\n", (intmax_t)pid);
+        }
+        else {                  /* child process */
+            printf("Child PID: %jd\n", (intmax_t)getpid());
+            printf("Child's parent PID: %jd\n", (intmax_t)getppid());
+        }
+
+        printf("Common code...\n");
+
+        sleep(1);
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
+
+``fork`` işleminde en fazla kafa karıştıran noktalardan biri ``fork`` fonksiyonundan iki akışın çıkması durumudur.
+Burada genellikle yeni öğrenenlerin gözden kaçırdığı birkaç nokta vardır:
+
+| **1.** ``fork`` sırasında ``fork`` işlemini yapan prosesin (yani üst prosesin) tüm bellek alanının (onun kod, data, stack ve
+   heap alanlarının) özdeş bir kopyası oluşturulmaktadır. Yani ``fork`` işlemini yapan prosesin kod, data, stack ve heap
+   alanlarının hepsi alt proseste de bulunmaktadır. Örneğin:
+
+   .. code-block:: c
+
+       if ((pid = fork()) == -1)
+           exit_sys("fork");
+       if (pid != 0) {
+           /* ... */
+       }
+       else {
+           /* ... */
+       }
+
+   Programcının yazdığı bu kodun ``fork`` sonrasındaki kısmı hem üst proses hem de alt proses tarafından
+   çalıştırılmaktadır. Yani bu kod hem üst proseste hem de alt proseste bulunacaktır. Bizim buradaki temel amacımız
+   ``fork`` çıkışında *kodu aynı olan iki farklı prosese* farklı şeyleri yaptırmaktır. İşte bunu ``fork`` fonksiyonunun
+   geri dönüş değerini kontrol ederek sağlayabilmekteyiz.
+
+| **2.** Yeni öğrenen kişilere iki prosesin de ``fork`` fonksiyonundan çıkması tuhaf gelebilmektedir. Aslında burada bir
+   tuhaflık yoktur. Şöyle ki: Prosesin yaratılması ve bellek alanlarının kopyalanması zaten ``fork`` içerisinde
+   yapılmaktadır. ``fork`` fonksiyonunu çağıran proses (üst proses) ``fork`` fonksiyonundan çıkacaktır. Kopyası
+   çıkartılan alt prosesin çalışması da ``fork`` içerisinden başlatılmaktadır. Bu durumda alt proses de ``fork``
+   fonksiyonundan çıkacaktır. Çatallanmanın ``fork`` içerisinde yapıldığına dikkat ediniz.
+
+Tabii ``fork`` fonksiyonundan çıkınca artık üst proses ile alt prosesin yaşamları farklı olabilmektedir. Örneğin üst
+proses bir global değişkenin değerini değiştirse alt proses bunu değişmiş olarak görmez. Çünkü o global değişkenin üst
+proseste ve alt proseste artık farklı kopyaları vardır. Üst proses kendi global değişkenini değiştirmektedir. Yani
+``fork`` işleminden çıkıldığında üst ve alt prosesin her şeyi aynı olsa da artık bunlar kendi yollarına gideceklerdir.
+(Klon makinesinden çıkar çıkmaz iki kişinin her şeyi aynıdır. Ancak bundan sonra bu kişiler bağımsız kişiler oldukları
+için başlarına farklı olaylar gelecektir. Birisinin maruz kaldığı bir duruma diğeri maruz kalmayacaktır.)
+
+Aşağıdaki örnekte ``fork`` işlemi sonrasında üst proses ``g_x`` global değişkenine yeni bir değer atamıştır. Sonra alt
+proseste bu global değişkenin değeri yazdırılmıştır. Tabii alt proses üst prosesin yaptığı bu değişikliği görmeyecektir.
+Çünkü aslında iki prosesin de bellek alanları tamamen ``fork`` içerisinde klonlama sırasında ayrıştırılmıştır.
+
+.. code-block:: c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+
+    void exit_sys(const char *msg);
+
+    int g_x = 10;
+
+    int main(void)
+    {
+        pid_t pid;
+
+        if ((pid = fork()) == -1)
+            exit_sys("fork");
+
+        if (pid != 0) {         /* parent process */
+            g_x = 100;
+        }
+        else {                  /* child process */
+            sleep(1);
+            printf("%d\n", g_x);    /* 10 */
+        }
+
+        printf("Common code...\n");
+
+        sleep(1);
+        
+
+        return 0;
+    }
+
+    void exit_sys(const char *msg)
+    {
+        perror(msg);
+        exit(EXIT_FAILURE);
+    }
